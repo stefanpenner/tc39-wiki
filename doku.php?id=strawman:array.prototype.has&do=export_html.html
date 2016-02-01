@@ -1,0 +1,122 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:array.prototype.has&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:array.prototype.has&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:array.prototype.has&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="proposal"></a><h1>Proposal</h1>
+<div class="level1">
+
+<p>
+ Add a <code>has</code> generic method to <code>Array.prototype</code> that determines if the array contains a given value, determined by the internal [[SameValue]] algorithm.
+</p>
+
+</div>
+<!-- SECTION [1-187] -->
+<a name="spec"></a><h1>Spec</h1>
+<div class="level1">
+
+<p>
+ <strong>15.5.4.27 Array.prototype.has (searchElement, fromIndex = 0)</strong>
+</p>
+
+<p>
+<strong>has</strong> compares <em>searchElement</em> to the elements of the array, in ascending order, using the SameValue algorithm (9.12), and if found, returns <strong>true</strong>; otherwise, <strong>false</strong> is returned.
+</p>
+
+<p>
+When the <strong>has</strong> method is called with one or two arguments, the following steps are taken: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let <em>O</em> be the result of calling ToObject passing the <strong>this</strong> value as the argument.</div>
+</li>
+<li class="level1"><div class="li"> ReturnIfAbrupt(<em>O</em>).</div>
+</li>
+<li class="level1"><div class="li"> Let <em>lenValue</em> be the result of calling the [[Get]] internal method of <em>O</em> with the argument <strong><code>&ldquo;length&rdquo;</code></strong>.</div>
+</li>
+<li class="level1"><div class="li"> Let <em>len</em> be ToUint32(<em>lenValue</em>).</div>
+</li>
+<li class="level1"><div class="li"> ReturnIfAbrupt(<em>len</em>).</div>
+</li>
+<li class="level1"><div class="li"> If <em>len</em> is 0, return <strong>false</strong>.</div>
+</li>
+<li class="level1"><div class="li"> Let <em>pos</em> be ToInteger(<em>position</em>). (If <em>position</em> is <strong>undefined</strong>, this step produces the value 0).</div>
+</li>
+<li class="level1"><div class="li"> ReturnIfAbrupt(<em>pos</em>).</div>
+</li>
+<li class="level1"><div class="li"> Let <em>k</em> be min(max(<em>pos</em>, 0), <em>len</em>).</div>
+</li>
+<li class="level1"><div class="li"> Repeat, while <em>k</em> &lt; <em>len</em>,</div>
+<ol>
+<li class="level2"><div class="li"> Let <em>kPresent</em> be the result of calling the [[HasProperty]] internal method of <em>O</em> with argument ToString(<em>k</em>).</div>
+</li>
+<li class="level2"><div class="li"> If <em>kPresent</em> is <strong>true</strong>, then</div>
+<ol>
+<li class="level3"><div class="li"> Let <em>elementK</em> be the result of calling the [[Get]] internal method of <em>O</em> with the argument ToString(<em>k</em>).</div>
+</li>
+<li class="level3"><div class="li"> ReturnIfAbrupt(<em>elementK</em>).</div>
+</li>
+<li class="level3"><div class="li"> Let <em>same</em> be the result of performing SameValue(<em>searchElement</em>, <em>elementK</em>).</div>
+</li>
+<li class="level3"><div class="li"> If same is <strong>true</strong>, return <strong>true</strong>.</div>
+</li>
+</ol>
+</li>
+<li class="level2"><div class="li"> Increase <em>k</em> by 1.</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Return <strong>false</strong>.</div>
+</li>
+</ol>
+
+<p>
+ The <strong>length</strong> property of the <strong>has</strong> method is 1.
+</p>
+
+<p>
+NOTE The <strong>has</strong> function is intentionally generic; it does not require that its <strong>this</strong> value be an Array object. Therefore it can be transferred to other kinds of objects for use as a method. Whether the <strong>has</strong> function can be applied successfully to an exotic object that is not an Array is implementation-dependent.
+</p>
+
+</div>
+<!-- SECTION [188-2031] -->
+<a name="discussion"></a><h1>Discussion</h1>
+<div class="level1">
+
+<p>
+ The name of this was initially proposed as <code>contains</code> to match <a href="http://dom.spec.whatwg.org/#interface-domstringlist" class="urlextern" target="_blank" title="http://dom.spec.whatwg.org/#interface-domstringlist" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">DOMStringList in the DOM spec</a>. The latest ES6 draft also has <code>String.prototype.contains</code> so we need to unify these names.
+</p>
+
+</div>
+<!-- SECTION [2032-2303] -->
+<a name="references"></a><h1>References</h1>
+<div class="level1">
+
+<p>
+ <a href="https://mail.mozilla.org/pipermail/es-discuss/2012-February/020726.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2012-February/020726.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">es-discuss</a>. 
+</p>
+
+</div>
+<!-- SECTION [2304-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/e/ead45f3abeeb366bc723eefae455ac2e.xhtml used -->
+</body>
+</html>

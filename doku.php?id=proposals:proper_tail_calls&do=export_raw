@@ -1,0 +1,152 @@
+====== Proper tail calls ======
+
+(Also see the [[discussion:proper_tail_calls|discussion page]] for this proposal)
+
+Also see [[http://bugs.ecmascript.org/ticket/215|Ticket #215]].
+
+===== Motivation =====
+
+Proper tail calls allow programmers to write recursive or mutually recursive functions to implement iterative control behavior.  This is useful for many data structures that are common in functional, object-oriented, and procedural styles of programming.  Common use cases are:
+
+  * state machines, eg finite automata
+  * interpreters (be it direct style or CPS)
+  * delegation-style programming
+  * macro systems
+
+Languages with proper tail calls allow the use of procedural abstraction to a much larger extent than languages without.  Without proper tail calls, programmers must resort to loops, gotos, or other kinds of unabstract control structures to prune the control stack (eg "Cheney on the MTA" http://home.pipeline.com/~hbaker1/CheneyMTA.html), and must also maintain explicit control stack data structures for the non-iterative parts of the computation.
+
+Proper tail calls are not an optimization, but an aspect of the semantics of the space usage of the language.
+
+
+
+
+
+
+===== Specification =====
+
+ECMAScript 4 shall require all implementations to be properly tail recursive in the sense defined here, so as to allow the procedural abstraction facilities of the language to be used to their full potential.
+
+A function or method call is said to be in //tail position// if the only thing the caller can do when the call terminates (normally or abnormally) is either:
+
+  * return the value of the call to its own caller; or
+  * fall off the end of the current function and thereby return an undefined value.
+
+A call that is in tail position shall be executed without accumulating control stack, asymptotically.
+
+
+----
+
+In fact, return type annotations add further restrictions on when tail calls are possible, because of mixed typed/untyped code and conversions among primitive types. 
+
+Assume ''f1'' and ''f2'' are arbitrary functions with return type annotations (may be ''*'') ''t1'' and ''t2''.  A tail call from ''f1'' to ''f2'' shall be executed without accumulating control stack, asymptotically, in at least the following cases.
+
+  * ''t1'' is ''*''
+  * ''f1'' and ''f2'' are in the same top-level [[program units|unit]], and:
+    * ''t1'' is the same type as ''t2''
+    * ''t1'' is a nominal supertype of ''t2''
+    * ''t1'' is a record or array supertype of ''t2''
+    * ''t1'' is a "like" or "wrap" supertype of ''t2''
+
+In none of these cases are type checking or type conversion required when ''f2'' returns to ''f1'' (or to the caller of ''f1'').
+
+Implementations are allowed to do better than this, but all implementations are required to implement tail calls at least this much.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/09/26 22:25//
+
+
+I think we can simplify the above cases to:
+
+  * ''t1'' is a (non-strict) supertype of ''t2''
+
+ --- //[[cormac@soe.ucsc.edu|Cormac Flanagan]] 2007/09
+
+28 23:14//
+
+===== Syntactic characterization =====
+
+(Second draft -- there may still be bugs here.)
+
+Tail positions can be characterized precisely in terms of propagation of the following attributes on the abstract syntax structure of the language:
+
+  * ''S.wrapped'' -- ''S'' appears within the syntactic context of a form that wraps its dynamic execution with extra operations (effectively precluding tail positions from occurring within ''S'');
+  * ''S.tail'' -- ''S'' is a statement in tail position (meaning that in the absence of a ''return'', control would fall off the end of the procedure after executing ''S'');
+  * ''E.tail'' -- ''E'' is an expression in tail position.
+
+Analogous attributes exist for ''case'' and ''catch'' clauses as well.
+
+Following attribute computation as defined below, any method or function call expression whose ''tail'' attribute is ''true'' shall be performed as a tail call.
+
+In some circumstances the implementation may be able to prove that certain other calls can be executed as tail calls.  The implementation shall be free to execute these calls as tail calls.
+
+==== Expressions ====
+
+For any expression ''E'', all its subexpressions ''E1 ...'' have ''Ei.tail = false'', except in the following cases:
+
+<code javascript>
+   E -> E1 , E2                             E2.tail = E.tail
+   E -> E1 ? E2 : E3                        E2.tail = E3.tail = E.tail
+   E -> let (V1 = E1, ..., Vn = En) E{n+1}  E{n+1}.tail = E.tail
+</code>
+
+
+
+
+
+
+==== Statements ====
+
+Only statements that lead to expression evaluation are relevant:
+
+<code javascript>
+   S -> { S1 ... Sn }                S1.wrapped = ... = Sn.wrapped = S.wrapped
+                                     S1.tail = ... = S{n-1}.tail = false
+                                     Sn.tail = S.tail                 /* only the last statement is in tail position */
+   S -> do S1 while (E)              S1.tail = false
+                                     S1.wrapped = S.wrapped
+                                     E.tail = false
+   S -> E;                           E.tail = S.tail                  /* falls off the end */
+   S -> for (E1; E2; E3) S1          E1.tail = E2.tail = E3.tail = false
+                                     S1.tail = false
+                                     S1.wrapped = S.wrapped
+   S -> for (E1 in E2) S1            E1.tail = E2.tail = false
+                                     S1.tail = false
+                                     S1.wrapped = S.wrapped
+   S -> if (E) S1 else S2            S1.wrapped = S2.wrapped = S.wrapped
+                                     S1.tail = S2.tail = S.tail       /* branches are in tail position */
+                                     E.tail = false
+   S -> L: S1                        S1.wrapped = S.wrapped
+                                     S1.tail = S.tail
+   S -> return E;                    E.tail = !s.wrapped              /* tail unless inside of try etc. */
+   S -> with (E) S1                  S1.wrapped = true
+                                     S1.tail = false
+                                     E.tail = false
+   S -> try S1 K1 ... Kn             S1.wrapped = true                /* no tail positions inside */
+                                     K1.wrapped = ... = Kn.wrapped = S.wrapped
+                                     S1.tail = false
+                                     K1.tail = ... = Kn.tail = S.tail
+   S -> try S1 K1 ... Kn finally S2  S1.wrapped = true                /* no tail positions inside */
+                                     K1.wrapped = ... = Kn.wrapped = true
+                                     S2.wrapped = false
+                                     S1.tail = false
+                                     K1.tail = ... = Kn.tail = false  /* followed by a finally */
+                                     S2.tail = S.tail
+   S -> throw E;                     E.tail = false
+   S -> switch (E) C1 ... Cn         E.tail = false
+                                     C1.wrapped = ... = Cn.wrapped = S.wrapped
+                                     C1.tail = ... = Cn.tail = S.tail
+   S -> while (E) S1                 S1.wrapped = S.wrapped
+                                     S1.tail = false
+                                     E.tail = false
+   K -> catch (V) S                  S.wrapped = K.wrapped
+                                     S.tail = K.tail
+   C -> case E: S1 ... Sn            E.tail = false
+                                     S1.wrapped = ... = Sn.wrapped = C.wrapped
+                                     S1.tail = ... = Sn.tail = false  /* might fall through */
+   C -> default: S1 ... Sn           /* ditto */
+</code>
+
+----
+
+Just noting that the Scheme report requires tail call behavior for ''apply'' as well, so we should probably consider doing the same for ''Function.prototype.call'' and ''Function.prototype.apply''.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/20 11:07//

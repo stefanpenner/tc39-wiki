@@ -1,0 +1,305 @@
+====== Message Formatting ======
+
+
+===== Introduction =====
+The only standard way to build/format a string in JavaScript is to concatenate parts of the string. This approach is not readable and it introduces possible localization errors,
+thus most of JavaScript libraries (jQuery, Dojo, YUI, Closure) implement some form of string formatting support.
+
+The libraries provide similar solutions which should be easy to unify and standardize. Some of the existing proposals already describe such unification, see [[http://wiki.ecmascript.org/doku.php?id=strawman:string_format_take_two|Shanjian's proposal]] for an example.
+
+We could probably stop there for locale independent string formatting. It offers most of C++ printf or Python print function functionality (%d, %i, %s, positional parameters,...).
+
+This type of strings is easy to extract and localize, vs. template string proposal.
+
+We'll call this approach Simple String Format (SSF).
+
+[[http://dojotoolkit.org/reference-guide/1.8/dojo/string.html#substitute|Dojo .substitute()]]
+[[http://code.google.com/p/jquery-utils/wiki/StringFormat#Formatting|jQuery .format()]]
+[[http://www.python.org/dev/peps/pep-3101/|Python 3.0 format, which is base for jQuery implementation]]
+
+
+===== Internationalization =====
+A second group of problems with string formatting comes from locale specific rules for number, date, plural and gender formatting. We could insert appropriate forms of dates and numbers using SSF, but that's not good enough for plural and gender case.
+
+
+
+==== Proposed solution ====
+We could combine SSF and modified ICU solution (see below) like this:
+
+<code javascript>
+/**
+ * Creates MessageFormat object from a pattern, locale and field formatters.
+ * locale {LocaleList|String} Locale for string formatting
+ * pattern {Array|String} Array or string that serves as formatting pattern.
+ *     Use array for plural and select messages, otherwise use string form.
+ * optFieldFormatters {Object} Holds user defined formatters for each field (Dojo like).
+ * @constructor
+ */
+Intl.MessageFormat(locale, pattern, optFieldFormatters);
+
+/**
+ * Formats pattern with supplied parameters.
+ * Dates, times and numbers are formatted in locale sensitive way.
+ * params {Array|Object}
+ * @returns {String}
+ */
+Intl.MessageFormat.prototype.format(params);
+
+/**
+ * Returns resolved options, in this case supported locale.
+ * @returns {Object}
+ */
+Intl.MessageFormat.prototype.resolvedOptions();
+</code>
+
+=== Locale ===
+Locale parameter is either a simple String containing BCP47 valid locale or a locale list containing valid BCP47 locales.
+
+Locale information is used to format dates, numbers and to get locale appropriate data for plural formatting.
+
+=== Pattern ===
+Formatting pattern can either be a String or an Array.
+
+== String pattern ==
+String pattern is used for named and positional parameter substitution.
+
+== Array pattern ==
+Array pattern is used for named, positional, plural and select substitution.
+
+=== Field Formatters ===
+Field formatters define how each placeholder value is formatted. There are built-in and user defined formatters.
+
+
+== Build-in formatters ==
+Built in formatters support the usual options, like integers, floating point numbers, strings...
+
+We could reserve range from 1 - 3 characters for these.
+
+<code javascript>
+var message = Intl.MessageFormat(undefined, 'I am ${height:d}cm high.');
+
+// Returns 'I am 193cm high.'
+message.format({height: 193});
+</code>
+
+
+== User defined formatters ==
+User can specify a name of the function to format the field. We first try to look up the name in the optFormatters object. If the object is undefined or optFormatters[name] is undefined we try the global namespace.
+
+<code javascript>
+/**
+ * User defined formatter for a given value.
+ * Function name is user defined.
+ * locale {String} Resolved locale from MessageFormat object.
+ * value {Any} Value passed for specific placeholder.
+ * @returns {String} formatted value.
+ */
+function fieldFormat(locale, value);
+</code>
+
+Example:
+<code javascript>
+var formatters = {};
+
+// First parameter is always resolved locale.
+// Second parameter is the placeholder value.
+formatters['toEuros'] = function (locale, number) {
+  var nf = Intl.NumberFormat(locale, {style:'currency', currency:'EUR', currencyDisplay: 'code'});
+  return nf.format(number);
+};
+
+var message = Intl.MessageFormat('sr', 'My salary is ${salary:toEuros}.', formatters);
+
+// Returns 'My salary is 1.234.567.890,00 евра'.
+message.format({salary: 1234567890});
+</code>
+
+
+
+==== ICU plural handling ====
+ICU library, and Google Closure, encode plural and gender format into a message string and select appropriate message at a runtime. This approach applies well to SSF, but has a couple of pain points. Plural and gender syntax is hard to get right and there are escaping issues with quotes and {}.
+
+<code javascript>
+var message = new Intl.MessageFormat('sr', 'Some text before {|numPeople, plural, offset: 1, ' +
+    'one {|Some message {|ph|} with {|#|} value|}' +
+    'few {|Some other message|}' +
+    '=1  {|Optional prefix text {|GENDER, select, ' +
+    'male {|Text for male option with '' single quotes|}' +
+    'female {|Text for female option with '{||}'' +
+    'other {|Text for default}} optional postfix text' +
+    '} and text after.');
+
+message.format({numPeople:4, ph:'whatever', GENDER:'male'});
+</code>
+
+
+
+==== Modified ICU approach ====
+Using the same ICU syntax, but encoded as a JavaScript object or JSON object, we could make writing of complex messages easier:
+
+   * Editor matches {} and indents values automatically
+   * Cleaner syntax
+   * No escaping problems
+   * Adding comments to each section would be easier, which helps documentation and possibly translation process
+
+Cons:
+   * Messages would be harder to extract as strings (we could add parse/serialize methods to help deal with the extraction), or they could be kept as JSON objects in the message bundles
+   * More verbose than the ICU approach
+
+<code javascript>
+var message = new Intl.MessageFormat('sr', ['Some text before', {
+    type: 'plural',  // can be plural or gender/select
+    valueName: 'numPeople',  // placeholder for switch value
+    offset: 1,  // optional for plural, invalid for select
+    one: 'Some message ${ph} with ${#} value', // no gender specific msg necessary
+    few: [ 'Optional prefix text for |few|', {
+       type: 'select',
+       valueName: 'gender',
+       male: 'Text for male option with \' single quotes',
+       female: 'Text for female option with {}',  // {} produces {} in the output.
+       other: 'Text for default'
+    }, 'optional postfix text']],
+    other: 'Some messages for the default', // no gender specific msg necessary
+    '1': [ 'Optional prefix text', {
+       type: 'select'
+       valueName: 'gender',
+       male: 'Text for male option with \' single quotes',
+       female: 'Text for female option with {}',  // {} produces {} in the output.
+       other: 'Text for default'
+    }, 'optional postfix text']],
+}, 'and text after']);
+
+message.format({numPeople:4, ph:'whatever', gender:'male'});
+</code>
+
+===== Alternative Proposals =====
+
+==== Alternative to user defined formatters ====
+
+//Norbert Lindenberg 2013-04-19//
+
+The user defined formatters got me thinking:
+   * good: options for subformats are not in message format pattern (they usually shouldn't be changed in localization).
+   * not so good: function is a lot of extra text.
+   * bad: definitely should not access global namespace.
+
+Proposal:
+   * MessageFormat takes ''options'' argument, which may provide options for subformats.
+   * For any parameter name v, ''MessageFormat(pattern, locales, options).format(args)'' gets the value to insert from the expression ''args[v].toLocaleString(locales, options ? options[v] : undefined)''
+   * Integrates with existing ES internationalization infrastructure.
+
+Example 1 - no options:
+<code javascript>
+    Intl.MessageFormat("I am {height}cm tall.", "en").format({height: 193})
+    // → "I am " + (193).toLocaleString("en", undefined) + "cm tall."
+    // → "I am 193cm tall."
+</code>
+
+Example 2 - options for NumberFormat:
+<code javascript>
+   let options = {salary: {style: "currency", currency: "EUR", currencyDisplay: "name"}};
+   Intl.MessageFormat("My salary is {salary}.", "sr", options).format({salary: 1234567890}}
+   // → "My salary is " + (1234567890).toLocaleString("sr", options) + "."
+   // → "My salary is 1.234.567.890,00 евра."
+</code>
+
+==== Simplified nested plurals/genders ====
+
+//Mihai Nita 2013-10-21//
+
+Current plural form is hard to follow for nested messages (even for two levels). We aim to make structure easier to enumerate and glance over all cases.
+
+<code javascript>
+var message = new Intl.MessageFormat('sr', {
+    'rules': [['plural', 'numPeople', 1], ['select', 'gender']],
+    'one other':  'Some message {ph} with {#} value', // no gender specific msg necessary
+    'few male':   'Text for male option with \' single quotes',
+    'few female': 'Text for female option with {}',  // {} produces {} in the output.
+    'few other':  'Text for default',
+    '1 male':     'Text for male option with \' single quotes',
+    '1 female':   'Text for female option with {}',  // {} produces {} in the output.
+    '1 other':    'Text for default'
+});
+
+message.format({numPeople:4, ph:'whatever', gender:'male'});
+</code>
+
+or with array syntax (may be harder to localize?)
+
+<code javascript>
+var message = new Intl.MessageFormat('sr', [
+    [['plural', 'numPeople', 1], ['select', 'gender']],
+    ['one', 'other',  'Some message {ph} with {#} value'], // no gender specific msg necessary
+    ['few', 'male',   'Text for male option with \' single quotes'],
+    ['few', 'female', 'Text for female option with {}'],  // {} produces {} in the output.
+    ['few', 'other',  'Text for default'],
+    [1, 'male',       'Text for male option with \' single quotes'],
+    [1, 'female',     'Text for female option with {}'],  // {} produces {} in the output.
+    [1, 'other',      'Text for default']
+]);
+
+message.format({numPeople:4, ph:'whatever', gender:'male'});
+</code>
+
+Note: Gender doesn't have # syntax, produces # in the output. Fix example.
+
+Note: Offset belongs to the innermost plural. Have to come up with better reference to which one in this syntax.
+
+
+==== Mozilla's approach ====
+
+//Zibi Braniecki, Stas Malolepszy 2014-01-01//
+
+The proposals on this page explore important aspects of formatting translations without resorting to simple concatenation.  In the following proposal, we put more emphasis on future-compatibility, drawing from our experience with L20n.  
+
+We like Mihai's "Simplified nested plurals/genders" proposal, and we build on top of it:
+
+## good 
+   * multi-value translations (branching),
+   * allowing more than one selection rule,
+   * formatters are not hard-coded into Intl.
+
+## not so good:
+   * complex messages with multiple nested branches are still hard to follow, because the syntax doesn't reflect the nesting,
+   * messages have no identifiers, which forces the extraction of translations into other languages to be based on the serialization of the entire body of the message. Furthermore it makes it impossible in the future to extend the spec with message interpolation (something we found useful at Mozilla),
+   * we suggest the locale code be the second argument to Intl.MessageFormat.  In the future, we envision using MessageBundle or a similar concept to store the current locale.
+  
+# bad
+   * string branching is only one level, which does not represent nested cases (gender and plural)
+   * string selection description is an awkward three-element array that does not extend
+   * the proposal is a mixture of AST object and semantic string
+   * messages are stripped of unique identifiers which makes it hard to maintain localizations, and in the future interpolate messages
+   * the variable interpolation identifier is not future compatible with message interpolation identifiers
+
+The key paradigm of L20n that we would also see in Intl.MessageFormat is the  separation of concerns of developers vs. concerns of localizers.  We try to move as much of the text formatting task as possible into the hands of translators, thus making the API simpler for developers to use and giving more control to translators over the content.
+
+One of the ways to achieve this is to make the variables passed to .format() be available in the larger scope for all messages to use.  This allows localizers to make their own decisions about which variables to use in which message.  Think grammatically-correct past tense which depends on the gender of the subject.  If gender is available in a larger scope, any message can use string selection to display the correct translation.
+
+(In fact, L20n distinguishes between three different kinds of things that are available in the scope:  variables like gender or numPeople, other messages (very useful for brand names), and contextual data (e.g. current screen width).  In  order to avoid name conflicts, to help debugging and to increase security, L20n uses different syntax for the data types mentioned  above: %%{{%% brandName }} for referencing other messages, %%{{%% $gender }} for developer-provided variables and %%{{%% @screen }} for contextual data.)
+
+In this proposal for Intl.MessageFormat, we only posit to use developer-provided variables like $gender or $numPeople.  (Other data types can be added later in separate proposals.)  The dolar sign helps localizers understand that they should not translate the variable name.
+
+Lastly, the proposal uses string literals to define messages, with L20n-compatible syntax.  It's more compact and based on JSON for defining translation values.  It conveniently solves the problem of string selection rules being limited to being defined as functions which take only one argument.
+
+# Proposal
+<code javascript>
+  var ctxdata = {};
+  ctxdata['plural'] = function(n) {
+      return n == 1 ? 'one' : 'other';
+  };
+  ctxdata['numPeople'] = 3;
+  ctxdata['gender'] = 'female';
+  var hello = Intl.MessageFormat("<hello 'Hello, world!'>", 'en-US');
+  
+  var complex = Intl.MessageFormat(
+    "<complex[$plural($numPeople), $gender] {
+      one: 'Some message {{$ph}} with value',
+      other: {
+        male: 'Text for male option with \' single quotes',
+        female: 'Text for female option with {}',
+        other: 'Text for default'
+      }
+    }>", 'en-US');
+  alert(hello.format());
+  alert(complex.format(ctxdata));
+</code>

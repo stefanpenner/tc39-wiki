@@ -1,0 +1,369 @@
+
+====== Judgments ======
+
+Type judgments generally take the following form:
+
+^Relation ^Interpretation                            ^
+|A ⊢ B    |//given assumptions A, assertion B holds//|
+
+For example, type checking usually takes place in a lexical context, which allows us to assume certain variables have already been type-checked and have some given type; deciding the type of the inner expression relies on those variables' types as part of its assumptions.
+
+====== Relations on types ======
+
+There are two key relations on types: subtyping and convertibility. Note that subtyping is transitive but convertibility is not.
+
+^Relation ^Interpretation                            ^
+|D ⊢ T1 <: T2  |//T1 is a subtype of T2//                 |
+|D ⊢ T1 = T2   |T1 <: T2 //and// T2 <: T1                 |
+|D ⊢ T1 ⇝ T2  |//type T1 is convertible to type T2//     |
+|D ⊢ T1 ⇜⇝ T2 |T1 ⇝ T2 //and// T2 ⇝ T1                   |
+
+**Subtyping judgement:** D ⊢ T1 <: T2
+
+<code>
+------------------------
+D |- T <: T
+
+D |- T1 <: T2
+D |- T2 <: T3
+------------------------
+D |- T1 <: T3
+
+D |- class C1.<A1, .., An> extends C2.<T ..>
+--------------------------------------------------------------
+D |- C1.<T1', .., Tn'> <: C2.<T ..> [A1 := T1', .., An := Tn']
+
+D |- class C.<A1, .., An> implements I.<T ..>
+------------------------------------------------------------
+D |- C.<T1', .., Tn'> <: I.<T ..> [A1 := T1', .., An := Tn']
+
+D |- interface I.<A1, .., An> extends I.<T ..>
+------------------------------------------------------------
+D |- I.<T1', .., Tn'> <: I.<T ..> [A1 := T1', .., An := Tn']
+
+-----------
+D |- T <: *
+
+D |- U'  <: U
+D |- Si' <: Si
+D |- T   <: T'
+--------------------------------------------------------
+D |-    (FUNCTION (THIS U)  (ARGS S  ..) #f (RETURN T))
+     <: (FUNCTION (THIS U') (ARGS S' ..) #f (RETURN T'))
+
+D |- U'  <: U
+D |- Si' <: Si (i <= m)
+D |- Si' <: V  (i > m)
+D |- T   <: T'
+--------------------------------------------------------------------------
+D |-    (FUNCTION (THIS U)  (ARGS S1  .. Sm) V                (RETURN T))
+     <: (FUNCTION (THIS U') (ARGS S1' .. Sm' Sm+1' .. Sn') #f (RETURN T'))
+
+D |- U'  <: U
+D |- Si' <: Si (i <= m)
+D |- V'  <: Si (i > m)
+D |- V'  <: V
+D |- T   <: T'
+--------------------------------------------------------------------------
+D |-    (FUNCTION (THIS U)  (ARGS S1  .. Sm) V                (RETURN T))
+     <: (FUNCTION (THIS U') (ARGS S1' .. Sm' Sm+1' .. Sn') V' (RETURN T'))
+
+------------------  [really two subtyping judgements]
+D |- T = (UNION T)
+
+forall i exists j. D |- Si <: Tj
+------------------------------------
+D |- (UNION Si .. ) <: (UNION Tj ..)
+
+m <= n
+forall i exists j. D |- Si <: Tj
+-------------------------------------------
+D |- (OBJECT S1 .. Sn) <: (OBJECT T1 .. Tm)
+
+n <= m
+D |- Si <: Ti (i <= m)
+D |- Si <: T  (i > m)
+D |- S  <: T
+----------------------------------------------
+D |- (ARRAY S1 .. Sn S) <:  (ARRAY T1 .. Tm T)
+</code>
+
+**Convertibility judgement:** D ⊢ T1 ⇝ T2
+
+<code>
+D |- T1 <: T2
+-------------
+D |- T1 ~> T2
+
+-----------
+D |- * ~> T
+
+-------------
+D |- P1 ~> P2
+
+D |- U'  ~> U
+D |- Si' ~> Si
+D |- T   ~> T'
+--------------------------------------------------------
+D |-    (FUNCTION (THIS U)  (ARGS S  ..) #f (RETURN T))
+     ~> (FUNCTION (THIS U') (ARGS S' ..) #f (RETURN T'))
+
+D |- U'  ~> U
+D |- Si' ~> Si (i <= m)
+D |- Si' ~> V  (i > m)
+D |- T   ~> T'
+--------------------------------------------------------------------------
+D |-    (FUNCTION (THIS U)  (ARGS S1  .. Sm) V                (RETURN T))
+     ~> (FUNCTION (THIS U') (ARGS S1' .. Sm' Sm+1' .. Sn') #f (RETURN T'))
+
+D |- U'  ~> U
+D |- Si' ~> Si (i <= m)
+D |- V'  ~> Si (i > m)
+D |- V'  ~> V
+D |- T   ~> T'
+--------------------------------------------------------------------------
+D |-    (FUNCTION (THIS U)  (ARGS S1  .. Sm) V                (RETURN T))
+     ~> (FUNCTION (THIS U') (ARGS S1' .. Sm' Sm+1' .. Sn') V' (RETURN T'))
+
+forall i exists j. D |- Si ~> Tj
+-------------------------------------
+D |- (UNION Si .. ) ~> (UNION Tj ...)
+
+
+m <= n
+D |- Si ~> Ti (i <= m)
+-------------------------------------------
+D |- (OBJECT S1 .. Sn) ~> (OBJECT T1 .. Tm)
+
+n >= m
+D |- Si ~> Ti  (i <= m)
+D |- Si ~> T   (i > m)
+D |- S  ~> T
+---------------------------------------------
+D |- (ARRAY S1 .. Sn S) ~> (ARRAY T1 .. Tm T)
+
+----------------------------------------------------------------------------
+D |- (FUNCTION (THIS T) (ARGS S ..) REST? (RETURN T)) ~> intrinsic::Function
+
+-------------------------------------------
+D |- (ARRAY T1 .. Tn T) ~> intrinsic::Array
+
+---------------------------------------
+D |- (OBJECT T ..) ~> intrinsic::Object
+
+----------------------------------------------------------------------
+D |- intrinsic::Function ~> (FUNCTION (THIS *) (ARGS *) #t (RETURN *))
+
+----------------------------------
+D |- intrinsic::Array ~> (ARRAY *)
+
+----------------------------------
+D |- intrinsic::Object ~> (OBJECT)
+</code>
+
+====== Type checking ======
+
+Type checking an expression involves the following relations/functions:
+
+^Relation ^Interpretation                            ^
+|E ⊲ T    |//expression E has type T//               |
+|T1 ⊓ T2  |//most derived common superclass//       |
+
+====== Type judgments ======
+
+**Well-typed statements:** D; G; T ⊢ S
+
+//Given a set of class definitions D, a typing context G, and a return type context T, statement S is well-typed.//
+
+<code javascript>
+D; G; T ⊢ S
+D; G ⊢ E ⊲ Te
+------------------------
+D; G; T ⊢ do S while (E)
+
+D; G; T ⊢ S
+D; G ⊢ E ⊲ Te
+---------------------
+D; G; T ⊢ while (E) S
+
+D; G ⊢ E ⊲ Te
+-------------
+D; G; T ⊢ E;
+
+D; G ⊢ E ⊲ Te
+D; G; T ⊢ S1
+-------------------
+D; G; T ⊢ if (E) S1
+
+D; G ⊢ E ⊲ Te
+D; G; T ⊢ Si
+---------------------------
+D; G; T ⊢ if (E) S1 else S2
+
+D; G ⊢ E ⊲ T
+-------------------
+D; G; T ⊢ return E;
+
+D; G ⊢ E ⊲ *
+------------------
+D; G; T ⊢ throw E;
+
+D; G; T ⊢ S1
+D; G,I:*; T ⊢ S2
+-----------------------------
+D; G; T ⊢ try S1 catch (I) S2
+
+D; G; T ⊢ S1
+D; G,I:*; T ⊢ S2
+D; G; T ⊢ S3
+----------------------------------------
+D; G; T ⊢ try S1 catch (I) S2 finally S3
+
+D; ∅; T ⊢ B
+--------------------
+D; G; T ⊢ with (E) B
+
+// NOTE: The following is not quite right, though it could be correct with an appropriate dynamic semantics for eval.
+
+D; G; T ⊢ E ⊲ String
+--------------------
+D; G; T ⊢ eval E ⊲ *
+
+/*
+Still to do:
+   |  for (E1; E2; E3) S1
+   |  for (E1 in E2) S1
+   |  L: S1
+   |  break L;
+   |  continue L;
+   |  switch (E) C1 ... Cn
+*/
+</code>
+
+**Well-typed blocks:** D; G; T ⊢ B 
+
+//Given a set of class definitions D, a typing context G, and a return type context T, block B is well-typed.//
+
+<code javascript>
+D; G; T ⊢ Sj
+----------------------
+D; G; T ⊢ { S1 .. Sn }
+</code>
+
+**Well-typed class declarations:** D; G ⊢ C
+
+//Given a set of class definitions D and a typing context G, class declaration C is well-typed.//
+
+<code javascript>
+D; G,this:I ⊢ Mj
+---------------------------
+D; G ⊢ class I { M1 .. Mn }
+</code>
+
+**Well-typed class member declarations:** D; G ⊢ M
+
+//Given a set of class definitions D and a typing context G, class member declaration M is well-typed.//
+
+<code javascript>
+D; G ⊢ E ⊲ T
+-------------------
+D; G ⊢ var I:T = E;
+
+D; G,Ij:Tj; T ⊢ B 
+mustReturn(B) or T ⇝ Void
+---------------------------------------
+D; G ⊢ function I(I1:T1, .., In:Tn):T B
+</code>
+
+**Well-typed expressions:** D; G ⊢ E ⊲ T
+
+//Given a set of class definitions D and a typing context G, expression E is well-typed and has type T.//
+
+<code javascript>
+D; G ⊢ E1⊲T1
+D; G ⊢ E2⊲T2
+---------------
+D; G ⊢ E1,E2⊲T2
+
+D; G ⊢ Ej⊲Tj
+T = (T2 ⊓ T3)
+-------------------
+D; G ⊢ E1?E2:E3 ⊲ T
+
+---------------------
+D; G ⊢ true ⊲ Boolean
+
+----------------------
+D; G ⊢ false ⊲ Boolean
+
+--------------------
+D; G ⊢ ".." ⊲ String
+
+D; G ⊢ Ej ⊲ Tj
+D; G,Ij:Tj ⊢ E0 ⊲ T0
+-----------------------------------------
+D; G ⊢ let (I1 = E1, .., In = En) E0 ⊲ T0
+
+D; G,this:*,Ij:Tj,arguments:Array; T ⊢ B
+mustReturn(B) or T ⇝ Void
+-------------------------------------------------------------------
+D; G ⊢ (function I(I1:T1, .., In:Tn):T B) ⊲ (function (T1 .. Tn) T)
+
+D; G ⊢ E1 ⊲ Ic
+lookupField(D,Ic,If) = T
+--------------------------
+D; G ⊢ E1.If ⊲ Reference T
+
+D; G ⊢ E1 ⊲ It
+D; G ⊢ E2 ⊲ String
+---------------------------
+D; G ⊢ E1[E2] ⊲ Reference *
+
+D; G ⊢ Ej ⊲ Tj
+T0 = (function (T1 .. Tn) T)
+----------------------------
+D; G ⊢ (E0(E1, .., En)) ⊲ T
+
+D; G ⊢ Ej ⊲ Tj
+T0 = (function (* T1 .. Tn) T)
+-------------------------------
+D; G ⊢ (new E0(E1, .., En)) ⊲ *
+
+D; G ⊢ Ej ⊲ Tj
+D(I) = class I { .. function I(Vi:Ti) B .. }   // NOTE: no binding for this
+--------------------------------------------
+D; G ⊢ (new I(E1, .., En)) ⊲ I
+
+G(I) = T
+-----------------------
+D; G ⊢ I ⊲ Reference T
+
+G(I) undefined
+----------------------
+D; G ⊢ I ⊲ Reference *
+
+D; G ⊢ Ei⊲Ti
+T1 = Reference T2
+-------------------
+D; G ⊢ E1 = E2 ⊲ T2
+
+D; G ⊢ E ⊲ T1
+T1 ⇝ T2
+-------------
+D; G ⊢ E ⊲ T2
+</code>
+
+====== To do ======
+
+  * define ⊓
+  * adding fields
+  * lookup(D,Ident,I) = T
+  * method decls
+  * namespaces, statically vs. dynamically bound identifiers
+  * mustReturn a predicate on Statements and blocks
+  * Numbers
+  * many forms of "callable"
+    * classes
+    * objects with special call method
+  * ''new e'' where ''e'' has type ''Class'', vs. ''new I'' where ''I'' is a statically known class name
+  * conversion between class types and object types? (''public'' properties only)

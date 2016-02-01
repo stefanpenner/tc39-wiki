@@ -1,0 +1,75 @@
+====== Soft Binding ======
+
+Some have expressed a desire ([[http://infrequently.org/2010/09/javascript-uxo-removal/]] TODO more links) for a this-binding strength intermediate between JavaScript's default loose ''this''-binding rule and the tight ''this'' binding provided by Function.prototype.bind. There have been several proposals for such intermediate binding operations (TODO provide links) but these proposals ran aground on problematic edge cases demonstrating deeper semantic issues. The following new proposal seems better, but is also less examined.
+
+Introduce a new ''soft bind'' operation, parallel to the existing ''bind'' operation, producing a similarly bound function object that uses its captured ''this''-binding under normal non-reflective invocation -- including being invoked as a function and as a method. However, when invoked reflectively via ''call'', ''apply'', ''bind'', or ''softBind'', the function would use the ''this''-binding provided by the reflective call rather than its captured one.
+
+The following is an approximate executable specification. As usual for JavaScript, it is a bit sloppy regarding when it uses, for example, the original or current binding of ''Array.prototype.concat''. Whenever reasonable, //original// should be assumed.
+
+<code javascript>
+   Function.prototype.softBind = function(thisArg, ...leftArgs) {
+     var f = this;
+     var result = f.bind(thisArg, ...leftArgs);
+     result.apply = function(newThis, rightArgs) {
+       return f.apply(newThis, [...leftArgs, ...rightArgs]);
+     };
+     result.call = function(newThis, ...rightArgs) {
+       return f.call(newThis, ...[...leftArgs, ...rightArgs]);
+     };
+     result.bind = function(newThis, ...rightArgs) {
+       return f.bind(newThis, ...[...leftArgs, ...rightArgs]);
+     };
+     result.softBind = function(newThis, ...rightArgs) {
+       return f.softBind(newThis, ...[...leftArgs, ...rightArgs]);
+     };
+     return result;
+   };
+</code>
+
+The following approximation works today, enabling easy experimentation, by using ''arguments'' and ''apply'' rather than "''...''". Where the semantics differ from the above (e.g., does ''call'' delegate to ''f.call'' or ''f.apply''), the above code should be taken as more authoritative.
+
+<code javascript>
+ (function() {
+   "use strict";
+
+   Function.prototype.softBind = function(thisArg, var_args) {
+     var f = this;
+     var result = f.bind.apply(f, arguments);
+     var leftArgs = [].slice.call(arguments, 1);
+     result.apply = function(newThis, rightArgs) {
+       return f.apply(newThis, leftArgs.concat(rightArgs));
+     };
+     result.call = function(newThis, var_args) {
+       var rightArgs = [].slice.call(arguments, 1);
+       return f.apply(newThis, leftArgs.concat(rightArgs));
+     };
+     result.bind = function(newThis, var_args) {
+       var rightArgs = [].slice.call(arguments);
+       return f.bind.apply(f, [newThis].concat(leftArgs.concat(rightArgs)));
+     };
+     result.softBind = function(newThis, var_args) {
+       var rightArgs = [].slice.call(arguments);
+       return f.softBind.apply(f, [newThis].concat(leftArgs.concat(rightArgs)));
+     };
+     return result;
+   };
+ })();
+</code>
+
+===== Open Issues =====
+
+What happens when a soft-bound function is called with ''new''? The code above provides an answer accidentally, in the sense that I did not think about that case when writing this code. Nevertheless, the implied answer seems reasonable -- that the soft-bound-''this'' is ignored and the ''this'' binding created by ''new'' is used instead. Just like normal ''bind''.
+
+
+===== Possible tie-ins to other strawmen =====
+
+This strawman as presented above is concerned only with semantics. Other strawmen may well provide syntactic conveniences to make soft-binding more pleasant to use, or even the default path of least resistance for code using certain new constructs.
+
+[[strawman:classes_with_trait_composition]] may make methods soft bound by default.
+
+[[strawman:shorter_function_syntax]] may make ''#''-function soft bound by default.
+
+====== See ======
+
+TODO link to earlier intermediate-strength ''this''-binding proposals.
+

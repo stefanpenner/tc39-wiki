@@ -1,0 +1,223 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:catchalls&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:catchalls&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:catchalls&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:catchalls&amp;do=export_html.html#background" class="toc">Background</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:catchalls&amp;do=export_html.html#goals" class="toc">Goals</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:catchalls&amp;do=export_html.html#non-goals" class="toc">Non-goals</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:catchalls&amp;do=export_html.html#sketch" class="toc">Sketch</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:catchalls&amp;do=export_html.html#issues" class="toc">Issues</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:catchalls&amp;do=export_html.html#feedback" class="toc">Feedback</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="background"></a><h2>Background</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="doku.php%3Fid=proposals:catchalls.html" class="wikilink1" title="proposals:catchalls" onclick="return svchk()" onkeypress="return svchk()">ES4 catchalls proposal page</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="doku.php%3Fid=discussion:catchalls.html" class="wikilink1" title="discussion:catchalls" onclick="return svchk()" onkeypress="return svchk()">ES4 catchalls discussion page</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://bugs.ecmascript.org/ticket/196" class="urlextern" target="_blank" title="http://bugs.ecmascript.org/ticket/196" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Ticket #196</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://bugs.ecmascript.org/ticket/214" class="urlextern" target="_blank" title="http://bugs.ecmascript.org/ticket/214" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Ticket #214</a></div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1-256] -->
+<a name="goals"></a><h2>Goals</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Support property has, get, set, and delete</div>
+</li>
+<li class="level1"><div class="li"> Support both:</div>
+<ul>
+<li class="level2"><div class="li"> first set (set only when property does not exist), and</div>
+</li>
+<li class="level2"><div class="li"> every set (needed for Array length emulation)</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Support invocation (subsume SpiderMonkey&rsquo;s __noSuchMethod__)</div>
+</li>
+<li class="level1"><div class="li"> Support construction</div>
+</li>
+<li class="level1"><div class="li"> Rule out runaway recursion hazards by design</div>
+</li>
+<li class="level1"><div class="li"> Make it easy to delegate to the default behavior for the operation</div>
+</li>
+<li class="level1"><div class="li"> Zero performance penalty for objects without catchalls</div>
+</li>
+<li class="level1"><div class="li"> Avoid __ name mangling as ugly and reserved by secure subsets</div>
+</li>
+<li class="level1"><div class="li"> Preserve object identity under catchall configuration (no detectable proxies or wrappers)</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [257-891] -->
+<a name="non-goals"></a><h2>Non-goals</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Tiered virtualization with &ldquo;inner ring&rdquo; code having high privilege:</div>
+<ul>
+<li class="level2"><div class="li"> factor this into the existing ES5 integrity features, plus</div>
+</li>
+<li class="level2"><div class="li"> further work to support isolation and high privilege, and thereby</div>
+</li>
+<li class="level2"><div class="li"> let users choose and compose per their own requirements</div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [892-1186] -->
+<a name="sketch"></a><h2>Sketch</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> This is in the spirit of the ES5 <code>Object.defineProperty</code> and other reflective meta-programming APIs</div>
+</li>
+<li class="level1"><div class="li"> In the following, the <code>obj</code> parameter is a target object whose accesses and other operations should be caught</div>
+</li>
+<li class="level1"><div class="li"> To keep this example simple, <code>obj</code> forwards caught operations to a <code>peer</code> object</div>
+</li>
+<li class="level1"><div class="li"> The <code>set</code> catchall shows <code>obj</code> and <code>peer</code> having an array-like <code>length</code> property</div>
+</li>
+<li class="level1"><div class="li"> Factor <code>add</code> out of <code>set</code> to distinguish first-set from every-set</div>
+</li>
+<li class="level1"><div class="li"> The <code>construct</code> function below uses the <a href="doku.php%3Fid=harmony:spread.html" class="wikilink1" title="harmony:spread" onclick="return svchk()" onkeypress="return svchk()">spread</a> operator to apply <code>new</code> to a peer function</div>
+</li>
+</ul>
+<pre class="code">
+Object.defineCatchAll(obj, {
+    has:       function (id)        { return peer.hasOwnProperty(id); },
+    get:       function (id)        { return peer[id]; },
+    set:       function (id, value) { if ((id &gt;&gt;&gt; 0) === id &amp;&amp; id &gt;= peer.length)
+                                          peer.length = 1 + id;
+                                      peer[id] = value; },
+    add:       function (id)        { Object.defineProperty(obj, id,
+                                                            { get: function ()      { return peer[id]; },
+                                                              set: function (value) { peer[id] = value); },
+                                                              ... }); }
+    delete:    function (id)        { delete peer[id]; },
+    invoke:    function (id, args)  { return peer[id].apply(peer, args); },
+    construct: function (id, args)  { return new peer[id](...args); },
+
+});
+</pre>
+<ul>
+<li class="level1"><div class="li"> There shall be an <code>Object.getCatchAllDescriptor(obj)</code> method to query <code>obj</code> for its catchalls</div>
+</li>
+<li class="level1"><div class="li"> Any of the action-name properties may be omitted, which has the effect of restoring the default action for that action-name if it was configured</div>
+<ul>
+<li class="level2"><div class="li"> The alternative of unspecified action-name leaving a configured non-default catchall would imply an <code>Object.removeCatchAll</code> <acronym title="Application Programming Interface">API</acronym></div>
+</li>
+<li class="level2"><div class="li"> This way, to add complementary catchalls via successive calls to <code>Object.defineCatchAll</code>, one must call <code>Object.getCatchAllDescriptor(obj)</code> and update the descriptor</div>
+</li>
+<li class="level2"><div class="li"> Thus we avoid another <acronym title="Application Programming Interface">API</acronym> method and bias toward the use-cases where a single call to <code>Object.defineCatchAll</code> suffices to configure all wanted catchalls for a given object</div>
+</li>
+<li class="level2"><div class="li"> And <code>Object.defineCatchAll(obj, {})</code> removes all catchalls, restoring default actions</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Catchalls cannot be defined on an object if its <code>[[Extensible]]</code> internal property is false (in ES5 terms, <code>[[DefineOwnProperty]]</code> is called with <em>Reject</em><code> = true</code>, resulting in a <code>TypeError</code> throw)</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1187-3800] -->
+<a name="issues"></a><h2>Issues</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Naming: <code>defineCatchAll</code> is awkward, but more precise by virtue of the idiom than (say) <code>defineHandler</code>. Let&rsquo;s bikeshed a bit (via twitter, for least cost &ndash; kidding! <img src="lib/images/smileys/icon_razz.gif" align="middle" alt=":-P" />)</div>
+</li>
+<li class="level1"><div class="li"> Defaulting: sometimes a catchall wants to defer to the default action specified by the language&rsquo;s semantics, e.g. delegate to a prototype object for a <code>get</code>. The ES4 proposal, inspired by Python and ES4/JS1.7+ iteration protocol design, provided a singleton exception object, denoted by a constant binding, <code>DefaultAction</code>, for the catchall to throw. This can be efficiently implemented and it does not preempt the return value.</div>
+</li>
+<li class="level1"><div class="li"> Runaway prevention: should a catchall, while its call is active, be automatically suppressed from re-entering itself for the given id on the target object?</div>
+</li>
+<li class="level1"><div class="li"> Catchalls are sometimes thought of as being called for every access to a property, whether the property exists or not.</div>
+<ul>
+<li class="level2"><div class="li"> (Obvious exception in this proposal: <code>add</code> is called only for non-existent properties about to be created via first-set.)</div>
+</li>
+<li class="level2"><div class="li"> But for <code>has</code>, <code>get</code>, and <code>invoke</code> is calling in the existent property case desirable? Not for <code>__noSuchMethod__</code> emulation, in the <code>invoke</code> case.</div>
+</li>
+<li class="level2"><div class="li"> Doing so requires <code>has</code>, <code>get</code>, and <code>invoke</code> to perform the default action (throw <code>DefaultAction</code> per earlier Issue) for existent properties that do not require special handling.</div>
+</li>
+<li class="level2"><div class="li"> It depends on what you mean by &ldquo;all&rdquo;. Ruby&rsquo;s &ldquo;method_missing&rdquo; suggests &ldquo;invoke_missing&rdquo; vs. &ldquo;invoke&rdquo;, &ldquo;get_missing&rdquo; vs. &ldquo;get&rdquo;, etc.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2009/05/04 22:20</em>  &mdash; <em><a href="mailto:%26%23x41%3B%26%23x6c%3B%26%23x6c%3B%26%23x65%3B%26%23x6e%3B%26%23x2e%3B%26%23x57%3B%26%23x69%3B%26%23x72%3B%26%23x66%3B%26%23x73%3B%26%23x2d%3B%26%23x42%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x40%3B%26%23x6d%3B%26%23x69%3B%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x73%3B%26%23x6f%3B%26%23x66%3B%26%23x74%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x41;&#x6c;&#x6c;&#x65;&#x6e;&#x2e;&#x57;&#x69;&#x72;&#x66;&#x73;&#x2d;&#x42;&#x72;&#x6f;&#x63;&#x6b;&#x40;&#x6d;&#x69;&#x63;&#x72;&#x6f;&#x73;&#x6f;&#x66;&#x74;&#x2e;&#x63;&#x6f;&#x6d;">Allen Wirfs-Brock</a> 2009/05/05 01:09</em>
+</p>
+
+</div>
+<!-- SECTION [3801-5493] -->
+<a name="feedback"></a><h2>Feedback</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> In the function defined for the example&rsquo;s invoke item the first argument to apply probably should be obj rather than peer.</div>
+</li>
+<li class="level1"><div class="li"> I would be inclined to specify an additional argument (probably the first) for each handler function that would be passed the &ldquo;this&rdquo; value.  Closure capture like is done in the example works but my intuition is that there will be situations where it would be handy to use the same catch-all descriptor for several objects.</div>
+</li>
+<li class="level1"><div class="li"> Overall, I like this general design direction.</div>
+</li>
+</ul>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x41%3B%26%23x6c%3B%26%23x6c%3B%26%23x65%3B%26%23x6e%3B%26%23x2e%3B%26%23x57%3B%26%23x69%3B%26%23x72%3B%26%23x66%3B%26%23x73%3B%26%23x2d%3B%26%23x42%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x40%3B%26%23x6d%3B%26%23x69%3B%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x73%3B%26%23x6f%3B%26%23x66%3B%26%23x74%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x41;&#x6c;&#x6c;&#x65;&#x6e;&#x2e;&#x57;&#x69;&#x72;&#x66;&#x73;&#x2d;&#x42;&#x72;&#x6f;&#x63;&#x6b;&#x40;&#x6d;&#x69;&#x63;&#x72;&#x6f;&#x73;&#x6f;&#x66;&#x74;&#x2e;&#x63;&#x6f;&#x6d;">Allen Wirfs-Brock</a> 2009/05/05 01:09</em> 
+</p>
+<ul>
+<li class="level1"><div class="li"> Catchalls climb the meta ladder. Primitive actions such as checking for the existence of a property when climbing the prototype chain can now run arbitrary code. This is unacceptable in some situations and makes the ES5 meta-object methods non-primitive, so we will need yet another level of such methods. It is likely to open another area for security attacks to hide in.</div>
+</li>
+<li class="level1"><div class="li"> ES5 relies on has, get, etc. being consistent with each other, has returning the same results if called twice, etc. The spec is not prepared to deal with contradictions in their results.</div>
+</li>
+<li class="level1"><div class="li"> In the presence of prototypes, catchalls become a form of &ldquo;with&rdquo;: Lookups of common methods such as toString will proceed to the prototype unless a catchall decides to override it in its search of some other object. Whether this logic is explicit in the catchall <acronym title="Application Programming Interface">API</acronym> or implicit inside the catchall doesn&rsquo;t really matter; the net effect is the same kind of weird shadowing that &ldquo;with&rdquo; does.</div>
+</li>
+<li class="level1"><div class="li"> Compatibly adding properties to an existing class with catchalls is problematic.</div>
+</li>
+<li class="level1"><div class="li"> Catchalls, as defined above, don&rsquo;t handle for-in.</div>
+</li>
+</ul>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x77%3B%26%23x61%3B%26%23x6c%3B%26%23x64%3B%26%23x65%3B%26%23x6d%3B%26%23x61%3B%26%23x72%3B%26%23x40%3B%26%23x67%3B%26%23x6f%3B%26%23x6f%3B%26%23x67%3B%26%23x6c%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x77;&#x61;&#x6c;&#x64;&#x65;&#x6d;&#x61;&#x72;&#x40;&#x67;&#x6f;&#x6f;&#x67;&#x6c;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Waldemar Horwat</a> 2009/05/14 01:25</em>
+</p>
+
+</div>
+<!-- SECTION [5494-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/d/d689ff0aefe2efe191b243e7fe09addf.xhtml used -->
+</body>
+</html>

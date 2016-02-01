@@ -1,0 +1,311 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=harmony:object_initialiser_super&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="http://wiki.ecmascript.org/feed.php?mode=list&amp;ns=harmony" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=harmony:object_initialiser_super&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=harmony:object_initialiser_super&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:object_initialiser_super&amp;do=export_html.html#object_initializer_super_references" class="toc">Object Initializer super references</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:object_initialiser_super&amp;do=export_html.html#overview" class="toc">Overview</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:object_initialiser_super&amp;do=export_html.html#super_in_accessor_property_definitions" class="toc">super in Accessor Property Definitions</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:object_initialiser_super&amp;do=export_html.html#functions_that_reference_super" class="toc">Functions that reference super</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:object_initialiser_super&amp;do=export_html.html#imperatively_binding_super" class="toc">Imperatively binding [[Super]]</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:object_initialiser_super&amp;do=export_html.html#rationale" class="toc">Rationale</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="object_initializer_super_references"></a><h1>Object Initializer super references</h1>
+<div class="level1">
+
+<p>
+ In object-oriented programming languages, inheritance is used to perform behavioral composition. An object combines together the properties it inherits from its prototypes with new  and replacement properties define for the specific object. Occasionally in creating such compositions it necessary for the object to explicitly access prototype behavior that is over-ridden by the object.
+</p>
+
+<p>
+Traditionally this has been accomplished in object-oriented languages using the keyword <code>super</code>.  ECMAScript has reserved this keyword but has never supported it. One of the reasons was that imperative object construction style that was typically used did not provide sufficient context for a function declaration to determine how to access over-ridden properties.
+</p>
+
+<p>
+Object Initialisers provide sufficient context and hence this proposal allows use of the keyword in functions defined within an Object Initialiser.
+</p>
+
+</div>
+<!-- SECTION [1-958] -->
+<a name="overview"></a><h2>Overview</h2>
+<div class="level2">
+
+<p>
+ Sometimes a method on an object that over-rides a prototype method needs to invoke the over-ridden method. Consider for example: 
+</p>
+<pre class="code javascript"><span class="kw2">var</span> sup = <span class="br0">&#123;</span>
+   validate<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* validate internal invariants */</span><span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">var</span> sub = sup &lt;| <span class="br0">&#123;</span>
+   validate<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       <span class="coMULTI">/* validate invariants imposed by prototype */</span>
+       <span class="coMULTI">/* validate instance specific invariants */</span>
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+How should the object <code>sub</code> actually code the call to its prototype&rsquo;s validate method?  The idiom that would most likely be used today  would be an expression of the form: 
+</p>
+<pre class="code javascript">      sup.<span class="me1">validate</span>.<span class="me1">call</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>;
+      <span class="coMULTI">/* validate subclass invariants */</span></pre>
+<p>
+ This formulation does the job, but is idiomatic and its intent may not be obvious to readers.  Also, it requires explicitly referencing  the prototype object by name. If such references in multiple places is error prone, especially when a prototype hierarchy is being refactored.  These issues are addressed by adding a super call expression as an additional form of <em>PrimaryExpression</em>:
+</p>
+
+<p>
+<strong><em>PrimaryExpression</em> :</strong> ...<br/>
+ <strong><code>super</code></strong> <br/>
+
+</p>
+
+<p>
+The value of <code>super</code> is the same as the value of <code>this</code> but when <code>super</code> is used as the base of a property access the property lookup starts with the object that is the prototype of the object defined by the object literal that contains the reference to <code>super</code>.
+</p>
+
+<p>
+Then above example could then be coded like:
+</p>
+<pre class="code javascript">&nbsp;
+<span class="kw2">var</span> sub = sup &lt;| <span class="br0">&#123;</span>
+   validate<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       <span class="kw2">super</span>.<span class="me1">validate</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+       <span class="coMULTI">/* validate instance specific invariants */</span>
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+In this example, the expression <code>super.validate()</code> means <code>sup.validate.call(this)</code>. But note that <code>sup</code> does not have to be referenced by name with the body of validate.
+</p>
+
+<p>
+A <em>PrimaryExpression</em> containing <code>super</code> may only occur within code that is part of  a function body.  It is an early SyntaxError error for <code>super</code> to occur in global. 
+</p>
+
+<p>
+Use of <code>super</code> is not limited to <em>CallExpression</em>.  It can also be used to get or set the value of accessor properties and to get the value of data properties defined by the prototype, even if the property is over-ridden by the object:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> f=<span class="nu0">0</span>;
+<span class="kw2">var</span> sup = <span class="br0">&#123;</span>
+   k:= <span class="nu0">1</span>,
+   get foo<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> f<span class="br0">&#125;</span>,
+   set foo<span class="br0">&#40;</span>v<span class="br0">&#41;</span><span class="br0">&#123;</span>f=v<span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">var</span> sub = sup &lt;| <span class="br0">&#123;</span>
+   get foo<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw2">var</span> supFoo = <span class="kw2">super</span>.<span class="me1">foo</span>;
+      <span class="kw3">print</span><span class="br0">&#40;</span><span class="st0">"getting foo: "</span>+supFoo<span class="br0">&#41;</span>;
+      <span class="kw1">return</span> supFoo;
+   <span class="br0">&#125;</span>,
+   set foo<span class="br0">&#40;</span>v<span class="br0">&#41;</span><span class="br0">&#123;</span><span class="kw2">super</span>.<span class="me1">foo</span> = v+<span class="kw2">super</span>.<span class="me1">k</span><span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+But note that the use of <code>super</code> does not change the semantics of assigning to an inherited data property.  Such assignments create own properties even if <code>super</code> was used to access the property.
+</p>
+<pre class="code javascript"><span class="kw2">var</span> f=<span class="nu0">0</span>;
+<span class="kw2">var</span> sup = <span class="br0">&#123;</span>k: <span class="nu0">1</span><span class="br0">&#125;</span>;
+&nbsp;
+<span class="kw2">var</span> sub = sup &lt;| <span class="br0">&#123;</span>
+   setK <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw3">print</span><span class="br0">&#40;</span><span class="kw2">super</span>.<span class="me1">k</span><span class="br0">&#41;</span>; <span class="co1">// prints 1</span>
+      <span class="kw3">print</span><span class="br0">&#40;</span><span class="kw1">this</span>.<span class="me1">k</span><span class="br0">&#41;</span>;  <span class="co1">// prints 1 -- inherited from sup</span>
+      <span class="kw2">super</span>.<span class="me1">k</span> = <span class="nu0">2</span>;
+      <span class="kw3">print</span><span class="br0">&#40;</span><span class="kw2">super</span>.<span class="me1">k</span><span class="br0">&#41;</span>; <span class="co1">// prints 1 -- assignment created own k</span>
+      <span class="kw3">print</span><span class="br0">&#40;</span><span class="kw1">this</span>.<span class="me1">k</span><span class="br0">&#41;</span>;  <span class="co1">// prints 2 -- own property created by assignment</span>
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [959-3933] -->
+<a name="super_in_accessor_property_definitions"></a><h2>super in Accessor Property Definitions</h2>
+<div class="level2">
+
+<p>
+In object initialisers the <strong>get</strong> function and <strong>set</strong> function of an accessor property are defined independently of each other and only either one of them need to present to over-ride an inherited accessor property definition. If either the <strong>get</strong> or <strong>set</strong> function is not present then the default definition is used:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> f = <span class="nu0">1</span>;
+<span class="kw2">var</span> sup = <span class="br0">&#123;</span>
+   get f<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> f<span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;
+&nbsp;
+<span class="kw2">var</span> sub = sup &lt;| <span class="br0">&#123;</span>
+   set f<span class="br0">&#40;</span>v<span class="br0">&#41;</span> <span class="br0">&#123;</span>f=v<span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;
+<span class="kw3">print</span><span class="br0">&#40;</span>sup.<span class="me1">f</span><span class="br0">&#41;</span>;  <span class="co1">//1</span>
+sub.<span class="me1">f</span>=<span class="nu0">2</span>;
+<span class="kw3">print</span><span class="br0">&#40;</span>sup.<span class="me1">f</span><span class="br0">&#41;</span>;  <span class="co1">//2</span>
+<span class="kw3">print</span><span class="br0">&#40;</span>sub.<span class="me1">f</span><span class="br0">&#41;</span>;  <span class="co1">//undefined</span></pre>
+<p>
+The reason <code>sub.f</code> prints <code>undefined</code> is because the definition of a <code>set f</code> accessor in sub implicitly cause the default <code>get f</code> accessor to also be created.  A default <code>get</code> accessor always returns the value undefined.
+</p>
+
+<p>
+This problem can be avoided by explicitly defining a <code>get f</code> accessor that uses <code>super</code> to invoke the over-ridden accessor:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> f = <span class="nu0">1</span>;
+<span class="kw2">var</span> sup = <span class="br0">&#123;</span>
+   get f<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> f<span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;
+&nbsp;
+<span class="kw2">var</span> sub = sup &lt;| <span class="br0">&#123;</span>
+   set f<span class="br0">&#40;</span>v<span class="br0">&#41;</span> <span class="br0">&#123;</span>f=v<span class="br0">&#125;</span>,
+   get f<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw2">super</span>.<span class="me1">f</span><span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;
+<span class="kw3">print</span><span class="br0">&#40;</span>sup.<span class="me1">f</span><span class="br0">&#41;</span>;  <span class="co1">//1</span>
+sub.<span class="me1">f</span>=<span class="nu0">2</span>;
+<span class="kw3">print</span><span class="br0">&#40;</span>sup.<span class="me1">f</span><span class="br0">&#41;</span>;  <span class="co1">//2</span>
+<span class="kw3">print</span><span class="br0">&#40;</span>sub.<span class="me1">f</span><span class="br0">&#41;</span>;  <span class="co1">//2</span></pre>
+<p>
+Needing to over-delegate to a prototype&rsquo;s <code>get</code> or <code>set</code> accessor function is common enough that a special definition form is provided for such definitions.  The syntax is:
+</p>
+
+<p>
+<strong><em>PropertyAssignment</em> :</strong> ...<br/>
+ <strong>set super get</strong> <em>PropertyName</em> <strong>(</strong> <strong>)</strong> <strong>{</strong> <em>FunctionBody</em>  <strong>}</strong>  <br/>
+ <strong>get super set</strong>  <em>PropertyName</em> <strong>(</strong> <em>PropertySetParameterList</em> <strong>)</strong> <strong>{</strong> <em>FunctionBody</em>  <strong>}</strong>  <br/>
+
+</p>
+
+<p>
+These forms cause to <code>set</code> or <code>get</code> accessor function to be automatically set to a function that does a <code>super</code> <code>set</code> or <code>get</code> access for that property.
+</p>
+
+<p>
+Using this form of property definition, the above example object definition could be simplified to: 
+</p>
+<pre class="code javascript"><span class="kw2">var</span> sub = sup &lt;| <span class="br0">&#123;</span>
+   get <span class="kw2">super</span> set f<span class="br0">&#40;</span>v<span class="br0">&#41;</span> <span class="br0">&#123;</span>f=v<span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;
+<span class="kw3">print</span><span class="br0">&#40;</span>sup.<span class="me1">f</span><span class="br0">&#41;</span>;  <span class="co1">//1</span>
+sub.<span class="me1">f</span>=<span class="nu0">2</span>;
+<span class="kw3">print</span><span class="br0">&#40;</span>sup.<span class="me1">f</span><span class="br0">&#41;</span>;  <span class="co1">//2</span>
+<span class="kw3">print</span><span class="br0">&#40;</span>sub.<span class="me1">f</span><span class="br0">&#41;</span>;  <span class="co1">//2</span></pre>
+</div>
+<!-- SECTION [3934-5889] -->
+<a name="functions_that_reference_super"></a><h2>Functions that reference super</h2>
+<div class="level2">
+
+<p>
+Any function that  references super has a [[Super]] internal property whose value is the object that is used as the base for super property lookups. Functions that <em>do not</em> reference <strong>super</strong> do not have [[Super]] internal property. When a function that references <strong>super</strong> is defined as part of an object literal its [[Super]] internal property is set to the same value as the [Prototype]] internal property of the object created by the object literal. Such functions include functions defined using method property definitions,  functions defined using <strong>get</strong> or <strong>set</strong> definitions,  and functions defined as a <em>MemberExpression</em> within the <em>AssignmentExpression</em> of a <em>PropertyAssignment</em>.
+</p>
+<pre class="code javascript"><span class="kw2">var</span> sub = sup &lt;| <span class="br0">&#123;</span>
+   <span class="co1">//all the the following define functions whose [[Super]] internal property is set of the value of sup</span>
+   a<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw2">super</span>.<span class="me1">foo</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#125;</span>,     <span class="co1">// a method</span>
+   get b<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw2">super</span>.<span class="me1">bar</span><span class="br0">&#125;</span>,   <span class="co1">// a get accessor</span>
+   set b<span class="br0">&#40;</span>v<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw2">super</span>.<span class="me1">bar</span>=v<span class="br0">&#125;</span>,       <span class="co1">// a set accessor</span>
+   c: <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw2">super</span>.<span class="me1">a</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#125;</span>;    <span class="co1">// a function in a property initializer</span>
+<span class="br0">&#125;</span>;</pre>
+<p>
+Functions defined outside of object literals (or class declarations) that reference <strong>super</strong> are created with their [[Super]] internal property set to <strong>null</strong>. Property accesses based off of <strong>super</strong> always perform  property lookups start with the object that is the the value of the containing function&rsquo;s [[Super]] internal property.  If [[Super]]  is <strong>null</strong>, the property lookup immediately fails and produces the value <strong>undefined</strong>.
+</p>
+<pre class="code javascript"><span class="kw2">function</span> returnUndefined<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+   <span class="kw1">return</span> <span class="kw2">super</span>.<span class="me1">foo</span>;
+<span class="br0">&#125;</span>
+<span class="kw3">print</span><span class="br0">&#40;</span>returnUndefined<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>;  <span class="co1">//will print &quot;undefined&quot; because [[Super]] is null</span></pre>
+<p>
+ &mdash; <em><a href="mailto:%26%23x41%3B%26%23x6c%3B%26%23x6c%3B%26%23x65%3B%26%23x6e%3B%26%23x40%3B%26%23x57%3B%26%23x69%3B%26%23x72%3B%26%23x66%3B%26%23x73%3B%26%23x2d%3B%26%23x42%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x41;&#x6c;&#x6c;&#x65;&#x6e;&#x40;&#x57;&#x69;&#x72;&#x66;&#x73;&#x2d;&#x42;&#x72;&#x6f;&#x63;&#x6b;&#x2e;&#x63;&#x6f;&#x6d;">Allen Wirfs-Brock</a> 2011/08/11 15:46</em> Unfortunately, also any function that uses direct eval may potentially reference <code>super</code> so all such functions need the [[Super]] internal property.  It may be best for all functions to be defined as including the [[Super]] internal property.  Implementations can optimize it away if the function doesn&rsquo;t do a direct eval.
+</p>
+
+<p>
+ If such a function with a [[Super]] internal property is subsequently extracted from its original object and installed (for example, via property value assign or <code>Object.defineProperty</code>) as a data property value in some other object, its [[Super]] internal property reference to the original object&rsquo;s [[Prototype]] is not modified. Essentially, when a function references <code>super</code> it is statically referencing a specific object that is identified when the function is defined and not the [[Prototype]] of the object from which the function was most recently retrieved.
+</p>
+
+</div>
+<!-- SECTION [5890-8646] -->
+<a name="imperatively_binding_super"></a><h2>Imperatively binding [[Super]]</h2>
+<div class="level2">
+
+<p>
+An object literal is the easiest way to create methods that use super and ensure that the [[Super]] internal property of the function is correctly bounds. However, such bindings can also be made imperatively.
+</p>
+
+<p>
+<code>Object.defineMethod</code> is  a new function that creates a method property of in an object:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> obj = Object.<span class="me1">create</span><span class="br0">&#40;</span>proto<span class="br0">&#41;</span>;
+Object.<span class="me1">defineMethod</span><span class="br0">&#40;</span>obj,<span class="st0">'foo'</span>, <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw2">super</span>.<span class="me1">foo</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;</pre>
+<p>
+<code>Object.defineMethod</code> attempts to create (or modify) a non-enumerable data property whose value is the <code>defineMethod</code> call&rsquo;s third argument.  That argument must be a function.  If the function has a [[Super]] internal property, then a new function object is created and set as the value of the property.  The new function is identical in all ways to the argument function except that its [[Super]] internal property is set to the value of the [[Prototype]] internal property of the object upon which the property is being defined.
+</p>
+
+<p>
+<code>Object.defineProperty</code> and <code>Object.defineProperties</code> are extended for situations where they are creating or modify the get or set function of an accessor property.  In those situations where the passed get or set function has a [[Super]] internal property it is replaced with a copy of the function with a new [[Super]] internal property in a similar manner to <code>Object.defineMethod</code>.
+</p>
+
+<p>
+Note that <code>Object.defineProperty</code> and <code>Object.defineProperties</code> do not create new functions or rebind [[Super]] when modifying the value of data properties.  <code>Object.defineMethod</code> must be used for that purpose.
+</p>
+
+</div>
+<!-- SECTION [8647-10289] -->
+<a name="rationale"></a><h2>Rationale</h2>
+<div class="level2">
+
+<p>
+ A <strong>super</strong> property access is more complex then just skipping the <strong>this</strong> object when doing a property look up. That definition of <strong>super</strong>  would actually result in method loops.  Consider this example:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> top = <span class="br0">&#123;</span>identify<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="st0">"top"</span><span class="br0">&#125;</span><span class="br0">&#125;</span>;
+<span class="kw2">var</span> middle = top &lt;| <span class="br0">&#123;</span>identify<span class="br0">&#40;</span><span class="br0">&#41;</span>  <span class="br0">&#123;</span><span class="kw1">return</span> <span class="st0">"middle "</span>+ <span class="kw2">super</span>.<span class="me1">identify</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#125;</span><span class="br0">&#125;</span>;
+<span class="kw2">var</span> bottom = middle &lt;| <span class="br0">&#123;</span>identify<span class="br0">&#40;</span><span class="br0">&#41;</span>  <span class="br0">&#123;</span><span class="kw1">return</span> <span class="st0">"bottom "</span>+ <span class="kw2">super</span>.<span class="me1">identify</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#125;</span><span class="br0">&#125;</span>;
+<span class="kw3">print</span><span class="br0">&#40;</span>bottom.<span class="me1">identify</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>;</pre>
+<p>
+If <code>super.identify()</code> is interpret as meaning look of the property <code>identify</code> starting with the object that is the [[Prototype]] of <strong>this</strong>, then the following would happen:
+</p>
+<ol>
+<li class="level1"><div class="li"> <code>bottom.identify()</code> would call the <code>identify</code> method defined in the object literal for <code>bottom</code> with <strong>this</strong> set to <code>bottom</code>.</div>
+</li>
+<li class="level1"><div class="li"> That method  would evaluate <code>super.identify</code> based upon the <strong>this</strong> value of <code>bottom</code>.  Lookup would start with <code>middle</code> (the value of <code>bottom</code>&lsquo;s [[Prototype]]).  It would find and call the <code>middle.identify</code> method, but still pass <code>bottom</code> as the <strong>this</strong> value.</div>
+</li>
+<li class="level1"><div class="li"> The <code>middle.identify</code> would evaluate <code>super.identify</code> based upon the <strong>this</strong> value of <code>bottom</code>. Lookup would start with <code>middle</code> (the value of <code>bottom</code>&lsquo;s [[Prototype]]) and again find and call <code>middle.identify</code>passing <code>bottom</code> as the <strong>this</strong> value.</div>
+</li>
+<li class="level1"><div class="li"> execution continue to loop at step 3 with <code>middle.identify</code> calling itself.</div>
+</li>
+</ol>
+
+<p>
+ This shows that super can&rsquo;t be defined in relation to <strong>this</strong>.  It has to be defined in relation to the location of the currently executing method in the prototype hierarchy of the <strong>this</strong> value. In particular, a super lookup has to start above the point in the hierarchy where the currently executing method was found in order to avoid looping on that method. There are at least two plausible semantics for such a <strong>super</strong> lookup: dynamic <strong>super</strong> and static <strong>super</strong>. 
+</p>
+
+<p>
+For dynamic <strong>super</strong>, a <strong>super</strong> lookup would always begin with the [[Prototype]] of  the object where the currently executing method had been retrieved as an own property. This presents a reasonable (perhaps the best) usage semantics but presents a problem.  How does a super lookup site within a method know where the containing method was retrieved from.  The containing method was looked prior to its invocation so the retrieval object is only naturally known outside the invocation of the retrieved function. The retrieval object could be passed as an additional implicit argument in addition to the implicit this argument.  This would have to occur on every method invocation. A call site doesn&rsquo;t know whether or not the function it is calling actually needs to use <strong>super</strong> but any function might so it would always be necessary to pass the implicit retrieval object argument. Considering that the most common argument list sizes are zero and one and additional implicit argument on every call would be significant new overhead.
+</p>
+
+<p>
+For the static <strong>super</strong> approach,  the object to use as the starting point of a <strong>super</strong> lookup is statically associated with each function. This is normally, the [[Prototype]] value of  the object that contains the function as an own property (method) value. Because, the <strong>super</strong> lookup object is statically associated with a function it does not need to be passed as an implicit augment to every function. There is no additional per call overhead.  However, unlike dynamic <strong>super</strong>, additional mechanism is needed to establish the static <strong>super</strong> lookup association whenever a function that references <strong>super</strong> is installed as a method and this may limit a function to being used as a method of only one object.
+</p>
+
+<p>
+Most programming languages including dynamic languages use some form of static <strong>super</strong> in order to avoid the per call overhead of dynamic <strong>super</strong>.  This also appears to be the best approach for JavaScript. However, it is necessary to provide&rsquo;&lsquo;Object.defineMethod&rdquo; and the related semantics in order to perform the necessary static <strong>super</strong> binding for imperatively constructed objects.
+</p>
+
+</div>
+<!-- SECTION [10290-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/1/19b5401afd062f7137c621cbd3578dcd.xhtml used -->
+</body>
+</html>

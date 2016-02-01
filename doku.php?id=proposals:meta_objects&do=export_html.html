@@ -1,0 +1,165 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:meta_objects&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:meta_objects&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:meta_objects&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="meta-objects"></a><h1>Meta-objects</h1>
+<div class="level1">
+
+<p>
+ See also <a href="doku.php%3Fid=discussion:meta_objects.html" class="wikilink1" title="discussion:meta_objects" onclick="return svchk()" onkeypress="return svchk()">the discussion page</a>.
+</p>
+
+<p>
+This proposal is to amend the spec with a normative set of meta-objects which must be present in any program and accessible at runtime. The meta-objects may be immutable, and they may be constructed lazily, but in all other respects they should appear to the programmer as &ldquo;normal&rdquo; objects.
+</p>
+
+<p>
+There is a function:
+</p>
+<pre class="code">
+intrinsic function typeOf(e: *): intrinsic::Type;
+</pre>
+
+<p>
+Which, for any expression <code>e</code>, returns a <em>type meta-object</em> which is a runtime description of the type of <code>e</code>. Type meta-objects have the following signature:
+</p>
+<pre class="code">
+use default namespace intrinsic;
+
+interface Type 
+{
+  function canConvertTo(t: Type): Boolean;
+  function isSubtypeOf(t: Type): Boolean;
+}
+
+interface Field
+{
+  function namespace() : String;
+  function name(): String;
+  function type(): Type;
+}
+
+type FieldIterator = iterator::IteratorType.&lt;Field&gt;;
+
+interface NominalType extends Type
+{
+  function name(): String;
+  function namespace(): String;
+  function superTypes(): IteratorType.&lt;ClassType&gt;;
+  function publicMembers(): FieldIterator;
+  function publicStaticMembers(): FieldIterator;
+}
+
+interface InterfaceType extends NominalType
+{
+  function implementedBy():IteratorType.&lt;ClassType&gt;
+}
+
+type TypeIterator = iterator::IteratorType.&lt;Type&gt;;
+type ValueIterator = iterator::IteratorType.&lt;*&gt;;
+
+interface ClassType extends NominalType
+{
+  function construct(typeArgs: TypeIterator, valArgs: ValueIterator): Object;
+}
+
+interface UnionType extends Type
+{
+  function members(): TypeIterator;
+  function construct(typeArgs: TypeIterator, valArgs: ValueIterator): *;
+}
+
+interface FieldValue
+{
+  function namespace() : String;
+  function name(): String;
+  function value(): *;
+}
+
+type FieldValueIterator = iterator::IteratorType.&lt;FieldValue&gt;;
+
+interface RecordType extends Type
+{
+  function fields(): FieldIterator;
+  function construct(typeArgs: TypeIterator, valArgs: FieldValueIterator): Object;
+}
+
+interface FunctionType extends Type
+{
+  function hasBoundThis(): Boolean;
+  function returnType(): Type;
+  function argTypes(): TypeIterator;
+  function construct(typeArgs: TypeIterator, valArgs: ValueIterator): *;
+  function apply(typeArgs: TypeIterator, thisArg: Object?, valArgs: ValueIterator): *;
+}
+</pre>
+
+<p>
+Implementations may choose to provide further extensions to these interfaces, to provide richer reflective capabilities. Clients wishing to use extended meta-object interfaces can perform runtime downcasts on the basic meta-objects provided by this spec.
+</p>
+
+</div>
+<!-- SECTION [1-2555] -->
+<a name="examples"></a><h1>Examples</h1>
+<div class="level1">
+
+<p>
+ The dynamic values of the built-in classes are instances of <code>ClassType</code>.
+</p>
+<pre class="code javascript">Object <span class="kw1">is</span> ClassType
+String <span class="kw1">is</span> ClassType</pre>
+<p>
+The dynamic values of structural types are instances of <code>ObjectType</code>, <code>FunctionType</code>, <code>UnionType</code>, or <code>ArrayType</code>.
+</p>
+<pre class="code javascript"><span class="br0">&#40;</span>type <span class="br0">&#123;</span>x:int<span class="br0">&#125;</span><span class="br0">&#41;</span>         <span class="kw1">is</span> ObjectType
+<span class="br0">&#40;</span>type <span class="kw2">function</span><span class="br0">&#40;</span>int<span class="br0">&#41;</span>:*<span class="br0">&#41;</span> <span class="kw1">is</span> FunctionType
+<span class="br0">&#40;</span>type <span class="br0">&#40;</span>int,String<span class="br0">&#41;</span><span class="br0">&#41;</span>    <span class="kw1">is</span> UnionType
+<span class="br0">&#40;</span>type <span class="br0">&#91;</span>int<span class="br0">&#93;</span><span class="br0">&#41;</span>           <span class="kw1">is</span> ArrayType</pre>
+<p>
+ Since the reflective meta-type <acronym title="Application Programming Interface">API</acronym> is given as interfaces, then the <em>runtime value</em> of each of these meta-types is an <code>InterfaceType</code>.
+</p>
+<pre class="code javascript">Type         <span class="kw1">is</span> InterfaceType
+NominalType  <span class="kw1">is</span> InterfaceType
+ClassType    <span class="kw1">is</span> InterfaceType
+FunctionType <span class="kw1">is</span> InterfaceType
+UnionType    <span class="kw1">is</span> InterfaceType
+ArrayType    <span class="kw1">is</span> InterfaceType</pre>
+</div>
+<!-- SECTION [2556-3369] -->
+<a name="references"></a><h1>References</h1>
+<div class="level1">
+
+<p>
+ Looks like this follows the principles in <a href="http://bracha.org/mirrors.pdf" class="urlextern" target="_blank" title="http://bracha.org/mirrors.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://bracha.org/mirrors.pdf</a>.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2007/01/04 14:36</em> 
+</p>
+
+</div>
+<!-- SECTION [3370-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/2/228c14333084d5884de558557996f5a8.xhtml used -->
+</body>
+</html>

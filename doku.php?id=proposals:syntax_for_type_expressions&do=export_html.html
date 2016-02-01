@@ -1,0 +1,145 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:syntax_for_type_expressions&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:syntax_for_type_expressions&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:syntax_for_type_expressions&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="syntax_for_type_expressions"></a><h1>Syntax for type expressions</h1>
+<div class="level1">
+
+<p>
+(Also see the <a href="doku.php%3Fid=discussion:syntax_for_type_expression.html" class="wikilink1" title="discussion:syntax_for_type_expression" onclick="return svchk()" onkeypress="return svchk()">discussion page</a> for this proposal)
+</p>
+
+<p>
+The following intends to clarify the syntax for TypeExpression, following introduction of parameterized types, structural types, a syntax for functions, and many other type things.
+</p>
+
+<p>
+Observe that with parameterized types and union types there is much less (probably no) need for the conditional type declaration syntax allowed by the spec whereby one can say <code>var x : (constant_expr ? Type1 : Type2)</code>, so this proposal removes that possibility.
+</p>
+
+<p>
+This proposal supersedes the January 2006 draft spec as well as <a href="doku.php%3Fid=proposals:syntax_for_function_types.html" class="wikilink1" title="proposals:syntax_for_function_types" onclick="return svchk()" onkeypress="return svchk()">syntax for function types</a>.
+</p>
+
+</div>
+<!-- SECTION [1-684] -->
+<a name="syntax"></a><h2>Syntax</h2>
+<div class="level2">
+
+<p>
+ Types:
+</p>
+<pre class="code ebnf">    type ::= name
+           | name &quot;.&lt;&quot; CL[ type ] &quot;&gt;&quot;
+           | &quot;function&quot; &quot;(&quot; CL[ ptype ] &quot;)&quot; (&quot;:&quot; type)?
+           | &quot;(&quot; CL[ type ] ? &quot;)&quot;
+           | &quot;{&quot; CL[ ftype ] ? &quot;}&quot;
+           | &quot;[&quot; CLE[ type ] &quot;]&quot;
+           | name &quot;?&quot;
+           | name &quot;!&quot;
+           | &quot;undefined&quot;
+           | &quot;null&quot;
+
+     name ::= Ident
+            | Ident &quot;.&quot; name
+            | Ident &quot;::&quot; type
+
+     ptype ::= (&quot;this&quot; &quot;:&quot;)? type (&quot;=&quot;)?
+             | &quot;...&quot; Ident?
+
+     ftype ::= (Ident | Integer | String) &quot;:&quot; type
+</pre>
+<p>
+Syntactic functions:
+</p>
+<pre class="code ebnf">     CL[ x ] ::= x
+               | x &quot;,&quot; CL[ x ]
+
+     CLE[ x ] ::= x?
+                | x? &quot;,&quot; CLE[ x ]
+</pre>
+</div>
+<!-- SECTION [685-1389] -->
+<a name="constraints_and_notes"></a><h4>Constraints and notes</h4>
+<div class="level4">
+
+<p>
+ Some of the constraints can be encoded in the syntax but it makes the syntax needlessly obscure. 
+</p>
+<ul>
+<li class="level1"><div class="li"> Identifiers in parameter lists are not allowed (as of Feb-21-2007)</div>
+</li>
+<li class="level1"><div class="li"> The syntax provides for package-qualified types (a.b.T) and namespace-qualified types (a::b).  </div>
+</li>
+<li class="level1"><div class="li"> This proposal does not talk about where types might be defined (whether only in packages/programs like classes or inside any class or block as well) and therefore not about how they may be exported and referenced, but if they are allowed to be defined inside classes then the C.T notation can obviously be used to reference them.</div>
+</li>
+<li class="level1"><div class="li"> If &ldquo;this&rdquo; is present in a parameter type list, it must be the first in the list</div>
+</li>
+<li class="level1"><div class="li"> If a rest type is present in a parameter type list, it must come last in the list</div>
+</li>
+<li class="level1"><div class="li"> &ldquo;=&rdquo; following a parameter type means the corresponding parameter is optional. Optional parameters must be contiguous and at the end of the list</div>
+</li>
+<li class="level1"><div class="li"> The type of the rest parameter shall resolve to an array type during verification and evaluation</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1390-2445] -->
+<a name="unary_type_operator"></a><h2>Unary type operator</h2>
+<div class="level2">
+
+<p>
+As it stands, type expressions shall only occur in limited syntactic contexts (that is, in a type expression, in a type annotation, in a cast expression, in an inheritance clause, in a type definition). But since type values are first class, programmers will want to express them literally outside of those few contexts. We propose to introduce a unary type operator that creates a syntactic context for type expressions where ever a ordinary expression is expected.
+</p>
+<pre class="code">
+UnaryExpression	
+	PostfixExpression
+	&quot;delete&quot;  PostfixExpression
+	&quot;void&quot;  UnaryExpression
+	&quot;typeof&quot;  UnaryExpression
+	&quot;++&quot;   PostfixExpression
+	&quot;--&quot;  PostfixExpression
+	&quot;+&quot;  UnaryExpression
+	&quot;-&quot;  UnaryExpression
+	&quot;~&quot;  UnaryExpression
+	&quot;!&quot;  UnaryExpression
+	&quot;type&quot;  TypeExpression
+</pre>
+
+<p>
+The expression following the <code>type</code> operator is parsed and evaluated as a type expression.
+</p>
+<pre class="code">
+if( x is type (T,U,V) ) ...
+</pre>
+
+<p>
+In this example <code>type (T,U,V)</code> evaluates to a union type.
+</p>
+
+</div>
+<!-- SECTION [2446-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/e/e8d87c4de7447ac5fc7ac6f0a4230755.xhtml used -->
+</body>
+</html>

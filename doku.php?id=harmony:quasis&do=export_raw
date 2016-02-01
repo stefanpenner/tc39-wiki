@@ -1,0 +1,842 @@
+**This proposal has progressed to the Draft ECMAScript 6 Specification, which is available for review here: [[harmony:specification_drafts]]. Any new issues relating to them should be filed as bugs at [[http://bugs.ecmascript.org]]. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.**
+
+
+
+====== EcmaScript Quasi-Literals ======
+
+
+
+===== Motivation =====
+
+EcmaScript is frequently used as a glue language for dealing with
+content specified in other languages : HTML, CSS, JSON, XML, etc.
+Libraries have implemented query languages and content generation
+schemes for most of these : CSS selectors, XPath, various templating
+schemes.  These tend to suffer from interpretation overhead, or from
+injection vulnerabilities, or both.
+
+This scheme extends EcmaScript syntax with syntactic sugar to allow
+libraries to provide DSLs that easily produce, query, and manipulate
+content from other languages that are immune or resistant to injection
+attacks such as XSS, SQL Injection, etc.
+
+This scheme aims to preserve ES5 strict mode's static analyzability
+while allowing details of the DSL implementation to be dynamic.
+
+Try out the [[http://js-quasis-libraries-and-repl.googlecode.com/svn/trunk/index.html|quasi-literal demo testbed]].
+
+===== Overview =====
+
+
+==== Syntax ====
+
+<code>x`foo${bar}baz`</code>
+
+Syntactically, a quasi-literal is a **function name** (''x'') followed by zero
+or more characters enclosed in back quotes.
+The contents of the back quotes are grouped into **literal sections** (''foo'' and ''baz'') and
+**substitutions** (''bar'').
+
+A substitution is an unescaped substitution start character (''$'')
+followed by either a valid //Identifier// or a curly bracket block.
+E.g., ''$foo'' or ''${foo + bar}''.
+
+The literal sections are the runs of characters not contained in
+substitutions.  They may be blank so the number of literal sections is
+always one greater than the number of substitutions.
+
+
+==== Semantics ====
+
+The semantics of quasi-literals are specified in terms of a desugaring
+which has the property that the free variables of the desugaring
+are the same as the union of the free variables of the substitutions and
+the function name.
+
+
+
+===== Use Cases =====
+
+This syntactic sugar will let library developers experiment with a wide range of language features.
+
+Quasi-literals desugar a back quoted string to a function call that operates on the literal portions and substitution results.
+
+E.g. ''quasiHandlerName`quasiLiteralPart1 ${quasiSubstitution} quasiLiteralPart2`'' desugars to something like
+
+<code>
+// hoisted declaration.
+const callSiteId1234 = {
+    raw: ['quasiLiteralPart1 ', ' quasiLiteralPart2'],
+    cooked: ['quasiLiteralPart1 ', ' quasiLiteralPart2']
+};
+
+// in-situ
+quasiHandlerName(callSiteId1234, quasiSubstitution)
+</code>
+
+The hoisted declaration at the top records the literal portions both
+before and after each //EscapeSequence// has been decoded and can be
+used as a key into a WeakMap. The in-situ function call applies the
+quasi handler to produce the result and receives the call site ID and
+the values of substiution.s
+
+See the [[http://js-quasis-libraries-and-repl.googlecode.com/svn/trunk/index.html|demo REPL]] for some runnable examples.  Especially the drop-down at the top-right.
+
+
+
+==== Secure Content Generation ====
+<code>safehtml`<a href="${url}?q=${query}" onclick=alert(${message}) style="color: ${color}">${message}</a>`</code>
+
+uses [[#safe_templates|contextual auto-escaping]] to figure out that ''url'' and ''color'' should be filtered, ''query'' should be percent-encoded, and ''message'' HTML entity encoded to prevent XSS.
+
+The syntax provides a clear distinction between trusted content such as ''<a href="'' and substituted values that might be controlled by an attacker such as ''url''.  This prevents the problem that arise in other languages when [[http://en.wikipedia.org/wiki/Uncontrolled_format_string|format strings]] can be controlled by an attacker.  Although EcmaScript's memory abstractions are not vulnerable, it is very vulnerable to quoting confusion attacks and developers have trouble distinguishing content from an untrusted format string from that produced from a trusted one.
+
+E.g.
+<code>
+url = "http://example.com/",
+message = query = "Hello & Goodbye",
+color = "red",
+safehtml`<a href="${url}?q=${query}" onclick=alert(${message}) style="color: ${color}">${message}</a>`
+</code>
+produces
+<code>
+<a href="http://example.com/?q=Hello%20%26%20Goodbye"
+ onclick=alert(&#39;Hello&#32;\x26&#32;Goodbye&#39;) style="color: red">Hello &amp; Goodbye</a>
+</code>
+but values are filtered so that if instead
+<code>
+url = "javascript:alert(1337)"
+color = "expression(alert(1337))"
+</code>
+then the substitution holes are filled with innocuous values instead to produce:
+<code>
+<a href="#innocuous?q=Hello%20%26%20Goodbye"
+ onclick=alert(&#39;Hello&#32;\x26&#32;Goodbye&#39;) style="color: innocuous">Hello &amp; Goodbye</a>
+</code>
+
+Similar schemes can work for securely composing URLs, JSON and XML data bundles, and for allowing composable SQL prepared statements.
+
+
+
+==== Text L10N ====
+<code>msg`Welcome to ${siteName}, you are visitor number ${visitorNumber}!`</code>
+
+where ''visitorNumber'' should be formatted using locale-specific conventions, e.g. "1,000,000" in some parts of the world, and "1.000.000" in some others.
+
+
+
+
+=== Message Extraction ===
+Since there is a convenient simple format for human-readable messages, a static analyzer can easily find them (to substitute locale-specific versions) than if messages were simply the first argument to a function call.
+
+For example, a static analyzer could find uses of ''msg`...`'' in source files to produce a message bundle like
+<code xml>
+<messagebundle>
+  <message id="...">Welcome to {0}, you are visitor number {1}!</message>
+</messagebundle>
+</code>
+
+Translators can then produce a message bundle with the translations.
+
+
+
+=== Message Meta-data ===
+Translators often need some context to help them translate human readable message strings.
+
+Meta-data can be attached to comments the way [[http://code.google.com/closure/compiler/docs/js-for-compiler.html#tags|other systems]] put type declarations and structured documentation in comments.
+
+<code javascript>
+/**
+ * @description Label text for a button that opens a window.
+ */
+myButton.innerText = msg`Open`;
+</code>
+
+but if the English word "Open" is used in two different forms (adjectival vs imperative), it may need to have two translations, so some L10N approaches would benefit from having disambiguation meta-data available at runtime.
+
+There are two common ways of disambiguating:
+  - Associating the message with an identifier which is used as a message ID : ''#MSG_OPEN_BUTTON_TEXT { msg`Open` }''
+  - Adding "meaning" meta-data to the message.  ''myButton.innerText = msg`Open ; meaning="Button text"`;''
+
+The latter convention makes the meta-data available not just to static analyzers, but also at runtime.
+
+
+=== Substitution Meta-data ===
+Meta-data can also be associated with substitutions in the same way.
+
+<code javascript>
+/**
+ * @param siteName The name of the site.  @example foo.ru
+ * @param visitorNumber an integer. @example 1000000
+ */
+var message = msg`Welcome to ${siteName}, you are visitor number ${visitorNumber}:d!`;
+</code>
+
+The description of ''siteName'' and the ''@example'' meta-data can extracted along with the message and made available to translators but is not needed at runtime.
+
+The '':d'' meta-data is available at runtime to specify that the number should be presented as an integer.  Never in scientific notation no matter how many billions of visitors foo.com receives.
+
+
+
+
+=== Message replacement and substitution re-ordering ===
+Once translators have delivered their translations, there are a number of ways to incorporate those.
+
+If the locale is known statically, then ''msg`...`'' elements can be **fully rewritten**
+<code javascript>
+// Before
+alert(msg`Hello, ${world}!`);
+
+// After
+alert(msg`Bonjour ${world}!`);
+</code>
+
+If the locale is not known statically, then a source code rewriter can **partially rewrite** the message to a lookup into a side-table by message id.
+
+<code javascript>
+// Before
+alert(msg`Hello, ${world}!`);
+
+// After
+var messageBundle_fr = {
+  MSG_1234: ['Bonjour ', 0 /* An index into substitutions */, '!']
+};
+
+alert(getMessage('MSG_1234', [world]));
+</code>
+
+The most natural order in which elements of a thought are expressed may differ between languages.  ''msg`Welcome to ${siteName}, you are visitor number ${visitorNumber}:d!`'' might be translated into pig-latin as ''msg`Elcome-way isitor-vay umber-nay ${visitorNumber}:d to ${siteName}!`''.
+
+The index in the mesage bundle side-table above serve to identify the index of the substitution that fills that hole.  For the pig-latin message above, the side-table would look like
+
+<code javascript>
+var messageBundle_piglatin = {
+  MSG_5678: ['Elcome-way isitor-vay umber-nay ', 1, ' oo-tay ', 0, '!']
+};
+</code>
+
+Small projects that are not willing to introduce a source-code rewriting step just to get translation can do **purely dynamic** message replacement.
+
+<code javascript>
+// Before
+alert(msg`Hello, ${world}!`);
+
+// After
+var messageBundle_fr = {  // Maps message text and disambiguation meta-data to replacement.
+  'Hello, {0}!': 'Bonjour {0}!'
+};
+
+alert(msg`Hello, ${world}!`);
+</code>
+
+where ''msg'' checks the side-table:
+
+<code javascript>
+function msg(parts) {
+  var key = ...;  // 'Hello, {0}!' given ['Hello, ', world, '!']
+
+  var translation = myMessageBundle[key];
+
+  return (translation || key).replace(/\{(\d+)\}/g, function (_, index) {
+      // not shown: proper formatting of substitutions
+      return parts[(index << 1) | 1];
+    });
+}
+</code>
+
+
+
+
+=== Specifying a locale ===
+EcmaScript applications running in the browser typically deal with only one user, hence operate in only one locale.  But EcmaScript on the server does not, and there are exceptions in browser-based EcmaScript apps.
+
+It is possible to specify a locale for a scope so that a particular message bundle is used for message replacement, and so that locale is used for formatting numbers and dates.
+
+<code>
+let lmsg = msg.withLocale(messageRecipientLocale);
+sendRecommendation(msg`Your friend ${friendName} thinks you would like to read "${articleTitle}".`);
+</code>
+
+=== Security ===
+Generating human readable strings often requires combining data from other users to produce human readable strings of HTML.  As such, it is a prime vector for XSS attacks.
+
+It is possible to compose the L10N use case described in this with the [[#secure_content_generation|secure content generation scheme]] so there is no need to choose between localizability and security.
+
+<code javascript>
+function msg(callSiteId /* ...substitution values */) {
+  var metaData = extractMetaDataFromLiteralParts(callSiteId.raw);
+  replaceLiteralPartsWithLocaleSpecificLiteralParts(metadata);
+  reorderAndFormatSubstitutions(arguments, metaData);
+  return interleaveAndJoin(metadata.literalPortions, arguments);
+}
+
+function safehtml(callSiteId /* ...substitution values */) {
+  var sanitizers = chooseEscapingFunctionsBasedOnLiteralParts(callSiteId.raw);
+  applySanitizersToSubstitutions(sanitizers, arguments);
+  return interleaveAndJoin(metadata.literalPortions, arguments);
+}
+
+// The composition
+function safehtml_msg(parts) {
+  var metaData = extractMetaDataFromLiteralParts(callSiteId.raw);
+  replaceLiteralPartsWithLocaleSpecificLiteralParts(metaData);
+  reorderAndFormatSubstitutions(arguments, metaData);
+  var sanitizers = chooseEscapingFunctionsBasedOnLiteralParts(metadata.literalPortions);
+  applySanitizersToSubstitutions(sanitizers, arguments);
+  return interleaveAndJoin(metadata.literalPortions, arguments);
+}
+</code>
+
+==== Query Languages ====
+<code>$`a.${className}[href=~'//${domain}/']`</code>
+
+might specify a DOM query for all ''<a>'' elements with the given class name and that link to URLs with the given domain.
+
+The ''className'' and ''domain'' do not need to be encoded then decoded by a query-engine so mis-encodings can be eliminated as a class of bugs and source of inefficiency.
+
+==== Message Sends ====
+Message sends can be specified using a syntax that looks like an HTTP request.
+
+<code>
+GET`http://example.org/service?a=${a}&b=${b}
+    Content-Type: application/json
+    X-Credentials: ${credentials}
+
+    { "foo": ${foo}, "bar": ${bar} }`(myOnReadyStateChangeHandler);
+</code>
+
+might configure an ''XMLHttpRequest'' object to the specified (securely composed) URL with the given (securely composed) headers, and after the end of the headers could switch to context-sensitive composition based on the content-type header : JSON in this case, or an XML message in another case.
+
+
+
+==== Flexible Literal Syntax ====
+Often, developers use the ''new RegExp(...)'' constructor because they want a
+tiny part of their regular expression to be dynamic, and fail to properly escape character classes such as ''"\s"'', and regular expression special characters such as ''.''.
+
+A quasi syntax for regular expression construction
+
+<code>
+re`\d+(${localeSpecificDecimalPoint}\d+)?`
+</code>
+
+gets the benefit of the literal syntax with dynamism where needed.
+
+==== Raw Strings ====
+Python raw strings are trivial since quasi handler functions receive the raw text of literal portions.
+
+<code>
+raw`In JavaScript '\n' is a line-feed.`
+</code>
+
+
+
+
+
+==== Decomposition Patterns ====
+If the alternative quasis-substitutions-slot desugaring is used (see //[[#substitutionbody|SubstitutionBody]]//) then a pattern decomposition handler ''re_match'' invoked thus
+
+<code>
+if (re_match`foo (${=x}\d+) bar`(myString)) {
+  ...
+}
+</code>
+
+could use assignable substitutions to achieve the same effect as
+
+<code>
+{
+  let match = myString.match(/foo (\d+) bar/);
+  if (match) {
+    x = match[1];
+    ...
+  }
+}
+</code>
+
+
+
+
+==== Logging ====
+<code>
+warn`Bad result $result from $source`
+</code>
+
+can provide  ''console.log("o=%s", o)'' style logging of structured data without the need for positional parameters.
+
+
+
+
+===== Syntax (normative) =====
+
+==== Literal Portion Syntax ====
+
+This defines the top quasi literal production and explains how the boundaries between literal portions and substitutions are determined.
+
+
+
+=== QuasiLiteral :: ===
+  * //[[#quasitag|QuasiTag]]// <sub>[no //LineTerminator// here]</sub> ''`'' //[[#literalportion|LiteralPortion]]// //[[#quasiliteraltail|QuasiLiteralTail]]//
+
+=== LiteralPortion :: ===
+  * //[[#literalcharacter|LiteralCharacter]]// //[[#literalportion|LiteralPortion]]//
+  * ε
+
+
+
+
+
+=== LiteralCharacter :: ===
+  * //SourceCharacter// **but** **not** back quote ''`'' **or** //LineTerminator// **or** back slash ''\'' **or** dollar-sign ''$''
+  * //LineTerminatorSequence//
+  * //LineContinuation//
+  * ''\'' //EscapeSequence//
+  * ''$'' lookahead ∉ ''{'', //IdentifierStart//
+
+
+=== QuasiLiteralTail :: ===
+  * ''`''
+  * //[[#substitution|Substitution]]// //LiteralPortion// //[[#quasiliteraltail|QuasiLiteralTail]]//
+
+=== Substitution :: ===
+  * ''${'' //[[#substitutionmodifier|SubstitutionModifier]]// //[[#substitutionbody|SubstitutionBody]]// ''}''
+  * ''$'' //Identifier//
+
+
+
+
+
+
+
+
+
+==== Literal Portion Array ====
+
+The LPA operator defines an array of strings derived from the raw text of the literal portions of the quasi.
+
+E.g. the LPA for the quasi ''q`foo${bar}baz`'' is ''['foo', 'baz']''.
+
+^ Production ^ Result ^
+| //[[#quasiliteral|QuasiLiteral]]// :: //[[#quasitag|QuasiTag]]// ''`'' //[[#literalportion|LiteralPortion]]//  //[[#quasiliteraltail|QuasiLiteralTail]]// | array-concat(single-element-array(LPA(//[[#literalportion|LiteralPortion]]//)), LPA(//[[#quasiliteraltail|QuasiLiteralTail]]//)) |
+| //[[#quasiliteraltail|QuasiLiteralTail]]// :: //[[#substitution|Substitution]]//  //[[#literalportion|LiteralPortion]]//  //[[#quasiliteraltail|QuasiLiteralTail]]// | array-concat(single-element-array(LPA(//[[#literalportion|LiteralPortion]]//)), LPA(//[[#quasiliteraltail|QuasiLiteralTail]]//)) |
+| //[[#quasiliteraltail|QuasiLiteralTail]]// :: ''`'' | an empty array |
+| //[[#literalportion|LiteralPortion]]// :: //[[#literalcharacter|LiteralCharacter]]//  //[[#literalportion|LiteralPortion]]// | string-concat(LPA(//[[#literalcharacter|LiteralCharacter]]//), LPA(//[[#literalportion|LiteralPortion]]//)) |
+| //[[#literalportion|LiteralPortion]]// :: ε | the empty string |
+| //[[#literalcharacter|LiteralCharacter]]// :: //SourceCharacter// | single character string containing that character. |
+| //[[#literalcharacter|LiteralCharacter]]// :: //LineTerminatorSequence// | the literal text |
+| //[[#literalcharacter|LiteralCharacter]]// :: //LineContinuation// | str-concat(''"\\"'', LPE(//LineTerminatorSequence//)) |
+| //[[#literalcharacter|LiteralCharacter]]// :: ''\'' //EscapeSequence// | str-concat(''"\\"'', //EscapeSequence//) |
+| //[[#literalcharacter|LiteralCharacter]]// :: ''$'' | ''"$"'' |
+
+
+
+
+==== QuasiTag ====
+Before the open backquote (''`'') there is an optional expression that specifies a function that receives the literal portions and substitutions.
+
+[[strawman:quasis-quasitag-memberexpr]] is another way to define the //[[#quasitag|QuasiTag]]// production that allows for arbitrary member expressions.  If worthwhile, it should be adopted //instead of// this section.
+
+
+=== QuasiTag :: ===
+  * //Identifier//
+  * ε
+
+=== QT ===
+
+^ Production ^ Result ^
+| //[[#quasitag|QuasiTag]]// :: //Identifier// | an expression of the form //PrimaryExpression// : //Identifier// with the given //Identifier// |
+| //[[#quasitag|QuasiTag]]// :: ε | the Default Quasi Tag function below |
+
+
+=== Default Quasi Tag ===
+
+The default quasi tag is a frozen function defined as
+<code javascript>
+  // callSiteId : ignored
+  // mixedLiteralPortionsAndSubstitutions :
+  //   An odd-length array where even elements (0-indexed) are
+  function (callSiteId /* , ...substitutions */) {
+    var rawStrs = callSiteId.expandedLP;
+    var out = [];
+    var i = 0, k = -1, n = rawStrs.length - 1;
+    while (i < n) {
+      out[++k] = rawStrs[i];
+      out[++k] = arguments[++i];
+    }
+    out[++k] = rawStrs[n];
+    // As per the original Array.prototype.slice and Array.prototype.join.
+    return out.join("");
+  }
+</code>
+
+
+==== Substitution Body Syntax ====
+Between literal portions there are substitutions of the form ''${...}'' or ''$ident''.  The substitution body specifies an expression, e.g. the substitution bodies in ''quasitag`literal0 ${x.y} literal1 $bar literal2`'' are ''(x.y)'', and ''(bar)''.
+
+E.g. the SVE of ''quasitag`literalPortion0 $x literalPortion1 ${y.z} literalPortion2`'' is ''[x, (y.z)]''.
+
+Below are other ways of defining the //[[#substitutionbody|SubstitutionBody]]// production and the SVE spec function.  If preferred, they should be used //instead of// this section.
+
+  * [[strawman::quasis-substitutions-simple-members]] - more complex expressions, but easily lexically boundable.
+  * [[strawman::quasis-substitutions-primaryexpr]] - arbitrary expressions are allowed.
+  * [[strawman::quasis-substitutions-thunk]] - arbitrary expressions are allowed, and the expressions are thunkified so that a quasi handler (QT) may evaluate them zero or multiple time to support branching or looping.
+  * [[strawman::quasis-substitutions-slot]] - arbitrary expressions are allowed, and expressions that are preceded by the modifier ''='' may be used as left hand sides, assigned to by the quasi handler.  This enables use cases like the destructuring regular expression match.
+
+
+=== //IdentifierPathTail// :: ===
+  * ''.'' //IdentifierName// //IdentifierPathTail//
+  * ε
+
+=== //SubstitutionBody// :: ===
+  * //Identifier// //IdentifierPathTail//
+
+=== //SubstitutionModifier// :: ===
+  * ε
+
+
+
+=== SVE ===
+^ Production ^ Result ^
+| //[[#quasiliteral|QuasiLiteral]]// :: //QuasiTag// ''`'' //[[#literalportion|LiteralPortion]]//  //[[#quasiliteraltail|QuasiLiteralTail]]// | SVE(//[[#quasiliteraltail|QuasiLiteralTail]]//) |
+| //[[#quasiliteraltail|QuasiLiteralTail]]// :: //[[#substitution|Substitution]]//  //[[#literalportion|LiteralPortion]]//  //[[#quasiliteraltail|QuasiLiteralTail]]// | array-concat(single-element-array(SVE(//Substitution//)), SVE(//QuasiLiteralTail//)) |
+| //[[#quasiliteraltail|QuasiLiteralTail]]// :: ''`'' | an empty array |
+| //[[#substitution|Substitution]]// :: ''$'' //Identifier// | //PrimaryExpression// : //Identifier// |
+| //[[#substitution|Substitution]]// :: ''${'' //[[#substitutionmodifier|SubstitutionModifier]]//  //Identifier// ''}'' | //PrimaryExpression// |
+| //[[#substitutionbody|SubstitutionBody]]// :: //Identifier//  //[[#identifierpathtail|IdentifierPathTail]]// | //MemberExpression// : str-concat(SV(//Identifier//), SV(//[[#identifierpathtail|IdentifierPathTail]]//)) |
+| //[[#identifierpathtail|IdentifierPathTail]]// :: ''.'' //IdentifierName//  //[[#identifierpathtail|IdentifierPathTail]]// | str-concat(''"."'', SV(//IdentifierName//), SV(//[[#identifierpathtail|IdentifierPathTail]]//)) |
+| //[[#identifierpathtail|IdentifierPathTail]]// :: ε | the empty string, ''""'' |
+
+The SVE of a substitution is an expression that is evaluated in the scope in which the quasiliteral appears.
+The SVE of the quasi literal is the array of the SVE for each substitution.
+
+E.g. the SVE of ''quasitag`literalPortion0 $x literalPortion1 $y.z literalPortion2`'' is ''[x, y.z]''.
+
+
+
+
+
+
+==== Tokenizing ====
+
+The grammar defined above is lexically simple.
+There are a number of alternate schemes for specifying the //SubstitutionBody// production.  Allowing it to be an arbitrary expression raises a few wrinkles -- quasiliterals can nest, and expressions containing curly brackets can nest inside ''${...}'' sections, so finding out where a quasiliteral substitution body ends requires changes to the way EcmaScript is tokenized.
+
+The //[[#substitutionbody|SubstitutionBody]]// production is most simply defined in terms of //PrimaryExpression// which is not a lexical production.  The //[[#quasiliteral|QuasiLiteral]]// grammar defined below can be described in terms of lexical productions without more trickery than that needed to treat tokenize lexical productions.
+
+When lexing, a stack of bits is needed to determine whether a curly bracket ends a substitution, and a single bit is needed to tell whether the parser is currently inside a //[[#literalportion|LiteralPortion]]//.
+
+See the [[http://js-quasis-libraries-and-repl.googlecode.com/svn/trunk/tokenize.html|interactive demo]] of the tokenization scheme described below for more detailed discussion.
+
+^ Curly Bracket Stack ^ In Literal Portion ^ Character Seen         ^ Effect ^
+| any                 | true               | ''$'' ''{''            | emit the LP, inLP := false, push true |
+| any                 | true               | ''`''                  | emit the LP, inLP := false |
+| any                 | true               | ''\''                  | consume next character, append both to LP |
+| any                 | true               | other                  | append to LP |
+| any                 | false              | ''`''                  | inLP := true |
+| any                 | false              | ''{''                  | push false, emit ''{'' |
+| top is false        | false              | ''}''                  | pop, emit ''}'' |
+| top is true         | false              | ''}''                  | pop, inLP := true |
+| empty               | false              | ''}''                  | no effect |
+| any                 | false              | neither ''{'' or ''}'' | tokenize as if quasis not in grammar |
+
+This requires a lookahead of 1 because ''${'' has to be treated as a unit for purposes of determining whether a ''$'' starts a substitution.
+
+
+
+
+
+===== Semantics (normative) =====
+Given the QT, LPA, and SVE defined above, this specifies the desugaring of the //[[#quasiliteral|QuasiLiteral]]// production.
+
+This version passes all the parts to the function specified by the quasi tag in one argument list instead of passing the literal portions first.
+
+
+==== CallSiteId ====
+The desugaring below uses a hoisted declaration instead of interleaving the LPA with the SVE.  This is done for a variety of reasons.
+
+  - Many quasi handlers want to deal with literal portions as if they were chunks of a //StringLiteral// where each //EscapeSequence// is replaced with its corresponding character value.  This is typical for quasi handlers that produce a string like result.
+  - Some use-cases benefit from having access to the raw text of the literal portion.  E.g. ''\b'' has a different meaning in a regular expression than in a //StringLiteral//, and knowing whether a meta-character is escaped can be beneficial.
+  - Many quasi handler functions benefit from being able to memoize their results.  Having an object that identifiers a call site and which can serve as a key into a WeakMap allows easy memoization.
+
+
+
+
+
+
+==== Desugaring ====
+A //[[#quasiliteral|QuasiLiteral]]// in an EcmaScript parse tree is desugared to two subtrees.  It is replaced in-situ with a function call that produces the value of the quasiliteral, and a declaration is hoisted into the top module scope that allows a quasi-tag easy access to the raw literal portions and allows a convenient handle by which a quasi handler can memoize state derived from the literal portions (extracted meta-data and the like).  This desugaring is specified in terms of a hoisted declaration for the convenience of tool authors who want to back-port this desugaring, but in interpreters, there is no need to create a record in a lexical environment or assign an actual name -- the interpreter need only ensure that when a particular quasiliteral is evaluated, the same call site object is passed to the quasi handler. 
+
+The declaration has a name, //CallSiteID//, that is an unguessable //Identifier//.  It has the form (//ConstDeclaration//, //CallSiteID//, (//CallExpression//, (//MemberExpression//, (//Identifier//, "Object"), ".", (//Identifier//, "freeze")), (//ParameterList//, (//ObjectLiteral//, (//ObjectProperty//, (//StringLiteral//, "raw"), (//CallExpression//, (//MemberExpression//, (//Identifier//, "Object"), ".", (//Identifier//, "freeze")), (//ParameterList//, (//ArrayLiteral//, ...LPA)))), (//ObjectProperty//, (//StringLiteral//, "cooked"), (//CallExpression//, (//MemberExpression//, (//Identifier//, "Object"), ".", (//Identifier//, "freeze")), (//ParameterList//, (//ArrayLiteral//, ...cookedLPA)))))))).
+
+The cookedLPA used in the declaration by mapping the //StringLiteral// SV function over the LPA.  This has the effect of decoding each //EscapeSequence//.
+
+In-situ, the //QuasiLiteral// is replaced with a function call: (//CallExpression//, (QT, (//ParameterList//, (array-concat([//CallSiteID//], SVE)))).
+
+Since for ''quasiTag`literalPortion\0 $x literalPortion1`'' the QT is ''quasiTag'', LPA is ''["literalPortion\\0 ", " literalPortion1"]'' and SVE is ''[x]'', if the assigned CallSiteId is ''unguessableCallSiteId1234'' then it desugars to
+
+<code javascript>
+// Declaration hoisted to top of module.
+// Escape sequences in the hoisted declaration are not decoded according to CV(EscapeSequence).
+// The calls to Object.freeze use the original definition of that method.
+const unguessableCallSiteId1234 = Object.freeze({
+  raw: Object.freeze(["literalPortion\\0 ", "literalPortion1"]),
+  cooked: Object.freeze(["literalPortion\u0000 ", "literalPortion1"])
+});
+
+...
+
+  // In-situ
+  // Escape sequences in the arguments are decoded.
+  // unguessableCallSiteId1234 is ideal as a key into a weak map used to memoize
+  // extraction of meta-data, custom escaping conventions, and other state
+  // that can be derived from the literal portions, so does not vary from
+  // call to call from the same call-site.
+  quasiTag(unguessableCallSiteId1234, x)
+</code>
+
+===== Security Considerations =====
+
+This strawman should also fall in the language subset defined by SES
+(Secure EcmaScript). As such, neither its presence in the language nor
+its use in a program should make it substantially more difficult to
+reason about the security properties of that program.
+
+Developers expect that object references only escape a scope by being explicitly passed or assigned.
+This strawman needs to preserve both the scope invariants of EcmaScript 5 functions and catch blocks, and those introduced by the modules and ''let'' proposals.
+
+
+The below discusses the interaction between a quasi function defined
+in one scope/module and the code it produces to be executed in another
+scope/module.  The actors include
+  * library author -- the author of the module / scope in which the quasi function is defined
+  * quasi author -- the author of the quasi-literal and any symbols defined in the module / scope containing it.
+
+
+
+==== Defensive Code ====
+A module needs to be able to defend its invariants against bugs or
+deliberate malice by another module. SES does not attempt to guarantee
+availability since trivial programs can loop infinitely, but a module must
+be able to guarantee that its invariants hold when control leaves it.
+
+This proposal does not complicate defensive code reasoning because:
+  * only symbols mentioned in a substitution are observable by the library author
+  * only symbols marked as writable can be written by the library author
+
+The quasi author has to be aware that the order of evaluation is
+unclear. For quasis to specify new control constructs, substitutions
+need to be evaluable out of order, repeatedly, or not at all.
+
+Under the thunking and slot alternative //SubstitutionBody// desugarings,
+by writing a substitution, the quasi author is conveying the authority
+to evaluate an expression in the quasi scope any number of times from
+that point on. (Assuming the quasi module has the authority to cause
+delayed evaluation as by ''setTimeout''). A substitution conveys the
+same authority as a zero argument function.
+
+==== Offensive Code ====
+The library author's quasi function may be used by multiple mutually
+suspicious or intentionally isolated modules.  It can ensure that bugs or
+malice in one module do not affect its ability to serve another module by
+freezing the symbols it exports and by coding defensively.
+
+This proposal does not complicate its ability to do that, since it
+imposes no mutable data requirements on quasi functions.
+
+
+
+
+==== Possible Problems ====
+
+This syntax is, by design, similar to that of string interpolation
+in other languages. Users may assume the result of the quasi-literal
+is a string as occurs in languages like Perl and PHP
+([[#php_string_vars|3]]), and that subsequent mutations to values
+substituted in do not affect the result of the interpolation. It is
+the responsibility of QT implementers to match these expectations or
+to educate users.  Specifically, developer surprise might result from
+the below if ''q'' kept a reference to the mutable fib
+array which is modified by subsequent iterations of the loop.
+
+<code javascript>
+var quasis = [];
+var fib = [1, 1];  // State shared across loop bodies
+for (var i = 1; i < 10; ++i) {
+  fib[1] += fib[0];
+  fib[0] = fib[1] - fib[0];
+  quasis.push(q`Fib${i-1} and fib${i} are $fib`);
+}
+</code>
+
+String interpolation in other languages is often a vector for
+quoting confusion attacks : XSL, SQL Injection, Script Injection,
+etc.. It is the responsibility of QT implementers to properly escape
+substituted values, and a lazy escaping scheme ([[#secure_string_interp|2]])
+can provide an intelligent default. It is a goal of the proposed
+scheme to reduce the overall vulnerability of EcmaScript applications
+to quoting confusion by making it easy for developers to generate
+properly escaped strings in other languages.
+
+Quasi-literals contain embedded expressions, but the set of lexical
+bindings accessible to the quasi handler is restricted to the union of
+the below so they do not complicate static analysis
+
+  - the set of identifiers mentioned by the author in the lexical environment in which the quasi-literal appears,
+  - the lexical environment of the QT in the environment in which it is defined,
+  - for QTs defined in non-strict mode, the global object as bound to ''this''.
+
+===== Reasons and Open Issues =====
+
+
+
+==== Quoting Character ====
+
+The meaning of existing programs should not change, so this
+proposal must extend the grammar without introducing ambiguity.  It is
+meant to enable secure string interpolation and DSLs, so using a
+syntax reminiscent of strings seems reasonable, and many widely used
+languages have string interpolation schemes which will reduce the
+learning curve associated with the proposed feature.
+
+Backquote (''`'') was chosen as the quoting character for
+string interpolations because it is unused outside string and
+comment bodies; and is obviously a quoting character.
+
+It is already used in other languages that many EcmaScript authors
+use -- perl, PHP, and ruby where it allows interpolation though
+with a more specific meaning than macro expansion. It is used as a
+macro construct in Scheme where it is called a "quasiquote."  In
+Python 2.x and earlier, it is a shorthand for the ''repr''
+function, so contained an expression and applied a specific
+transformation to it.
+
+As such, many syntax highlighters deal with it reasonably well, and
+programmers are used to seeing it as a quote character instead of as a
+grave accent.
+
+Alternatives include:
+
+  * <code>q"""Interpolate ${this}!"""</code>.
+  * <code>q"Interpolate ${this}!"</code> which simply uses an existing quoting character but which constrains the default quasi handler definition.
+  * <code>q{{"Interpolate ${this}!"}}</code> which simplifies nesting.
+  * <code>q(:"Interpolate ${this}!":)</code> which is friendly even if not RSI friendly.
+  * <code>q@"Interpolate ${this}!"</code> is similar to C# literal strings but different semantically.
+
+==== Nesting ====
+There are a number of advantages to allowing quasis to nest.  Substitutions are easy to understand if they are just expressions, and quasis are just another kind of expression.
+
+There are concrete use cases as well.  We could integrate control flow into the ''safehtml'' quasi handler available at the [[http://js-quasis-libraries-and-repl.googlecode.com/svn/trunk/index.html|REPL]], but substitutions with nested quasis can serve just as well.
+
+<code>
+rows = [['Unicorns', 'Sunbeams', 'Puppies'], ['<3', '<3', '<3']],
+safehtml`<table>${
+  rows.map(function(row) {
+    return safehtml`<tr>${
+      row.map(function(cell) {
+        return safehtml`<td>${cell}</td>`
+      })
+    }</tr>`
+  })
+}</table>`
+</code>
+
+produces something like
+
+<code>
+<table>
+  <tr><td>Unicorns</td><td>Sunbeams</td><td>Puppies</td></tr>
+  <tr><td>&lt;3</td><td>&lt;3</td><td>&lt;3</td></tr>
+</table>
+</code>
+
+==== Substitutions ====
+
+Since we're choosing syntax to reduce the learning curve, we chose
+''${...}'' since it is used to allow arbitrary embedded
+expressions in PHP and JQuery templates. We also include the abbreviated form
+(''$ident'') to be compatible with Bash, Perl, PHP, Ruby,
+etc.
+
+We decided against ''sprintf'' style formatting, since,
+although widely understood, it does not allow many DSL applications,
+and imposes an O(n) cognitive load ([[#secure_string_interp|2]]).
+
+Alternatives include:
+
+  * Bash: ''$(...)''
+  * Ruby: ''#{...}''
+
+
+
+
+==== Raw Escapes in Literal Sections ====
+The per-call-site object passed as the first argument to the quasi handler function contains both the raw text of each literal portion and contains the text of literal portion after escape sequences have been converted into the characters they would specify inside a //StringLiteral//.
+
+We lose no generality by providing raw escapes and there are use cases where raw escapes are useful, as in regular expression composition:
+
+<code javascript>
+var my regexp = re`(?i:\w+$foo\w+)`;
+
+function re(literalPortions) {
+  for (var i = arguments.length; --i >= 0;) {
+    literalPortions[i * 2] = arguments[i];
+  }
+  return function (substitutions) {
+    var regexBody = literalPortions.slice(0);
+    for (var i = 0, n = substitutions.length; i < n; ++i) {
+      var sub = substitutions[i]
+      regexBody[i * 2 + 1] = sub().replace(
+          /[\\(){}\[\]^$.+*?|\-]/g, '\\$&');
+    }
+    return new RegExp(regexBody.join(''));
+  };
+}
+</code>
+
+
+==== Line Continuation and Line Terminators ====
+
+Some revision control systems rewrite newlines on checkout.  These systems might change the meaning of EcmaScript programs that contain multi-line quasis.
+
+PHP, Python, Perl and other languages are already sensitive to white-space characters at the end of lines so developers are already familiar with these problems.
+
+Newlines and trailing spaces inside quasi-literals are significant.
+
+
+
+
+
+
+
+
+
+
+
+===== References =====
+
+==== Quasis in E ====
+[[http://www.erights.org/elang/grammar/quasi-overview.html|Quasiliterals in E]]
+
+==== Secure String Interp ====
+[[http://google-caja.googlecode.com/svn/changes/mikesamuel/string-interpolation-29-Jan-2008/trunk/src/js/com/google/caja/interp/index.html|Secure String Interpolation]]
+
+==== PHP String Vars ====
+[[http://www.php.net/manual/en/language.types.string.php#languages.types.string.parsing|PHP String variable parsing]]
+
+==== PLT Scheme Scribble ====
+[[http://docs.plt-scheme.org/scribble/reader.html|PLT Scheme Scribble Syntax]]
+
+==== SML of New Jersey ====
+[[http://smlnj.org|SML/NJ]] has a similar [[http://smlnj.org/doc/quote.html|Quote/Antiquote]] feature (whose documentation, ironically enough, has an HTML bug in a quoted code snippet, resulting in the bottom third or so of the page being in monospaced font).
+
+==== Secure Code Generation ====
+[[http://web.sec.uni-passau.de/members/martin/talks/081215_MSR.pdf|"Secure Code Generation for Web Applications"]] by Martin Johns.
+
+==== Scheme Hygienic Macros ====
+[[http://community.schemewiki.org/?scheme-faq-macros|Scheme Macros FAQ]]
+
+
+==== Paradigm Regained ====
+[[http://www.erights.org/talks/asian03/|Paradigm Regained : Abstraction Mechanisms for Access Control]]
+
+==== Safe Templates ====
+[[http://js-quasis-libraries-and-repl.googlecode.com/svn/trunk/safetemplate.html|Using Type Qualifiers to Make Web Templates Robust Against XSS]]

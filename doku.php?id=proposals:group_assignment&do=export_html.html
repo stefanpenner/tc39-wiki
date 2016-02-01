@@ -1,0 +1,481 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:group_assignment&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:group_assignment&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:group_assignment&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="motivation"></a><h2>Motivation</h2>
+<div class="level2">
+
+<p>
+ When the return value is not enough, you have to mutate an object passed in by reference to return &ldquo;out&rdquo; parameters.  This requires a new object allocation per call, if not per &ldquo;out&rdquo; parameter, in generalized bindings of ES and <acronym title="JavaScript">JS</acronym> to component models.  It makes scripted functions bulkier and costlier than they should be given that you can pass N &gt; 1 arguments &ldquo;in&rdquo;.
+</p>
+
+<p>
+Similarly, assigning multiple variables, possibly permuting them, requires explicit temporary variables. <acronym title="Practical Extraction and Report Language">Perl</acronym>, Python and other such languages support multiple assignment.  Convenience matters enough for many domains where ES/<acronym title="JavaScript">JS</acronym> (AS too I am sure) are used alongside, or in competition with, such languages, that this is a small but real &ldquo;competitive&rdquo; issue.
+</p>
+
+<p>
+See <a href="doku.php%3Fid=proposals:iterators_and_generators.html" class="wikilink1" title="proposals:iterators_and_generators" onclick="return svchk()" onkeypress="return svchk()">iterators and generators</a> and <a href="doku.php%3Fid=proposals:date_and_time.html" class="wikilink1" title="proposals:date_and_time" onclick="return svchk()" onkeypress="return svchk()">date and time</a> for specific use-cases (both happen to have fairly strong requirements for something like group return).
+</p>
+
+</div>
+<!-- SECTION [1-934] -->
+<a name="sketch"></a><h2>Sketch</h2>
+<div class="level2">
+
+<p>
+ Group assignment:
+</p>
+<pre class="code javascript"><span class="br0">&#40;</span>x, y, z<span class="br0">&#41;</span> = <span class="br0">&#40;</span><span class="nu0">3</span>, <span class="nu0">4</span>, <span class="nu0">6</span><span class="br0">&#41;</span>
+<span class="br0">&#40;</span>a, b<span class="br0">&#41;</span> = <span class="br0">&#40;</span>b, a<span class="br0">&#41;</span>         <span class="co1">// temp-free swap</span>
+<span class="br0">&#40;</span>p, q, r<span class="br0">&#41;</span> = <span class="br0">&#40;</span>r, p, q<span class="br0">&#41;</span>   <span class="co1">// rotate right 1</span>
+&nbsp;
+<span class="kw2">function</span> fib<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw2">var</span> i = <span class="nu0">0</span>, j = <span class="nu0">1</span>
+  <span class="kw1">while</span> <span class="br0">&#40;</span><span class="kw2">true</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    yield i
+    <span class="br0">&#40;</span>i, j<span class="br0">&#41;</span> = <span class="br0">&#40;</span>j, i + j<span class="br0">&#41;</span>
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+It is an error for group size to differ between left- and right-hand sides.
+</p>
+
+<p>
+Group return:
+</p>
+<pre class="code javascript"><span class="kw2">function</span> arraylike_iterator_next<span class="br0">&#40;</span>arraylike<span class="br0">&#41;</span> : <span class="br0">&#40;</span>uint, *<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw2">var</span> index = <span class="kw1">this</span>.<span class="me1">index</span>
+  <span class="kw1">if</span> <span class="br0">&#40;</span>index &gt;= arraylike.<span class="me1">length</span><span class="br0">&#41;</span>
+    <span class="kw1">throw</span> StopIteration
+  <span class="kw1">this</span>.<span class="me1">index</span> = index + <span class="nu0">1</span>
+  <span class="kw1">return</span> <span class="br0">&#40;</span>index, arraylike<span class="br0">&#91;</span>index<span class="br0">&#93;</span><span class="br0">&#41;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">class</span> TripleIterator<span class="br0">&#40;</span>S, P, O<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw2">function</span> next<span class="br0">&#40;</span><span class="br0">&#41;</span> : <span class="br0">&#40;</span>S, P, O<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">if</span> <span class="br0">&#40;</span>... <span class="coMULTI">/* iterator exhausted */</span><span class="br0">&#41;</span>
+      <span class="kw1">throw</span> StopIteration
+    <span class="kw2">var</span> t : TripleRep = ... <span class="coMULTI">/* next triple (TripleRep is internal) */</span>
+    <span class="kw1">return</span> <span class="br0">&#40;</span>t.<span class="me1">subject</span>, t.<span class="me1">predicate</span>, t.<span class="me1">object</span><span class="br0">&#41;</span>
+  <span class="br0">&#125;</span>
+  ...
+<span class="br0">&#125;</span></pre>
+<p>
+This sketch proposes obvious syntax for group-return type annotation.  Group size is fixed by the function&rsquo;s type signature.  As with assignment, the signature and all return statements must use the same group size.
+</p>
+
+<p>
+A call to a group-returning function not occupying the entire right-hand side of group-assignment evaluates to the first value in the returned group.
+</p>
+
+</div>
+<!-- SECTION [935-2148] -->
+<a name="issues"></a><h2>Issues</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> The intent here is that groups are not lists or tuples, they are special forms of assignment and return.  So no new type is required, only extra annotation syntax for function return type.  Is this no-new-type assertion bogus?  We don&rsquo;t have types for control structures, so it&rsquo;s plausible, but function return value is typed.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Incompatibly changes Edition 3 syntax: disallow comma-operator expression in return operand position.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Compatibly extends assignment to allow parenthesized comma expression on left-hand side, but what about the right-hand side?  Need it be parenthesized?</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Examples above show parenthesized group return, but again if we are incompatibly changing the grammar for the return statement, why require parens?</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Reasonable expectation based on other languages may want a way to assign from an array to a group, and possibly vice versa.</div>
+</li>
+</ul>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/02/28 23:49</em>
+</p>
+
+<p>
+It&rsquo;s somewhat awkward to say that it &ldquo;doesn&rsquo;t add a new type&rdquo;, because functions can occur in non-assignment expressions, and typically we want every expression to have a type. 
+</p>
+
+<p>
+One option (the common lisp and lua option) is to make only the first return value be &ldquo;the&rdquo; type of a function call, and require <code>multiple-value-bind</code> (or your syntactic form of it) if you want to access any other stack-slot values. 
+</p>
+
+<p>
+The other option &ndash; what I think you need if you want to surprise the least number of pythonists &ndash; is adding tuple types for real.
+</p>
+
+<p>
+I&rsquo;m not really sure I like the proposal, neither stack slots nor tuple types. Personally, I&rsquo;m OK with passing a dict and having the callee fill it in. I&rsquo;ve never much liked language features for multiple value returns on the left hand side. But I tend to just use named &ldquo;out&rdquo; parameters in all my code anyways. I&rsquo;m an odd duck that way.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x67%3B%26%23x72%3B%26%23x61%3B%26%23x79%3B%26%23x64%3B%26%23x6f%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x67;&#x72;&#x61;&#x79;&#x64;&#x6f;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">graydon</a> 2006/03/02 16:51</em>
+</p>
+
+<p>
+Thanks for the comments.  Did I neglect to say how a call that group-returns is evaluated other than on the right-hand side of assignment?  I was thinking of the Lua way, as you might have surmised.
+</p>
+
+<p>
+Talking to Sjoerd Visscher in <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=326466#c14" class="urlextern" target="_blank" title="https://bugzilla.mozilla.org/show_bug.cgi?id=326466#c14" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">the Mozilla bug for generators and iterators</a>, I&rsquo;m persuaded that adding a List type with <code>(a, b, c,)</code> syntax is not a good idea, because it would be almost a twin of <code>Array</code>.  Costs outweigh the benefit.  But that conversation was in the context of making the <code>in</code> operator and <code>for/in</code> loop more Pythonic.  The group-assignment/return idea did not come up.
+</p>
+
+<p>
+Adding up all of 
+</p>
+<ul>
+<li class="level1"><div class="li"> group-assignment/return as proposed here</div>
+</li>
+<li class="level1"><div class="li"> <code>in</code> being anomalous for arrays because it tests/iterates keys and not values</div>
+</li>
+<li class="level1"><div class="li"> the CL/Lua approach to group-return evaluation outside of group-assignment considered lame</div>
+</li>
+</ul>
+
+<p>
+ may shift the trade-off to favor adding a list or tuple type.  Anyone else have an opinion?
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/03/02 17:11</em>
+</p>
+
+<p>
+Sorry, I did not mean to imply the CL approach to multiple value binding is lame; I don&rsquo;t really see it or tuples as any better than one another. I only meant to say that I don&rsquo;t often feel the need for them myself, when stuck in a language which lacks them. Argument from minimalism, not convenience.
+</p>
+
+<p>
+If you are definitely arguing in favour of &ldquo;some&rdquo; method for multiple-value return, I think the CL technique is possibly the lighter-weight one. It doesn&rsquo;t add a typing judgment throughout the language; it adds a specific rule for assignment expressions / statements. So it&rsquo;s arguably lower-impact. I don&rsquo;t mind it.
+</p>
+
+<p>
+I must confess to not fully understanding the big problem with arrays, in that bug. Operator <code>in</code> tests keys; ok, so you have a different operator-<code>in</code> than Python. Big deal. It&rsquo;s a backward-compatibility wart. You might add a prototype <code>Array.prototype.contains()</code> or something, which does the Python operator-<code>in</code>. Is the issue deeper than that?
+</p>
+
+<p>
+Your iteration over keys is, fwiw, totally Pythonic:
+</p>
+<pre class="code">
+$ python
+...
+&gt;&gt;&gt; x={1:&quot;foo&quot;, 2:&quot;bar&quot;}
+&gt;&gt;&gt; for i in x:
+...     print i
+... 
+1
+2
+</pre>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x67%3B%26%23x72%3B%26%23x61%3B%26%23x79%3B%26%23x64%3B%26%23x6f%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x67;&#x72;&#x61;&#x79;&#x64;&#x6f;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">graydon</a> 2006/03/02 18:48</em>
+</p>
+
+<p>
+Yes, objects in ECMA-262 are like dicts in Python, with the same initialiser syntax and <code>for-in</code> iteration over keys instead of values.  This was a case of &ldquo;convergent evolution&rdquo;, not planning ahead.
+</p>
+
+<p>
+The problem is that ECMA has no sequences or lists, but its array initializers look like Python&rsquo;s list initialisers.  Yet <code>for-in</code> iterates over keys, not values, for Python lists.  So we can&rsquo;t please the hard-core Pythonistas, not in all ways at any rate.
+</p>
+
+<p>
+ECMA may be more consistent-and-minimal, but without a powerful macro system, minimalism is often opposed to usability or convenience.  The case that looks less convenient in ECMA is something like:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> pentatones = <span class="br0">&#91;</span><span class="nu0">261</span>.<span class="nu0">6</span> * Math.<span class="me1">pow</span><span class="br0">&#40;</span><span class="nu0">2</span>, i/<span class="nu0">12</span><span class="br0">&#41;</span> <span class="kw1">for</span> <span class="br0">&#40;</span>i <span class="kw1">in</span> <span class="br0">&#91;</span><span class="nu0">0</span>, <span class="nu0">2</span>, <span class="nu0">4</span>, <span class="nu0">7</span>, <span class="nu0">9</span>, <span class="nu0">12</span><span class="br0">&#93;</span><span class="br0">&#41;</span><span class="br0">&#93;</span></pre>
+<p>
+or the Edition 3 form:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> pentatones = <span class="br0">&#91;</span><span class="br0">&#93;</span>
+<span class="kw1">for</span> <span class="br0">&#40;</span><span class="kw2">var</span> i <span class="kw1">in</span> <span class="br0">&#91;</span><span class="nu0">0</span>, <span class="nu0">2</span>, <span class="nu0">4</span>, <span class="nu0">7</span>, <span class="nu0">9</span>, <span class="nu0">12</span><span class="br0">&#93;</span><span class="br0">&#41;</span>
+  pentatones.<span class="me1">push</span><span class="br0">&#40;</span><span class="nu0">261</span>.<span class="nu0">6</span> * Math.<span class="me1">pow</span><span class="br0">&#40;</span><span class="nu0">2</span>, i/<span class="nu0">12</span><span class="br0">&#41;</span><span class="br0">&#41;</span></pre>
+<p>
+It seems surprising even to me, and I&rsquo;m a <acronym title="JavaScript">JS</acronym>-ista, not a Python-ista, for <code>i</code> to iterate over 0, 1, 2, 3, 4, and 5.  And I&rsquo;m the guy who made arrays be objects, way back when, in the name of ultra- (rushed-) minimalism.  Others have made the same complaint, whether or not they know Python.  They expect <code>for-in</code>, at least for arrays, to iterate over values, not keys.
+</p>
+
+<p>
+Adding <code>Array.prototype.indexOf</code> (probably we should use the same Java-inspired name as is used for the corresponding <code>String</code> method that finds a value and returns its index, instead of <code>contains</code>;  SpiderMonkey already supports both <code>indexOf</code> and <code>lastIndexOf</code> as generic <code>Array</code> methods) does not help <code>for-in</code> loops.  Requiring something like the E4X <code>for each (v in a)</code> loop variant, which iterates <code>v</code> over values in <code>a</code>, is 
+</p>
+<ul>
+<li class="level1"><div class="li"> verbose,</div>
+</li>
+<li class="level1"><div class="li"> confusingly named (why does <code>each</code> connote values instead of keys?), and</div>
+</li>
+<li class="level1"><div class="li"> not Pythonic.</div>
+</li>
+</ul>
+
+<p>
+ Of course, adding lists or tuples to ES won&rsquo;t help the Python users who expect, in an initialiser or literal form, <code>[]</code> to bracket the values over which the loop iterates.  We can&rsquo;t change either array initialiser syntax or array iteration, so anyone crossing between the two languages will have to switch initialiser syntaxes.
+</p>
+
+<p>
+Given the Pythonic objects and un-Pythonic arrays with which we are stuck, do the benefits of: 
+</p>
+<ul>
+<li class="level1"><div class="li"> key iteration for a list type,</div>
+</li>
+<li class="level1"><div class="li"> group assignment, a special case of a list initialiser on the left-hand side of assignment, and</div>
+</li>
+<li class="level1"><div class="li"> generalized list expressions that evaluate to themselves in other expression contexts including return&rsquo;s operand,</div>
+</li>
+</ul>
+
+<p>
+ justify the costs of adding lists?  This is a reordered version of my earlier list, which called the CL/Lua evaluation of group expressions &ldquo;lame&rdquo;.  Unlike the earlier list, this one favors evaluating groups (outside of the left-hand side of assignment) to list values.  It appears to me to require one fewer special case: a list evaluates to itself just as an array does &ndash; a list (unlike an array or any such thing) does not evaluate to its first item.  But I agree that the CL/Lua way is lighter-weight.
+</p>
+
+<p>
+As Sjoerd argued, users would want lists and arrays to convert to one another freely.  That adds some complexity.  Yet group return would just be list return, whether of an initialiser or a computed list value.
+</p>
+
+<p>
+Group assignment would need slightly special syntax for backward compatibility &ndash; no unparenthesized list on the left of <code>=</code> (that would be a comma expression with an assignment as one of the terms) &ndash; but would not need the trailing comma that list initialisers would need:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> list = <span class="br0">&#40;</span>a, b, c,<span class="br0">&#41;</span>
+<span class="br0">&#40;</span>x, y, z<span class="br0">&#41;</span> = <span class="br0">&#40;</span><span class="nu0">1</span>, <span class="nu0">2</span>, <span class="nu0">3</span>,<span class="br0">&#41;</span></pre>
+<p>
+Yet more complexity for users, if not for the spec in terms of number of special cases.  And it&rsquo;s not particularly pretty.
+</p>
+
+<p>
+So I still agree with Sjoerd that having both arrays and lists is one two many of the same thing.  Hence the desire to specialize assignment and return subgrammars.  That still leaves <code>for-in</code> iterating over array keys, not values, but that&rsquo;s an issue for <a href="doku.php%3Fid=proposals:iterators_and_generators.html" class="wikilink1" title="proposals:iterators_and_generators" onclick="return svchk()" onkeypress="return svchk()">iterators and generators</a>.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/03/02 20:46</em>
+</p>
+
+<p>
+For what it&rsquo;s worth, ECMAScript in Opera already has destructuring array assignment:
+</p>
+<pre class="code javascript">   <span class="br0">&#91;</span>a,,<span class="br0">&#91;</span>c,d<span class="br0">&#93;</span><span class="br0">&#93;</span> = expr</pre>
+<p>
+This assigns to a, c, and d, pattern matching on the structure of the value.  Excess elements are ignored.  I was planning to extend this to objects too but I never bothered &ndash; I just wanted simple multiple return values.
+</p>
+
+<p>
+Granted it&rsquo;s not free to create an array, but this comes down to the implementation a little bit too.  In Opera, the expression [a,b] requires just one allocation.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/03/03 09:45</em>
+</p>
+
+<p>
+Neat, more minimal than this proposal.  But one is greater than zero, and in particular, anything like a <code>Date.nanotime()</code> method should not allocate an object.  Perhaps there is a way to optimize away the object, but a special form would be cheaper.
+</p>
+
+<p>
+<acronym title="JavaScript">JS</acronym> was over-minimized due to rushing in the old days.  As I&rsquo;ve argued above and elsewhere, Edition 4 will take time to reach the market, then years to supplant Edition 3.  But the language will be around even longer, so it&rsquo;s worth getting things right, worrying about convenience, etc.
+</p>
+
+<p>
+Given browser uptake and cost of standardization, I do not expect TG1 to continue with Edition 5 next year, 6 in 2008, etc. We would rather make Edition 4 sufficient as the kernel language for meta-programming and extension, so that users and the standard library contenders can continue the evolution in the market.
+</p>
+
+<p>
+Thus ends my anti-minimalism sermon.  It doesn&rsquo;t bear on the destructuring array assignment extension in Opera, except to the extent that we agree even one object allocation for group return is one too many.  Let me know if any of this is controversial.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/03/03 10:07</em>
+</p>
+
+<p>
+I can&rsquo;t say that I agree that one object allocation for a group return is one too many, and like you I don&rsquo;t think that ought to be controversial <img src="lib/images/smileys/icon_smile.gif" align="middle" alt=":-)" />  I get your point about excessive minimalism, but it&rsquo;s also possible to add features that do not pay for themselves in the long run.  We should look into whether the array syntax can be used for this and whether a decent implementation can optimize it away.
+</p>
+
+<p>
+(There is actually a standard trick here in which a continuation that receives multiple values is marked specially so that an invocation that returns multiple values will not cons up an object, but instead return the values through a faster protocol.  With proper tail recursion this works very well, but even without it will cover many cases in practice.)
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/03/03 11:19</em>
+</p>
+
+<p>
+The case against even one object allocation is a <code>Date.nanotime()</code> returning a high-resolution time representation.  I admit it&rsquo;s not an air-tight case &ndash; if your timestamping use-case is perturbed by array allocation, get a real profiler <img src="lib/images/smileys/icon_wink.gif" align="middle" alt=";-)" />.
+</p>
+
+<p>
+I like what you did, it&rsquo;s a smaller change as well as an implemented precedent.
+</p>
+
+<p>
+Would it be over-specifying to require the optimization you mention, as we are specifying proper tail call optimization too?
+</p>
+
+<p>
+<strong>Updated:</strong> Lars, what was your plan for object initializers as lvalues?
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/03/04 18:19</em>
+</p>
+
+<p>
+I think it would be wrong to require the optimization.  An implementation that has fast allocation and good garbage collection would not derive any significant benefit from it, and for all you know it may preclude other optimizations, so that it in some cases the optimization would be a net loss.
+</p>
+
+<p>
+In general I think that a language should be designed with the implementation technology in mind but that the language spec should concern itself only with semantic matters, not prescribe optimizations.  However, the spec could point to implementation precedent or literature (in this case Ashley and Dybvig, <a href="http://citeseer.ist.psu.edu/27481.html" class="urlextern" target="_blank" title="http://citeseer.ist.psu.edu/27481.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://citeseer.ist.psu.edu/27481.html</a>).  Going out on a limb here a bit, it may in fact be useful for the spec to include an appendix that contains implementation advice for many of the features in the language.
+</p>
+
+<p>
+(Incidentally, Scheme people do not think of proper tail recursion as optimization but as the semantics of space usage.  Implementations that do not support proper tail recursion are considered &ldquo;not Scheme&rdquo;, not merely buggy or low-quality.)
+</p>
+
+<p>
+Anyhow, destructuring assignment is a powerful facility in its own right, and should be allowed on object types too. One desirable syntax is this:
+</p>
+<pre class="code javascript">    <span class="br0">&#123;</span>fisk:a, fnys:b<span class="br0">&#125;</span> = &lt;expr&gt;</pre>
+<p>
+which means exactly this:
+</p>
+<pre class="code javascript">    <span class="br0">&#40;</span>tmp = &lt;expr&gt;,
+     a = tmp.<span class="me1">fisk</span>,
+     b = tmp.<span class="me1">fnys</span>,
+     tmp<span class="br0">&#41;</span></pre>
+<p>
+for some fresh temporary.  The syntax is desirable because it mirrors object construction (and is exactly analogous to how the destructuring array assignment works).  It can be extended in an obvious way to nested objects and arrays:
+</p>
+<pre class="code javascript">   <span class="br0">&#123;</span> fisk: <span class="br0">&#123;</span> foo: a <span class="br0">&#125;</span>, fnys: <span class="br0">&#91;</span>c,,d<span class="br0">&#93;</span> <span class="br0">&#125;</span> = &lt;expr&gt;</pre>
+<p>
+Static typing of this should be straightforward.
+</p>
+
+<p>
+However the syntax is ambiguous since object literals cannot appear at the beginning of statements.  The parser would have to use several tokens of lookahead, and if anything but simple variables is allowed on the right hand side of a <code>:</code> then unbounded lookahead is required, as above, where you don&rsquo;t know if you&rsquo;re parsing an object literal or a statement until you see the second <code>:</code>.
+</p>
+
+<p>
+Modulo hacking the parser quite a lot, there are a couple of fixes for the problem: use a dedicated keyword (like <code>match</code>) or use a syntax that does not mirror object construction (eg, require that all fields names are quoted).
+</p>
+<pre class="code javascript">   match <span class="br0">&#123;</span>fisk:a, fnys:b<span class="br0">&#125;</span> = &lt;expr&gt;;</pre>
+<p>
+(I wouldn&rsquo;t want to use <code>let</code> or <code>var</code> because they take us away from the multi-variable assignment form that this was intended as.)
+</p>
+
+<p>
+Once we have a distinguished keyword we can overload it for case-based pattern matching:
+</p>
+<pre class="code javascript">   match <span class="br0">&#40;</span>&lt;expr&gt;<span class="br0">&#41;</span> 
+   <span class="br0">&#123;</span>
+      <span class="kw1">case</span> <span class="br0">&#123;</span>fisk:a, fnys:b<span class="br0">&#125;</span> : &lt;stmt&gt; ...
+      ...
+   <span class="br0">&#125;</span></pre>
+<p>
+which matches the first case that can be destructured.  This will be especially useful if the <code>a</code>, <code>b</code> can be constants as well as variables.  Multi-case pattern matching should be well understood now, so an ambitious implementation should be able to optimize it.
+</p>
+
+<p>
+This is taking us far away from multiple return values, though.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/03/06 01:07</em>
+</p>
+
+<p>
+I suppose one could always use either different brackets or a prefix:
+</p>
+<pre class="code javascript">   <span class="br0">&#123;</span><span class="br0">&#123;</span> fisk: a, fnys: b <span class="br0">&#125;</span><span class="br0">&#125;</span> = &lt;expr&gt;
+   <span class="br0">&#91;</span><span class="br0">&#91;</span> a,,c <span class="br0">&#93;</span><span class="br0">&#93;</span> = &lt;expr&gt;
+&nbsp;
+   &amp;<span class="br0">&#123;</span> fisk: a, fnys: b <span class="br0">&#125;</span> = &lt;expr&gt;
+   &amp;<span class="br0">&#91;</span>a,,c<span class="br0">&#93;</span> = &lt;expr&gt;</pre>
+<p>
+Sort of <acronym title="Practical Extraction and Report Language">Perl</acronym>-ish... not very pretty, even if it solves the problem.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/03/06 01:59</em>
+</p>
+
+<p>
+I would expect
+</p>
+<pre class="code javascript">    <span class="br0">&#123;</span>fisk:a, fnys:b<span class="br0">&#125;</span> = &lt;expr&gt;</pre>
+<p>
+to assign the variables <code>fisk</code> and <code>fnys</code> based on the values of <code>&lt;expr&gt;.a</code> and <code>&lt;expr&gt;.b</code> respectively, rather than as you describe above.  This would better mirror the syntax of object initalization, in which the slot precedes the <code>:</code>, and the initialization expression follows it.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x73%3B%26%23x68%3B%26%23x61%3B%26%23x76%3B%26%23x65%3B%26%23x72%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x73;&#x68;&#x61;&#x76;&#x65;&#x72;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Mike Shaver</a> 2006/03/08 14:49</em>
+</p>
+
+<p>
+Lars: right, I used the evil phrase &ldquo;tail call optimization&rdquo;, but I&rsquo;m familiar with Scheme.  Guy Steele was loaned from other duties at Sun to help us codify ECMA-262 Edition 1 &ndash; he was a big help, and even brought along Richard Gabriel for company, but for some reason we never did proper tail calls.
+</p>
+
+<p>
+I wrote the proposal narrowly, but that trick seldom works.  The parenthesized syntax wants to grow into tuples or lists.  I&rsquo;m now firmly in favor of at least destructuring array assignment as you&rsquo;ve implemented it.  The object assignment you described works as I expected, but it is odd-looking to shaver, and he will not be alone, I predict.
+</p>
+
+<p>
+Shaver: the deal in both array and object cases is that on the left-hand side of assignment, the initialiser property value is an identifier to bind to the value of its key bound to the corresponding object on the right-hand side.
+</p>
+
+<p>
+Lars: quoted property identifiers in object initialisers are allowed, so I don&rsquo;t see how that helps disambiguate.  Although you have taken us somewhat afield from group assignment/return, I like where you&rsquo;ve gone and would welcome a separate proposal on destructuring assignment and <code>match</code>.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/03/08 19:02</em>
+</p>
+
+<p>
+Quoting names would help because it would limit the amount of lookahead the parser would have to do to figure out what it&rsquo;s looking at.  The trio of tokens <code>&lt;left-curly-brace&gt; &ldquo;foo&rdquo; &lt;colon&gt;</code> cannot be the start of a statement, so if the parser sees &lt;left-curly-brace&gt; in a statement context it would only have to look ahead two more tokens to know whether it&rsquo;s looking at a tuple destructuring.
+</p>
+
+<p>
+Mike: I agree with you that the syntax (ordering of name and value around the colon) is odd-looking and feels weird, I don&rsquo;t actually care for it myself.  I just figure that it&rsquo;s a benefit that it matches construction syntax, and my guess is that one would become used to it.  And for matchings with more structure it feels a lot better, I think.
+</p>
+
+<p>
+I&rsquo;ll put together a simple proposal on destructuring and link it from the proposals page.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/03/09 01:04</em>
+</p>
+
+<p>
+Ah, bounded (n &gt; 1) lookahead.  Let&rsquo;s not do that.  I love your proposal, and I hereby retract this one in favor of it.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/03/10 11:01</em> 
+</p>
+
+</div>
+<!-- SECTION [2149-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/a/a3446dfc3e67a256b96bf4c327151e7a.xhtml used -->
+</body>
+</html>

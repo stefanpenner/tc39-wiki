@@ -1,0 +1,116 @@
+
+
+====== Trademarks ======
+
+A trademark represents a generative nominal type. A trademark has two facets:
+
+  * A trademark's **brander** allows one to brand objects or sets of objects with that trademark. Objects can be branded by a trademark when they're created or at any later time, but a brand is irrevocable: Once an object is branded by a trademark //tm//, it is forever branded by trademark //tm//.
+
+  * A trademark's **guard** allows one to test a specimen object to see if it is branded by that trademark.  The companion [[guards]] proposal provides convenient syntax for doing such tests.
+
+To make brands unforgeable, the two facets of a trademark are represented by different ECMAScript objects, linked to each other under the scenes. Given the brander one can readily create a guard. On the other hand, one cannot obtain the brander given just the guard of a trademark. Thus the brander of a trademark is a capability.
+
+Some of the API relating to trademarks also consists of static global methods. These are gathered into a ''Type'' object, which is a collection of static methods analogous to ''Math'' or ''JSON''. ''Type'' is imported into scope using the module mechanism.
+
+===== Brander =====
+
+The branding facet of a trademark is an object with the following frozen methods. Here //specimen// is an arbitrary ECMAScript value and //guard// is a guard.
+
+  * ''test''(//specimen//)
+    * Returns either ''true'' or ''false'' indicating whether //specimen// has been branded with this trademark.
+  * ''validate''(//specimen//)
+    * If ''test''(//specimen//) returns ''true'', return //specimen//. Otherwise throw a TypeError.
+  * ''brand''(//specimen//)
+    * Brand //specimen// with this trademark. Once branded, //specimen// is branded forever. Branding the same //specimen// again has no effect.
+  * ''brandPrototype''(//specimen//)
+    * Brand //specimen// and all, current or future, objects with //specimen// on their prototype chain with this trademark. Once branded, //specimen// is prototype-branded forever. Branding the same //specimen// again has no effect.
+  * ''append''(//guard//)
+    * Derive this trademark from //guard//'s trademark. Every object branded by //guard//, either now or in the future, automatically acquires this trademark's brand as well.
+  * ''isGuard''(//guard//)
+    * If //guard// is a guard whose %%[[Brand]]%% internal property is this brander, return ''true''. Otherwise return ''false''.
+  * ''setGuard''(//guard//) (optional, not needed if the facilities for specifying that an object is a guard at creation time are sufficient)
+    * If //guard// is not an extensible object or is already a guard (i.e. has a %%[[Brand]]%% internal property), throw an error. Otherwise create a %%[[Brand]]%% internal property on //guard// and set it to this brander.
+
+Branders are created by ''Type.make'' below.
+
+===== Guard =====
+
+The guarding facet of a trademark is an object with a %%[[Brand]]%% internal property. There are two ways to set this property to a brander //b// on a guard //g//:
+
+  * Set //g//'s %%[[Brand]]%% internal property to //b// at the time //g// is created using whatever syntax or API is approved for setting metaproperties during object creation.
+  * Call //b//.''makeGuard''(//g//) (not needed if the above mechanism is adequate)
+
+Once //g//'s %%[[Brand]]%% is set, it cannot be deleted or changed. Furthermore, user code cannot directly read the %%[[Brand]]%% internal property.
+
+Guards are typically used for constraining the values of variables, fields, or parameters as part of [[guards]]:
+
+<code javascript>
+  let x :: guard = value;
+  function f(a :: guard1, b :: guard2, c) :: resultGuard {...}
+</code>
+
+One can also invoke a guard manually using ''Type'' methods. These methods are on ''Type'' instead of directly on the guard to make it easy to make any object into an guard without polluting its property name space. In particular, ''Object'', ''Number'', ''String'', etc. can serve as built-in guards.
+
+The ''~'' and ''|'' operators have special behavior when their operands are guards.  When given guards as both operands, the ''|'' operator invokes ''Type.union'' on the operands.  When given a guard as the operand, the ''~'' operator invokes ''Type.union'' on the guard with ''Null'' and ''Void''.  These let one conveniently make guard annotations such as:
+
+<code javascript>
+  let x :: Number | Boolean = value;  // Either a Number of a Boolean
+  let y :: ~Number = value;  // Either a Number or null or undefined
+</code>
+
+===== Type =====
+
+The ''Type'' global object is a collection of static methods for working with branders and guards. It provides the following methods:
+
+  * ''make''()
+    * Create and return a new brander, initially with no branded specimens.
+  * ''make''(//guard1//, //guard2//, ...)
+    * Same as ''make'' to create a new brander //b// followed by a series of //b//.''append'' calls to append all of the given guards to //b//. This will make the new brander the union of the guards' types.
+  * ''union''(//guard1//, //guard2//, ...)
+    * Same as ''make'' above, but returns the guard, not the brander. Other than containing the %%[[Brand]]%% internal property, the returned guard object is like an object created by ''{}''. There is no way to access the brander.
+    * Open issues: Should the returned object be frozen? If so, can calling this multiple times return the same object?
+  * ''test''(//guard//, //specimen//)
+    * Return either ''true'' or ''false'' indicating whether //specimen// has been branded with //guard//'s trademark. Throw an error if //guard// is not a guard. ''test'' invokes //guard//.%%[[Brand]]%%.''test''(//specimen//).
+  * ''validate''(//guard//, //specimen//)
+    * If ''test''(//guard//, //specimen//) returns ''true'', return //specimen//. Otherwise throw a TypeError. ''validate'' invokes //guard//.%%[[Brand]]%%.''validate''(//specimen//).
+
+There intentionally is no way to make complement or difference types because doing so would violate monotonicity: if specimen //s// is in //t1// but not //t2//, then //s// will be in //t1// - //t2//. However, it will disappear from //t1// - //t2// if someone later brands //s// with //t2//.
+
+===== Built-In Trademarks =====
+
+We seed the trademark graph by providing guards for built-in types:
+
+  * ''Null'' accepts ''null''
+  * ''Void'' accepts ''undefined''
+  * ''Number'' accepts all primitive numbers, including infinities and NaN
+  * ''Integer'' accepts all primitive numbers whose values are finite integers, regardless of magnitude.  ''Integer'' includes both +0 and -0.
+  * ''Boolean'' accepts the primitives ''true'' and ''false''
+  * ''String'' accepts all primitive strings
+  * ''Type'' accepts all guards (i.e. objects directly containing a %%[[Brand]]%% internal property)
+  * ''Object'' accepts all non-primitive objects.  Note that ''null'' and ''undefined'' are not objects.
+  * ''Any'' accepts everything
+
+Because guards introduce no extra methods, these uses do not conflict with these objects' other APIs.
+
+====== Alternatives and Open Issues ======
+
+  * Coordinate syntax of creating a guard and/or a brander with the private, class, and object initializer proposals.
+  * Can we take out ''setGuard''?
+  * Do we want an ''appendBrander'' method on a brander that takes a brander instead of a guard argument?
+  * Do we want a way to freeze branders to prevent future calls to ''brand'', ''brandPrototype'', or ''append''?  If so, do it by piggybacking on ''Object.freeze'' (i.e. ''brand'', ''brandPrototype'', and ''append'' would throw an error if the brander is frozen) or by introducing a ''freeze'' method on the brander?  In either case, knowing that a brander is frozen might make some code patterns easier to understand and analyze.  Note that, just like for all other objects, freezing is shallow, so even a frozen brander can acquire new branded instances by having earlier appending a different brander or by deriving from a prototype-branded prototype.
+  * Currently ''test'' and ''validate'' will never run user code. This guarantees monotonicity --- there is no way to revoke a brand. Is this desirable, or do we want to relax this restriction and add a way to write potentially problematic user-specified guards?
+
+====== Bibliography ======
+
+[[http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.92.6213&rep=rep1&type=pdf|Efficient Type Inclusion Tests]]
+
+[[http://portal.acm.org/citation.cfm?id=361937|Protection in Programming Languages]]
+
+[[http://mumble.net/~jar/pubs/secureos/|A Security Kernel Based on the Lambda-Calculus]]
+
+[[http://erights.org/elang/kernel/auditors/|Auditors: An Extensible, Dynamic
+Code Verification Mechanism]]
+
+[[http://wiki.erights.org/wiki/Guard-based_auditing|Guard-based Auditing]]
+
+[[http://www.soe.ucsc.edu/research/report?ID=1588|Virtual Values for Language Extension]]

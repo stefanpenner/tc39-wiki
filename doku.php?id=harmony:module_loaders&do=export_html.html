@@ -1,0 +1,564 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=harmony:module_loaders&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="http://wiki.ecmascript.org/feed.php?mode=list&amp;ns=harmony" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=harmony:module_loaders&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#this_page_is_no_longer_current" class="toc">THIS PAGE IS NO LONGER CURRENT</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#module_loaders" class="toc">Module loaders</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#goals" class="toc">Goals</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#loader" class="toc">Loader</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#loader_objects" class="toc">Loader objects</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#module_objects" class="toc">Module Objects</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#module" class="toc">Module</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#tomodule_obj" class="toc">ToModule( obj )</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#global_objects" class="toc">Global Objects</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#intrinsics" class="toc">Intrinsics</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#virtualizing_intrinsics" class="toc">Virtualizing intrinsics</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#freezing_intrinsics" class="toc">Freezing intrinsics</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#loading_and_resolution" class="toc">Loading and resolution</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#normalization_semantics" class="toc">Normalization semantics</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#resolution_semantics" class="toc">Resolution semantics</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#fetching_semantics" class="toc">Fetching semantics</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#translation_semantics" class="toc">Translation semantics</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#link_semantics" class="toc">Link semantics</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#loader_api" class="toc">Loader API</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#new_loader_options" class="toc">new Loader( [ options ] )</a></span><ul class="toc">
+<li class="level4"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#options.global" class="toc">options.global</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#options.intrinsics" class="toc">options.intrinsics</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#options.strict" class="toc">options.strict</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#options.normalize_request_referer" class="toc">options.normalize( request, referer )</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#options.resolve_normalized_referer_metadata" class="toc">options.resolve( normalized, { referer, metadata } )</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#options.fetch_resolved_fulfill_reject_normalized_referer_metadata" class="toc">options.fetch( resolved, fulfill, reject, { normalized, referer, metadata } )</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#options.translate_source_normalized_address_metadata_type" class="toc">options.translate( source, { normalized, address, metadata, type } )</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#options.link_source_normalized_address_metadata_type" class="toc">options.link( source, { normalized, address, metadata, type } )</a></span></li>
+</ul>
+</li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#loader.prototype.get_global" class="toc">Loader.prototype.get global()</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#loader.prototype.load_address_callback_errback_referer_null" class="toc">Loader.prototype.load( address, callback, errback, referer = null )</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#loader.prototype.import_name_callback_errback_referer_null" class="toc">Loader.prototype.import( name, callback, errback, referer = null )</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#loader.prototype.fetch_name_callback_errback_referer_null" class="toc">Loader.prototype.fetch( name, callback, errback, referer = null )</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#loader.prototype.eval_src" class="toc">Loader.prototype.eval( src )</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#loader.prototype.evalasync_src_callback_errback" class="toc">Loader.prototype.evalAsync( src, callback, errback )</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#loader.prototype.get_name" class="toc">Loader.prototype.get( name )</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#loader.prototype.set_name_mod" class="toc">Loader.prototype.set( name, mod )</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#loader.prototype.has_name" class="toc">Loader.prototype.has( name )</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#loader.prototype.delete_name" class="toc">Loader.prototype.delete ( name )</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:module_loaders&amp;do=export_html.html#loader.prototype.definebuiltins_obj" class="toc">Loader.prototype.defineBuiltins( [ obj ] )</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="this_page_is_no_longer_current"></a><h1>THIS PAGE IS NO LONGER CURRENT</h1>
+<div class="level1">
+
+<p>
+ <a href="lib/exe/detail.php%3Fid=harmony%253Amodule_loaders&amp;cache=cache&amp;media=harmony:warning.png.html" class="media" title="harmony:warning.png" onclick="return svchk()" onkeypress="return svchk()"><img src="lib/exe/fetch.php%3Fw=100&amp;h=&amp;cache=cache&amp;media=harmony:warning.png" class="media" alt="" width="100" /></a> <strong>WARNING:</strong> This page is <strong>out of date</strong>. Please see the ES6 <a href="doku.php%3Fid=harmony:specification_drafts.html" class="wikilink1" title="harmony:specification_drafts" onclick="return svchk()" onkeypress="return svchk()">specification drafts</a> for up-to-date information. This page is here only as an archive.
+</p>
+
+</div>
+<!-- SECTION [1-230] -->
+<a name="module_loaders"></a><h1>Module loaders</h1>
+<div class="level1">
+
+<p>
+ This page describes a dynamic <acronym title="Application Programming Interface">API</acronym> for loading <a href="doku.php%3Fid=harmony:modules.html" class="wikilink1" title="harmony:modules" onclick="return svchk()" onkeypress="return svchk()">modules</a> in <strong>controlled and selectively isolated contexts</strong>. Loaders also provide reflective methods for <strong>querying information</strong> about those contexts. Every host environment comes with a built-in <strong>system loader</strong>, and users can create custom loaders via the <code>Loader</code> constructor.
+</p>
+
+<p>
+The details of the semantics are being initially specified in the form of a <a href="https://github.com/jorendorff/js-loaders" class="urlextern" target="_blank" title="https://github.com/jorendorff/js-loaders" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">self-hosted reference implementation</a>. Once these are fully worked out, they will be added to the main ES6 specification.
+</p>
+
+</div>
+<!-- SECTION [231-838] -->
+<a name="goals"></a><h2>Goals</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Dynamic loading</div>
+</li>
+<li class="level1"><div class="li"> State isolation</div>
+</li>
+<li class="level1"><div class="li"> Global namespace isolation</div>
+</li>
+<li class="level1"><div class="li"> Compilation hooks</div>
+</li>
+<li class="level1"><div class="li"> Nested virtualization</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [839-977] -->
+<a name="loader"></a><h2>Loader</h2>
+<div class="level2">
+
+<p>
+ All code is compiled by a specific loader, and the code is statically and permanently associated with that loader. This association is used for requiring external modules, dynamic code loading via <code>eval</code>, and resolving global variables.
+</p>
+
+<p>
+Loaders encapsulate several pieces of information: 
+</p>
+<ul>
+<li class="level1"><div class="li"> a <em>global object</em>: this represents the global bindings for code evaluated by this loader.</div>
+</li>
+<li class="level1"><div class="li"> a <em>module registry</em>: this associates loaded module names with their loaded module instance objects.</div>
+</li>
+<li class="level1"><div class="li"> a set of <em>intrinsics</em>: these describe special, distinguished prototypes for any built-in objects created by core syntactic forms like <code>[]</code> and <code>{}</code>.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [978-1651] -->
+<a name="loader_objects"></a><h2>Loader objects</h2>
+<div class="level2">
+
+<p>
+ The initial global environment contains a global binding <code>System</code>, which is an object that reflects the host environment&rsquo;s code loading capability as a loader object. This section describes the interface of loader objects.
+</p>
+
+<p>
+There is a constructor <code>Loader</code>, available via a standard module, which is a constructor for creating new loaders.
+</p>
+<pre class="code javascript">Loader : <span class="kw2">function</span><span class="br0">&#40;</span>options = <span class="br0">&#123;</span><span class="br0">&#125;</span><span class="br0">&#41;</span> -&gt; Loader
+&nbsp;
+options: <span class="br0">&#123;</span>
+    global: Object = Object.<span class="me1">create</span><span class="br0">&#40;</span><span class="kw2">null</span><span class="br0">&#41;</span>,
+    intrinsics: Loader | <span class="kw2">null</span> = <span class="kw2">null</span>,
+    strict: boolean = <span class="kw2">false</span>,
+    normalize: <span class="kw2">function</span> <span class="br0">&#40;</span>see below<span class="br0">&#41;</span>,
+    resolve: <span class="kw2">function</span> <span class="br0">&#40;</span>see below<span class="br0">&#41;</span>,
+    fetch: <span class="kw2">function</span> <span class="br0">&#40;</span>see below<span class="br0">&#41;</span>,
+    translate: <span class="kw2">function</span> <span class="br0">&#40;</span>see below<span class="br0">&#41;</span>,
+    link: <span class="kw2">function</span> <span class="br0">&#40;</span>see below<span class="br0">&#41;</span>
+<span class="br0">&#125;</span></pre><pre class="code javascript">Loader.<span class="me1">prototype</span>.<span class="me1">global</span>         : get Object
+Loader.<span class="me1">prototype</span>.<span class="me1">strict</span>         : get boolean
+Loader.<span class="me1">prototype</span>.<span class="me1">normalize</span>      : get/set normalize hook
+Loader.<span class="me1">prototype</span>.<span class="me1">resolve</span>        : get/set resolve hook
+Loader.<span class="me1">prototype</span>.<span class="me1">fetch</span>          : get/set fetch hook
+Loader.<span class="me1">prototype</span>.<span class="me1">translate</span>      : get/set translate hook
+Loader.<span class="me1">prototype</span>.<span class="me1">link</span>           : get/set link hook
+Loader.<span class="me1">prototype</span>.<span class="me1">load</span>           : <span class="kw2">function</span><span class="br0">&#40;</span>string, <span class="kw2">function</span><span class="br0">&#40;</span>any<span class="br0">&#41;</span> -&gt; any, <span class="kw2">function</span><span class="br0">&#40;</span>any<span class="br0">&#41;</span> -&gt; any<span class="br0">&#41;</span> -&gt; <span class="kw1">void</span>
+                                  <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#91;</span>string<span class="br0">&#93;</span>, <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#91;</span>any<span class="br0">&#93;</span><span class="br0">&#41;</span> -&gt; any, <span class="kw2">function</span><span class="br0">&#40;</span>any<span class="br0">&#41;</span> -&gt; any<span class="br0">&#41;</span> -&gt; <span class="kw1">void</span>
+Loader.<span class="me1">prototype</span>.<span class="kw2">import</span>         : <span class="kw2">function</span><span class="br0">&#40;</span>string, <span class="kw2">function</span><span class="br0">&#40;</span>Module<span class="br0">&#41;</span> -&gt; any, <span class="kw2">function</span><span class="br0">&#40;</span>any<span class="br0">&#41;</span> -&gt; any<span class="br0">&#41;</span> -&gt; <span class="kw1">void</span>
+                                  <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#91;</span>string<span class="br0">&#93;</span>, <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#91;</span>Module<span class="br0">&#93;</span><span class="br0">&#41;</span> -&gt; any, <span class="kw2">function</span><span class="br0">&#40;</span>any<span class="br0">&#41;</span> -&gt; any<span class="br0">&#41;</span> -&gt; <span class="kw1">void</span>
+Loader.<span class="me1">prototype</span>.<span class="me1">fetch</span>          : <span class="kw2">function</span><span class="br0">&#40;</span>string, <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> -&gt; any, <span class="kw2">function</span><span class="br0">&#40;</span>any<span class="br0">&#41;</span> -&gt; any<span class="br0">&#41;</span> -&gt; <span class="kw1">void</span>
+                                  <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#91;</span>string<span class="br0">&#93;</span>, <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> -&gt; any, <span class="kw2">function</span><span class="br0">&#40;</span>any<span class="br0">&#41;</span> -&gt; any<span class="br0">&#41;</span> -&gt; <span class="kw1">void</span>
+Loader.<span class="me1">prototype</span>.<span class="kw1">eval</span>           : <span class="kw2">function</span><span class="br0">&#40;</span>string<span class="br0">&#41;</span> -&gt; any
+Loader.<span class="me1">prototype</span>.<span class="me1">evalAsync</span>      : <span class="kw2">function</span><span class="br0">&#40;</span>string, <span class="kw2">function</span><span class="br0">&#40;</span>any<span class="br0">&#41;</span> -&gt; any, <span class="kw2">function</span><span class="br0">&#40;</span>any<span class="br0">&#41;</span> -&gt; any<span class="br0">&#41;</span> -&gt; <span class="kw1">void</span>
+Loader.<span class="me1">prototype</span>.<span class="me1">get</span>            : <span class="kw2">function</span><span class="br0">&#40;</span>string<span class="br0">&#41;</span> -&gt; Module | <span class="kw2">null</span>
+Loader.<span class="me1">prototype</span>.<span class="me1">set</span>            : <span class="kw2">function</span><span class="br0">&#40;</span>string, Object<span class="br0">&#41;</span> -&gt; <span class="kw1">this</span>
+Loader.<span class="me1">prototype</span>.<span class="me1">has</span>            : <span class="kw2">function</span><span class="br0">&#40;</span>string<span class="br0">&#41;</span> -&gt; boolean
+Loader.<span class="me1">prototype</span>.<span class="kw1">delete</span>         : <span class="kw2">function</span><span class="br0">&#40;</span>string<span class="br0">&#41;</span> -&gt; <span class="kw1">void</span>
+Loader.<span class="me1">prototype</span>.<span class="me1">defineBuiltins</span> : <span class="kw2">function</span><span class="br0">&#40;</span>Object = <span class="kw1">this</span>.<span class="me1">global</span><span class="br0">&#41;</span> -&gt; Object</pre>
+<p>
+The details of this <acronym title="Application Programming Interface">API</acronym> can be found below.
+</p>
+
+</div>
+<!-- SECTION [1652-3945] -->
+<a name="module_objects"></a><h2>Module Objects</h2>
+<div class="level2">
+
+<p>
+ Module instance objects can be created dynamically with the <code>Module</code> constructor function, which uses a semantic function ToModule for converting an object to a module instance object.
+</p>
+<pre class="code javascript"><span class="kw2">new</span> Module<span class="br0">&#40;</span><span class="br0">&#123;</span> string: Object, ... <span class="br0">&#125;</span><span class="br0">&#41;</span> -&gt; Module
+Module<span class="br0">&#40;</span><span class="br0">&#123;</span> string: Object, ... <span class="br0">&#125;</span><span class="br0">&#41;</span> -&gt; Module</pre>
+<p>
+A module instance object has the [[Class]] <code>&ldquo;Module&rdquo;</code> and a <strong>null</strong> [[Prototype]].
+</p>
+
+</div>
+<!-- SECTION [3946-4379] -->
+<a name="module"></a><h3>Module</h3>
+<div class="level3">
+
+<p>
+ The <code>Module</code> constructor takes an argument <em>x</em> and produces the result of applying the semantic conversion ToModule(ToObject(<em>x</em>)).
+</p>
+
+</div>
+<!-- SECTION [4380-4536] -->
+<a name="tomodule_obj"></a><h3>ToModule( obj )</h3>
+<div class="level3">
+
+<p>
+ The ToModule semantic function converts an object to a module instance object. If the object is already a module instance object, the result is the object itself. Otherwise, the result is a new module instance object whose exports are aliased to the corresponding properties of the object.
+</p>
+
+</div>
+<!-- SECTION [4537-4855] -->
+<a name="global_objects"></a><h2>Global Objects</h2>
+<div class="level2">
+
+<p>
+ At the top level of a Program, <code>this</code> is bound to the Program&rsquo;s global object.
+</p>
+
+<p>
+After a Program is compiled, its global object contains all the bindings of the global scope as non-configurable properties. All <code>var</code> bindings are writable value properties. All <code>let</code> bindings are accessor properties that throw if they are read before being written. All <code>const</code> bindings are write-once accessor properties that throw if they are read before being written.
+</p>
+
+</div>
+<!-- SECTION [4856-5346] -->
+<a name="intrinsics"></a><h2>Intrinsics</h2>
+<div class="level2">
+
+<p>
+ The intrinsics of a loader are the core objects, prototypes, and constructors associated with the evaluation semantics. For example, when evaluating an array literal:
+</p>
+<pre class="code javascript">let a = <span class="br0">&#91;</span><span class="nu0">1</span>, <span class="nu0">2</span>, <span class="nu0">3</span><span class="br0">&#93;</span>;</pre>
+<p>
+the literal causes the runtime to construct a new <code>Array</code> object. The intrinsics associated with the code&rsquo;s loader determine <em>which</em> <code>Array</code> constructor it uses.
+</p>
+
+<p>
+The intrinsics are used for a variety of semantic operations, including: 
+</p>
+<ul>
+<li class="level1"><div class="li"> the prototype of literals (objects, arrays, functions, and regexps)</div>
+</li>
+<li class="level1"><div class="li"> the prototype of auto-wrapped literals (strings, numbers, and booleans)</div>
+</li>
+<li class="level1"><div class="li"> the <code>.constructor</code> property of literals and their standard prototypes</div>
+</li>
+<li class="level1"><div class="li"> the <code>.prototype</code> property of the standard constructors pointed to by those prototypes</div>
+</li>
+<li class="level1"><div class="li"> the standard error objects raised by standard semantic operations</div>
+</li>
+</ul>
+
+<p>
+ The global object is not required to correspond in any particular way to the intrinsics. However, in most ordinary cases the global object of a given loader will match that loader&rsquo;s intrinsics. The <code>defineBuiltins</code> method can be used to populate the global object with the standard set of built-in objects and functions for the loader&rsquo;s intrinsics.
+</p>
+
+</div>
+<!-- SECTION [5347-6566] -->
+<a name="virtualizing_intrinsics"></a><h3>Virtualizing intrinsics</h3>
+<div class="level3">
+
+<p>
+ This <acronym title="Application Programming Interface">API</acronym> does not directly enable virtualizing intrinsics with custom implementations. However, the translation hooks make this possible indirectly via compilation. For example, array literals could be translated to <code>new VirtualArray(...)</code> for some custom <code>VirtualArray</code> constructor.
+</p>
+
+</div>
+<!-- SECTION [6567-6890] -->
+<a name="freezing_intrinsics"></a><h3>Freezing intrinsics</h3>
+<div class="level3">
+
+<p>
+ It is possible to create a locked-down loader by freezing the intrinsics. You can do this even without directly placing the intrinsics on the global object by copying them into a temporary object:
+</p>
+<pre class="code javascript">let intrinsics = <span class="br0">&#123;</span><span class="br0">&#125;</span>;
+loader.<span class="me1">defineBuiltins</span><span class="br0">&#40;</span>intrinsics<span class="br0">&#41;</span>;
+<span class="kw1">for</span> <span class="br0">&#40;</span>key of Object.<span class="me1">keys</span><span class="br0">&#40;</span>intrinsics<span class="br0">&#41;</span><span class="br0">&#41;</span>
+    Object.<span class="me1">freeze</span><span class="br0">&#40;</span>intrinsics<span class="br0">&#91;</span>key<span class="br0">&#93;</span><span class="br0">&#41;</span>;</pre>
+<p>
+Since it appears that the spec only talks about &ldquo;the original ___&rdquo; for constructors and prototypes, and the <code>.prototype</code> properties of all the built-in constructors are non-writable and non-configurable, the built-ins always expose the complete set of intrinsics.
+</p>
+
+</div>
+<!-- SECTION [6891-7542] -->
+<a name="loading_and_resolution"></a><h2>Loading and resolution</h2>
+<div class="level2">
+
+<p>
+ The <code>Loader</code> constructor accepts five hooks that can be used for custom loading and compilation: <code>normalize</code>, <code>resolve</code>, <code>fetch</code>, <code>translate</code>, and <code>link</code>.
+</p>
+
+</div>
+<!-- SECTION [7543-7746] -->
+<a name="normalization_semantics"></a><h3>Normalization semantics</h3>
+<div class="level3">
+
+<p>
+ When a module name is requested, the <code>normalize</code> hook is called with the requested name, and has the responsibility of performing any normalization of the name. It is provided with information about the referring module or script that requested the module. The <code>normalize</code> hook can also provide a metadata object that will be threaded through the remaining hooks for convenience.
+</p>
+
+</div>
+<!-- SECTION [7747-8166] -->
+<a name="resolution_semantics"></a><h3>Resolution semantics</h3>
+<div class="level3">
+
+<p>
+ The <code>resolve</code> hook translates a normalized module name to an address, which might be a <acronym title="Uniform Resource Locator">URL</acronym> (in the browser setting) or a filesystem path (in a server setting), or some combination thereof. This is up to the loader and the host environment. The <code>resolve</code> hook may indicate that the file where the module is located will be a script, in which case it can also indicate the names of other modules that will be provided by that script; this prevents additional requests from being made for those other scripts, which helps avoid unnecessary I/O requests.
+</p>
+
+</div>
+<!-- SECTION [8167-8754] -->
+<a name="fetching_semantics"></a><h3>Fetching semantics</h3>
+<div class="level3">
+
+<p>
+ The <code>fetch</code> hook takes a resolved address and performs an asynchronous fetch of the module&rsquo;s source code. It is provided with success and error callbacks.
+</p>
+
+</div>
+<!-- SECTION [8755-8942] -->
+<a name="translation_semantics"></a><h3>Translation semantics</h3>
+<div class="level3">
+
+<p>
+ The <code>translate</code> hook can choose to analyze or transform source code, performing arbitrary compilation services.
+</p>
+
+</div>
+<!-- SECTION [8943-9090] -->
+<a name="link_semantics"></a><h3>Link semantics</h3>
+<div class="level3">
+
+<p>
+ The <code>link</code> hook can choose to provide a fully linked module or a blueprint for how to link the module lazily. This blueprint lists the module names that are the dependencies of the module, and optionally the names of the exports that the module will provide, along with a &ldquo;factory&rdquo; function for initializing the module. The loader then loads the dependencies before calling the factory function with its dependencies as arguments.
+</p>
+
+</div>
+<!-- SECTION [9091-9550] -->
+<a name="loader_api"></a><h2>Loader API</h2>
+<div class="level2">
+
+</div>
+<!-- SECTION [9551-9574] -->
+<a name="new_loader_options"></a><h3>new Loader( [ options ] )</h3>
+<div class="level3">
+
+<p>
+ The <code>Loader</code> constructor creates a new loader with a set of options.
+</p>
+
+</div>
+<!-- SECTION [9575-9683] -->
+<a name="options.global"></a><h4>options.global</h4>
+<div class="level4">
+
+<p>
+ The loader&rsquo;s global object (see below).
+</p>
+
+</div>
+<!-- SECTION [9684-9748] -->
+<a name="options.intrinsics"></a><h4>options.intrinsics</h4>
+<div class="level4">
+
+<p>
+ The source of the loader&rsquo;s intrinsics (see below). This can either be an existing loader or <code>null</code>, the latter indicating that the loader&rsquo;s intrinsics should be created fresh.
+</p>
+
+</div>
+<!-- SECTION [9749-9955] -->
+<a name="options.strict"></a><h4>options.strict</h4>
+<div class="level4">
+
+<p>
+ A flag indicating whether code evaluated in the loader should start out in strict mode.
+</p>
+
+</div>
+<!-- SECTION [9956-10068] -->
+<a name="options.normalize_request_referer"></a><h4>options.normalize( request, referer )</h4>
+<div class="level4">
+
+<p>
+ The module name normalization hook. This receives the requested module name and referer information:
+</p>
+<pre class="code javascript">referer = <span class="br0">&#123;</span>
+    <span class="kw3">name</span>: string,
+    address: string
+<span class="br0">&#125;</span> | <span class="kw2">null</span></pre>
+<p>
+and produces a module name or an object containing the normalized name and a metadata value:
+</p>
+<pre class="code javascript"><span class="br0">&#123;</span>
+    normalized: string,
+    metadata: any
+<span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [10069-10470] -->
+<a name="options.resolve_normalized_referer_metadata"></a><h4>options.resolve( normalized, { referer, metadata } )</h4>
+<div class="level4">
+
+<p>
+ The resolution hook receives the normalized module name, the referer information, and the metadata. It produces either an address string or an object:
+</p>
+<pre class="code javascript"><span class="br0">&#123;</span>
+    address: string,
+    extra: <span class="br0">&#91;</span>string<span class="br0">&#93;</span>
+<span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [10471-10756] -->
+<a name="options.fetch_resolved_fulfill_reject_normalized_referer_metadata"></a><h4>options.fetch( resolved, fulfill, reject, { normalized, referer, metadata } )</h4>
+<div class="level4">
+
+<p>
+ The fetch hook receives the resolved address, success and error callbacks, the normalized module name, the referer information, and the metadata. Its result is ignored; it can choose asynchronously to call one of the two callbacks.
+</p>
+
+</div>
+<!-- SECTION [10757-11076] -->
+<a name="options.translate_source_normalized_address_metadata_type"></a><h4>options.translate( source, { normalized, address, metadata, type } )</h4>
+<div class="level4">
+
+<p>
+ The translation hook receives the downloaded source code, the normalized module name (if any), the address, the metadata, and either &lsquo;module&rsquo; or &lsquo;script&rsquo; indicating which type of source file is being translated.
+</p>
+
+</div>
+<!-- SECTION [11077-11367] -->
+<a name="options.link_source_normalized_address_metadata_type"></a><h4>options.link( source, { normalized, address, metadata, type } )</h4>
+<div class="level4">
+
+<p>
+ The link hook receives the translated source and all the additional accumulated context information as before, and produces either a fully initialized module instance object or a link object as described above.
+</p>
+
+</div>
+<!-- SECTION [11368-11652] -->
+<a name="loader.prototype.get_global"></a><h3>Loader.prototype.get global()</h3>
+<div class="level3">
+
+<p>
+ The <code>global</code> accessor returns the global object encapsulated by the loader.
+</p>
+
+</div>
+<!-- SECTION [11653-11772] -->
+<a name="loader.prototype.load_address_callback_errback_referer_null"></a><h3>Loader.prototype.load( address, callback, errback, referer = null )</h3>
+<div class="level3">
+
+<p>
+ Asynchronously load a script file or sequence of script files.
+</p>
+
+</div>
+<!-- SECTION [11773-11915] -->
+<a name="loader.prototype.import_name_callback_errback_referer_null"></a><h3>Loader.prototype.import( name, callback, errback, referer = null )</h3>
+<div class="level3">
+
+<p>
+ Asynchronously load a module or sequence of modules by name.
+</p>
+
+</div>
+<!-- SECTION [11916-12055] -->
+<a name="loader.prototype.fetch_name_callback_errback_referer_null"></a><h3>Loader.prototype.fetch( name, callback, errback, referer = null )</h3>
+<div class="level3">
+
+<p>
+ Asynchronously load and compile but do not execute a module or sequence of modules by name.
+</p>
+
+</div>
+<!-- SECTION [12056-12225] -->
+<a name="loader.prototype.eval_src"></a><h3>Loader.prototype.eval( src )</h3>
+<div class="level3">
+
+<p>
+ Synchronously executes a <code>Script</code> non-terminal. If the compilation process results in a fetch, a <code>SyntaxError</code> is thrown.
+</p>
+
+<p>
+The compiled code is statically associated with this loader.
+</p>
+
+<p>
+If and when compilation succeeds, globals defined by the evaluated <code>Script</code> are added to the global object. If compilation fails, the global object is unchanged.
+</p>
+
+</div>
+<!-- SECTION [12226-12619] -->
+<a name="loader.prototype.evalasync_src_callback_errback"></a><h3>Loader.prototype.evalAsync( src, callback, errback )</h3>
+<div class="level3">
+
+<p>
+ Asynchronously executes a <code>Script</code> non-terminal.
+</p>
+
+<p>
+The compiled code is statically associated with this loader.
+</p>
+
+<p>
+If and when compilation succeeds, globals defined by the evaluated <code>Script</code> are added to the global object. If compilation fails, the global object is unchanged.
+</p>
+
+</div>
+<!-- SECTION [12620-12962] -->
+<a name="loader.prototype.get_name"></a><h3>Loader.prototype.get( name )</h3>
+<div class="level3">
+
+<p>
+ Look up a module in the loader&rsquo;s registry, using a name that is assumed to be normalized. If the module is found, it first executes the module if it&rsquo;s never been executed, and then returns the module instance object. Otherwise, it returns <code>null</code>.
+</p>
+
+</div>
+<!-- SECTION [12963-13252] -->
+<a name="loader.prototype.set_name_mod"></a><h3>Loader.prototype.set( name, mod )</h3>
+<div class="level3">
+
+<p>
+ Stores (possibly overwriting) a module instance object in the loader&rsquo;s registry, using a name that is assumed to be normalized.
+</p>
+
+</div>
+<!-- SECTION [13253-13426] -->
+<a name="loader.prototype.has_name"></a><h3>Loader.prototype.has( name )</h3>
+<div class="level3">
+
+<p>
+ Determines whether a module is loaded, by name.
+</p>
+
+</div>
+<!-- SECTION [13427-13515] -->
+<a name="loader.prototype.delete_name"></a><h3>Loader.prototype.delete ( name )</h3>
+<div class="level3">
+
+<p>
+ Removes a module from the loader&rsquo;s registry.
+</p>
+
+</div>
+<!-- SECTION [13516-13605] -->
+<a name="loader.prototype.definebuiltins_obj"></a><h3>Loader.prototype.defineBuiltins( [ obj ] )</h3>
+<div class="level3">
+
+<p>
+ The <code>defineBuiltins</code> method takes an object and defines all the built-in objects and functions of the ES6 standard library associated with this loader&rsquo;s intrinsics as properties on the object.
+</p>
+
+</div>
+<!-- SECTION [13606-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/e/e8acd3f7a56234f67c0f42b4d4d06ca3.xhtml used -->
+</body>
+</html>

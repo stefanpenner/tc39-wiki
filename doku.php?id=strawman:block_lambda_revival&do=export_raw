@@ -1,0 +1,298 @@
+===== Prologue =====
+
+As a mutually exclusive alternative to [[strawman:arrow function syntax]], inspired by the long [[https://mail.mozilla.org/listinfo/es-discuss|es-discuss]] thread [[https://mail.mozilla.org/pipermail/es-discuss/2008-November/008216.html|Allen's lambda syntax proposal]] and echoes and followups since, here is a proposal for Tennent Correspondence Principle, AKA "Principle of Abstraction" full-strength blocks as better functions, both syntactically and semantically.
+
+An essential part of this proposal is a paren-free call syntax, but only for calls bearing block arguments. A more general [[strawman:paren_free]] call syntax could perhaps be separated and considered on its own, but I'm specializing and combining proposals here to work through details holistically, and to emphasize that usability demands this syntax, based on Smalltalk, Ruby, and E expert witness testimony.
+
+Also, general paren-free call syntax poses parsing and compatibility challenges that add (I believe) much more complexity than the paren-free block-argument-bearing call syntax proposed here.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/05/20 21:52//
+
+
+
+
+
+===== Proposal =====
+
+<code javascript>
+let empty = {||};                           // empty block-lambda (note || not | |)
+
+assert(empty() === undefined);
+assert(typeof empty === "function");        // native and does implement [[Call]]
+assert(empty.length === 0);
+
+let identity = {|x| x};                     // reformed completion is return value
+
+assert(identity(42) === 42);
+assert(identity.length === 1);
+
+let a = [1, 2, 3, 4];
+let b = a.map {|e| e * e}                   // paren-free call with block is
+                                            // idiomatic control structure so
+                                            // no semicolon at end
+
+print(b);                                   // [1, 4, 9, 16]
+
+b = a.map {|e|                              // newline in block ok
+           e * e * e}                       // newline after ends call
+
+function find_first_odd(a) {
+  a.forEach { |e, i|
+              if (e & 1) return i; }        // return from find_first_odd
+  return -1;
+}
+
+function escape_return() {
+  return {|e| return e};
+}
+b = escape_return();
+try { b(42); } catch (e) {}                 // error, return from inactive function
+
+function find_odds_in_arrays(list,          // array of arrays
+                             skip)          // if found, skip rest of current array
+{
+  let a = [];
+  for (let i = 0; i < list.length; i++) {
+    list[i].forEach {
+      |e|
+      if (e === skip) continue;             // continue the for loop
+      if (e & 1) a.push(e);
+    }
+  }
+  return a;
+}
+
+function find_more_odds(list, stop) {
+  let a = [];
+  for (let i = 0; i < list.length; i++) {
+    list[i].forEach {
+      |e|
+      if (e === stop) break;                // break from the for loop
+      if (e & 1) a.push(e);
+    }
+  }
+  return a;
+}
+
+function arguments_in_block() {
+  return {|| arguments};
+}
+b = arguments_in_block("hi", "there");
+a = b();
+
+print(Array.prototype.join.call(a));        // "hi","there"
+
+function this_in_block() {
+  return {|| this};
+}
+let o = {m: this_in_block};
+let b = o.m();
+let t = b();
+
+assert(t === o);
+
+let p = {};
+let u = b.call(p);
+
+assert(u === o);
+
+/* Another block-lambdas example, courtesy Claus Reinke. */
+
+function A() {
+  let ret = {|x| return x; };               // Tennent "sequel"
+  let inc = {|x| x+1 };
+  let j = 0;
+  while (true) {
+    if (j > 3)
+      ret(j);                               // leave function A
+    j = inc(j);
+  }
+}
+
+/* A Smalltalk ifTrue:ifFalse: homage requested by Peter Michaux. */
+
+Object.defineProperty(
+  Boolean.prototype,
+  'ifElse',
+  {
+    value: function (ifTrue, ifFalse) {
+      return this ? ifTrue() : ifFalse();
+    }
+  }
+);
+
+print(false.ifElse {|| "true"} {|| "false"}); // "false"
+print(true.ifElse {|| "true"} {|| "false"});  // "true"
+
+</code>
+
+
+
+===== Syntax =====
+
+Change all uses of //AssignmentExpression// outside of the //Expression// sub-grammar to //InitialValue//:
+
+<code ebnf>
+ElementList :                               // See 11.1.4
+    Elision_opt InitialValue
+    ElementList , Elision_opt InitialValue
+
+PropertyAssignment :                        // See 11.1.5
+    PropertyName : InitialValue
+
+ArgumentList :                              // See 11.2
+    InitialValue
+    ArgumentList , InitialValue
+
+Initialiser :                               // See 12.2
+    = InitialValue
+
+InitialiserNoIn :                           // See 12.2
+    = InitialValueNoIn
+
+InitialValue :
+    AssignmentExpression
+    CallWithBlockArguments
+
+Statement :
+    ...
+    CallWithBlockArguments
+    LeftHandSideExpression = CallWithBlockArguments
+    LeftHandSideExpression AssignmentOperator CallWithBlockArguments
+
+MemberExpression :
+    ...
+    BlockLambda
+
+PrimaryExpression :
+    ...
+    ( CallWithBlockArguments )
+
+CallWithBlockArguments :
+    LeftHandSideExpression [no LineTerminator here] BlockArguments
+
+BlockArguments :
+    BlockLambda
+    BlockArguments [no LineTerminator here] BlockLambda
+
+BlockLambda :
+    { || StatementList_opt }
+    { | BlockParameterList_opt | StatementList_opt }
+
+BlockParameterList :
+    BlockParameter
+    BlockParameterList , BlockParameter
+
+BlockParameter :
+    Identifier BlockParameterInitialiser_opt
+    Pattern BlockParameterInitialiser_opt
+
+BlockParameterInitialiser :
+    = BitwiseXorExpression
+</code>
+
+Notes:
+
+  * The grammar above confines paren-free calls with block-lambda initial arguments and comma-free horizontal spaces only between arguments to certain contexts:
+    * Initial values, in object and array initialisers, argument lists, default parameter values, and variable declaration initialiser.
+    * Statements, either as the whole of an expression statement variant, or on the right of a left-hand side expression followed by ''='' or an //AssignmentOperator//.
+  * The grammar changes show //Pattern// for [[harmony:destructuring]], but I left out [[harmony:rest_parameters]] syntax for simplicity's sake.
+  * With GLR parsing for the spec grammar, we could consider, e.g. ''(x) {x}'' instead of ''{|x| x}'' with //LineTerminator// excluded between parameters and body.
+    * But this syntax does not look like a block, and it may lead to missing newline errors between calls and blocks being parsed without error.
+    * So this is a cautionary tale: we do not want something that looks like a function expression more than a block, given TCP purity.
+
+===== Semantics =====
+
+**8.6.2 Object Internal Properties and Methods**
+
+**Table 9 -- Internal Properties Only Defined for Some Objects**
+
+^Internal Property^Value Type Domain^Description^
+|''%%[[Call]]%%''|SpecOp(any, a List of any) → any or Reference or Completion|Executes code associated with the object. Invoked via a function call expression. The arguments to the SpecOp are this object and a list containing the arguments passed to the function call expression. Objects that implement this internal method are callable. Only callable objects that are host objects may return Reference values. Only block-lambda objects (11.1.7) may return Completion values (8.9)^
+
+**11.1.7 Block Lambda**
+
+The production //BlockLambda//'' : { | ''//BlockParameterList//''<sub>opt</sub> %%|%% ''//StatementList//''<sub>opt</sub> }'' is evaluated as follows:
+
+  - Create a new native ECMAScript object and let //B// be that object.
+  - Set all the internal methods of //B// as described in 8.12.
+  - Set the ''%%[[Class]]%%'' internal property of //B// to "Function".
+  - Set the ''%%[[Prototype]]%%'' internal property of //B// to the standard built-in Function prototype object as specified in 15.3.3.1.
+  - Set the ''%%[[Call]]%%'' internal property of //B// as described in 11.1.7.1.
+  - Set the ''%%[[Scope]]%%'' internal property of //B// to the LexicalEnvironment of the running execution context.
+  - Set the ''%%[[Context]]%%'' internal property of //B// to the running execution context.
+  - Let //names// be a List containing, in left to right textual order, the Strings corresponding to the identifiers of //BlockParameterList//. If no parameters are specified, let //names// be the empty list.
+  - Set the ''%%[[FormalParameters]]%%'' internal property of //B// to //names//.
+  - Set the ''%%[[Code]]%%'' internal property of //B// to //StatementList//''<sub>opt</sub>''. If there is no //StatementList//, set ''%%[[Code]]%%'' to an //EmptyStatement//.
+  - Set the ''%%[[Extensible]]%%'' internal property of //B// to true.
+  - Let //len// be the number of formal parameters specified in //BlockParameterList//. If no parameters are specified, let //len// be 0.
+  - Call the ''%%[[DefineOwnProperty]]%%'' internal method of //B// with arguments ''**"length"**'', Property Descriptor ''{%%[[Value]]%%: ''//len//'', %%[[Writable]]%%: **false**, %%[[Enumerable]]%%: **false**, %%[[Configurable]]%%: **false**}'', and ''**false**''.
+  - Return the block-lambda object //B//.
+
+Block-lambda parameter lists should support everything in Harmony that one can do in function formal parameter lists: [[harmony:parameter default values]], [[harmony:rest parameters]], and [[harmony:destructuring]].
+
+The //BlockParameterList//, //BlockParameter//, and //BlockParameterInitialiser// productions have straightforward semantics, elided here mainly because I don't want to duplicate all the existing //FormalParameterList//, etc. semantics.
+
+**11.1.7.1 ''%%[[Call]]%%''**
+
+When the ''%%[[Call]]%%'' internal method for a block-lambda object //B// is called with a list of arguments, the following steps are taken:
+
+  - Let //funcCtx// be the result of establishing a new execution context for function code using the value of //B//'s ''%%[[FormalParameters]]%%'' internal property, the passed arguments List //args//, and the **this** value given by the ThisBinding component of the execution context in //B//'s ''%%[[Context]]%%'' internal property.
+  - Let //result// be the result of evaluating the //StatementList// or //EmptyStatement// that is the value of //B//'s ''%%[[Code]]%%'' internal property.
+  - Exit the execution context //funcCtx//, restoring the previous execution context.
+  - If //result//.type is **normal** and //result//.value is **empty** then return (**normal**, ''**undefined**'', **empty**).
+  - Else if //result//.type is **break**, **continue**, or **return** and the execution context in //B//'s ''%%[[Context]]%%'' internal property has already exited, throw a **TypeError** exception.
+  - Else if //result//.type is **break** or **continue** and evaluation of the label-set //result//.target has already completed, throw a **TypeError** exception.
+  - Else return the Completion value //result//.
+
+TODO: forbid ''var'' in block-lambdas via early error (yeah!)
+
+**11.2.3 Function Calls**
+
+//...//
+
+TODO: Process Completion return type
+
+The production //CallWithBlockArguments//'' : ''//LeftHandSideExpression//'' [no ''//LineTerminator//'' here] ''//BlockArguments// is evaluated in exactly the same manner, except that //BlockArguments// is evaluated instead of //Arguments// in step 3.
+
+(This paragraph goes just before the NOTE at the bottom of 11.2.3.)
+
+**11.2.4 Argument Lists**
+
+//...//
+
+The production //BlockArguments//'' : ''//BlockLambda// is evaluated as follows:
+
+  - Let //ref// be the result of evaluating //BlockLambda//.
+  - Let //arg// be GetValue(//ref//).
+  - Return a List whose sole item is //arg//.
+
+The production //BlockArguments//'' : ''//BlockArguments//'' [no ''//LineTerminator//'' here] ''//BlockLambda// is evaluated as follows:
+
+  - Let //precedingArgs// be the result of evaluating //BlockArguments//.
+  - Let //ref// be the result of evaluating //BlockLambda//.
+  - Let //arg// be GetValue(//ref//).
+  - Return a List whose length is one greater than the length of //precedingArgs// and whose items are the items of //precedingArgs//, in order, followed at the end by //arg// which is the last item of the new list.
+
+**12.7 The ''continue'' Statement**
+
+The verbiage about "(but not crossing function boundaries)" should be clarified to exclude block-lambda boundaries, which are treated like //Block// boundaries.
+
+**12.8 The ''break'' Statement**
+
+The verbiage about "(but not crossing function boundaries)" should be clarified to exclude block-lambda boundaries, which are treated like //Block// boundaries.
+
+**12.9 The ''return'' Statement**
+
+The verbiage about "A return statement causes a function to cease execution and return a value to the caller" should be clarified to include ''return'' in block-lambda attempting to exit the nearest enclosing //FunctionBody//.
+
+Notes:
+
+  * [[strawman:completion reform]] should be considered since the completion value is the return value for block lambdas.
+  * Existing semantic early error checks on label use, ''break'' outside of ''switch'' and loop, etc. work as before, but cross the block-lambda boundary.
+  * The runtime semantics for block-lambda ''%%[[Call]]%%'' must handle ''return'' from an outer function activation that has already returned.
+
+===== See Also =====
+
+  * [[strawman:arrow function syntax]], an alternative considering only syntax, without new semantics
+  * [[http://lists.squeakfoundation.org/pipermail/squeak-dev/2001-April/008237.html|Allen's "Comments on Smalltalk block closure designs, part 1"]]

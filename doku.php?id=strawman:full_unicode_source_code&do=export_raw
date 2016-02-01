@@ -1,0 +1,39 @@
+====== Basic Support for Full Unicode Source Code and non-BMP escapes ======
+Allen Wirfs-Brock
+
+//This page is complementary to [[harmony:Unicode supplementary characters]]. The Unicode escape sequences previously proposed here have been integrated into that proposal.//
+
+ECMAScript currently only directly supports the 16-bit basic multilingual plane (BMP) subset of Unicode which is all that existed when ECMAScript was first designed.  Since then Unicode has been extended to  require up to 21-bits per code. Characters whose Unicode codepoint can not be expressed in 16-bits are called "supplementary characters".  As currently specified by ES5.1, supplementary characters cannot be used in the source code of ECMAScript programs.  However, some implementation current do allow ECMAScript source code to contain supplementary characters.  This proposal makes the explicitly makes it legal for supplementary characters to appear in ECMAScript source code and provides an escape sequence syntax for explicitly expressing supplementary characters via their hexadecimal codepoints. 
+
+
+See [[http://www.w3.org/International/wiki/JavaScriptInternationalization|JavaScript Internationalization]] for the W3C Internationalization WG's take on some issues regarding Unicode support in ECMAScript.
+
+===== Support Full Unicode in ECMAScript Source Code =====
+
+==== Input Encoding ====
+
+Clause 6 of the ECMAScript 5.1 specification states "ECMAScript source text is presented as a sequence of characters in the Unicode character encoding" and it goes on to say that the text "is expected to have been normalised to Unicode Normalization Form C".  However, it also states that "source text is assumed to be a sequence of 16-bit code units for the purpose of this specification".
+
+As part of this proposal, the statement about assuming 16-bit code units will be deleted.  In addition throughout the specification all occurrence of "code unit" relating to ECMAScript source code and implying 16-bit characters will be replaced with "code point" which means the canonical encoding of any possible Unicode character.
+
+The definition of //SourceCharacter// is changed to:
+
+//SourceCharacter// :: \\
+ any Unicode character
+
+meaning any Unicode character, independent of encoding considerations. The reverts the specification to the production definition used in ES3 even though in practice ES3 required //SourceCharacter// to be 16-bit code units.
+
+More generally, it is beyond the scope of a language specification to require any specific external encoding of source programs of that language.  Dealing with various possible external encodings is more a matter for communication protocols, host platforms, and language implementations. What is appropriate (and necessary) is for the language specification to define a specific input alphabet for its lexical grammar. Clauses 6 and 7 will be updated to clarify that the alphabet of the lexical grammar is full Unicode Normalization Form C. Any implications concerning external source code encoding or implications that implementations must use some specific internal encoding of source program text will be removed.
+
+==== No Implications for String Value Encodings ====
+This specific proposal intentionally does not say anything about the encoding of supplementary characters as elements of ECMAScript string values or RegExp objects. That may be the subject or other proposals.  The only requirement of this proposal with regard to //StringLiteral// and //RegularExpressionLiteral// is that any occurrence of a full Unicode escape sequence must be treated as being semantically equivalent to the actual occurrence of the corresponding Unicode character.
+
+==== Backward and Forward Comparability Considerations  ====
+Some existing implementations automatically encode supplementary characters that occur in a //StringLiteral// as a two string element UTF-16 surrogate pair. In addition, some applications explicitly use sequences of the existing 16-bit Unicode escapes to explicitly express the UTF-16 encodings of supplementary characters.  For that reason, it is impossible to know for sure whether pairs of existing 16-bit Unicode escapes are intended to represent a single logical character or an explicit two character UTF-16 encoding of a Unicode characters. This makes it more difficult to change to the use of full Unicode character string elements in a manner that guarantees backwards compatibility for all existing programs. This proposal does not change in any way the current interpretation of existing 16-bit Unicode escapes in String Literals or anywhere else.  However the addition of full Unicode escapes allow programmers to unambiguously express the codepoint encoding of a single Unicode characters. This capability will be useful whether full Unicode string elements are added now or in some future edition. 
+
+
+==== Multi-character escapes  ====
+
+A possible extension is to allow multiple Unicode characters to be expressed using the new syntax.  For example, "\u{61,62,63}" would be equivalent to "abc".
+
+

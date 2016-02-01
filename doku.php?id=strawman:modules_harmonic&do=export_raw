@@ -1,0 +1,323 @@
+====== Introduction ======
+
+This is a proposal for modular programming support in ECMAScript, and is presented as two levels satisfying distinct programming styles.
+
+  * The //dependency injection// level provides purely injected dependencies and strict isolation between components.
+  * The //sandbox// level provides convenient interaction between a set of mutually cooperating modules following an idiomatic style.
+
+===== Syntax =====
+
+We define a //''Module''// production to describe the format of a modular compilation unit.
+
+<code>
+Module ::= (ImportDeclaration | RequireDeclaration)* ModuleElement*
+
+ModuleElement ::= Statement
+               |  FunctionDeclaration
+               |  ExportDeclaration
+</code>
+
+Note that, under this scheme, any ECMAScript //''Program''// is also a legal //''Module''//. We define //''ImportDeclaration''//, //''RequireDeclaration''// and //''ExportDeclaration''// below.
+
+Under this proposal, all modular code is interpreted as though with the directive ''use lexical scope''.
+
+It is a significant element of this proposal that, to facilitate traversing the dependencies of a module via a shallow parse, the //''ImportDeclaration''//s and //''RequireDeclaration''//s must appear at the top of the module, and these and the //''ExportDeclaration''//s must appear in the module's outermost lexical scope.
+
+===== Informal semantics =====
+
+We will define the semantics of our proposal by desugaring. In our desugared form, we will use the following function:
+
+<code javascript>
+function $get$(o, p) {
+  if (!Object.prototype.hasOwnProperty.call(o, p)) {
+    throw new ReferenceError();
+  }
+  return o[p];
+}
+</code> 
+
+For ''$get$'' and all other identifiers surrounded by ''$'', we assume some unexplained hygienic renaming scheme so we need not worry about collisions with the program being desugared.
+
+====== Dependency injection level ======
+
+At this level, a modular compilation unit is represented at runtime as a //module function//. A module function has no free variables. It closes over its implicit and explicit references to the language primordials (''Object'', ''Array'', ...) with which it was created.
+
+The value returned from calling a module function is an //instance// of that module. Unless the caller of the module arranges otherwise, successively created instances of the same module are isolated from one another, again except for their references to the primordials.
+
+===== Syntax =====
+
+<code>
+ImportDeclaration ::= 'import' ModuleSpecifier ImportSpecifier ';'
+
+ModuleSpecifier ::= StringLiteral
+
+ImportSpecifier ::= ModuleFunctionImportSpecifier
+                 |  InstanceImportSpecifier
+
+ModuleFunctionImportSpecifier ::= 'as' Identifier
+
+InstanceImportSpecifier ::= 'as' LeftHandSideExpression 'with' Expression
+
+ExportDeclaration ::= 'export' VariableStatement
+                   |  'export' FunctionDeclaration
+</code>
+
+We expect we can simplify the progamming work somewhat by eliminating extraneous ''const'' and ''function'' keywords. For example, the declarations:
+
+<code javascript>
+export const foo = 3;
+export function bar() {};
+</code>
+
+can be simplified to:
+
+<code javascript>
+export foo = 3;
+export bar() {};
+</code>
+
+===== Informal semantics =====
+
+As an example, consider a module stored as ''util/points.js'' which contains:
+
+<code javascript>
+import 'util/quanta' as {quantize} with {resolution: pixelSize};
+
+/* Constructor for Cartesian points */
+export function Cartesian(x, y) {
+  x = quantize(x); y = quantize(y);
+  return {
+    getX: function() { return x; },
+    getY: function() { return y; },
+    getM: function() { return Math.sqrt(x * x + y * y); }
+  };
+}
+
+/* Constructor for polar points */
+export function Polar(r, t) {
+  r = quantize(r);
+  return {
+    getR: function() { return r; },
+    getT: function() { return t; },
+    getM: function() { return r; }
+  };
+}
+</code>
+
+This code has a free variable ''pixelSize''; refers to a module ''util/quanta'' and the language primordial ''Math''; and //exports// the symbols ''Cartesian'' and ''Polar''. The code can read the value of ''pixelSize'' but cannot assign to it; ''pixelSize'' acts as as though it were a ''const'' declaration injected by the module framework. The module ''util/quanta.js'' contains:
+
+<code javascript>
+export function quantize(v) {
+  return Math.floor(v / resolution) * resolution;
+}
+
+export function isQuantized(v) {
+  return quantize(v) === v;
+}
+</code>
+
+This code has a free variable ''resolution''; refers to the language primordial ''Math'', and exports the symbols ''quantize'' and ''isQuantized''. The statement:
+
+<code javascript>import 'util/points' as Points;</code>
+
+assigns the value of the module function of ''util/points'' to the variable ''Points'' as though by a ''const'' declaration. The statement:
+
+<code javascript>import 'util/points' as Points3 with {pixelSize: 3};</code>
+
+assigns an //instance// of the ''util/points'' module, with variable ''pixelSize'' bound to the value ''3'', to the variable ''Points3''. The statement:
+
+<code javascript>import 'util/points' as {Cartesian, Polar} with {pixelSize: 3};</code>
+
+destructures the instance of ''util/points'', assigning its ''Cartesian'' and ''Polar'' member, respectively, to the newly declared ''const'' variables ''Cartesian'' and ''Polar''. The statement:
+
+<code javascript>import 'util/points' as {Cartesian: C, Polar: P} with {pixelSize: 3};</code>
+
+does a similar destructuring, but assigning to newly declared ''const'' variables ''C'' and ''P'', respectively.
+
+The module function of ''util/points'' can be defined by desugaring as being roughly the result of the interpreter calling the following function with ''$moduleFunctions$'' initialized to contain the module functions that this module depends on:
+
+<code javascript>
+function moduleMaker($importedModuleFunctions$) {
+
+  const $module_0$ = $importedModuleFunctions$('util/quanta');
+
+  const $moduleFcn$ = function($bindings$) {
+    const $exports$ = {};
+    const pixelSize = $get$($bindings$, 'pixelSize');
+    const {quantize} = $module_0$({resolution: pixelSize});
+    $exports$.Cartesian = function Cartesian(x, y) { /* ... */ };
+    $exports$.Polar = function Polar(r, t) { /* ... */ };
+    return Object.freeze($exports$);
+  };
+
+  $moduleFcn$.exportedSymbols = Object.freeze(['Cartesian', 'Polar']);
+  return Object.freeze($moduleFcn$);
+}
+</code>
+
+The symbols ''$bindings$'', ''$exports$'' and ''$importedModuleFunctions$'' are conceptually unmentionable variables inserted by the interpreter:
+
+  * The variable ''$bindings$'' holds the variables bindings (of free variables in the original module source) expected to be introduced by the module's caller. Specifically, the entry ''$bindings$['pixelSize']'' is the binding for the module free variable ''pixelSize''.
+
+  * The variable ''$export$'' holds the exported value of the module. The exported symbols ''Cartesian'' and ''Polar'' are assigned to it, then it is frozen.
+
+  * The variable ''$importedModuleFunctions$'' holds the module functions of code that is statically recognized by the interpreter based on its recognition of the ''import'' special form in the code. The entry ''$moduleFunction$('util/quantize')'' is a reference to the module function of the ''util/quantize'' module.
+
+The module function is annotated with the array ''exportedSymbols'' to allow the sandbox layer to pre-wire module symbols in order to resolve dependency cycles.
+
+Code which gains direct access to a module function, like the following:
+
+<code javascript>import 'util/points' as Points';</code>
+
+desugars to:
+
+<code javascript>
+function moduleMaker($importedModuleFunctions$) {
+
+  const $module_0$ = $importedModuleFunctions$('util/points');
+
+  const $moduleFcn$ = function($bindings$) {
+    const $exports$ = {};
+    const Points = $module_0$;
+    return Object.freeze($exports$);
+  };
+
+  $moduleFcn$.exportedSymbols = Object.freeze([]);
+  return Object.freeze($moduleFcn$);
+}
+</code>
+
+===== Entry points =====
+
+An ECMAScript platform will provide one or more module importing functions, which we call //platform import-module// or ''pim''. Each such function takes a module identifier and returns, asynchronously, a module function:
+
+<code javascript>
+pim('util/points', function(moduleFunction) {
+  // receive module function
+});
+</code>
+
+The return value will typically be asynchronous since, in the general case, the ''pim'' function must perform I/O to locate the dependencies of the loaded modules.
+
+The returned module function is statically bound to the entire graph of ''import''-ed module functions upon which it depends. This graph is, in turn, statically bound to a given set of language primordials (''Object'', ''Math'', ...). A variant of the ''pim'' function may allow the caller to supply an alternate set of primordials:
+
+<code javascript>
+const primordials = /* manufacture new primordials */;
+pim('util/points', primordials, function(moduleFunction) {
+  // receive module function
+});
+</code>
+
+Once the module function is available, it can be called with bindings for its free variables. The returned result is a frozen object containing the module's exports:
+
+<code javascript>
+const instance = moduleFunction({pixelSize: 3});
+/* Can now use ... */
+instance.Cartesian, instance.Polar;
+</code>
+
+To refer to one another unambiguously, modules may wish to use some packaging scheme similar to [[strawman:modules_packages]]. The salient property of such a scheme is that each module specifies a naming context within which a short name that can be conveniently embedded in the source code (like ''util/points'') is resolved to an exact location (like ''https://m.example.com/rel/3.7.1a/pkg/dist/util/points.js''). In resolving dependencies, the ''pim'' function needs to be aware of the specific module's naming context. This can be done in two ways:
+
+  * By designing the ''pim'' function implementation to be aware of the specific naming mechanism -- e.g., by providing built-in support for a packaging scheme; or
+  * By building the ''pim'' function such that it calls back to its invoker to resolve identifiers found in the source code, or even to fetch the text of modules given their identifiers, thus allowing the invoker to implement whatever naming scheme they wish.
+
+We propose for the interface of a module function to be standardized. We leave open the question of whether one or more forms of a ''pim'' function should be standardized.
+
+====== Sandbox level ======
+
+At this level, there exists an implicit environment, a //sandbox//, which contains a singleton instance of each distinct module. These singletons refer to one another's exports freely. The sandbox, and bindings for free variables of module code, are injected into the modules implicitly.
+
+===== Syntax =====
+
+<code>
+RequireDeclaration ::= 'require' ModuleSpecifier 'as' LeftHandSideExpression ';'
+</code>
+
+We define ''require'' to be a contextually reserved word for this statement form, but do not otherwise reserve it in other locations in the language.
+
+===== Informal semantics =====
+
+A //''RequireDeclaration''// desugars to an invocation of the free variable ''require'' on the module function of the named module. So for example, the code:
+
+<code javascript>
+require 'util/points' as {Cartesian, Polar};
+import 'util/points' as PointModule;
+export const thePoint = Cartesian(xCoord, yCoord);
+</code>
+
+requests an ambient instance of the ''util/points'' module, then returns a ''Cartesian'' object based on free variables ''xCoord'' and ''yCoord''. This would desugar to the following:
+
+<code javascript>
+function moduleMaker($importedModuleFunctions$, $requiredModuleFunctions$) {
+
+  const $module_0$ = $requiredModuleFunctions$('util/points');
+  const $module_1$ = $importedModuleFunctions$('util/points');
+
+  const $moduleFcn$ = function($bindings$, $require$) {
+    const $exports$ = {};
+    const xCoord = $get$($bindings$, 'xCoord');
+    const yCoord = $get$($bindings$, 'yCoord');
+    const {Cartesian, Polar} = $require$($module_0$);
+    const PointModule = $module_1$;
+    $exports$.thePoint = Cartesian(xCoord, yCoord);
+    $exports$.Polar = function Polar(r, t) { /* ... */ };
+    return Object.freeze($exports$);
+  };
+
+  $moduleFcn$.exportedSymbols = Object.freeze(['thePoint']);
+  return Object.freeze($moduleFcn$);
+}
+</code>
+
+The second argument of the module function is assumed to point to a "sandbox" which memoizes instances of each module by identity. It is the responsibility of the sandbox, when invoking module functions, to pass bindings for the free variables. As such, a group of modules seeking to occupy the same sandbox will have the same set of free variables. For example, a set of modules expecting to occupy a Web page might have the free variables ''document'' and ''navigator''.
+
+Note that we look up module names in two separate namespaces: the //imported// and //required//. This is because, conceptually, an ''import'' is resolved relative to a namespace under the control of the ''import''-ing module (e.g., perhaps, some "package" that the module a came in), whereas a ''require'' is resolved relative to a namespace under the control of the sandbox, and the code building a sandbox must arrange for the modules in the sandbox to //share// the same mapping. This ensures that, if two modules ''require'' the singleton instance of a module they call ''util/points'', what they get is deterministically indeed a singleton, not a different instance depending on their local mapping.
+
+For circularly dependent modules, consider ''util/even'' containing:
+
+<code javascript>
+require ''util/odd'' as {odd};
+export function even(n) {
+  return n == 0 || odd(n - 1);
+}
+</code>
+
+and ''util/odd'' containing: 
+
+<code javascript>
+require ''util/even'' as {even};
+export function odd(n) {
+  return n != 0 && even(n - 1);
+}
+</code>
+
+This is easily supported: because the desugaring of each module function lists its exports, a sandbox can pre-wire the symbols using proxies, then resolve the proxies as modules complete their execution.
+
+===== Entry points =====
+
+A sandbox is constructed by supplying:
+
+  * A module identifier for the root-most module to be instantiated in the sandbox;
+  * A set of mappings from short names to exact module identifiers;
+  * A set of bindings for free variables of all modules in the sandbox; and
+  * Optionally, a set of language primordials to be used by the modules in the sandbox.
+
+As with the dependency injection ''pim'' function, the module functions created by this process are statically bound to one another's dependencies and to the supplied primordials.
+
+An example of invoking the sandbox builder, which we call ''sbx'', is:
+
+<code javascript>
+sbx(
+  'util/points',
+  nameMappings,
+  {pixelSize: 3},
+  function(moduleInstance) {
+    // receive module instance
+  });
+</code>
+
+As with the case of ''pim'' at the dependency injection level, the ''sbx'' function may instead receive a callback to the invoker to resolve identifiers or even fetch the text of modules. Similarly, we leave open the question of whether some forms of the ''sbx'' function should be standardized.
+
+================== TODO ==================
+
+  * Integration into HTML

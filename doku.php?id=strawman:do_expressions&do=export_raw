@@ -1,0 +1,31 @@
+===== Overview =====
+
+JS has [[http://www.youtube.com/watch?v=Q_UsmvtyxEI|too many statements]]! This proposal makes it easier to do all the flexible things you can do with statements while still producing a useful result and plugging that back into an expression context.
+
+Compound expressions with side-effects are possible with comma-expressions, but limited and awkward, and they can't bind temporary variables. ES4 had multiple variations on ''let'', but this took up valuable grammar real estate.
+
+This proposal is an alternative to the deferred [[let expressions]], which simply introduces a way to treat a block statement as an expression by prefixing it with ''do''.
+
+Examples:
+
+<code javascript>
+x = do { let t = f(); t * t + 1 };
+print(do { let x = f(); g(x, x) });
+</code>
+
+===== Syntax =====
+
+<code ebnf>
+PrimaryExpression :
+    "do" Block
+    ...
+ExpressionStatement :
+    [lookahead ∉ { "{", "function", "do" }] Expression ;
+
+// "..." means existing members defined elsewhere
+</code>
+
+
+===== Semantics =====
+
+The semantics of a ''do'' expression is simple: evaluate the body and produce its completion value.

@@ -1,0 +1,122 @@
+====== THIS PAGE IS NO LONGER CURRENT ======
+
+{{harmony:warning.png?100}} **WARNING:** This page is **out of date**. Please see the ES6 [[specification drafts]] for up-to-date information. This page is here only as an archive.
+
+
+
+====== Motivations ======
+
+===== Core module system =====
+
+  * Standardized mechanism for creating libraries.
+  * In-language loading of external modules (non-blocking, direct style).
+  * Portability between different host environments.
+  * Future-proof mechanism for platforms to introduce experimental libraries without collision.
+  * No installation/registration code within modules.
+
+===== Module API =====
+
+  * Fine-grained isolation/sandboxing of dynamic evaluation.
+  * Formalize the "multiple globals" semantics of the web.
+  * In-language mechanism for extension of language, loading semantics.
+
+====== Design Points ======
+
+===== Static modules =====
+
+  * **Modules are not an expression form.**
+
+Modules are static by default (but can be dynamically reflected), in part because this is their common use case. This also makes them far more compatible with static scoping. The loaders API makes it possible to achieve more dynamic uses of modules, but static modules makes it possible to do static loading and linking. For more dynamic component mechanisms, JavaScript objects and functions already provide enough expressiveness and flexibility.
+
+  * **Loading is performed at compile time.**
+
+This makes it possible to load from the filesystem or network in direct style (instead of with callbacks) without blocking the main thread of execution.
+
+  * **Linking is performed at compile time.**
+
+Modules are used for scoping, and one of the top goals of Harmony is to preserve and promote static, lexical scoping. This avoids the many problems of dynamic scope: programming pitfalls (accidental or malicious scope injection), performance hazards, lack of modularity. Static scoping is also necessary for the Harmony feature of checking for unbound variables at compile time.
+
+===== Closed modules =====
+
+  * **Modules are generally less dynamic/modifiable than traditional objects.**
+
+Modules provide the static definitions of a library, which are linked statically (see the "static modules" section).
+
+  * **Import declarations are resolved statically.**
+
+If import declarations were resolved dynamically, then imported variables would be dynamically scoped. Harmony will not have any dynamic scoping (see the "static modules" section).
+
+  * **Module exports cannot be removed.**
+
+If exports could be removed, then imported variables would be dynamically scoped. Harmony will not have any dynamic scoping (see the "static modules" section).
+
+  * **Module exports cannot be mutated by clients.**
+
+This makes it possible for a library writer to have a minimal amount of local control over what clients can and can't do. Of course, the library can always export objects whose //contents// can be mutated.
+
+Secondarily, this also enables optimizations such as inlining and constant propagation for pre-defined system libraries, and dynamically for user-written const library exports once they've been initialized.
+
+  * **Modules cannot be extended with additional dynamic exports.**
+
+This would lead to a subtle difference between static module paths and dynamic module paths:
+
+<code javascript>
+import m.n.o.dynamicallyAddedExport;  // fails
+var x = m.n.o.dynamicallyAddedExport; // succeeds
+</code>
+
+  * **Modules are not closed by default with an optional ''open'' annotation allowing extensibility.**
+
+This would be more complex, and would suffer the same problem: static module paths would reject paths that might succeed at runtime. Modules can achieve extensibility by, for example, exporting a ''plugins'' object.
+
+  * **Modules are not open by default with a dynamic "sealing" operation.**
+
+This would make it very difficult to know what other code might have run before the module was sealed.
+
+  * **Modules are not open by default with an optional ''sealed'' annotation.**
+
+This would still be complex and suffer from the divergent behavior between static and dynamic module paths.
+
+  * **Module globals are unexported by default.**
+
+An alternative would be to have all top-level bindings be exported and require declaring hidden top-level bindings private to avoid exporting them. This is inconvenient and leads to accidental exports when creating local/temporary definitions in a module. CommonJS experience shows that it works well to have explicit exports.
+
+===== Hierarchical modules =====
+
+  * **Modules can be nested.**
+
+This makes it convenient to modularize code cheaply, without having to create separate files. It is also consistent with the semantics that file top-level is implicitly a module but can contain sub-modules. Finally, it makes refactoring work well: code separated into modules can itself be separated into a new parent module.
+
+  * **File top-level is the body of an implicit module.**
+
+This makes it so that files do not name themselves. Clients get to name the module, which ensures lack of module name conflicts, without the library having to contend with the entire world's library names. It also makes versioning easy: multiple versions of a library can be separately loaded, without the library writer having to provide them with explicitly distinct names.
+
+  * **A file top-level only has its loader's global namespace in scope.**
+
+This is the only coherent semantics given the present of module instance caching. If a module can be loaded in multiple separate scopes within the same loader, it can't possibly have all its clients' scopes available to it. Moreover, this would create all sorts of accidental variable-capturing hazards.
+
+===== Scoping semantics =====
+
+  * **Import does not import both modules and module exports.**
+  * **Import does not see exported sub-modules.**
+  * **Outer modules cannot see inner modules' definitions.**
+  * **A module cannot export any modules other than those defined in its body.**
+  * **Modules can be mutually recursive.**
+  * **The ''import *'' form is included.**
+  * **Module paths in expressions are not statically resolved.**
+  * **Module exports can include keywords.**
+
+This is simply as a minor convenience, since ES5 and Harmony syntax allow the use of keywords in a property reference expression. Exported keywords cannot, of course, be imported as variable bindings using ''import''.
+
+===== Syntax =====
+
+  * **Module declarations require a new reserved keyword.**
+  * **Import/export declarations don't start with ''from''.**
+  * **Import/export declarations use destructuring syntax.**
+  * **Module loading uses ''from'' instead of ''='' to bind module names.**
+
+===== Loading semantics =====
+
+  * **Loading external scripts can now be done in-language.**
+  * **Loading a module URL multiple times results in a single cached instance.**
+  * **External modules are executed at their first reference.**

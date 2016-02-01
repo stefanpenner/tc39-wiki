@@ -1,0 +1,146 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=discussion:catchalls&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=discussion" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=discussion:catchalls&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=discussion:catchalls&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<p>
+This is the discussion page for <a href="doku.php%3Fid=proposals:catchalls.html" class="wikilink1" title="proposals:catchalls" onclick="return svchk()" onkeypress="return svchk()">catchalls</a>.
+</p>
+
+<a name="older_discussion"></a><h1>Older discussion</h1>
+<div class="level1">
+
+<p>
+ One user expectation, fed and watered by E4X, is that methods are not properties, or to avoid this <acronym title="JavaScript">JS</acronym> oxymoron, that methods are not in the default property namespace: 
+</p>
+<pre class="code">js&gt; x = &lt;room&gt;&lt;width&gt;12&lt;/width&gt;&lt;length&gt;16&lt;/length&gt;&lt;/room&gt;
+&lt;room&gt;
+  &lt;width&gt;12&lt;/width&gt;
+  &lt;length&gt;16&lt;/length&gt;
+&lt;/room&gt;
+js&gt; x.length
+16
+js&gt; x.length()
+1</pre>
+
+<p>
+ Another point in favor of a <code>call *</code> catchall is efficiency: 
+</p>
+<pre class="code">var o = {
+  peer: ...,
+  get *(id) {
+    return function () { return this.peer[id](this.peer, arguments) }
+  }
+}</pre>
+
+<p>
+ creates a closure per get, whether or not the get result is called.  Whereas 
+</p>
+<pre class="code">var o = {
+  peer: ...,
+  call *(id, args) { return this.peer[id].apply(this.peer, args) }
+}</pre>
+
+<p>
+ creates a generic call forwarder.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/02/02 19:57</em>
+</p>
+
+<p>
+There are some pitfalls here wrt the representation of names in E4X: these names have no obvious representations in the language.  (AnyName, AttributeName).  For eg <code>QName</code> the name is not a string, so <code>ident</code> can&rsquo;t be a String type in the interface.  
+</p>
+
+<p>
+This all seems unresolved at this point.  (Perhaps we could sidestep the issue by defining catchalls not on E4X properties?)
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/03/17 14:33</em>
+</p>
+
+<p>
+The specification above has been updated.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x67%3B%26%23x72%3B%26%23x61%3B%26%23x79%3B%26%23x64%3B%26%23x6f%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x67;&#x72;&#x61;&#x79;&#x64;&#x6f;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">graydon</a> 2006/04/21 14:33</em>
+</p>
+
+<p>
+What&rsquo;s the expected syntax for a super-call? e.g., if I want to do something like
+</p>
+<pre class="code">
+function call *(ident, args)
+{
+    // intercept foo
+    if (ident == &quot;foo&quot;) { return handle_foo(args); }
+    
+    // let parent (or intrinsic) handle everything else
+    return super.call(ident, args);
+}
+</pre>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x73%3B%26%23x74%3B%26%23x65%3B%26%23x6a%3B%26%23x6f%3B%26%23x68%3B%26%23x6e%3B%26%23x73%3B%26%23x40%3B%26%23x61%3B%26%23x64%3B%26%23x6f%3B%26%23x62%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x73;&#x74;&#x65;&#x6a;&#x6f;&#x68;&#x6e;&#x73;&#x40;&#x61;&#x64;&#x6f;&#x62;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Steven Johnson</a> 2006/11/20 17:29</em>
+</p>
+
+<p>
+OK, I understand that there is no explicit &ldquo;super&rdquo; call for these, but for a shallow hierarchy one can use intrinsic::call to effectively do the same thing.
+</p>
+
+<p>
+However, a few points to clarify to be certain I understand: say I have a class with
+</p>
+<pre class="code">
+    public function set *(propertyName, value):void { ... }
+    public function set length(newLength:uint):void { ... }
+</pre>
+
+<p>
+Since the proposal says that catchalls are only used <em>when lookup of a named property fails in a particular (get, set, call) context</em>, I presume that:
+</p>
+
+<p>
+ * if I do <em>foo.length = 0</em>, we will call <em>set length</em> and not <em>set *</em> (and it is never possible for the catchall to see &ldquo;length&rdquo; as a value for propertyName), regardless of whether the class is dynamic of not
+</p>
+
+<p>
+ * if the body of <em>set length</em> contains the code <em>this[&rdquo;length&rdquo;] = newLength;</em> we will recurse forever, rather than calling <em>set *</em>
+</p>
+
+<p>
+ * if the class above is dynamic, and I do <em>foo[&rdquo;0&rdquo;] = 0;</em>, we will call <em>set *</em> the first time, but never for subsequent assignments to &ldquo;0&rdquo; (since the lookup of the named property will not fail)
+</p>
+
+<p>
+If this last assumption is correct, it will be very hard to implement the Array builtin using set*() as the implementation for [[Put]] in ECMA-262!
+</p>
+
+</div>
+<!-- SECTION [62-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/e/ecee71d8e3c2aabbb0880332191d9896.xhtml used -->
+</body>
+</html>

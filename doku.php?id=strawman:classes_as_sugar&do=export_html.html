@@ -1,0 +1,369 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:classes_as_sugar&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:classes_as_sugar&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:classes_as_sugar&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:classes_as_sugar&amp;do=export_html.html#classes_as_sugar" class="toc">Classes as Sugar</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:classes_as_sugar&amp;do=export_html.html#expressions" class="toc">Expressions</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:classes_as_sugar&amp;do=export_html.html#classdeclaration_and_classexpression" class="toc">ClassDeclaration and ClassExpression</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:classes_as_sugar&amp;do=export_html.html#publicdeclaration" class="toc">PublicDeclaration</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:classes_as_sugar&amp;do=export_html.html#privatedeclaration" class="toc">PrivateDeclaration</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:classes_as_sugar&amp;do=export_html.html#delicate_self_reference" class="toc">Delicate Self Reference</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:classes_as_sugar&amp;do=export_html.html#example" class="toc">Example</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:classes_as_sugar&amp;do=export_html.html#open_issues" class="toc">Open Issues</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:classes_as_sugar&amp;do=export_html.html#see" class="toc">See</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="classes_as_sugar"></a><h1>Classes as Sugar</h1>
+<div class="level1">
+
+<p>
+ ES5 makes high integrity possible but not convenient. This strawman suggests further syntactic conveniences beyond those in <a href="doku.php%3Fid=strawman:const_functions.html#high_integrity_factories" class="wikilink1" title="strawman:const_functions" onclick="return svchk()" onkeypress="return svchk()">High_Integrity_Factories</a>
+</p>
+
+<p>
+This strawman depends on the <a href="doku.php%3Fid=harmony:block_scoped_bindings.html" class="wikilink1" title="harmony:block_scoped_bindings" onclick="return svchk()" onkeypress="return svchk()">block scoped bindings</a> and <a href="doku.php%3Fid=harmony:weak_maps.html" class="wikilink1" title="harmony:weak_maps" onclick="return svchk()" onkeypress="return svchk()">weak maps</a> proposals and the <a href="doku.php%3Fid=strawman:const_functions.html" class="wikilink1" title="strawman:const_functions" onclick="return svchk()" onkeypress="return svchk()">const functions</a> and <a href="doku.php%3Fid=strawman:inherited_explicit_soft_fields.html" class="wikilink1" title="strawman:inherited_explicit_soft_fields" onclick="return svchk()" onkeypress="return svchk()">inherited explicit soft fields</a> strawmen. For the sake of better layering, dependencies on the <a href="doku.php%3Fid=strawman:trademarks.html" class="wikilink1" title="strawman:trademarks" onclick="return svchk()" onkeypress="return svchk()">trademarks</a> strawman have been removed, in anticipation of moving these to the <a href="doku.php%3Fid=strawman:trademarks.html" class="wikilink1" title="strawman:trademarks" onclick="return svchk()" onkeypress="return svchk()">trademarks</a> strawman.
+</p>
+
+<p>
+We extend the Declaration production from <a href="doku.php%3Fid=harmony:block_scoped_bindings.html" class="wikilink1" title="harmony:block_scoped_bindings" onclick="return svchk()" onkeypress="return svchk()">block scoped bindings</a> to 
+</p>
+<pre class="code">
+  Declaration :
+      LetDeclaration
+      ConstDeclaration
+      FunctionDeclaration
+      ClassDeclaration
+  ClassDeclaration : // defines a high integrity factory function
+      class Identifier ( FormalParameterList? ) { ObjectBody }
+  ObjectBody : // by analogy to FunctionBody
+      ObjectElements?
+  ObjectElements : // by analogy to SourceElements
+      ObjectElement
+      ObjectElements ObjectElement
+  ObjectElement : // by analogy to SourceElement
+      Statement // but not ReturnStatement
+      Declaration
+      PrivateDeclaration
+      PublicDeclaration
+  PrivateDeclaration :
+      private Declaration
+      private Identifier = Expression
+      private Identifier ( FormalParameterList? ) { FunctionBody }
+  PublicDeclaration :
+      public Declaration
+      public Identifier = Expression
+      public Identifier ( FormalParameterList? ) { FunctionBody }
+</pre>
+
+</div>
+<!-- SECTION [1-1555] -->
+<a name="expressions"></a><h2>Expressions</h2>
+<div class="level2">
+<pre class="code">
+  ExpressionStatement : 
+      [lookahead not-in { &quot;{&quot;, &quot;function&quot;, &quot;const&quot;, &quot;class&quot; }] Expression &quot;;&quot;
+  MemberExpression : ... // &quot;...&quot; means existing members
+      ClassExpression
+      private ( AssignmentExpression )
+  ClassExpression : // by analogy with FunctionExpression
+      class Identifier? ( FormalParameterList? ) { ObjectBody }
+</pre>
+
+<p>
+Just as an ExpressionStatement cannot begin with <code>function</code>, it would also not be able to begin with <code>const</code> or <code>class</code>.
+</p>
+
+<p>
+Since a class is just sugar for a function, its syntax and scoping is analogous to that for functions.
+</p>
+
+<p>
+The <code>private</code> keyword can be used as-if to call a 1-argument function for accessing the private facet of another instance of the same class. See <span class="curid"><a href="doku.php%3Fid=strawman:classes_as_sugar.html#privatedeclaration" class="wikilink1" title="strawman:classes_as_sugar" onclick="return svchk()" onkeypress="return svchk()">PrivateDeclaration</a></span> below.
+</p>
+
+</div>
+<!-- SECTION [1556-2375] -->
+<a name="classdeclaration_and_classexpression"></a><h2>ClassDeclaration and ClassExpression</h2>
+<div class="level2">
+<pre class="code">
+  ClassDeclaration
+      class Identifier ( FormalParameterList? ) { ObjectBody }
+  ClassExpression : // by analogy with FunctionExpression
+      class Identifier? ( FormalParameterList? ) { ObjectBody }
+</pre>
+
+<p>
+A ClassDeclaration or ClassExpression defines a <a href="doku.php%3Fid=strawman:const_functions.html" class="wikilink1" title="strawman:const_functions" onclick="return svchk()" onkeypress="return svchk()">const function</a> with the stated parameter list that makes a new object by 
+</p>
+<ul>
+<li class="level1"><div class="li"> executing the ObjectBody,</div>
+</li>
+<li class="level1"><div class="li"> collecting its public declarations into a new object</div>
+</li>
+<li class="level1"><div class="li"> freezing the new object</div>
+</li>
+<li class="level1"><div class="li"> returning the new frozen stamped object.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [2376-2957] -->
+<a name="publicdeclaration"></a><h2>PublicDeclaration</h2>
+<div class="level2">
+
+<p>
+ There are three forms of public declaration. Each expands in two ways. First, it expands in place into a normal declaration. Second, it expands into the initialization of a property of the same name on the object to be returned. 
+</p>
+<pre class="code">
+  PublicDeclaration :
+      public Declaration
+</pre>
+
+<p>
+This first form of PublicDeclaration expands in place to the Declaration. 
+</p>
+
+<p>
+The declarations beginning <code>const</code> or <code>class</code> define non-assignable lexical variables. The declarations beginning <code>let</code> or <code>function</code> define assignable lexical variables. Note that variables declared with <code>var</code> are not declared by Declaration productions, and so cannot be the subject of a PublicDeclaration.
+</p>
+
+<p>
+A public declaration of a non-assignable lexical variable <em>x</em> expands into an initialization of an enumerable, non-writable, non-configurable, data property. 
+</p>
+<pre class="code javascript">  <span class="br0">&#123;</span> ...
+    <span class="me1">x</span>: <span class="br0">&#123;</span> value: x, writable: <span class="kw2">false</span>, 
+         enumerable: <span class="kw2">true</span>, configurable: <span class="kw2">false</span> <span class="br0">&#125;</span>,
+    ... <span class="br0">&#125;</span></pre>
+<p>
+A public declaration of an assignable lexical variable <em>y</em> expands into an initialization of an enumerable, non-configurable, accessor property whose getter and setter effectively joins the property with the variable. 
+</p>
+<pre class="code javascript">  <span class="br0">&#123;</span> ...
+    <span class="me1">y</span>: <span class="br0">&#123;</span> get: <span class="kw2">const</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> y; <span class="br0">&#125;</span>,
+         set: <span class="kw2">const</span><span class="br0">&#40;</span>newY<span class="br0">&#41;</span> <span class="br0">&#123;</span> y = newY; <span class="br0">&#125;</span>, 
+         enumerable: <span class="kw2">true</span>, configurable: <span class="kw2">false</span> <span class="br0">&#125;</span>,
+    ... <span class="br0">&#125;</span></pre>
+<p>
+In order to define a lexical variable which is locally assignable, but whose property is not settable, we use a PublicDeclaration that declares and initialized the variable directly:
+</p>
+<pre class="code">
+  PublicDeclaration :
+      public Identifier = Expression
+</pre>
+
+<p>
+This expands in place to a corresponding LetDeclaration, using <code>let</code> in place of <code>public</code> above. Such a public declaration of a variable <em>z</em> expands to initialize an enumerable, non-configurable, joined, read-only accessor property:
+</p>
+<pre class="code javascript">  <span class="br0">&#123;</span> ...
+    <span class="me1">z</span>: <span class="br0">&#123;</span> get: <span class="kw2">const</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> z; <span class="br0">&#125;</span>,
+         set: undefined, 
+         enumerable: <span class="kw2">true</span>, configurable: <span class="kw2">false</span> <span class="br0">&#125;</span>,
+    ... <span class="br0">&#125;</span>
+&nbsp;</pre>
+<p>
+Finally, a method is declared as a public function declaration without direct use of the <code>const</code> or <code>function</code> keywords.
+</p>
+<pre class="code">
+  PublicDeclaration :
+      public Identifier ( FormalParameterList? ) { FunctionBody }
+</pre>
+
+<p>
+This expands in place to the corresponding <code>const</code> FunctionDeclaration, substituting <code>const</code> for <code>public</code> above, and substituting a reference to the new object for free occurrences of <code>this</code> in the method. Such a public declaration of a method <em>m</em> expands to initialize a <em>non-enumerable</em>, non-configurable, data property:
+</p>
+<pre class="code">{ ...
+  m: { value: m, writable: false, 
+       enumerable: false, configurable: false },
+  ... }</pre>
+
+</div>
+<!-- SECTION [2958-5700] -->
+<a name="privatedeclaration"></a><h2>PrivateDeclaration</h2>
+<div class="level2">
+
+<p>
+ The purpose of PrivateDeclaration is &ldquo;per-class encapsulation&rdquo;, i.e., to declare a member as being visible among all instances of the same class, but not otherwise. The normal case is per-instance encapsulation, which is what you get for unqualified in-scope variables.
+</p>
+
+<p>
+The mechanics of PrivateDeclaration is much like PublicDeclaration, except the object being initialized is a private facet object which should not escape from the class&rsquo; code. One instance of the class accesses the private facet of another instance of the same class with the new expression <code>private(otherInstance)</code>. This returns a direct reference to the other instance&rsquo;s private facet. This value is first class, so &ldquo;friend&rdquo; relationships (in the C++ sense) can be expressed by handing out selective access to this private facet.
+</p>
+
+<p>
+Note that the notion of per-class access provided by PrivateDeclaration is generative. To separate evaluations of a ClassDeclaration or ClassExpression <code>Point</code> results in two separate <code>Point</code> classes. Instances of Point class one cannot see the private facets of instances of the other <code>Point</code> class.
+</p>
+
+</div>
+<!-- SECTION [5701-6846] -->
+<a name="delicate_self_reference"></a><h2>Delicate Self Reference</h2>
+<div class="level2">
+
+<p>
+ In the example below, any uses of <code>this</code> in the ObjectElements, except in nested functions, are replaced with <code>result___</code> (where <code>result___</code> represents some variable name not appearing otherwise in the program), so that it refers to the new instance to be returned. The <code>this</code> in <code>toString</code> is replaced and the <code>this</code> in <code>fun2</code> is not. An open issue is what should happen with the <code>this</code> in <code>fun1</code>. The example below does replace it but the rule above suggests otherwise. It is not clear which better obeys the principle of least surprise.
+</p>
+
+<p>
+In the expansion, <code>result___</code> is defined by a <code>const</code> declaration appearing at the bottom of the ObjectBody expansion, so it is in scope throughout the ObjectBody, but is not initialized until the explicit portion of the ObjectBody has finished executing. The leverages the <a href="doku.php%3Fid=harmony:const.html" class="wikilink1" title="harmony:const" onclick="return svchk()" onkeypress="return svchk()">const</a> read barrier to prevent access to the new instance until it is fully initialized.
+</p>
+
+</div>
+<!-- SECTION [6847-7833] -->
+<a name="example"></a><h1>Example</h1>
+<div class="level1">
+
+<p>
+ <a href="https://mail.mozilla.org/pipermail/es-discuss/2009-March/009116.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2009-March/009116.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Our historic example</a> now appears as follows:
+</p>
+<pre class="code javascript">  <span class="kw2">class</span> Point<span class="br0">&#40;</span>privX, privY<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    let privInstVar = <span class="nu0">2</span>;
+    <span class="kw2">const</span> privInstConst = -<span class="nu0">2</span>;
+    <span class="kw2">public</span> toString<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">return</span> <span class="st0">'&lt;'</span> + getX<span class="br0">&#40;</span><span class="br0">&#41;</span> + <span class="st0">','</span> + <span class="kw1">this</span>.<span class="me1">getY</span><span class="br0">&#40;</span><span class="br0">&#41;</span> + <span class="st0">'&gt;'</span>;
+    <span class="br0">&#125;</span>
+    <span class="kw2">public</span> getX<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> privX; <span class="br0">&#125;</span>
+    <span class="kw2">public</span> getY<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> privY; <span class="br0">&#125;</span>
+    <span class="kw2">public</span> let pubInstVar = <span class="kw1">this</span>.<span class="me1">getX</span><span class="br0">&#40;</span><span class="br0">&#41;</span> + <span class="nu0">4</span>; <span class="co1">// violates read barrier</span>
+    <span class="kw2">public</span> <span class="kw2">const</span> pubInstConst = -<span class="nu0">4</span>;
+    <span class="kw2">public</span> pubInstRO = -<span class="nu0">5</span>;
+&nbsp;
+    <span class="kw2">public</span> <span class="kw2">function</span> fun1<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="kw1">this</span>; <span class="br0">&#125;</span> <span class="co1">// controversial</span>
+    <span class="kw2">public</span> fun2 = <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="kw1">this</span>; <span class="br0">&#125;</span>;
+&nbsp;
+    <span class="co1">// class private</span>
+    <span class="kw2">private</span> <span class="kw2">const</span> magnitude = prixX*privX + privY*privY;
+    <span class="kw2">public</span> sumOfMagintudes<span class="br0">&#40;</span>other<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">return</span> magnitude + <span class="kw2">private</span><span class="br0">&#40;</span>other<span class="br0">&#41;</span>.<span class="me1">magnitude</span>;
+    <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span></pre>
+<p>
+and expands as shown below. Unlike the expansion proposed in that email thread, the following expansion does not involve <a href="doku.php%3Fid=strawman:let_expressions.html" class="wikilink1" title="strawman:let_expressions" onclick="return svchk()" onkeypress="return svchk()">let expressions</a> or object expressions.
+</p>
+<pre class="code javascript"><span class="kw2">const</span> Point = <span class="br0">&#40;</span><span class="kw2">const</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span>
+&nbsp;
+  <span class="co1">// Where &quot;priv___&quot; is actually some non-conflicting name</span>
+  <span class="kw2">const</span> priv___ = SoftField<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+&nbsp;
+  <span class="kw1">return</span> <span class="kw2">const</span><span class="br0">&#40;</span>privX, privY<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+&nbsp;
+    let privInstVar = <span class="nu0">2</span>;
+    <span class="kw2">const</span> privInstConst = -<span class="nu0">2</span>;
+    <span class="kw2">const</span> toString<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">return</span> <span class="st0">'&lt;'</span> + getX<span class="br0">&#40;</span><span class="br0">&#41;</span> + <span class="st0">','</span> + result___.<span class="me1">getY</span><span class="br0">&#40;</span><span class="br0">&#41;</span> + <span class="st0">'&gt;'</span>;
+    <span class="br0">&#125;</span>
+    <span class="kw2">const</span> getX<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> privX; <span class="br0">&#125;</span>
+    <span class="kw2">const</span> getY<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> privY; <span class="br0">&#125;</span>
+    let pubInstVar = result___.<span class="me1">getX</span><span class="br0">&#40;</span><span class="br0">&#41;</span> + <span class="nu0">4</span>; <span class="co1">// violates read barrier</span>
+    <span class="kw2">const</span> pubInstConst = -<span class="nu0">4</span>;
+    let pubInstRO = -<span class="nu0">5</span>;
+&nbsp;
+    <span class="kw2">function</span> fun1<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> result___; <span class="br0">&#125;</span> <span class="co1">// controversial</span>
+    <span class="kw2">const</span> fun2 = <span class="kw2">function</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="kw1">this</span>; <span class="br0">&#125;</span>;
+&nbsp;
+    <span class="kw2">const</span> magnitude = prixX*privX + privY*privY;
+    <span class="kw2">const</span> sumOfMagintudes<span class="br0">&#40;</span>other<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">return</span> magnitude + priv___.<span class="me1">get</span><span class="br0">&#40;</span>other<span class="br0">&#41;</span>.<span class="me1">magnitude</span>;
+    <span class="br0">&#125;</span>
+&nbsp;
+    <span class="co1">// Where &quot;result___&quot; is actually some non-conflicting name</span>
+    <span class="kw2">const</span> result___ = Object.<span class="me1">freeze</span><span class="br0">&#40;</span>Object.<span class="me1">create</span><span class="br0">&#40;</span>Point.<span class="me1">prototype</span>, <span class="br0">&#123;</span>
+      toString: <span class="br0">&#123;</span> value: toString <span class="br0">&#125;</span>,
+      getX: <span class="br0">&#123;</span> value: getX <span class="br0">&#125;</span>,
+      getY: <span class="br0">&#123;</span> value: getY <span class="br0">&#125;</span>
+      pubInstVar: <span class="br0">&#123;</span> get: <span class="kw2">const</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> pubInstVar; <span class="br0">&#125;</span>,
+                    set: <span class="kw2">const</span><span class="br0">&#40;</span>newV<span class="br0">&#41;</span> <span class="br0">&#123;</span> pubInstVar = newV; <span class="br0">&#125;</span>,
+                    enumerable: <span class="kw2">true</span> <span class="br0">&#125;</span>,
+      pubInstConst: <span class="br0">&#123;</span> value: pubInstConst,
+                      enumerable: <span class="kw2">true</span> <span class="br0">&#125;</span>,
+      pubInstRO: <span class="br0">&#123;</span> get: <span class="kw2">const</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> pubInstRO; <span class="br0">&#125;</span>,
+                   enumerable: <span class="kw2">true</span> <span class="br0">&#125;</span>,
+&nbsp;
+      fun1: <span class="br0">&#123;</span> get: <span class="kw2">const</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> fun1 <span class="br0">&#125;</span>,
+              set: <span class="kw2">const</span><span class="br0">&#40;</span>newF<span class="br0">&#41;</span> <span class="br0">&#123;</span> fun1 = newF; <span class="br0">&#125;</span>,
+              enumerable: <span class="kw2">true</span> <span class="br0">&#125;</span>,
+      fun2: <span class="br0">&#123;</span> value: fun2,
+              enumerable: <span class="kw2">true</span> <span class="br0">&#125;</span>,
+&nbsp;
+      sumOfMagintudes: <span class="br0">&#123;</span> value: sumOfMagintudes <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>;
+    priv___.<span class="me1">set</span><span class="br0">&#40;</span>result___, Object.<span class="me1">freeze</span><span class="br0">&#40;</span>Object.<span class="me1">create</span><span class="br0">&#40;</span>Object.<span class="me1">prototype</span>, <span class="br0">&#123;</span>
+      magnitude: <span class="br0">&#123;</span> value: magnitude,
+                   enumerable: <span class="kw2">true</span> <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>;
+    <span class="kw1">return</span> result___;
+  <span class="br0">&#125;</span>;
+<span class="br0">&#125;</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;</pre>
+</div>
+<!-- SECTION [7834-10599] -->
+<a name="open_issues"></a><h1>Open Issues</h1>
+<div class="level1">
+
+<p>
+ The &ldquo;Delicate Self Reference&rdquo; section above raises the issue of which <code>this</code> occurrences in the ObjectBody should be replaced with referenced to the object to be returned. Clearly, all those not in nested functions should be (as in the initialization of <code>pubInstVar</code>) as well as those in method declarations like <code>toString</code>. Nested functions which appear only as data values, such as <code>fun2</code> should not be subject to this replacement. What about <code>fun1</code>? It is not clear which outcome would better obey the principle of least surprise.
+</p>
+
+<p>
+Above, we have public Declarations of explicitly assignable variables result in a read-write property that is joined to the variable, while a simple public declaration results in a read-only joining of a <code>let</code> variable. An earlier design has all public assignable variables result in read-only joining and a simple public declaration resulting in a const variable and property. Both options are perhaps too economical with notation. Perhaps we need some explicit notation for read-write or read-only?
+</p>
+
+<p>
+Inheritance using the prototype chain does not work since the members are added to the instance and not the prototype. This makes this proposal non compatible with existing JavaScript paradigms. This in turn leads to classes becoming something completely new that exists on the side of existing best practices of doing OOP in <acronym title="JavaScript">JS</acronym>.
+</p>
+<pre class="code">
+function MyPoint(x, y);
+  Point.call(this, x, y);
+}
+MyPoint.prototype = Object.create(Point.prototype, ...);
+
+var mp = new MyPoint(1, 2);
+mp.getX(); // Error, no such method 'getX'
+</pre>
+
+</div>
+<!-- SECTION [10600-12203] -->
+<a name="see"></a><h1>See</h1>
+<div class="level1">
+
+<p>
+ <a href="doku.php%3Fid=strawman:trademarks.html" class="wikilink1" title="strawman:trademarks" onclick="return svchk()" onkeypress="return svchk()">trademarks</a>
+</p>
+
+<p>
+<a href="doku.php%3Fid=strawman:inherited_explicit_soft_fields.html" class="wikilink1" title="strawman:inherited_explicit_soft_fields" onclick="return svchk()" onkeypress="return svchk()">inherited explicit soft fields</a>
+</p>
+
+<p>
+<a href="https://mail.mozilla.org/pipermail/es-discuss/2009-March/009115.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2009-March/009115.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Classes as Sugar thread</a> which starts with pointers to earlier threads. 
+</p>
+
+</div>
+<!-- SECTION [12204-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/5/5eee372655259a12d1e31d5b74808bca.xhtml used -->
+</body>
+</html>

@@ -1,0 +1,59 @@
+====== Clarification ======
+
+  * some dynamic scope is unavoidable for backwards compatibility
+    * ''with''
+    * ''eval''
+    * global object
+    * computed field names
+  * but the type ''*'' always gets us out of trouble: anywhere we can't determine what something refers to, it just has the dynamic type
+  * ''let'' (see [[proposals:block expressions]]) is an improvement over ''var''
+  * some places, such as [[proposals:reformed with]], help clean it up
+  * ''use strict'' should help as well--when you ask for it, you get a language with more lexical scope
+
+====== Request for clarification ======
+
+In its heart of hearts, EcmaScript //wants// to be a lexically scoped language.
+
+The trouble is, the scoping mechanisms are rather sloppily defined. I propose to clean up the language describing any and all scoping constructs in the language in the more precise and conventional terms of programming language semantics, using the language of environments.
+
+The important feature of lexical scope is that it's a static property of programs. Therefore, scope errors should be compile-time errors, not runtime errors. I propose that all scope-related errors be specified as compile-time errors.
+
+This affects all binding constructs in the language, including:
+
+  * ''with'' (see the related [[proposals:with-bound variables]] proposal)
+  * ''let'' (see the related [[proposals:block expressions]] proposal)
+  * array comprehensions (see the [[proposals:iterators and generators]] proposal)
+  * ''catch''
+  * ''function''
+  * ''var''
+  * namespaces
+  * classes
+  * packages
+
+For those features that we do want to reflect into the language, reflection should be specified on top of the core specification, not as the definition itself.
+
+----
+
+Don't forget eval, which can introduce new bindings into a scope.  
+
+And though I am not yet an E4X expert, I believe some E4X constructs also extend the scope chain dynamically.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/03 10:52//
+
+E4X's filtering predicate expressions, e.g. ''list.elem.(@attr == "foo")'', are analogous to ''with'' and therefore amenable to the [[proposals:with-bound variables]] proposed "fix".
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/03 23:26//
+
+Also remember variable references of the form
+
+<code javascript>
+   q::[expr]
+</code>
+
+which is basically the same as
+
+<code javascript>
+   eval("q::" + expr)
+</code>
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/17 11:36//

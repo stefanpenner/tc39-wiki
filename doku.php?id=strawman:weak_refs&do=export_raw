@@ -1,0 +1,112 @@
+===== Rationale =====
+
+The accepted [[harmony:weak maps]] API serves important use cases for weak references, but not all. Most importantly, the [[http://en.wikipedia.org/wiki/Observer_pattern|observer pattern]] relies on an observable object holding weak references to its observers. If an observer becomes otherwise collectable, the object it observes should not keep it alive. The observer pattern is very relevant to and common on the web, including:
+
+  * MVC and data binding frameworks
+  * reactive-style libraries
+  * reactive-style languages that compile to JS
+
+The [[http://en.wikipedia.org/wiki/Publish/subscribe|publish-subscribe pattern]] has similar characteristics.
+
+It's worth noting that using weak references for the observer pattern ties the behavior of notification to the non-deterministic behavior of the garbage collector. If an object hasn't been collected yet but is intended not to be used anymore, it could still receive a notification. So a well-written observer should still usually be manually disconnected before it dies. But frameworks can use weak references as a back-stop to prevent leaks when their clients forget to disconnect observers.
+
+TODO: Unify this page and [[strawman:weak_references]] into one strawman.
+
+
+===== Examples =====
+
+<code javascript>
+let obj = { ... };
+
+let ref = new WeakRef(obj);
+alert(ref.get() === obj); // true
+
+obj = null; // make sure the scope chain isn't keeping obj alive
+document.getElementById("big-red-button").onclick = function() {
+    // ... obj has been garbage collected in the meantime ...
+    alert(ref.get()); // null
+};
+</code>
+
+
+
+===== Security =====
+
+Weak references observe the behavior of the garbage collector, which can provide a channel of communication between otherwise separated partitions of the object graph. Security-sensitive code would most likely need to censor access to the ''WeakRef'' API from untrusted code. Within a realm, this could be achieved e.g. by creating custom [[harmony:module loaders]]. However, such restrictions do not enable one realm to police other realms. To plug this leak, a weak reference created within realm A should only point weakly within realm A. When set to point at an object from another realm, it should either point strongly or throw an error, depending on whether a surprising leak or a surprising error is expected to be more inconvenient for the caller. Security demands only that such inter-realm references not point weakly.
+
+See [[https://mail.mozilla.org/pipermail/es-discuss/2013-January/028542.html]] for a nice refinement for pointing weakly at objects from a set of realms.
+
+===== Portability =====
+
+Revealing the non-deterministic behavior of the garbage collector creates a potential for portability bugs. Different host environments may collect a weakly-held object at different times, which a ''WeakRef'' exposes to the program.
+
+==== Postpone ====
+
+In order to restrict the variability of behavior, we tie the collection of weak references to the event loop semantics. The informal invariant is:
+
+//A program cannot observe a weak reference be automatically deleted within a turn of the event loop.//
+
+Specifically, this means that:
+
+  * When a weak reference is created, subsequent calls to its ''get'' method within the same turn must return the object with which it was created (unless it has been explicitly deleted).
+  * If a weak reference's ''get'' method is called and produces an object, subsequent calls to its ''get'' method within the same turn must return the same object (unless it has been explicitly deleted).
+
+If we want to allow ECMAScript host environments that have no event loop, we can specify that this behavior is only required in the presence of an event loop.
+
+==== Implementation strategies ====
+
+A turn counter is a simple way to detect whether a weak reference has been observed in the current turn. (A single bit is sufficient and more compact, but requires clearing the bit at the end of the turn.)
+
+===== API =====
+
+<code javascript>
+[new] WeakRef           : function(object) -> WeakRef
+WeakRef.prototype.get   : function() -> object | null
+WeakRef.prototype.clear : function() -> undefined
+</code>
+
+  * ''WeakRef(obj)'' -- returns a new weak reference to ''obj''. Throws if ''typeof obj != "object"''.
+  * ''WeakRef.prototype.get'' -- returns the weakly held object, or ''null'' if the object has been collected.
+  * ''WeakRef.prototype.clear'' -- ''null''s out the internal reference
+
+===== Semantics =====
+
+The semantics should be specified at the same level of precision as ''WeakMap'', with at least informal wording about the meaning of weakness.
+
+The semantics is also tied to the event loop. Operationally, a ''WeakRef'' holds a strong reference to its object during a turn, and a weak reference in between turns.
+
+===== References =====
+
+  * [[http://msdn.microsoft.com/en-us/data/gg577609|Rx.js]]
+  * [[http://worrydream.com/Tangle/|Tangle]]
+  * [[http://dherman.github.com/taskjs|task.js]]
+  * [[http://sproutcore.com/|SproutCore]]
+  * [[http://flapjax-lang.org/|Flapjax]]
+  * [[http://docs.oracle.com/javase/1.5.0/docs/api/java/lang/ref/WeakReference.html|Java WeakReference]]
+
+===== Discussion =====
+
+====  Allen Wirfs-Brock 2011/12/19  ====
+
+=== Turn counting and multiple references ===
+
+The proposal suggests using turn counting to detect whether the value of a WeakRef has been observed within in turn, but subsequent to a GC. Such an observed WeakRef would not be cleared at the end of the turn. This is  too simplistic to deal with situation where multiple WeakRefs exists to the same object.  In order to maintain consistency of references, the observation of any of the references must prevent all WeakRefs to the observed value from being cleared at the end of the turn.  This will require a more complex mechanism then simply an access turn count for each WeakRef. This is certainly possible, but it increases the complexity of the GC and inter-turn processing. 
+
+
+=== Generational/Incremental GC Effects ===
+
+It should be noted that use of generational GC schemes are likely to significantly increase the variability of the latency between an object referenced by a WeakRef becoming eligible for collection and its actual collection.  If a WeakRef is promoted into a less frequently collected region, its referenced object will stay alive until that region is corrected (or possibly longer if the the referenced object is in an even older generation). This seems problematic for the Observer Pattern use case.
+
+It is not clear what the appropriate behavior would be in a WeakRef is subject to background incremental collection. Particularly, if a "complete" collection spans more than one turn. Must a WeakRef be unobserved for an entire incremental collection cycle in order to be collected.
+
+=== Is a "backstop" really desirable? ===
+
+This proposal suggests that the observer pattern is a primary use case for WeakRefs and then further identifies that it is at best a back stop for clients that forget to disconnect observers.  However, it isn't really clear that the such a backstop is actually desirable.
+
+Consider this classic bug, the observer pattern used to "blink" an indicator widget on a display (for example, a region of a canvas) that is associated with some widget.  The observer is attached to a timer event. The bug occurs, when the widget is removed from the logical display but the blink observer is not deleted. If a "hard" reference to the observer is used, the display region will continue to have visible blink effects even though the widget is no longer rendered.  Using a WeakRef does not necessarily eliminate this problem.  If the WeakRef GC latency is relatively long then the blink effect will continue to be visible for some period of time.  If a generational collector is being used and the  WeakRef to the observer has been promoted to a infrequently collected region then the effect may continue for an extended period of time.  (Note that in some applications UI elements have lifetimes measured in minutes or even hours, so such promotion quite possible).
+
+In this case, all the "back stop" seems to have done is to make it more likely that the bug of not disconnecting the observer goes undetected.  If the system was developed on a browser with low GC latency (perhaps non-generations) the bug might easily go undetected.  However, once deployed it might subsequently be run on a high GC latency browser and appear. If the "backstop" had not existed, it is more likely that the bug would have been observed and corrected during its initial testing. 
+
+
+
+

@@ -1,0 +1,28 @@
+===== Rationale =====
+
+A initialize-once, read-only thereafter binding form is useful and has precedent in existing implementations, in the form of ''const'' declarations.
+
+
+===== Requirements =====
+
+  * syntactic requirement: ''const'' declarations must have initializers for each declared identifier
+  * avoid [[https://mail.mozilla.org/pipermail/es-discuss/2008-October/007807.html|"lexical dead-zone"]]:
+    * we can't afford (inter-procedural) static analysis to ensure the property will be written before it's read
+    * and an unsafe analysis would leave us in a middle-ground, where we still need dynamic checks for uninitialized reads
+  * prefer "temporal dead zone":
+    * need a dynamic semantics for dealing with uninitialized properties
+    * we don't want to have to add an "uninitialized" attribute for object properties simply to support ''const''
+    * so we want to separate the notion of an uninitialized //property// from an uninitialized //binding//
+  * still may want to allow for the possibility of implementations rejecting programs statically based on detected read-before-write
+
+
+===== Semantics =====
+
+  * ''const'' has block scope, like [[harmony:let]]
+  * when environment frame is declarative, creates an initialize-only binding in the frame
+  * when environment frame is an object, creates an initialize-only binding in the frame but not in the backing object
+    * when the binding is initialized, checks the backing object
+    * if there already is a property, raises an error
+    * if there is no such property, creates a non-configurable, non-writeable property and sets it to the initialization value
+  * thus in global code, there's a reasonably clear and consistent semantics for ''const'' that doesn't leak the notion of uninitialized properties into the global object
+

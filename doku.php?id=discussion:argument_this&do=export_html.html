@@ -1,0 +1,91 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=discussion:argument_this&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=discussion" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=discussion:argument_this&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=discussion:argument_this&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<p>
+This is the discussion page for <a href="doku.php%3Fid=proposals:argument_this.html" class="wikilink1" title="proposals:argument_this" onclick="return svchk()" onkeypress="return svchk()">argument this</a>.
+</p>
+
+<a name="counter-examples"></a><h1>Counter-examples</h1>
+<div class="level1">
+
+<p>
+ A counterexample for argument-this for object: 
+</p>
+<pre class="code">  let o = {x:3, f:function () this.x} : {x:int, f:function():int}
+  let o2 = {f:function () 0} : {f:function():int}
+  let m = o.f;
+  o2.f = m;
+  o2.f()</pre>
+
+<p>
+ Another variant: 
+</p>
+<pre class="code">  let o = { f: function (this:this) : int { return this.g() },
+            g: function (this:this) : int { return 37 } }
+  function F() {}
+  F.prototype = o;
+  let x = new F();
+  x.g = function () : string { return &quot;foo&quot; };
+  x.f();</pre>
+
+<p>
+ Here, since &ldquo;x&rdquo; has type &ldquo;*&rdquo;, the call &ldquo;x.f()&rdquo; will dynamically check the arguments to &ldquo;f&rdquo;, and will complain that the &ldquo;this&rdquo; argument (&rdquo;x&rdquo; itself) does not match the expected type (ie, an object with appropriate f and g fields). 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+There are examples for and against both kinds of <code>this</code> handling. Users today, without classes, must bind <code>this</code> using a closure:
+</p>
+<pre class="code javascript"><span class="kw2">Function</span>.<span class="me1">prototype</span>.<span class="me1">bind</span> = <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw2">var</span> __method = <span class="kw1">this</span>, args = $A<span class="br0">&#40;</span>arguments<span class="br0">&#41;</span>, object = args.<span class="me1">shift</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+  <span class="kw1">return</span> <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> __method.<span class="me1">apply</span><span class="br0">&#40;</span>object, args.<span class="me1">concat</span><span class="br0">&#40;</span>$A<span class="br0">&#40;</span>arguments<span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+This is from the <a href="http://www.prototypejs.org/assets/2007/5/1/prototype.js" class="urlextern" target="_blank" title="http://www.prototypejs.org/assets/2007/5/1/prototype.js" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Prototype</a> Ajax library. The <code>$A</code> helper usage here ensures that we have an <code>Array</code> of the actual bind-time &ldquo;pre-arguments&rdquo;. Rewriting your first example in ES3 using Prototype to bind appropriately:
+</p>
+<pre class="code javascript">let o = <span class="br0">&#123;</span>x:<span class="nu0">3</span>, f:<span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw1">this</span>.<span class="me1">x</span><span class="br0">&#125;</span><span class="br0">&#125;</span>
+let o2 = <span class="br0">&#123;</span>f:<span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="nu0">0</span><span class="br0">&#125;</span>
+let m = o.<span class="me1">f</span>.<span class="me1">bind</span><span class="br0">&#40;</span>o<span class="br0">&#41;</span>;
+o2.<span class="me1">f</span> = m;
+o2.<span class="me1">f</span><span class="br0">&#40;</span><span class="br0">&#41;</span></pre>
+<p>
+The <code>o2.f()</code> call will apply with <code>this</code> bound to <code>object</code> saved from <code>o.f.bind(o)</code>&lsquo;s environment, where <code>object</code> had value <code>o</code>.
+</p>
+
+<p>
+The default for untyped <acronym title="JavaScript">JS</acronym> must remain &ldquo;argument-this&rdquo;, and people know how to change this default (ES4 will support <code>Function.bind</code>, one of the <a href="doku.php%3Fid=discussion:static_generics.html" class="wikilink1" title="discussion:static_generics" onclick="return svchk()" onkeypress="return svchk()">static generics</a> available also as <code>Function.prototype.bind</code>, so there will be a short-hand; Prototype and other libraries may override it). I&rsquo;m not sure whether this helps. Also, did you want this discussion here, or in an <span class="curid"><a href="doku.php%3Fid=discussion:argument_this.html" class="wikilink1" title="discussion:argument_this" onclick="return svchk()" onkeypress="return svchk()">argument this</a></span> page?
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2007/05/18 14:34</em>
+</p>
+
+</div>
+<!-- SECTION [63-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/5/590d47089464d8b516678a479b9bdef3.xhtml used -->
+</body>
+</html>

@@ -1,0 +1,147 @@
+====== Simple Maps and Sets ======
+
+
+**This proposal has progressed to the Draft ECMAScript 6 Specification, which is available for review here: [[harmony:specification_drafts]]. Any new issues relating to them should be filed as bugs at [[http://bugs.ecmascript.org]]. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.**
+
+
+
+
+
+Similar in style to [[harmony:weak maps]] but without the funny garbage collection semantics or non-enumerability. Depends on the [[strawman:iterators]] and [[harmony:egal]] proposals. Depends on [[harmony:classes]] only for expository purposes.
+
+
+
+
+
+
+
+===== Map =====
+
+Given
+
+<code javascript>
+  /** A non-stupid alternative to Array.prototype.indexOf */
+  function indexOfIdentical(keys, key) {
+    for (var i = 0; i < keys.length; i++) {
+      if (keys[i] is key) { return i; }
+    }
+    return -1;
+  }
+</code>
+
+Executable spec
+
+<code javascript>
+  import {Name} from '@name';
+  const keysName = new Name;  // These should be non global.
+  const valsName = new Name;
+
+  class Map {
+    constructor(iterable = []) {
+      this[keysName] = [];
+      this[valsName] = [];
+      for (let [k, v] of iterable) {
+        this.set(k, v);
+      }
+    }
+    get(key) {
+      const keys = this[keysName];
+      const i = indexOfIdentical(keys, key);
+      return i < 0 ? undefined : this[valsName][i];
+    }
+    has(key) {
+      const keys = this[keysName];
+      return indexOfIdentical(keys, key) >= 0;
+    }
+    set(key, val) {
+      const keys = this[keysName];
+      const vals = this[valsName];
+      let i = indexOfIdentical(keys, key);
+      if (i < 0) { i = keys.length; }
+      keys[i] = key;
+      vals[i] = val;
+    }
+    delete(key) {
+      const keys = this[keysName];
+      const vals = this[valsName];
+      const i = indexOfIdentical(keys, key);
+      if (i < 0) { return false; }
+      keys.splice(i, 1);
+      vals.splice(i, 1);
+      return true;          
+    }
+    *items() {
+      for (var i = 0; i < this[keysName].length; i++) {
+        yield [this[keysName][i], this[valsName][i]];
+      }
+    }
+    *keys() {
+      for (var i = 0; i < this[keysName].length; i++) {
+        yield this[keysName][i];
+      }
+    }
+    *values() {
+      for (var i = 0; i < this[keysName].length; i++) {
+        yield this[valsName][i];
+      }
+    }
+  }
+
+  Object.defineProperty(Map.prototype, "iterator", {configurable: true, writable: true, value: Map.prototype.items});
+
+</code>
+
+
+
+
+
+===== Set =====
+
+Executable Spec
+
+<code javascript>
+  import {Name} from '@name';
+  const mapName = new Name;
+
+  class Set {
+    constructor(iterable = []) {
+      this[mapName] = new Map;
+      for (let key of iterable) {
+        this.add(key);
+      }
+    }
+    has(key) {
+      return this[mapName].has(key);
+    }
+    add(key) {
+      this[mapName].set(key, true);
+    }
+    delete(key) {
+      return this[mapName].delete(key);
+    }
+    *values() {
+      yield* this[mapName].keys();
+    }
+  }
+
+  Object.defineProperty(Set.prototype, "iterator", {configurable: true, writable: true, value: Set.prototype.values});
+
+</code>
+
+
+
+
+
+===== Discussion =====
+
+It is unclear from this but the key should not be limited to an ''Object''. It should support anything, including ''undefined'' and ''null''.
+
+ --- //[[arv@google.com|Erik Arvidsson]] 2011/10/26 16:39//
+
+Removing an entry from a Map or Set that has already been visited by a live iterator should update the iterator (basically, decrement i) so that it doesn't skip an entry.
+
+ --- //[[jason.orendorff@gmail.com|Jason Orendorff]] 2012/06/19//
+
+It was previously agreed that we should use a private name for the default iterator and not pollute the property namespace with a reserved name like ''"iterator"''.
+
+ --- //[[arv@google.com|Erik Arvidsson]] 2012/06/21 04:24//

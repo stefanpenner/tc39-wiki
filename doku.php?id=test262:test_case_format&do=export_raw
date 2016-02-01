@@ -1,0 +1,116 @@
+====== Test Case Format ======
+
+We have converted all the submitted test cases to the canonical test262 test case format, which is now the source format for all future tests. In this source format, a single *.js source file carries both the meta-data, extractable by simple regular expressions, and the raw source text for the body of the test itself. 
+
+Unless stated otherwise in the meta-data, the test itself assumes it will be run in a fresh JavaScript context (e.g., a new browser frame or command-line JS process), and may be run in strict-mode, non-strict mode, or both. A test case runner uses the meta-data to determine how to package and spawn the test body for the platform in question. For example, this packaging and spawning may be different on the command line than it is in a browser. 
+
+
+
+
+===== Informal Test262 Test Case Syntax =====
+
+First we present an approximation of the regular expression extraction as an ad-hoc bnf-like pseudo-grammar:
+
+<code>
+  TestCase :
+      TestHeaderLine*   // copyright notice, whitespace, noise
+      TestDocComment?   // meta-data
+      TestBody          // raw test body text
+
+  TestHeaderLine :
+      \s* \n            // blank lines
+      \s* "//" .* \n    // "//" commented lines
+
+  TestDocComment :
+      TestDocCommentCapture := "/*" "*"? \s* ((?:\s|\S)*?) \s* "*/" \s* \n
+
+  TestDocCommentCapture :
+      TestCommentText (TestCommentNewLine "@" TestCommentProperty)*
+
+  TestCommentText :
+      \s* (.*) (TestCommentNewLine .*)* \s*
+  
+  TestCommentNewLine :  // Left margin "*"s capture just newlines
+      \s* (\n) \s* "*" \s*
+
+  TestCommentProperty :
+      (\w+) \s+ TestCommentText
+
+  TestBody :
+      ((?:\s|\S)*)
+</code>
+
+For example, for the following test case source file
+
+<code javascript>
+  // Copyright 1492 Columbus, no rights reserved
+  // Other stuff
+
+  /**
+   * This test serves as an example. This first part
+   * of the doc-comment, before the first at-sign, is
+   * just commentary text that normally gets omitted,
+   * along with the header above, when uploading to a
+   * browser for web testing.
+   *
+   * @description Checks whether addition seems to work
+   * @onlyStrict
+   */
+
+  if (2 + 3 !== 5) {
+    t262.$ERROR("Addition does not work.");
+  }
+</code>
+
+the testRecord extracted from this test source, expressed as a JSON record, is:
+
+<code javascript>
+  {
+    "header"       "// Copy...stuff",
+    "commentary":  "This test...testing.",
+    "description": "Checks whether addition seems to work",
+    "onlyStrict":  "",
+    "test":        "\nif (...\n}\n"
+  }
+</code>
+
+Test cases throw an exception to indicate failure; running to the end without an exception indicates success.
+
+Test cases should use "use strict" only when testing strict-mode specific behavior. Generally, test cases are run in both strict and non-strict mode, and are expected to exhibit the same behavior in both modes. The @noStrict and @onlyStrict properties (see below) can restrict execution to one of the two modes.
+
+Old test cases may use a more complicated format, defining a testcase function and then calling that function. This format is no longer required by the harness (it is still useful when testing behavior specific to functions).
+
+
+===== Informal Test262 Test Case Semantics =====
+
+The recognized property names and their meanings are
+
+^ Property name ^ @-name ^ value and/or purpose ^
+| "header":       |               | Copyright, whitespace, and noise. Typically omitted. |
+| "commentary":   |               | Explains purpose of test. Typically omitted. |
+| "description":  | @description  | Short description of test. |
+| "noStrict":     | @noStrict     | No value. Presence indicates test should not be run in strict mode. |
+| "onlyStrict":   | @onlyStrict   | No value. Presence indicates test should not be run in non-strict mode. |
+| "negative":     | @negative     | Optional value. If present with empty value, indicates test body must fail somehow. A non-empty value is taken to be the name of an error and indicates the test must fail by throwing a object (presumably an Error) with that .name. "@negative SyntaxError" passes either from an early SyntaxError (a failure to parse), or if running the test throws SyntaxError. |
+| "hostObject":   | @hostObject   | Documentary purposes only. Marks that the test probes for a normative ES5.1 spec violation by an object that may be a host object. |
+| "reviewers":     | @reviewers     | Documentary purposes only. Comma delimited list of the people who have [[test262:submission_process#test_cases|reviewed]] this test case. |
+| "generator":    | @generator    | NOT YET SUPPORTED. No value. Presence indicates that the test body, when run, will register more test cases to be run in the same JavaScript context as that testBody. |
+| "verbatim":     | @verbatim     | NOT YET SUPPORTED. No value. If present, treat the whole source text as the raw test body. |
+| "noHelpers":    | @noHelpers    | NOT YET SUPPORTED. No value. If present, do not preload any test runtime APIs. |
+| "noHelpers":    | @noHelpers    | NOT YET SUPPORTED. No value. If present, do not preload any test runtime APIs. |
+| "implDependent": | @implDependent | NOT YET SUPPORTED. Implementation dependent. Might not pass on all platforms (e.g., CPU architectures) validly. |
+| "test":         |               | The raw test body -- exactly the text after the newline following the doc-comment. |
+| "author":       | @author      | Author of the test case. |
+
+
+Old test cases may contain an @path property. This property is no longer needed; the harness uses the test case's actual file path instead.
+
+
+===== t262 Test Runtime API =====
+
+//The Test Runtime API is not yet the following//:
+
+The t262 namespace provides an API of conveniences for the test cases to call. These APIs include:
+
+| <code>new t262.TestFailureError(message ::string)</code> | Constructor for an Error indicating a test body failure. |
+| <code>t262.$ERROR(message ::string)</code>               | The test body fails with a t262.TestFailureError, with ''message'' as the diagnostic. If the test is a simple @negative test, then the test passes iff the test body fails. |

@@ -1,0 +1,108 @@
+Variables bound via the ''with'' construct are accessed with a dot prefix, e.g.:
+
+<code javascript>with ({ x : 3 }) {
+    print(.x)
+}</code>
+
+===== Rationale =====
+
+Allowing ''with'' to add frames to the scope chain prevents the ability to know all bindings statically. This makes EcmaScript not entirely lexically scoped.
+
+===== Alternatives =====
+
+The type system can constrain the type of the object expression for a ''with'' statement so that we know the set of variables statically, but this means we must type-check at least partially before we can even know the bindings of all the variables. This complicates the type-checking process, as well as the language formalization and proofs.
+
+===== Comments =====
+
+In that case I would much rather see ''with'' removed completely, especially if ''let'' comes into the language.
+
+<code javascript>
+let (x = myobj.x) {
+  print(x)
+}
+</code>
+
+or it should be redone to take on the meaning it has in Modula-3, which is a statement ''let'' form that is able to create aliases:
+
+<code modula-3>
+WITH x = myobj.y DO
+  print(x);
+  x := 10
+END
+</code>
+
+prints ''myobj.y'' and sets ''myobj.y'' to 10.
+
+Ditching it altogether is preferable, IMO.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/03 09:56//
+
+First, and specifically: ''with'' is insanely popular, even in modern JS, even in AJAX libraries.  No web-compatible browser implementation of JS can drop it.
+
+Second, and more generally: ECMA TG1 has long-standing commitments to compatibility and low-cost migration, so we are trying not to remove anything, or break backward compatibility.
+
+We could move ''with'' to an informative annex (with the y2k-bugged ''Date.prototype.getYear'', etc.), but why?  That just raises the odds of future implementations not reading those non-normative specs, skipping ''with'' or implementing it incorrectly, and taxing users and interoperating implementations with workarounds.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/03 10:02//
+
+The present proposal requires all code that uses ''with'' to be rewritten.  Old libraries cannot be run in the new engine anyway.  That is, there is no backwards compatibility at all, and the migration cost is high.  That being the case, I think it is reasonable to ask whether ''with'' should not be retired entirely.
+
+However, until ''eval'' is fixed, I don't see much point in fixing ''with'' at all.  It is true that a distinguished syntax for accessing ''with''-bound names allows for some semantic clarifications and potentially performance improvements in code that uses ''with'', but the existing ''eval'' will require the same run-time structures in the new engine that the existing ''with'' requires, so there are no savings in implementation complexity and no real improvements in the semantics from fixing ''with''.
+
+(Fixing ''eval'': restrict it to evaluating its argument in the global scope.)
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/06 01:29//
+
+Lars, I couldn't agree with you more.
+
+(Even if we don't get these changes, though, there is still a potential for simplifying the semantic model to some degree. Part of the spirit of my [[clarification:lexical scope]] proposal is to phrase the semantics as a lexically scoped language with traditional environments, but where it //may// (depending on the outcome of proposals like this one) be possible to reify certain semantic structures like environment frames as runtime objects, and, if we have to retain compatibility, reflect modifications back into the semantic structures. This is in contrast to the ES3 approach of modeling the environments directly as run-time objects.)
+
+Regardless, I would like to see both ''with'' and ''eval'' fixed.
+
+Another possibility is to change the syntax and semantics of ''with'' to the ''let'' proposal, i.e., to use the keyword ''with'' instead of ''let''. You lose the small amount of pattern matching that you get from ''with'', though. We should keep in mind that that's probably why people love ''with'' so much.
+
+Perhaps, then, ''with'' is a red herring? We should think about a pattern matching construct, maybe along the lines of what Lars has described in Opera.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2006/03/06 05:51//
+
+I do like Lar's [[proposals:destructuring assignment]], they look like a useful extension that doesn't add too much new syntax, instead letting existing syntax occur in a new context -- and in a way that is likely to be clear to newcomers.
+
+However, I don't see much point in trying to change ''with'' and ''eval''.  Everyone implementing for web JS will have to cope with the full monte, including ''eval'' in local scope.  I think more than red herrings, these are dead horses ;-).
+
+We could forbid indirect ''eval'', as a small move toward sanity.  I don't believe any browsers but Mozilla-based ones allow it.  Lars, does Opera throw ''EvalError''?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/08 18:53//
+
+Opera throws EvalError if you pick up ''eval'' and use it in a different context, with some exceptions (see below).
+
+I think ''eval'' should be a keyword and should be a prefix expression operator in the language.  From an implementation standpoint it doesn't make too much difference, but I think it's cleaner.  It's already plain that ''eval'' can't be implemented as a function in a library, so we shouldn't pretend that it can be.
+
+This will break sites that use ''other_window.eval()'' to evaluate a program in the context of ''other_window''.  Opera allows this as an exception.  If a site still needs to do this, it can implement it by defining a global function ''evaluate'' that uses ''eval'':
+
+<code javascript>
+  function evaluate(s) { return eval s; }
+  ...
+  other_window.evaluate("x=37;");
+</code>
+
+Beating the dead horse a little more:  I would sure like to see some data to substantiate that ''eval'' in the local scope is widely enough used to worry about for backwards compatibility.  I'm not going to claim that I know enough about the usage to make a definitive judgement, but my impression is that this is not used all that widely.  I'll see if I can't find some time to go digging for data.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/09 01:12//
+
+Lars, I will get our spider running looking for local ''eval'' usage.
+
+Making ''eval'' a keyword was mooted during ECMA-262 Edition 1 days.  We didn't do it because of compatibility concerns.  You could argue, now that Edition 3 is well-known, that Edition 4 should clean things up and leave it to browser vendors to add indirect ''eval'' exceptions as Mozilla and Opera, at least, already have done.  With an informative section of the spec talking about the details, I could go along with this.  Maybe in ten years it might make it possible to drop the old junk.
+
+I will add a [[proposals:bug fixes]] section and populate it with small changes that we've already agreed to informally, and add this one.
+
+I continue to believe that ''with'' should not be eliminated from the normative Edition 4 specification, since implementations need to consider how it and ''eval'' (even as a unary operator, no indirect calls allowed) interact with the rest of the language.  My premise remains that ''with'' and ''eval'' (including local ''eval'') usage won't go away any time soon, therefore we would be derelict in not specifying these beasts in Edition 4.  Edition 3 already underspecifies enough that it has brought forth interoperation problems -- at non-trivial cost.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/10 12:24//
+
+I agree with all those assessments.  
+
+(In fact, I would be happy to see a return to the ECMAScript spec of a discussion of ''function.arguments'', among other features; a substantial number of sites relies on this and requires it to be supported properly in all browsers anyway.)
+
+I should probably make it clear that I'm not actually arguing that we should remove or alter ''with'', only that if the present proposal to alter it is accepted (requiring all programs that use ''with'' to be rewritten) then we should consider whether more radical surgery is not warranted.  ''with'' is annoying and creates complexity but it is not a huge problem, in a dynamic language.  (Though I suspect that keeping it and other dynamic-scoping features in the emerging static language will eventually get us into trouble.)
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/13 04:35//

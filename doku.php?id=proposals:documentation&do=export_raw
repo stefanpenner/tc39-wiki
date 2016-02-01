@@ -1,0 +1,137 @@
+DO NOT EXPORT
+
+====== Motivation ======
+
+It would be useful to make JavaScript programs more self-documenting.
+
+====== Proposal ======
+
+It is proposed that optional strings can be inserted in ''function'' definitions and in ''var'' definitions. These are ignored by the compiler, but could be recognized by the programmer and by documentation tools as useful documentation.
+
+A documentation string literal (possibly a [[triple quotes]] string literal) may be placed after a function name in a ''function'' statement or expression, or after a variable name in a ''var'' statement. 
+
+A documentation string literal may also be placed after a name in a parameter list, before the comma or right paren.
+
+In anonymous function literals, a documentation string literal may be placed between the word ''function'' and the parameter list.
+
+----
+
+Since these strings carry no semantic meaning, could we not simply state in the spec that ordinary ''/* ... */'' style comments in the locations you mention are privileged in the sense that they are taken to document the entities they adjoin?
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/08/30 09:57//
+
+AS3 has a tool called ASDoc that follows the lead of JavaDoc. Here is a link to the descrption: http://labs.adobe.com/wiki/index.php/ASDoc:Creating_ASDoc_Comments
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/09/22 12:30//
+
+====== Counterproposal ======
+
+===== Summary =====
+
+Define structured comments that are logically attached to certain phrases in the language as well as optional introspection facilities for extracting these comments at run-time.
+
+===== Motivation =====
+
+Structured comments rule.  As for the introspection facility, it may allow for lightweight tools to be written in the language.
+
+===== Facilities =====
+
+A "doc comment" is a comment that starts with the text ''%%/**%%''.
+
+A doc comment that immediately precedes certain syntactic phrases in the language is said to be captured by those phrases and to document the entities defined by the phrases.  
+
+The syntactic phrases that capture a preceding doc comment are ''FunctionDefinition'', ''ClassDefinition'', ''InterfaceDefinition'', ''NamespaceDefinition'', ''TypeDefinition'', ''PackageDefinition'', ''FunctionExpression'', ''ObjectLiteral'',  ''ArrayLiteral'', and ''VariableDefinition'' if it appears at the top level of ''ClassDefinition''.
+
+An implementation is free not to capture comments at all.  If so, none of the following applies.
+
+Before further processing each doc comment is stripped of its leading ''%%/**%%'' and trailing ''%%*/%%'' characters, and of text matching ''%%\s*\*+%%'' at the beginning of each line.  The resulting text is the "full text of the comment".
+
+The run-time objects representing classes, interfaces, namespaces, and types that have captured a doc comment, and objects resulting from object and array initializers that have captured a doc comment, are decorated with a ''DontEnum'' property called ''documentation''.
+
+The value of the ''documentation'' property is the entity's "documentation object".  The documentation object has various properties.  One property is always ''text'', which holds the full text of the comment.
+
+The full text of the comment may contain javadoc-style fields, prefixed by ''@'' and followed by arbitrary text.  Values of recognized fields are extracted and stored in properties on the documentation object whose names are the names of the fields.  The recognized fields are ''@author'', ''@see'', ''@return'', and ''@throws''.
+
+The field ''@param'' is recognized to reference a formal parameter of the following ''FunctionDefinition'' or ''FunctionExpression''.  If there are any ''@param'' fields, then the documentation object is given a ''param'' property that holds an ''Array'' object.  This object's ''length'' property reflects the number of formal parameters to the function.  Each property named by an unsigned integer //n// below ''length'' holds the name of the //nth// formal parameter.  For each formal parameter that has a ''@param'' field in the documentation there is also a property on the ''param'' object under that parameter's name, whose value is the text of the documentation field.
+
+For ''ClassDefinition'' phrases, any documentation for ''VariableDefinition''s is collected into an object that is stored under the name ''properties'' on the documentation object and whose keys are the variable names and values the variables' documentation objects. 
+
+Packages don't have a run-time representation, so their documentation can only be accessed by outside tools operating on the source text.
+
+Other ''@'' fields are legal; tools may or may not extract them and make them available.
+
+A field value ends with the next ''%%@<name>%%'' (for any name) or with a blank line.
+
+Tools may assign meaning to parts of the comment; for example, they may assume that the first paragraph contains an overall description of the entity being documented.
+
+===== Examples =====
+
+Consider the following function definition:
+
+<code>
+   /** Documentation example.
+     *
+     * Computes strict equality for two values.
+     *
+     * @param x  Example of x parameter
+     * @param y  Example of y parameter
+     * @return   TRUE if x===y
+     *
+     * @author Lars T Hansen
+     */
+   function f( x, y, z ) { ... }
+</code>
+
+The object f.documentation has the properties ''text'', ''param'', ''return'', and ''author''.  
+
+The value of ''return'' is the string ''TRUE if x===y''. 
+
+The value of ''param'' is an Array object with properties ''0'', ''1'', ''2'', ''length'', ''x'', and ''y''.  The property ''2'' holds the variable name ''z'', but this is not a named property on the object because that parameter is not documented.
+
+===== Related =====
+
+  * JSDoc: http://jsdoc.sourceforge.net
+  * Doxygen: http://www.stack.nl/~dimitri/doxygen/
+  * Javadoc: http://java.sun.com/j2se/javadoc/
+  * ASDoc: http://labs.adobe.com/wiki/index.php/ASDoc:Creating_ASDoc_Comments
+
+
+
+
+===== Discussion =====
+
+I don't know if the value of the introspection facility is great, but there you have it.
+
+Depending on which outside tool one uses, the text should be HTML (JavaDoc) or not (Doxygen).  The ActionScript tool requires XHTML strict (ie with end tags), which is a bit obnoxious.  I chose to leave it unspecified.  If I had to specify it, I would probably choose like Doxygen (lightweight).
+
+----
+
+This looks great -- thanks for writing it up.  A couple of fine points or suggestions:
+
+  * Much as I like ''formals'' (crisply distinct from ''actuals'' or ''arguments''), ''param'' mirrors the ''@'' name mapping.  Is it better?
+  * It might be helpful if ''formals'' or ''param'' or whatever we call it were an ''Array'' with indexed properties whose values were the formal parameter names, in addition to the named properties.  What is missing with a plain ''Object'' instance is anything like ''length'', and a guaranteed enumeration order.
+  * Agree on XHTML being heinous, and my limited Java experience says that HTML can be hard on the eyes, so I'm in favor of a lightweight Doxygen style markup syntax.  It would be great if we could specify this by reference as the One True Way, but with ASDoc perhaps we're stuck supporting several and merely recommending one.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/09/26 11:49//
+
+In order:
+
+  * You're right about ''param'' and using an Array.  Fixed.
+  * I think we can get away with specifying Doxygen markup, this should allow but not require people to use (X)HTML.  The burden is then on ASDoc to accept it.  Other tool chains will work out of the box.
+
+
+I also added clauses about documenting function expressions and object and array initializers.  Let me know what you think.  
+
+(I wanted to document the fields of object initializers too, but decided that usually the values in those fields will be documented instead, when it matters.  Alternatively we could allow for eg ''@prop'' in the doc comment for object initializers; it would be have like ''@param''.)
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/09/27 02:27//
+
+Just noticed that ''methods'' is not specified (unless I missed it), to complement ''properties''.
+
+A naming question: are concrete names such as ''vars'' instead of ''properties'' (''functions'' instead of ''methods'') better?
+
+There's some interest in a global ''documentation'' object from folks I've spoken with about this proposal.  Comments?
+
+We should be clear in the spec (it's reasonably clear above, but not legalistic enough for me ;-) that this optional reflection is all-or-none.  Implementations can't opt into pieces of it.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/10/30 12:36//

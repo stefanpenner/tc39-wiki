@@ -1,0 +1,299 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:arrays&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:arrays&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:arrays&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:arrays&amp;do=export_html.html#arrays" class="toc">Arrays</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:arrays&amp;do=export_html.html#summary" class="toc">Summary</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:arrays&amp;do=export_html.html#use_cases_for_arrays_in_es4" class="toc">Use cases for arrays in ES4</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:arrays&amp;do=export_html.html#proposals" class="toc">Proposals</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:arrays&amp;do=export_html.html#tuple_types_vs_array_typesnatural_syntax" class="toc">Tuple types vs array types: natural syntax</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:arrays&amp;do=export_html.html#creating_various_kinds_of_arrays" class="toc">Creating various kinds of arrays</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:arrays&amp;do=export_html.html#vectors" class="toc">Vectors</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="arrays"></a><h1>Arrays</h1>
+<div class="level1">
+
+<p>
+ Status: complete draft (rev 2).
+</p>
+
+<p>
+Also see <a href="doku.php%3Fid=discussion:arrays.html" class="wikilink1" title="discussion:arrays" onclick="return svchk()" onkeypress="return svchk()">the discussion page</a> for this proposal.
+</p>
+
+<p>
+Note, this proposal is somewhat outdated, it is superseded by approved proposal tickets that handle various aspects of it.  We&rsquo;ve approved type syntax like <code>[t]</code> for arrays and <code>[t1,t2]</code> for tuples; creation syntax like <code>new [t]</code>, and a separate <code>Vector</code> proposal to handle boundedness, fixedness, and denseness.  The <code>[t]</code> and <code>[t1,t2]</code> arrays are entirely compatible with <code>Array</code>, apart from type constraints on slots (that persist even if slots are deleted).
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2007/09/26 20:52</em>
+</p>
+
+</div>
+<!-- SECTION [1-660] -->
+<a name="summary"></a><h2>Summary</h2>
+<div class="level2">
+
+<p>
+ Arrays are poorly supported in ES3 and just a little better supported in draft-ES4, yet are among the most versatile data structures in programming.  We should do better.
+</p>
+
+<p>
+Various topics that will or may be discussed here eventually include:
+</p>
+<ul>
+<li class="level1"><div class="li"> the nature of typed arrays (ticket 66)</div>
+</li>
+<li class="level1"><div class="li"> natural syntax for creating typed arrays (ticket 68)</div>
+</li>
+<li class="level1"><div class="li"> array boundedness (ticket 69)</div>
+</li>
+<li class="level1"><div class="li"> syntax for array types (ticket 120)</div>
+</li>
+<li class="level1"><div class="li"> the problem of iterating conveniently over numbered elements of arrays without regarding the prototype (ie pulling the teeth on <code>for-in</code>; this may already be covered in part by the iteration proposal but I want to make sure we have a credible story here; the thing I do most with arrays is iterating over the numbered elements of dense arrays and I assume others are in a similar situation, and no, <code>forEach</code> and <code>map</code> are not the solution we&rsquo;re looking for)</div>
+</li>
+<li class="level1"><div class="li"> elbow room for the implementation for optimized array representations, eg, invariant iteration order over dense arrays (removes the need for any sort of index or creation order map)</div>
+</li>
+<li class="level1"><div class="li"> multi-dimensional arrays</div>
+</li>
+</ul>
+
+<p>
+ What we&rsquo;re looking for are powerful proposals that are not a huge burden on the language or implementation at this point.
+</p>
+
+</div>
+<!-- SECTION [661-1909] -->
+<a name="use_cases_for_arrays_in_es4"></a><h2>Use cases for arrays in ES4</h2>
+<div class="level2">
+
+<p>
+ I suspect there are three major use cases for array-like structures in ES4: tuples, true arrays, and ES3 array-like aggregates. 
+</p>
+<ol>
+<li class="level1"><div class="li"> Tuples</div>
+<ul>
+<li class="level2"><div class="li"> Used for ad-hoc aggregation of small amounts of data; multiple return values; destructuring; boxes for by-reference parameters</div>
+</li>
+<li class="level2"><div class="li"> Short</div>
+</li>
+<li class="level2"><div class="li"> Can usefully be considered to have a fixed length</div>
+</li>
+<li class="level2"><div class="li"> Can usefully be typed</div>
+</li>
+<li class="level2"><div class="li"> Different properties have different types</div>
+</li>
+<li class="level2"><div class="li"> Are usually dense (no holes, so <code>in</code> is trivial / unimportant)</div>
+</li>
+<li class="level2"><div class="li"> Can&rsquo;t delete elements</div>
+</li>
+<li class="level2"><div class="li"> Insertion order is not important</div>
+</li>
+<li class="level2"><div class="li"> Iteration order is not important, though most users probably expect iteration from low indices toward higher</div>
+</li>
+<li class="level2"><div class="li"> Prototype properties in the index range are not visible in the object</div>
+</li>
+<li class="level2"><div class="li"> Creation is almost always by typed or untyped array initializer: <code>[1,x,3]:t</code> or <code>[1,x,3]</code></div>
+</li>
+<li class="level2"><div class="li"> The natural type expression for one of these is <code>[p,q,r]</code></div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> True arrays</div>
+<ul>
+<li class="level2"><div class="li"> Used for aggregates of similar data</div>
+</li>
+<li class="level2"><div class="li"> Are always dense (no holes)</div>
+</li>
+<li class="level2"><div class="li"> Can be large</div>
+</li>
+<li class="level2"><div class="li"> Performance and storage consumption are important</div>
+</li>
+<li class="level2"><div class="li"> Can usefully be typed</div>
+</li>
+<li class="level2"><div class="li"> Different properties have the same type</div>
+</li>
+<li class="level2"><div class="li"> Can usefully have an upper bound / fixed length</div>
+</li>
+<li class="level2"><div class="li"> Can usefully have variable length</div>
+</li>
+<li class="level2"><div class="li"> Can&rsquo;t delete elements except at the end</div>
+</li>
+<li class="level2"><div class="li"> Not obvious that a lower bound is useful</div>
+</li>
+<li class="level2"><div class="li"> Insertion order is not important</div>
+</li>
+<li class="level2"><div class="li"> Iteration order is not important</div>
+</li>
+<li class="level2"><div class="li"> Prototype properties in the index range are not visible in the object</div>
+</li>
+<li class="level2"><div class="li"> Creation is almost always by typed empty array initializer: <code>[]:t</code></div>
+</li>
+<li class="level2"><div class="li"> The natural type expression for one of these is <code>[p]</code></div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Array-like aggregates</div>
+<ul>
+<li class="level2"><div class="li"> ES3 compatible</div>
+</li>
+<li class="level2"><div class="li"> Often have holes</div>
+</li>
+<li class="level2"><div class="li"> Variable length</div>
+</li>
+<li class="level2"><div class="li"> Prototype properties are always visible</div>
+</li>
+<li class="level2"><div class="li"> Can probably be typed, but hard to say something about how types would be used</div>
+</li>
+<li class="level2"><div class="li"> Based on the <code>Array</code> class</div>
+</li>
+<li class="level2"><div class="li"> Insertion order is important</div>
+</li>
+<li class="level2"><div class="li"> Iteration order is important</div>
+</li>
+<li class="level2"><div class="li"> Can delete arbitrary elements</div>
+</li>
+<li class="level2"><div class="li"> Model/hook for array-like operations on arbitrary objects</div>
+</li>
+<li class="level2"><div class="li"> Creation is almost always by <code>new Array</code> or untyped empty array initializer <code>[]</code></div>
+</li>
+</ul>
+</li>
+</ol>
+
+<p>
+ Minor use cases might include: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Multi-dimensional arrays.  These are not currently fashionable since it&rsquo;s easier for the implementation to reference certain subarrays if multi-dimensional arrays are actually allocated as vectors of vectors, but that&rsquo;s really a cop-out, and a richer multi-dimensional array type should not need to go that route.  We might consider future-proofing so as not to close the door on multi-dimensional arrays.  See <a href="doku.php%3Fid=discussion:arrays.html" class="wikilink1" title="discussion:arrays" onclick="return svchk()" onkeypress="return svchk()">the discussion page</a>.</div>
+</li>
+<li class="level1"><div class="li"> One-element tuples.  These are not unthinkable (they make nice boxes) but probably not that common; multiple return values also reduces the needs for boxes substantially.  See <a href="doku.php%3Fid=discussion:arrays.html" class="wikilink1" title="discussion:arrays" onclick="return svchk()" onkeypress="return svchk()">the discussion page</a>.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1910-4818] -->
+<a name="proposals"></a><h2>Proposals</h2>
+<div class="level2">
+
+<p>
+ The intent here is to add useful type annotations and behavior to go with them, but to preserve <code>Array</code> semantics reasonably well.
+</p>
+
+<p>
+The proposal can be summed up in six points:
+</p>
+<ul>
+<li class="level1"><div class="li"> a structural type syntax for arrays</div>
+</li>
+<li class="level1"><div class="li"> a natural creation syntax for typed arrays </div>
+</li>
+<li class="level1"><div class="li"> array elements can be constrained to have a particular type</div>
+</li>
+<li class="level1"><div class="li"> arrays with type constraints are flat (the prototypes are not visible for uint-named elements)</div>
+</li>
+<li class="level1"><div class="li"> operations on typed arrays are redefined to use the type information</div>
+</li>
+<li class="level1"><div class="li"> <a href="doku.php%3Fid=proposals:vector.html" class="wikilink1" title="proposals:vector" onclick="return svchk()" onkeypress="return svchk()">A separate vector proposal</a> implements FORTRAN-like semantics</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [4819-5432] -->
+<a name="tuple_types_vs_array_typesnatural_syntax"></a><h3>Tuple types vs array types: natural syntax</h3>
+<div class="level3">
+
+<p>
+ We finesse the structural type syntax a little bit: 
+</p>
+<ul>
+<li class="level1"><div class="li"> The type <code>[]</code> means <code>[*]</code></div>
+</li>
+<li class="level1"><div class="li"> The type <code>[t]</code> means &ldquo;variable-length flat array of t&rdquo;.  All elements are constrained to <code>t</code>.</div>
+</li>
+<li class="level1"><div class="li"> The type <code>[t1, t2, ..., tn]</code> means &ldquo;variable-length flat array of <code>t1</code>, ..., <code>tn</code>.  Element 0 is constrained to <code>t1</code>, element 1 to <code>t2</code>, and so on.</div>
+</li>
+</ul>
+
+<p>
+ These type expressions can be used to annotate array initializers and in the proposed <code>new</code> syntax (see next section).  They can also be used in type text expressions like <code>is</code>.  Typed <code>Array</code> objects have the following properties: 
+</p>
+<ul>
+<li class="level1"><div class="li"> The prototype of typed arrays is the initial or current <code>Array</code> prototype, as per the usual rules.</div>
+</li>
+<li class="level1"><div class="li"> The prototype is not considered for finding uint-named properties (hence the use of &ldquo;flat&rdquo; above).</div>
+</li>
+<li class="level1"><div class="li"> If the array has a hole, or an element beyond <code>length-1</code> is read, then a default value appropriate to the type is returned when the hole is read.  If the constraining type for the field is non-nullable and there is no default value then an exception is thrown when the element is read (creating a hole does not cause an exception to be thrown).</div>
+</li>
+<li class="level1"><div class="li"> The <code>length</code> property is writable as normal.</div>
+</li>
+<li class="level1"><div class="li"> The type is a property of the array object, not of each individual element.  If an element is deleted and recreated or read then its type is still constrained by the array type.</div>
+</li>
+<li class="level1"><div class="li"> All array methods may be used on these arrays, but may fail if type constraints are violated.  For example, an array of type <code>[Date,RegExp]</code> can only be <code>shift</code>ed if element 1 is null.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [5433-7063] -->
+<a name="creating_various_kinds_of_arrays"></a><h3>Creating various kinds of arrays</h3>
+<div class="level3">
+
+<p>
+ Arrays can be created through <code>new Array</code>, <code>[...]</code>, <code>new &lt;arraytype&gt;</code>, and <code>[...] : &lt;arraytype&gt;</code>.  The former two create unconstrained arrays; the latter create flat type-constrained arrays. 
+</p>
+<ul>
+<li class="level1"><div class="li"> Arrays created through the use of <code>new Array</code> and unannotated array initializers (eg <code>[1,2,3]</code> and <code>[]</code>) create untyped dynamic array-like aggregates (use case 3).  This is fully compatible with ES3.</div>
+</li>
+<li class="level1"><div class="li"> Arrays created through the use of <code>new &lt;arraytype&gt;</code> and annotated array initializers (eg <code>[1,2,3]: t</code> and <code>[]: t</code>) create dense typed arrays (use cases 1 and 2), essentially compatible with <code>Array</code> but with differences in how element access is performed (the prototype is not considered) and how missing values are returned (constrained by the type).</div>
+</li>
+</ul>
+
+<p>
+ The initial length of an array created with <code>new &lt;arraytype&gt;</code> is zero, even if the type is of the form <code>[t1, t2, ..., tn]</code>.
+</p>
+
+</div>
+<!-- SECTION [7064-8010] -->
+<a name="vectors"></a><h3>Vectors</h3>
+<div class="level3">
+
+<p>
+ A separate <a href="doku.php%3Fid=proposals:vector.html" class="wikilink1" title="proposals:vector" onclick="return svchk()" onkeypress="return svchk()">vector proposal</a> provides for arrays with FORTRAN-like semantics.  After the extensive discussion at the July 2007 f2f I felt that co-opting the <code>[T]</code> type syntax for FORTRAN-like arrays, and then making them very different from &ndash; essentially not interoperable with &ndash; <code>Array</code> for performance and other optimization reasons, was not the right thing for the language.  See <a href="doku.php%3Fid=discussion:arrays.html" class="wikilink1" title="discussion:arrays" onclick="return svchk()" onkeypress="return svchk()">the discussion page</a>.
+</p>
+
+</div>
+<!-- SECTION [8011-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/7/78e40d25841e90fdc84ca98de6c340f0.xhtml used -->
+</body>
+</html>

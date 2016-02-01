@@ -1,0 +1,301 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:value_types&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:value_types&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:value_types&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:value_types&amp;do=export_html.html#notes_from_october_2009_meeting" class="toc">Notes from October 2009 meeting</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:value_types&amp;do=export_html.html#dispatch_designs" class="toc">Dispatch Designs</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:value_types&amp;do=export_html.html#literal_syntax" class="toc">Literal Syntax</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:value_types&amp;do=export_html.html#hard_cases" class="toc">Hard Cases</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:value_types&amp;do=export_html.html#which_operators" class="toc">Which Operators</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="notes_from_october_2009_meeting"></a><h1>Notes from October 2009 meeting</h1>
+<div class="level1">
+
+<p>
+ This is a dump of my notes from the meeting, with Mark Miller, Jason Orendorff, Sam Ruby, and myself attending, unedited. I&rsquo;ll work to turn it into something more coherent. Comments here or in es-discuss welcome.  &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2010/01/28 19:26</em>
+</p>
+
+<p>
+Jason <a href="https://mail.mozilla.org/pipermail/es-discuss/2009-October/010068.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2009-October/010068.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">posted</a> to es-discuss on which operators should be overloadable. This post does not get into dispatch at all, and is helpful in addressing what I hope are less controversial aspects of the design of any likely value types proposal.  &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2010/05/26 22:45</em>
+</p>
+
+</div>
+<!-- SECTION [1-700] -->
+<a name="dispatch_designs"></a><h2>Dispatch Designs</h2>
+<div class="level2">
+
+<p>
+ Jason: three approaches: 
+</p>
+<ol>
+<li class="level1"><div class="li"> double dispatch</div>
+</li>
+<li class="level1"><div class="li"> declared multimethods</div>
+</li>
+<li class="level1"><div class="li"> dynamic multimethods</div>
+</li>
+</ol>
+
+<p>
+ trade-offs with double dispatch: 
+</p>
+<ol>
+<li class="level1"><div class="li"> compareTo vs. lt/gt/etc.</div>
+</li>
+<li class="level1"><div class="li"> implementor has to call reverse-method</div>
+</li>
+<li class="level1"><div class="li"> subclass/subtype requires specializing to narrower operand type first, even if right-hand</div>
+</li>
+</ol>
+
+<p>
+ Mark&rsquo;s problem with double dispatch:
+</p>
+
+<p>
+Suppose you have rational.js, written without knowledge of complex.js. Likewise for complex.js, written without knowledge of rational.js. No common type to widen their operands to can make this work.
+</p>
+
+<p>
+Claim is that a third module can compose Rational and Complex &ndash; is this plausible? 
+</p>
+<ul>
+<li class="level1"><div class="li"> Alice imports rational.js and complex.js.</div>
+</li>
+<li class="level1"><div class="li"> Bob imports all three of rational.js, complex.js, ratplex.js.</div>
+</li>
+<li class="level1"><div class="li"> This should not affect Alice seeing failure trying to add a Rational to a Complex.</div>
+</li>
+</ul>
+
+<p>
+ Everyone agrees.
+</p>
+
+<p>
+<a href="https://mail.mozilla.org/pipermail/es-discuss/2009-June/009603.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2009-June/009603.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Christian Hansen's proposal</a> violates this if Alice and Bob really share prototypes. Or in Christian&rsquo;s proposal, ratplex.js implies mutation of frozen prototypes.
+</p>
+
+<p>
+Brendan pointed to his es-discuss <a href="https://mail.mozilla.org/pipermail/es-discuss/2009-June/009613.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2009-June/009613.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">reply</a> to Christian that another way to do multimethods does not mutate types (prototypes), rather it uses a lexically scoped matrix mapping types to sets of methods. When you pass a first-class multimethod somewhere, it carries via lexical scope its matrix.
+</p>
+
+<p>
+Sam joins call, asks if we are looking to extend hardcoded ES semantics only if one or both operands are value types, or try to recast all operators in terms of value types?
+</p>
+
+<p>
+Not sure, see below after &ldquo;literal syntax&rdquo; section for more.
+</p>
+
+<p>
+Jason asks why unary operators need multimethod dispatch &ndash; why not turn abs(x) into x.abs()? Sam points out that abs for Decimal would want to work differently from Math.abs today.
+</p>
+
+<p>
+Is Math.abs a counter-example? Not if lexical binding is the same, then it&rsquo;s mutating Math.abs. Whereas operators can be rewritten as lexically scoped functions.
+</p>
+
+<p>
+Jason: change Math.abs(x) to test 
+</p>
+<pre class="code">if (x is ValueType) return x.absMe();</pre>
+
+<p>
+ Mark: could split our approach and use this single-dispatch for unary operators and functions. But Sam wants Math.abs *and* Math.atan2 to work when Decimal is imported.
+</p>
+
+<p>
+Therefore Mark wants uniform mechanism over arity.
+</p>
+
+<p>
+Jason agrees and goes on to say this favors double dispatch in his view, as multimethods for unaries do not seem justified.
+</p>
+
+<p>
+Brendan: the implementor burden with double-dispatch still seems strictly higher than with multimethods, due to the obligation to call the reverse method (or not, as in Python), and the subtype specialization requiring reverse first.
+</p>
+
+<p>
+Another trade-off: wrappers are required to compose <em>a priori</em> types with double dispatch. This has costs in runtime, space, and possibly abstraction leaks (even <a href="doku.php%3Fid=strawman:proxies.html" class="wikilink1" title="strawman:proxies" onclick="return svchk()" onkeypress="return svchk()">proxies</a> leaks via certain meta-programming APIs).
+</p>
+
+</div>
+<!-- SECTION [701-3641] -->
+<a name="literal_syntax"></a><h2>Literal Syntax</h2>
+<div class="level2">
+
+<p>
+ Waldemar&rsquo;s Units proposal:
+</p>
+
+<p>
+<a href="http://web.archive.org/web/20110216074628/http://www.mozilla.org/js/language/js20-2002-04/core/expressions.html#unit-expression" class="urlextern" target="_blank" title="http://web.archive.org/web/20110216074628/http://www.mozilla.org/js/language/js20-2002-04/core/expressions.html#unit-expression" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://web.archive.org/web/20110216074628/http://www.mozilla.org/js/language/js20-2002-04/core/expressions.html#unit-expression</a>
+</p>
+
+<p>
+Mark: no need for ParenListExpression String &ndash; do want String or Number literal followed by unit suffix. The unit maps to a function called with a *string* value of the literal to the left.
+</p>
+
+<p>
+Mark: Does this brings up stage separation? Brendan: Is separate compilation enough? Agreement that separate compilation seems sufficient if we mangle unit suffix to function name in a well-known way.
+</p>
+
+<p>
+m mangles to MakeLiteral_m for Decimal
+</p>
+
+<p>
+Later, Mark suggests general operator_literal_m to match operator_add for +, operator_unary_minus for (-x).
+</p>
+
+<p>
+This reminded Brendan of ES4-era <code>function +(a,b){...}</code>, etc. proposals, which allowed funarg refs (details in <a href="doku.php%3Fid=proposals:operators.html" class="wikilink1" title="proposals:operators" onclick="return svchk()" onkeypress="return svchk()">operators</a> &ndash; but the funarg form required the defunct ES4 <code>intrinsic::+</code> namespace).
+</p>
+
+</div>
+<!-- SECTION [3642-4588] -->
+<a name="hard_cases"></a><h2>Hard Cases</h2>
+<div class="level2">
+
+<p>
+ Is Number still special, or can it be recast in the extensible Value Type system?
+</p>
+
+<p>
+Not sure, Number may be special in some corner cases we don&rsquo;t care to make extensible.
+</p>
+
+<p>
+The user-visible Decimal cohort issue for === rears its head. Only -0 === 0 and NaN !== NaN are exceptions from identity. What about 1.1m and 1.10m? Sam wants to renegotiate the Sept. 2008 compromise on this point, since it did not cause Decimal to &ldquo;stick&rdquo; in ES5.
+</p>
+
+<p>
+Jason: === must be overloadable. Mark: no, Value Types mean === can do a recursive, cycle-tolerant structural comparison. Jason: not convinced that complexity is warranted.
+</p>
+
+<p>
+Mark would want == overloadable &ndash; everyone agrees.
+</p>
+
+<p>
+Issue seems to be in part the lack of &ldquo;egal&rdquo; (SameValue) operator. But even if we add &ldquo;egal&rdquo;, letting === be overridden may degrade real-world integrity. Right now people use === often to avoid implicit conversions or other such hook calls.
+</p>
+
+<p>
+Decision logic:
+</p>
+<pre class="code javascript"><span class="kw1">if</span> <span class="br0">&#40;</span>=== <span class="kw1">is</span> overloadable<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+   The need <span class="kw1">for</span> egal goes up;
+   <span class="kw1">if</span> <span class="br0">&#40;</span>egal <span class="kw1">is</span> added <span class="br0">&#40;</span>it <span class="kw1">is</span> not overloadable<span class="br0">&#41;</span><span class="br0">&#41;</span>
+       <span class="br0">&#123;</span><span class="nu0">0</span>, -<span class="nu0">0</span><span class="br0">&#125;</span> and NaN issues go away;
+<span class="br0">&#125;</span> <span class="kw1">else</span> <span class="br0">&#123;</span>
+   The need <span class="kw1">for</span> egal goes down,
+   because === <span class="kw1">is</span> well-defined <span class="kw1">as</span> structural recursive etc. <span class="me1">comparison</span>;
+<span class="br0">&#125;</span></pre>
+<p>
+Value Type means &ldquo;shallow frozen&rdquo;.
+</p>
+
+<p>
+Do membranes motivate overriding ===? If two membranes are equivalent? Mark&rsquo;s answer: they should be Value Types then, so === (and egal) do the right thing.
+</p>
+
+<p>
+The user-visible Decimal cohort issue again: does MakeLiteral_m(&rdquo;1.1&rdquo;) === MakeLiteral_m(&rdquo;1.10&rdquo;)? If === does structural recursive etc. comparison, the answer depends on how MakeLiteral_m works. It&rsquo;s up to the library author.
+</p>
+
+<p>
+Jason points out that !o does not call o.valueOf() &ndash; ToBoolean(Object) &rarr; true so !o &rarr; false.
+</p>
+
+<p>
+Value Types changes things so !v  for Value Type instance v may need to be true, e.g. v = 0m.
+</p>
+
+<p>
+Brendan: Waldemar reserved ! and ===/!== to preserve logical equality.
+</p>
+
+<p>
+Jason: this brings up (a == b &amp;&amp; typeof a == typeof b) &hArr; a === b. If == can be overridden with logical equality only on the &ldquo;honor system&rdquo;, then this cannot be assumed.
+</p>
+
+<p>
+Sam: 0 == 0m but 0 !== 0m.
+</p>
+
+</div>
+<!-- SECTION [4589-6706] -->
+<a name="which_operators"></a><h2>Which Operators</h2>
+<div class="level2">
+
+<p>
+ Detailed operators list precedents: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Waldemar&rsquo;s JS2 <a href="http://www.mozilla.org/js/language/js20-2002-04/core/operators.html" class="urlextern" target="_blank" title="http://www.mozilla.org/js/language/js20-2002-04/core/operators.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">operators</a></div>
+</li>
+<li class="level1"><div class="li"> ES4&rsquo;s <a href="doku.php%3Fid=proposals:operators.html" class="wikilink1" title="proposals:operators" onclick="return svchk()" onkeypress="return svchk()">operators</a></div>
+</li>
+</ul>
+
+<p>
+ Should array-like accessing be overloadable? Jason: this would be really nice.
+</p>
+
+<p>
+Mark: given x with [] overloaded, does x.foo turn into x[&rsquo;foo&rsquo;]? If yes, then deoptimizing; if no then a primal <acronym title="JavaScript">JS</acronym> equivalence has been broken. Could we allow overloading x[v] only when v is a Value Type? This could avoid name conflicts. Also may help Names. Addresses age-old desire for an arbitrary value index (no forced stringification).
+</p>
+
+<p>
+De-facto DOMs want call overloading. Yikes.
+</p>
+
+<p>
+Defining operators is an open issue. <code>function +(a, b) { ... }</code> or something mangled.
+</p>
+
+<p>
+(After the meeting Mark suggested <code>function operator+(a, b) { ... }</code> for defining, <code>operator+</code> for referencing, and for literals, <code>operator m</code>. No mangling, if you will &ndash; new syntax!)
+</p>
+
+<p>
+Defining value types is an open issue. Sam previously mentioned C++ struct (also in Scala). We think any class in Harmony must by default make reference types, so something new would be needed for value types.
+</p>
+
+</div>
+<!-- SECTION [6707-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/4/44b88463d9663b8c9d11c4e95b8a10a9.xhtml used -->
+</body>
+</html>

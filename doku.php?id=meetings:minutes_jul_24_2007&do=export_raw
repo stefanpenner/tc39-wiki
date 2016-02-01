@@ -1,0 +1,26 @@
+===== Attending =====
+
+  * Jeff
+  * Graydon 
+  * Dave
+  * Cormac
+  * Brendan
+  * Lars
+  * Crock
+
+===== Agenda =====
+
+(No agenda.)
+
+===== Minutes =====
+
+Lengthy discussion about the structural type system and its features/problems.  At the end of the day, the realization that the system as it stands (solution 8) does not provide the guarantees it appears to provide, even if we add deep checking at the function call interface:
+
+<code>
+function f(p: { x: { y: { z: int } } }) {
+  unknownfunction();
+  g(p.x)    // the problem is here
+}
+</code>
+
+The problem is that no checking is done of the deep structure of p when p.x is referenced, so if g expects the right type because f checked it, g will be surprised if ''unknownfunction'' changed the deep structure of p.

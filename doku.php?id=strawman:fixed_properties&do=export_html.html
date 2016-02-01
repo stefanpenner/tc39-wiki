@@ -1,0 +1,258 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:fixed_properties&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:fixed_properties&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:fixed_properties&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:fixed_properties&amp;do=export_html.html#fixed_properties_for_proxies" class="toc">Fixed Properties for Proxies</a></span><ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:fixed_properties&amp;do=export_html.html#enforcing_the_invariants" class="toc">Enforcing the invariants</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:fixed_properties&amp;do=export_html.html#required_checks" class="toc">Required checks</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:fixed_properties&amp;do=export_html.html#specification" class="toc">Specification</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:fixed_properties&amp;do=export_html.html#open_issues" class="toc">Open issues</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:fixed_properties&amp;do=export_html.html#references" class="toc">References</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="fixed_properties_for_proxies"></a><h1>Fixed Properties for Proxies</h1>
+<div class="level1">
+
+<p>
+ Goal: allow proxies to emulate non-configurable properties, without breaking the invariants implied by <code>configurable:false</code>.
+</p>
+
+<p>
+In what follows, a <u>fixed property</u> is a non-configurable property that is observed as the return value from the <code>get{Own}PropertyDescriptor</code> traps, or as an input argument to a successful <code>defineProperty</code> trap invocation. In other words, fixed properties are exposed non-configurable properties of Proxy objects.
+</p>
+
+<p>
+This strawman proposes to allow proxies to expose non-configurable properties, provided that the following invariants are upheld: 
+</p>
+<ul>
+<li class="level1"><div class="li"> get{Own}PropertyDescriptor cannot report fixed properties as non-existent</div>
+</li>
+<li class="level1"><div class="li"> get{Own}PropertyDescriptor cannot report incompatible changes to a fixed property (e.g. reporting a non-configurable property as configurable, or reporting a non-configurable, non-writable property as writable)</div>
+</li>
+<li class="level1"><div class="li"> defineProperty cannot complete successfully when incompatible changes are made to the attributes of fixed properties</div>
+</li>
+<li class="level1"><div class="li"> when a proxy is fixed, no incompatible changes to fixed properties can be made (i.e. properties returned by the fix() trap are combined with fixed properties before fixing the proxy)</div>
+</li>
+<li class="level1"><div class="li"> delete cannot report a successful deletion of a fixed property</div>
+</li>
+<li class="level1"><div class="li"> hasOwn cannot report a fixed property as non-existent</div>
+</li>
+<li class="level1"><div class="li"> has cannot report a fixed property as non-existent</div>
+</li>
+<li class="level1"><div class="li"> get cannot report inconsistent values for non-writable fixed data properties</div>
+</li>
+<li class="level1"><div class="li"> set cannot report a successful assignment for non-writable fixed data properties</div>
+</li>
+</ul>
+
+<p>
+ These invariants are derived from the <a href="doku.php%3Fid=es3.1:attribute_states.html" class="wikilink1" title="es3.1:attribute_states" onclick="return svchk()" onkeypress="return svchk()">allowable state transitions</a> of ES5 property descriptors, and from ES5 Section 8.6.2, &ldquo;Object Internal Properties and Methods&rdquo;.
+</p>
+
+</div>
+<!-- SECTION [1-1765] -->
+<a name="enforcing_the_invariants"></a><h3>Enforcing the invariants</h3>
+<div class="level3">
+
+<p>
+ Two approaches were identified:
+</p>
+<ol>
+<li class="level1"><div class="li"> <strong>Trap-and-enforce</strong>: The proxy stores a copy of all fixed properties. Traps whose name corresponds to a fixed property are still triggered, but the result of the trap is checked for conformance against the copy. <code>defineProperty</code> updates the copy if the trap completes successfully. A failed check causes a <code>TypeError</code> to be thrown.</div>
+</li>
+<li class="level1"><div class="li"> <strong>Short-circuiting</strong>: The proxy stores a copy of all fixed properties. Traps whose name corresponds to a fixed property are no longer triggered, the proxy instead applies the default behavior on its copy of the property.</div>
+</li>
+</ol>
+
+<p>
+ This strawman proposes the trap-and-enforce model. An earlier version proposed the short-circuiting approach, but was retracted because of the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Operating on the copy of a property without trapping could cause the copy to diverge from the &ldquo;virtual&rdquo; property. The strawman could be patched up to the point where e.g. Array&rsquo;s non-configurable <code>length</code> could be emulated, but it was ad hoc.</div>
+</li>
+<li class="level1"><div class="li"> The short-circuiting approach required changes to the Proxy <acronym title="Application Programming Interface">API</acronym> and had implications on the default forwarding handler. The trap-and-enforce approach requires no such changes.</div>
+</li>
+<li class="level1"><div class="li"> Inherited fixed properties exposed through <code>getPropertyDescriptor</code> would be wrongfully exposed as own properties.</div>
+</li>
+<li class="level1"><div class="li"> Short-circuited proxies caused a surprising information leak when used as membrane wrappers: a revoked membrane wrapper would continue to expose fixed properties.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1766-3271] -->
+<a name="required_checks"></a><h3>Required checks</h3>
+<div class="level3">
+
+<p>
+ To check whether a descriptor for <code>name</code> is &ldquo;compatible&rdquo;, is equivalent to testing whether the built-in [[DefineOwnProperty]] method on a regular <code>Object</code> that contains an own <code>name</code> property completes successfully. 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>get{Own}PropertyDescriptor(name)</code>: check whether <code>name</code> was fixed. If so, check whether the returned descriptor is compatible. If the returned descriptor is non-configurable, mark it as fixed.</div>
+</li>
+<li class="level1"><div class="li"> <code>defineProperty(name,desc)</code>: check whether <code>name</code> was fixed. If so, and if <code>defineProperty</code> completes successfully, check whether the changes made are compatible, and record the changes. If <code>desc</code> is non-configurable, mark it as fixed.</div>
+</li>
+<li class="level1"><div class="li"> <code>fix()</code>: for each fixed property returned by the trap, check whether its descriptor is compatible.</div>
+</li>
+<li class="level1"><div class="li"> <code>delete(name)</code>: check whether <code>name</code> is fixed. If so, check whether the trap returns <code>false</code>.</div>
+</li>
+<li class="level1"><div class="li"> <code>hasOwn(name)</code>: check whether <code>name</code> is fixed. If so, check whether the trap returns <code>true</code>.</div>
+</li>
+<li class="level1"><div class="li"> <code>has(name)</code>: check whether <code>name</code> is fixed. If so, check whether the trap returns <code>true</code>.</div>
+</li>
+<li class="level1"><div class="li"> <code>get(name)</code>: check whether <code>name</code> is fixed. If so, and if it is a non-writable data property, check whether the returned value is consistent (using <code>SameValue</code>).</div>
+</li>
+<li class="level1"><div class="li"> <code>set(name,val)</code>: check whether <code>name</code> is fixed. If so, and if it is a non-writable data property, check whether the trap returns <code>false</code>.</div>
+</li>
+</ul>
+
+<p>
+ The following traps require no checks. In principle, these traps could check whether all fixed properties are included, but that check is costly (cost of the check proportional to number of fixed properties):
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>get{Own}PropertyNames()</code></div>
+</li>
+<li class="level1"><div class="li"> <code>keys()</code></div>
+</li>
+<li class="level1"><div class="li"> <code>enumerate()</code></div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [3272-4985] -->
+<a name="specification"></a><h3>Specification</h3>
+<div class="level3">
+
+<p>
+ The built-in [[DefineOwnProperty]] and [[GetOwnProperty]] methods of proxies in the trap-and-enforce approach could be defined as follows:
+</p>
+
+<p>
+<strong>[[DefineOwnProperty]] (P, Desc, Throw)</strong>
+</p>
+
+<p>
+When [[DefineOwnProperty]] is called on a trapping proxy <code>O</code>, the following steps are taken: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let handler be the value of the [[Handler]] internal property of O.</div>
+</li>
+<li class="level1"><div class="li"> Let defineProperty be the result of calling the [[Get]] internal method of handler with argument “defineProperty”.</div>
+</li>
+<li class="level1"><div class="li"> If defineProperty is undefined, throw a TypeError exception.</div>
+</li>
+<li class="level1"><div class="li"> If IsCallable(defineProperty) is false, throw a TypeError exception.</div>
+</li>
+<li class="level1"><div class="li"> Call the [[Call]] internal method of defineProperty providing handler as the this value, P as the first argument and Desc as the second argument.</div>
+</li>
+<li class="level1"><div class="li"> Let fixedProperty be the result of calling Object.[[GetOwnProperty]] ( P ) on O.</div>
+</li>
+<li class="level1"><div class="li"> If fixedProperty is not undefined, or Desc.[[Configurable]] is false</div>
+<ul>
+<li class="level2"><div class="li"> a. Return the result of calling Object.[[DefineOwnProperty]](P, Desc, Throw) on O.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Return true.</div>
+</li>
+</ol>
+
+<p>
+ Here, Object.[[GetOwnProperty]] and Object.[[DefineOwnProperty]] refer to the algorithms for Object values from ES5 sections 8.12.1 and 8.12.9 respectively, but applied to a trapping proxy instead.
+</p>
+
+<p>
+<strong>[[GetOwnProperty]] (P)</strong>
+</p>
+
+<p>
+When [[GetOwnProperty]] is called on a trapping proxy <code>O</code>, the following steps are taken: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let handler be the value of the [[Handler]] internal property of O.</div>
+</li>
+<li class="level1"><div class="li"> Let getOwnProperty be the result of calling the [[Get]] internal method of handler with argument “getOwnPropertyDescriptor”.</div>
+</li>
+<li class="level1"><div class="li"> If getOwnProperty is undefined, throw a TypeError exception.</div>
+</li>
+<li class="level1"><div class="li"> If IsCallable(getOwnProperty) is false, throw a TypeError exception.</div>
+</li>
+<li class="level1"><div class="li"> Let trapResult be the result of calling the [[Call]] internal method of getOwnProperty providing handler as the this value and P as the first argument.</div>
+</li>
+<li class="level1"><div class="li"> Let fixedProperty be the result of calling Object.[[GetOwnProperty]]( P ) on O</div>
+</li>
+<li class="level1"><div class="li"> If trapResult is undefined</div>
+<ul>
+<li class="level2"><div class="li"> a. If fixedProperty is undefined, return undefined</div>
+</li>
+<li class="level2"><div class="li"> b. Otherwise, fixedProperty is defined, so throw a TypeError</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Let desc be ToCompletePropertyDescriptor(trapResult)</div>
+</li>
+<li class="level1"><div class="li"> If fixedProperty is not undefined, or desc.[[Configurable]] is false</div>
+<ul>
+<li class="level2"><div class="li"> a. call Object.[[DefineOwnProperty]](P, desc, true) on O</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Return desc</div>
+</li>
+</ol>
+
+</div>
+<!-- SECTION [4986-7385] -->
+<a name="open_issues"></a><h3>Open issues</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> A straightforward implementation of the trap-and-enforce model requires the proxy to store copies of fixed properties. This cost is proportional to the number of fixed properties. This may be an issue for virtual objects exposing a large or infinite number of non-configurable properties. One way out is to model such abstractions only in terms of configurable properties. Even if a proxy exposes a property as being configurable, it can still choose to ignore any changes requested via <code>defineProperty</code>.</div>
+</li>
+<li class="level1"><div class="li"> Even if the handler no longer retains a reference to the value of a fixed property, the proxy must retain a live reference to its exposed value, to check whether the value returned from <code>get</code> is unchanged. Only when the proxy becomes fixed can these references be cleared.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [7386-8198] -->
+<a name="references"></a><h3>References</h3>
+<div class="level3">
+<ol>
+<li class="level1"><div class="li"> A <a href="http://code.google.com/p/es-lab/source/browse/trunk/src/proxies/FixedHandler.js" class="urlextern" target="_blank" title="http://code.google.com/p/es-lab/source/browse/trunk/src/proxies/FixedHandler.js" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">prototype implementation</a> of this strawman as a wrapper around regular Proxy handlers.</div>
+</li>
+</ol>
+
+</div>
+<!-- SECTION [8199-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/2/2d6acfc9661de078a093323882f6c796.xhtml used -->
+</body>
+</html>

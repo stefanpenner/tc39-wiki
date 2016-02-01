@@ -1,0 +1,366 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:super_in_object_initialisers&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:super_in_object_initialisers&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:super_in_object_initialisers&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:super_in_object_initialisers&amp;do=export_html.html#class_initialisersusing_super_for_delegation_to_the_superclass" class="toc">Class Initialisers: Using super for delegation to the superclass</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:super_in_object_initialisers&amp;do=export_html.html#superclass_instance_initialization" class="toc">Superclass Instance Initialization</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:super_in_object_initialisers&amp;do=export_html.html#super_method_calls" class="toc">super Method Calls</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:super_in_object_initialisers&amp;do=export_html.html#desugaring" class="toc">Desugaring</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:super_in_object_initialisers&amp;do=export_html.html#super_getters_and_setters" class="toc">super Getters and Setters</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:super_in_object_initialisers&amp;do=export_html.html#desugaring" class="toc">Desugaring</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:super_in_object_initialisers&amp;do=export_html.html#rationale" class="toc">Rationale</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="class_initialisersusing_super_for_delegation_to_the_superclass"></a><h1>Class Initialisers: Using super for delegation to the superclass</h1>
+<div class="level1">
+
+<p>
+<em>This is one of several related <a href="doku.php%3Fid=strawman:object_initialiser_extensions.html" class="wikilink1" title="strawman:object_initialiser_extensions" onclick="return svchk()" onkeypress="return svchk()">Object Initialiser Extensions</a>.</em> <br/>
+ <em>This extension builds upon concepts introduced in <a href="doku.php%3Fid=strawman:obj_initialiser_meta.html" class="wikilink1" title="strawman:obj_initialiser_meta" onclick="return svchk()" onkeypress="return svchk()">Object Initialiser Meta Properties</a>, <a href="doku.php%3Fid=strawman:obj_initialiser_methods.html" class="wikilink1" title="strawman:obj_initialiser_methods" onclick="return svchk()" onkeypress="return svchk()">Method Properties</a>, and <a href="doku.php%3Fid=strawman:obj_initialiser_const.html" class="wikilink1" title="strawman:obj_initialiser_const" onclick="return svchk()" onkeypress="return svchk()">Other Object Initialiser Property Modifiers</a></em> <br/>
+ <em>This is an extension to the <a href="doku.php%3Fid=strawman:obj_initialiser_class_abstraction.html" class="wikilink1" title="strawman:obj_initialiser_class_abstraction" onclick="return svchk()" onkeypress="return svchk()">Class Initialisers</a> feature.</em>
+</p>
+
+<p>
+In class-based object-oriented languages, class-based inheritance is used to perform behavioral composition. A &ldquo;subclass&rdquo; combines together the methods of its superclass(es) with new  and replacement methods define by the subclass. Occasionally in creating such compositions it necessary for the subclass to explicitly reference superclass behavior that is over-ridden by the subclass.
+</p>
+
+<p>
+With the addition of Class Initialisers to ECMAScript situations will arise where this sort of explicit superclass reference will be needed. This proposal describes extensions that enable such references.
+</p>
+
+</div>
+<!-- SECTION [1-1163] -->
+<a name="superclass_instance_initialization"></a><h2>Superclass Instance Initialization</h2>
+<div class="level2">
+
+<p>
+A class initialiser, in addition to defining methods that are shared by all class instances, typically define instance specific state that is used by the shared methods.  For example:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Supr <span class="br0">&#123;</span>
+   <span class="kw2">var</span> get a<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw1">this</span>.__a<span class="br0">&#125;</span>,
+   <span class="kw2">new</span> <span class="br0">&#40;</span>initA<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       __a : initA
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+let s = <span class="kw2">new</span> Supr<span class="br0">&#40;</span><span class="st0">"a value"</span><span class="br0">&#41;</span>;</pre>
+<p>
+ <em>Note that this code is intentional simplified to illustrate the essential points of this feature.</em>
+</p>
+
+<p>
+When an instance of the above class is created, by using the <strong><code>new</code></strong> operator with the class constructor as shown above, the instance is initialized with an own property named <code>&ldquo;__a&rdquo;</code> that is set to the argument passed to the constructor.   This instance property is access when the prototype&rsquo;s <code>a</code> accessor property is referenced. Now consider what happens when the above class is used as a superclass:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Sub <span class="br0">&#123;</span>
+   &lt;superclass: Supr&gt;,
+   <span class="kw2">var</span> get b<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw1">this</span>.__b<span class="br0">&#125;</span>,
+   <span class="kw2">new</span> <span class="br0">&#40;</span>initB<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       __b : initB;
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+let sc = <span class="kw2">new</span> Sub<span class="br0">&#40;</span><span class="st0">"b value"</span><span class="br0">&#41;</span>;</pre>
+<p>
+ This would appear to define a subclass that adds an accessor property and an instance specific state property <code>__b</code> in a manner analogous to what was done for <code>Supr</code>.  However, <code>sc</code> also inherits the access property <code>a</code> in addition to the accessor property &lsquo;b&rsquo;.  Because <code>a</code> depends upon a per instance property <code>__a</code> that property also needs to be initialized by the constructor. It is easy enough to added another  formal parameters to the constructor but what should be initialization code look like? should it be:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Sub <span class="br0">&#123;</span>
+   &lt;superclass: Supr&gt;,
+   <span class="kw2">var</span> get b<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw1">this</span>.__b<span class="br0">&#125;</span>,
+   <span class="kw2">new</span> <span class="br0">&#40;</span>initA, initB<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       __a : initA;
+       __b : initB;
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+let sc = <span class="kw2">new</span> Sub<span class="br0">&#40;</span><span class="st0">"a value"</span>,<span class="st0">"b value"</span><span class="br0">&#41;</span>;</pre>
+<p>
+ This solves the initialization problem but in a way that has a number of undesirable characteristics:
+</p>
+<ul>
+<li class="level1"><div class="li"> the programmer of the subclass must know the details of how the superclass initializes its instances</div>
+</li>
+<li class="level1"><div class="li"> per instance property creation and initialization code must be manually copied into the subclass constructor</div>
+</li>
+<li class="level1"><div class="li"> if <a href="doku.php%3Fid=strawman:private_names_in_object_initialisers.html" class="wikilink1" title="strawman:private_names_in_object_initialisers" onclick="return svchk()" onkeypress="return svchk()">private names</a> are used in the superclass for the per instance state, those names may not be available for use in the subclass constructor</div>
+</li>
+</ul>
+
+<p>
+ Rather than copying instance initialization code from the superclass&rsquo; constructor what we would really like to do is to directly invoke that code without having to copy it.  This is the capability provided by a <code><strong>super</strong></code> constructor call.  Using this capability the definition of the above subclass would be coded as follows:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Sub <span class="br0">&#123;</span>
+   &lt;superclass: Supr&gt;,
+   <span class="kw2">var</span> get b<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw1">this</span>.__b<span class="br0">&#125;</span>,
+   <span class="kw2">new</span> <span class="br0">&#40;</span>initA, initB<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       <span class="kw2">super</span> <span class="kw2">new</span><span class="br0">&#40;</span>initA<span class="br0">&#41;</span>,
+       __b : initB;
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+let sc = <span class="kw2">new</span> Sub<span class="br0">&#40;</span><span class="st0">"a value"</span>,<span class="st0">"b value"</span><span class="br0">&#41;</span>;</pre>
+<p>
+A <code><strong>super new</strong></code> call invokes the superclass constructor function but passes the current subclass instance as the <strong><code>this</code></strong> value rather than creating a new instance of the superclass as the <strong><code>this</code></strong> value. It essentially runs the superclass&rsquo; constructor code on the subclass instance. The value returned is the object that is being initialized, however in most situations a  <code><strong>super new</strong></code> call TAlso there is no requirement that the arguments pattern of the subclass constructor extends the arguments pattern of the superclass constructor.  Nor is there any requirement that any of the subclass constructor arguments are passed to the <strong><code>super new</code></strong> call.  For example, the following subclass constructor is perfectly valid:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Sub <span class="br0">&#123;</span>
+   &lt;superclass: Supr&gt;,
+   <span class="kw2">var</span> get b<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw1">this</span>.__b<span class="br0">&#125;</span>,
+   <span class="kw2">new</span> <span class="br0">&#40;</span>initB<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       <span class="kw2">super</span> <span class="kw2">new</span><span class="br0">&#40;</span><span class="st0">"some constant a value"</span><span class="br0">&#41;</span>,
+       __b : initB,
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+let sc = <span class="kw2">new</span> Sub<span class="br0">&#40;</span><span class="st0">"b value"</span><span class="br0">&#41;</span>;</pre>
+<p>
+A <strong><code>super new</code></strong> call may only appear in the <em>ConstructorBody</em> of a <em>ClassDeclaration</em> or <em>ClassExpression</em> that has a <strong><code>superclass:</code></strong> meta property.  It is a early SyntaxError if one appears in any other context. 
+</p>
+
+<p>
+If the superclass whose constructor is called by a <strong><code>super new</code></strong> has meta properties that specifies that superclass instances are sealed or frozen then the individual own properties defined in the superclass&rsquo; constructor are sealed or frozen by the  <strong><code>super new</code></strong> call but the the object extensible internal property of the new instance is not set to false.  Only the meta properties of the subclass affect the subclass instance&rsquo;s extensible internal property setting.
+</p>
+
+</div>
+<!-- SECTION [1164-5691] -->
+<a name="super_method_calls"></a><h2>super Method Calls</h2>
+<div class="level2">
+
+<p>
+<sup>:<img src="lib/images/smileys/icon_exclaim.gif" align="middle" alt=":!:" />:</sup> This needs to be combined with &ldquo;super getter/setter calls&rdquo; which was independently added.
+</p>
+
+<p>
+Sometimes a method on a subclass that over-rides a superclass method needs to invoke the over-ridden method. Consider for example: 
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Supr <span class="br0">&#123;</span>
+   method validate<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* validate internal invariants */</span><span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">class</span> Sub <span class="br0">&#123;</span>
+   &lt;superclass: Supr&gt;,
+   method validate<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       <span class="coMULTI">/* validate invariants imposed by superclass */</span>
+       <span class="coMULTI">/* validate subclass invariants */</span>
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+How should the subclass actually code the call to the superclass&rsquo;s validate method?  The idiom that would most likely be used today in an ad hoc implementation of such class would be an expression of the form: 
+</p>
+<pre class="code javascript">      Supr.<span class="me1">prototype</span>.<span class="me1">validate</span>.<span class="me1">call</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>;
+      <span class="coMULTI">/* validate subclass invariants */</span></pre>
+<p>
+ This formulation does the job, but is wordy and its intent may not be obvious to readers.  Also, explicitly referencing  the superclass by name in multiple places is error prone, especially when a class hierarchy is being refactored.  These issues are addressed by adding a super call expression as an additional form of CallExpression:
+</p>
+
+<p>
+<em>CallExpression</em> : <strong><code>super . </code></strong> <em>IdentifierName</em> <em>Arguments</em>
+</p>
+
+<p>
+The above example could then be code like:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Sub <span class="br0">&#123;</span>
+   &lt;superclass: Supr&gt;,
+   method validate<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw2">super</span>.<span class="me1">validate</span><span class="br0">&#40;</span> <span class="br0">&#41;</span>;
+       <span class="coMULTI">/* validate subclass invariants */</span>
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+ A super class may only occurs within a function body that is contained within a class initializer.  It is an early SyntaxError error for open to occur in any other context. The semantics is that the <em>IdentifierName</em> is used to access a property starting with the object that is the [[Prototype]] of the prototype defined by the initialiser.  If the property is found and its value is callable then the value is called passing the current <strong>this</strong> value as the <strong>this</strong> value of the call.
+</p>
+
+</div>
+<!-- SECTION [5692-7658] -->
+<a name="desugaring"></a><h3>Desugaring</h3>
+<div class="level3">
+
+<p>
+In  
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Sub <span class="br0">&#123;</span>
+   &lt;superclass: Supr&gt;,
+   method validate<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw2">super</span>.<span class="me1">validate</span><span class="br0">&#40;</span> <span class="br0">&#41;</span>;
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+ the super call desugars to: 
+</p>
+<pre class="code javascript">   Supr.<span class="me1">prototype</span>.<span class="me1">validate</span>.<span class="me1">call</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span> <span class="coMULTI">/* note that Supr.prototype is frozen */</span></pre>
+<p>
+In  
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Sub <span class="br0">&#123;</span>
+   &lt;prototype: p&gt;,
+   method validate<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw2">super</span>.<span class="me1">validate</span><span class="br0">&#40;</span> <span class="br0">&#41;</span>;
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+ the super call desugars to: 
+</p>
+<pre class="code javascript">   p.<span class="me1">validate</span>.<span class="me1">call</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span> <span class="coMULTI">/* p captured when literal is evaluated */</span></pre>
+<p>
+In  
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Sub <span class="br0">&#123;</span>
+   method validate<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw2">super</span>.<span class="me1">validate</span><span class="br0">&#40;</span> <span class="br0">&#41;</span>;
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+ the super call desugars to: 
+</p>
+<pre class="code javascript">   Object.<span class="me1">prototype</span>.<span class="me1">validate</span>.<span class="me1">call</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span></pre>
+</div>
+<!-- SECTION [7659-8378] -->
+<a name="super_getters_and_setters"></a><h2>super Getters and Setters</h2>
+<div class="level2">
+
+<p>
+ Sometimes a getter or setter on a subclass over-rides a superclass getter or setter but still needs to invoke the over-ridden getter or setter. Consider for example:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Supr <span class="br0">&#123;</span>
+   ...
+   <span class="me1">set</span> disabled<span class="br0">&#40;</span>b<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+     <span class="kw1">this</span>.__element.<span class="me1">onclick</span> = b ? <span class="kw2">null</span> : <span class="kw1">this</span>.<span class="me1">click</span>.<span class="me1">bind</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>;
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">class</span> Sub <span class="br0">&#123;</span>
+   &lt;superclass: Supr&gt;,
+   ...
+   <span class="me1">set</span> disabled<span class="br0">&#40;</span>b<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       <span class="co1">// disable click handler as imposed by superclass</span>
+       <span class="co1">// style the element somehow</span>
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+Just like with super methods the super class needs to ensure that the code for the setter of the super class is handled. Today, this is very verbose and it involves either using the proprietary <code>__lookupSetter__</code> extension or walking the prototype chain to get the property descriptor to find the relevant getter or setter:
+</p>
+<pre class="code javascript">   <span class="co1">// __lookupSetter__ is left as an exercise ;)</span>
+   Supr.<span class="me1">prototype</span>.__lookupSetter__<span class="br0">&#40;</span><span class="st0">'disabled'</span><span class="br0">&#41;</span>.<span class="me1">call</span><span class="br0">&#40;</span><span class="kw1">this</span>, b<span class="br0">&#41;</span>;
+   <span class="co1">// style the element somehow</span></pre>
+<p>
+Just like with the super method call this does the right thing but it is even more cryptic than the super method call. These issues are addressed by adding a super setter and getter expression as an additional form of MemberExpression:
+</p>
+
+<p>
+<em>MemberExpression</em> : <strong><code>super . </code></strong> <em>IdentifierName</em>
+</p>
+
+<p>
+The above example could then be code like:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Sub <span class="br0">&#123;</span>
+   &lt;superclass: Supr&gt;,
+   ...
+   <span class="me1">set</span> disabled<span class="br0">&#40;</span>b<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw2">super</span>.<span class="me1">disabled</span> = b;
+      <span class="co1">// style the element somehow</span>
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+A super class may only occurs within a function body that is contained within a class initializer.  It is an early SyntaxError error for super to occur in any other context. The semantics is that the <em>IdentifierName</em> is used to access a property starting with the object that is the [[Prototype]] of the prototype defined by the initialiser.  If the property is found then and it is a setter (or getter) then it is invoked with the current <strong>this</strong> value as the <strong>this</strong> value of the call.
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+ I think including super getters/setters is a good idea.  But, since you can&rsquo;t synthetically distinguish a getter/setter access from a data property access, I think we need to accomplish it by combining super sends and super getter/setter access into super property access. I didn&rsquo;t originally propose those because I thought accessing shadow prototype data properties seems a little squirrely.  But it is probably ok if we are doing this because of this unification.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x41%3B%26%23x6c%3B%26%23x6c%3B%26%23x65%3B%26%23x6e%3B%26%23x40%3B%26%23x57%3B%26%23x69%3B%26%23x72%3B%26%23x66%3B%26%23x73%3B%26%23x2d%3B%26%23x42%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x41;&#x6c;&#x6c;&#x65;&#x6e;&#x40;&#x57;&#x69;&#x72;&#x66;&#x73;&#x2d;&#x42;&#x72;&#x6f;&#x63;&#x6b;&#x2e;&#x63;&#x6f;&#x6d;">Allen Wirfs-Brock</a> 2011/03/16 23:45</em> 
+</p>
+
+</div>
+<!-- SECTION [8379-10933] -->
+<a name="desugaring"></a><h3>Desugaring</h3>
+<div class="level3">
+
+<p>
+ In 
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Sub <span class="br0">&#123;</span>
+   &lt;superclass: Supr&gt;,
+   set disabled<span class="br0">&#40;</span>b<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw2">super</span>.<span class="me1">disabled</span> = b;
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+the super setter desugars to:
+</p>
+<pre class="code javascript">   Supr.<span class="me1">prototype</span>.__lookupGetter__<span class="br0">&#40;</span><span class="st0">'disabled'</span><span class="br0">&#41;</span>.<span class="me1">call</span><span class="br0">&#40;</span><span class="kw1">this</span>, b<span class="br0">&#41;</span> <span class="coMULTI">/* note that Supr.prototype is frozen */</span></pre>
+<p>
+Analogous for getter and &lt;proto&gt;. <code>__lookupGetter__</code> and <code>__lookupGetter__</code> can be implemented as:
+</p>
+<pre class="code javascript">Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>Object.<span class="me1">prototype</span>, <span class="st0">'__lookupGetter__'</span>, <span class="br0">&#123;</span>
+  value: <span class="kw2">function</span><span class="br0">&#40;</span><span class="kw3">name</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">var</span> descr = Object.<span class="me1">getOwnPropertyDescriptor</span><span class="br0">&#40;</span><span class="kw1">this</span>, <span class="kw3">name</span><span class="br0">&#41;</span>;
+    <span class="kw1">if</span> <span class="br0">&#40;</span>descr<span class="br0">&#41;</span>
+      <span class="kw1">return</span> descr.<span class="me1">get</span>;
+    <span class="kw2">var</span> proto = Object.<span class="me1">getPrototypeOf</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>;
+    <span class="kw1">if</span> <span class="br0">&#40;</span>proto<span class="br0">&#41;</span>
+      <span class="kw1">return</span> proto.__lookupGetter__<span class="br0">&#40;</span><span class="kw3">name</span><span class="br0">&#41;</span>;
+    <span class="kw1">return</span> undefined;
+  <span class="br0">&#125;</span>,
+  enumerable: <span class="kw2">false</span>,
+  writable: <span class="kw2">true</span>,
+  configurable: <span class="kw2">true</span>,
+<span class="br0">&#125;</span><span class="br0">&#41;</span>;
+&nbsp;
+<span class="co1">// __lookupSetter__ is analogous</span></pre>
+</div>
+<!-- SECTION [10934-11795] -->
+<a name="rationale"></a><h3>Rationale</h3>
+<div class="level3">
+
+<p>
+ Using <strong><code>super</code></strong> to invoke over-ridden methods is a common and useful feature of class-based object oriented languages. In such languages the binding of <strong><code>super</code></strong> to a specific superclass is typically something that can be statically determined from a class declaration. 
+</p>
+
+<p>
+Traditionally, JavaScript&rsquo;s loose association of functions used as methods with objects have preclude inclusion of <strong><code>super</code></strong> in the language.  The most likely semantics for <strong><code>super</code></strong> in legacy JavaScript would be dynamic, based upon the object in which the the original property was found.  That object (which is not necessary the this object) could be remembered during the original property lookup and associated someway with the the result of the lookup.  If the retrieved function contained super calls it would use [[Prototype]] of the associated lookup resolution object as starting point for any <strong><code>super</code></strong> property accessed. This is a potentially expensive process that burdens every property lookup and call even though most won&rsquo;t actually use  <strong><code>super</code></strong> property access.
+</p>
+
+<p>
+The addition of declarative Class Initialiser provides an opportunity to use the common oo language techniques and semantics to support <strong><code>super</code></strong>.  Class Initialisers are declarations that bind an associate a method with a &ldquo;class&rdquo; and &ldquo;superclass&rdquo; which means that the starting point for <strong><code>super</code></strong> lookups can be determined a single time when the initialiser is evaluated. Even if a reference to such a method is insert into a different kind of object, it is reasonable for it to continue to use the &ldquo;superclass&rdquo; association from its declarative definition. 
+</p>
+
+</div>
+<!-- SECTION [11796-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/e/e4370dae4ea768816139cc0aeba5422f.xhtml used -->
+</body>
+</html>

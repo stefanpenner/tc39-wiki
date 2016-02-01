@@ -1,0 +1,63 @@
+====== Program fragment local packages ======
+
+(Also see [[discussion:local packages|discussion:local packages]].)
+
+===== Abstract =====
+
+A mechanism is proposed that allows packages to be declared local to a program fragment (typically a single file).
+
+===== Background and rationale =====
+
+In dynamic environments (notably web browsers) multiple program fragments (files) from separate sources are often combined with no awareness of each other.  A typical use case is advertisements, which are injected into a page in the form of script fragments that load other scripts dynamically from ad servers; those scripts in turn inject HTML into the page to show the ad.
+
+The present proposal provides a simple mechanism that allows such script injection to occur in a way that does not pollute the page's global namespace.  This prevents ads from interfering with each other and with other content on the
+page.
+
+See [[discussion:multiple compilation units]] for a general discussion of multiple scripts on a page.
+
+===== Proposal =====
+
+A package local to the program fragment is defined with the syntax ''internal package''.  Such a package is local to the program fragment in which it's defined.  It can be referenced by name inside the fragment, but not elsewhere.  No other restrictions apply.
+
+<code>
+    internal package <name> {
+        ...
+    }
+</code>
+
+The advantage of this mechanism over eg using functions or ''let'' blocks for scoping is that packages can contain class definitions.
+
+===== Examples ===== 
+
+General sketches:
+
+<code>
+    /* Define a fragment-local package */
+    internal package local {
+        var x = 10;
+        class C { ... }
+    }
+
+    /* Normal "program-level" code that uses the local package */
+    {   import local.*;
+        x = 20;    // local.x
+        new C();   // local.C
+    }
+
+    /* Function visible outside this fragment accessing the local package */
+    function g() {
+        import local.*;
+        return x;
+    }
+</code>
+
+Typical advertisement code would have very little global-level code:
+
+<code>
+    internal package doubleclick {
+        function doMyAd() { ... }
+        var isIE3 = ...;
+        var isIE4 = ...;
+    }
+    {   import doubleclick.doMyAd; doubleclick.doMyAd();  }
+</code>

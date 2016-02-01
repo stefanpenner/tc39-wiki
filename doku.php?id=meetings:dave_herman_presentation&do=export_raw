@@ -1,0 +1,465 @@
+==== Dave Herman presentation on operational semantics ====
+
+=== Intro ===
+
+There are big win possible with formal specifications, especially the
+more you move towards a typed language.
+
+  * Type systems are not easy to do and hard to do without bugs.
+  * Sound type systems give formal definition to dynamic behavior and the static type system.
+  * Sound type systems offer proof that all errors that a type system is designed to prevent are guaranteed to never happen at runtime.
+  * Doing one of these proofs tends to drive out a lot of subtle bugs that would be hard to find otherwise.
+
+Having formal spec is not just "math makes us feel good", but a
+practical tool for preventing certain types of bugs in the language.
+Very important when defining a language.  If there is a bug in the def
+of the lang itself, that multiplies out to every single program.
+
+That's one use of formal semantics, formal specifications.  Solidifies
+static type system.
+
+Similar kinds of proof for contract systems.
+
+As a tool for helping prog lang implementors know how to correctly
+implement their particular engines.  In ES3, there is pretty
+consistent notation in basic style of line numbered statements that is
+really useful as a way of driving implementation... useful as
+reference. But it arguably could be clearer in a diff style.
+
+Sometimes lost in mucky details of step 6, step 13, etc. and what is
+purpose of 26-line pseudocode?
+
+There are a number of spec approaches out of programming language
+theory that can be useful.
+
+Operational semantics are useful, serve as basis for implementors.
+
+How far do you want to go with formal spec?  Do you want every feature
+of lang specified in semantics?  How much work is it, what does it buy
+you?
+
+You can pick a subset - pieces relevant to type system with greatest
+likelihood of difficult bugs - get maximum bang for buck.
+
+If using to driving an impl, may be useful to be more complete so
+implementors have complete template for language.
+
+For ES4, we are interested in proving type system soundness, and would
+like to keep it off critical path.
+
+One advantage of E3 method is that it is easy to read and easy to
+write, even for people not versed in semantics.  Is there a way to
+take a formal language and make it readable to the untrained eye?
+
+Waldemar's spec is a translation into another language; it's specified
+in style of denotational semantics but it's really a meta-language
+that isn't specified ,so not technically denotational semantics.  He
+would have to translate into sets, etc. for that.
+
+Operational semantics reads much like a simple register
+machine. People often refer to them as abstract machines.  Program
+counter describing context of running program.  Particular expression
+you're evaluating.
+
+Not sure how approachable, but historically people find operational
+much more friendly than denotational semantics.  Helps to have
+functional programming background since there is fundamentally a set
+of mutually recursive functions.  Tend to be a lot of meta-functions,
+etc.
+
+But more readable than more theoretical stuff.
+
+Jeff worries that it may be hard to write entire spec in formal
+notation in reasonable time.
+
+Operational semantics is one kind of technical specification
+mechanism.  Any of them are going to be equivalent, defining the same
+language.  The real hard work is the size of the language.  If you
+have X number of features, you have some constant factor c*X work to
+do!
+
+When Dave tried to do it for ES3, it was turning out more succinct.
+Can be clearer, easier to get right, so could be time saver.  Overhead
+in setting up semantics but Dave has done some legwork already by
+working on ES3 semantics
+
+CEKS operational semantics
+
+Older techniques like denotational semantics necessitate starting the
+whole proof over again when new features are added.
+
+There is 'hair" on the E3 operational semantics because the language
+itself is hairy.
+
+=== Walkthrough of Dave's ES3 operational semantics ===
+
+[http://www.ccs.neu.edu/home/dherman/javascript/]
+
+Several categories.  Expressions, statements, etc.
+
+Sometimes pick subset of expressions and classify as values: when you
+evaluate an expression, this is the result of that evaluation.
+
+Values in JS are several flavors: primitive constants, meta-variable k
+to range over.
+
+Or they can be objects, meta-variable o to range over.
+
+Or reference type that can be dereferenced or assigned to/updated.
+
+ES3 spec talks about fact that many things in language might return
+reference vs. primitive value.
+
+Depending on what expr evaluate to, you may or may not be able to use
+on lhs of assignment.
+
+Throughout spec, there is GetValue function needed to deref
+references.
+
+Way that is expressed here is with meta function called GetValue down
+in metafunction section.
+
+"^" in "ref^" is superscript
+
+If it's unable to find something in that object, it needs to go up the
+prototype chain.
+
+In PL community, most semantics are written in LaTeX, but also
+e-mailing snippets of semantics in plain ascii, so there's an ad-hoc
+pseudo-LaTeX language that PL people are used to looking at.  In a
+real spec, I would do it in LaTeX/OpenOffice/Word
+
+Essentially BNF. If there are any ambiguities, assumed to be resolved
+in "obvious way"
+
+This particular "spec" is incomplete and hasn't been turned into a
+mechanical implementation.
+
+PLT RedEx: You can input definitions like these in a
+machine-executable way and get a dog-slow free interpreter out of it,
+letting you try out features of the language the moment you put in the
+definition.
+
+Tons of recent papers have flaws … some proofs are as complicated
+as real programs. How much can you trust a computer program written on
+paper?  Some profs have the M.O. of going through recent research and
+patching up holes.
+
+Machine-checkable is desirable.
+
+Just putting into computer is likely to find internal inconsistencies
+that we wouldn't have thought of.  Haven't checked anything technical,
+but mere act of putting into machine made it more reliable.  But
+should see whether there are actual things we want to prove that the
+machine could show us?
+
+Is there a convenient way to prove CEKS programs?  A tool,
+environment?
+
+Yes, PLT RedEx is a good example.
+
+Graydon: There are other packages as well
+
+CEKS or CKS Machine
+
+C, E, K, S are names of 4 abstract registers of machine.
+
+C describes code: particular expression you're looking at, code you're
+interpreting
+
+E is environment: in JS terms, scope chain. Current lexical
+environment in which expression is evaluated.
+
+K is for Kontinuation (German)
+
+S is Store, which models mutable state of the machine
+
+If we are interested in doing machine that models context explicitly,
+PLT RedEx would be good, because it models context machines well.
+
+It is not meta-logical framework so you don't get theorem proving
+
+It comes down to actual goal: What are you trying to prove with them?
+
+These are not easy systems to work with.
+
+Curry-Howard isomorphism encodes all your propositions as types, must
+invent meta-type system to describe your logic.  That's work!  Theorem
+provers have never been easy to work with, although not arguing
+against it.  Should educate ourselves about tools and experiment.
+Pick small frag of JS and do something with it, get some experience.
+
+As we're schedule constrained, may need to make trade-offs.
+
+Metalogical frameworks come with benefits that may be useful in
+long-run and maybe not now.  Should see what short-term benefits are
+needed.
+
+=== What's hard in here? ===
+
+Definition of objects doesn't have complete table of internal
+properties.  Did a couple, like prototype length, Object sub-parent,
+%%[[Call]]%% internal method
+
+Reference to field in store that contains table of mutable properties
+for this object
+
+A lot come with different implementation decisions.  Could do
+reference into store, could have multiple mutable stores
+
+I chose to put everything that is mutable into one single store
+
+Environments: written in traditional functional PL style rather than
+scope chains, got them as association lists
+
+Environment is empty list or an environment extended with some
+binding.  Essentially same thing as scope chain.
+
+  r ::= [] | r[x=(l,a)]
+  [] is empty environment
+  R[x=l(a)] is r extended with some binding
+  l is pointer to location in store, a is set of attributes
+
+Attempt to make it look more like a functional spec.
+
+Might have been easier to be closer to ES3 spec by saying a frame is
+an object.
+
+One thing I got from doing it this way is saying these are things we
+know about statically, so didn't model some of the dynamic scoping in
+the language.
+
+Function closures are pairing of function definition and environment
+(scope chain)
+
+"\" is ascii notation for lambda
+
+Left out DontEnum since for-in loops aren't in here
+
+Program is variable bindings followed by single statement
+
+Minimal encoding that you can encode any JS main program by saying
+single statement is one block
+
+Must hoist all variables
+
+One useful thing is to say if every compiler must do some basic
+transformations, treat the target of transformations as the "Real
+JavaScript".  Useful for doing all proofs, since type soundness has to
+do with language after hoisting has been done, so act like it already
+has.
+
+Applications of primitives: Way of encoding all operators in language
+like + and *
+
+Let p range over all primitive operators
+
+Left out dot refs since those can be translated into [] refs
+
+All native functions pN are nasty, would do differently now.
+
+Internal to spec, like ToString.
+
+But can cause JS code to be evaluated, meaning had to embed into
+semantics itself.
+
+Instead of littering semantics with tons of these now, I would simply
+have a single one which says Native.  Native calls out in semantics to
+some meta-function, for notational clarity.
+
+CTX CARLIST:
+
+Defines evaluation contexts.
+
+Evaluation context corresponds to the slightly more familiar notion of
+a continuation.
+
+Point in program that you're currently at.
+
+Think of as Program Counter.
+
+You've gone so far through evaluation of program, and you have so much
+more to evaluate still.
+
+Context says I have evaluated some subexpr of the program or are
+currently evaluating it, but within context of entire program, and
+that's what I have left to do after evaluating the subexpr.
+
+  2+f(3)
+
+Before evaluating the addition, must evaluate the function call.
+
+So evaluate f(3), focus on it as current expr.
+
+But evaluating it within context of an addition that must be performed
+when we're done.
+
+Context we describe is 2+a hole
+
+Entire program that's left after current expr is 2+whatever our result
+is
+
+That is continuation of f(3)
+
+In real interpreter, two different datatype notations of same notion.
+Could be describing a set of structures, like a real tree structure.
+In continuation, describing as sequence of function calls.
+Same notion.
+
+To model things like exceptions, whatever I was going to do, going to
+skip outwards and go outwards in context until I hit nearest exception
+handler.
+
+Very close to way actual implementations which crawl up stack frames.
+So the context basically is a list of stack frames, and close to the
+way a C implementation would work.
+
+Hairy parts:
+
+Context: Parts where we're currently focused on expression, parts
+where we're currently focused on statement
+
+Need to do different stuff in each case
+
+"o" is compose operator - connective for individual stack frames in
+the context
+
+Expression context is list of stack frames chained together with
+compose operator
+
+Look down at definition of f, shows all individual stack frames  that
+can occur.  Atomic operations in language.
+
+Example: Function application. When we finish evaluating this
+expression, we get a function which we use to apply.
+
+FRM CTOR: Constructor call. Once we get value back, that thing should
+be constructor used to construct new object.
+
+Could be lhs of assignment, or rhs.
+
+Chain all these together to get a complete program.
+
+Here, [] represents a hole not an empty list.
+
+.r thrown in everywhere is because we have to hang on to scope chain
+in various places
+
+Must evaluate expressions within some scope chain, so must keep
+around.  That would be an argument passed around or a local var in an
+actual interpreter.  In semantics, must keep around long enough so
+that it'll be there when time to use it.
+
+E1.r is dumb syntax for tack that on there too, kind of like pair.
+
+Operational semantics is all about manipulations of dumb
+syntax. Syntax to syntax.
+
+As long as I say ".r", if I do that consistently everywhere, I'll be
+able to pull it apart when I need it.
+
+If you write it in a machine-checkable form, that can be good because
+it forces you to write it in a very consistent way.
+
+One pain point: A lot of meta-functions can cause JS code to execute.
+So tight mutual recursion between expression reduction semantics and
+meta-functions.
+
+Meta-functions also operate on syntax, producing a new syntactic
+object.  Defined as mathematical functions.
+
+There is a lot of bounce-back (recursion) between evaluation relation
+and meta-function sections of this spec.
+
+All native functions are extra syntax in evaluation relation, so that
+could be fixed up.
+
+Hoisting, etc. could be done in other ways.  Kernel language
+vs. surface language.  Given BNF for kernel language, could do BNF for
+surface language in terms of that.  May not be worth it since it may
+be obvious.
+
+Nature of reduction rules in context machine semantics as opposed to
+other small-step semantics. In a small-step semantics not including
+the context in evaluation relation itself, we simply add extra rules
+that say once you finish, plug back in context, get whole program
+again, then look for next expr to reduce.  Can leave "external" to
+evaluation relation itself.
+
+In this system, we talk about searching up and down through context
+for next expr to evaluate.  Captures that system really will be
+pushing/popping stack frames.  Two basic kinds of reduction steps in
+semantics: Ones that push context on, and ones that pop context off.
+
+Section 1, 2, 3: "Push context on" rules
+
+When we get to compound expr, and look at sub-expr first, we must hold
+on to context we are in, and focus down on sub-expr.  So we push
+context frame, knowing that when we're finished we will pop it back
+off.
+
+5, 6, 7: All pop rules.  If we have value, we finished some
+evaluation, now we pop context and find next thing to do.
+
+"If" expression in section 1.  Test expression e.  Cannot continue
+evaluation until e is known, so pull e out and focus on it.  Push
+context frame to say once I'm done, need to plug it back into if.
+
+Context machine goes step-by-step doing manual push/pop frame.
+
+Small-step semantics without context makes that totally external to
+specification: We have definition of context, every time you finish
+evaluating expr, plug it back in and look for next thing.  Not
+encoded.
+
+Big-step semantics: Get context out of the shape of semantics itself.
+Tree of inference rules tells you, to evaluate if expr, must first
+evaluate test expr.  So in big-step semantics, context is implicit.
+Affects how proof itself happens.  Need meta-theorems about proof
+system itself.  Hard to do non-local control.
+
+Do people mix the styles?  Not a ton of work on communication between
+different languages/semantics, but there is some work.
+
+There is some work on things like: RegExp has no non-local control, so
+it could be done with big-step semantics, then embed within JS
+specified with small-step semantics.
+
+Whenever you work with contexts ,you probably want to make them
+explicit.
+
+Suppose we put first-class continuations in language. Then I would be
+adamant that we use small-step semantics: call/cc, shift/reset are
+easy to express.  If you only have break, return, continue, maybe
+could get away with it.
+
+Brendan is thinking about us doing "yield"
+
+=== Moving forward ===
+
+How do you have a larger spec that doesn't use the system?  How do we
+move towards theoretical ideal without impairing readability?
+
+It can be confusing if specification language looks too much like
+actual language, people get confused as to whether language is "real"
+language to implement or  the spec language.
+
+One advantage of the ES3 notation is it's hard to make the wrong
+assumption when doing an implementation.
+
+To do exceptions, often you end up returning a completion value
+everywhere in your semantics.  In Waldemar's spec, there are
+exceptions built into the meta-language.  In ES3 spec, it is made
+explicit, so there are no assumptions made about how exceptions should
+work.  That can be good so there isn't any way to screw it up by
+making the wrong assumption, assured of doing exactly the right thing.
+"Abrupt completion"
+
+  try {
+    throw 42
+  } finally {
+    return 0
+  }
+
+Not obvious what should be done from looking at C++ exceptions
+

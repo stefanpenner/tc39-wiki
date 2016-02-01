@@ -1,0 +1,128 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:full_unicode_source_code&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:full_unicode_source_code&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:full_unicode_source_code&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:full_unicode_source_code&amp;do=export_html.html#basic_support_for_full_unicode_source_code_and_non-bmp_escapes" class="toc">Basic Support for Full Unicode Source Code and non-BMP escapes</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:full_unicode_source_code&amp;do=export_html.html#support_full_unicode_in_ecmascript_source_code" class="toc">Support Full Unicode in ECMAScript Source Code</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:full_unicode_source_code&amp;do=export_html.html#input_encoding" class="toc">Input Encoding</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:full_unicode_source_code&amp;do=export_html.html#no_implications_for_string_value_encodings" class="toc">No Implications for String Value Encodings</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:full_unicode_source_code&amp;do=export_html.html#backward_and_forward_comparability_considerations" class="toc">Backward and Forward Comparability Considerations</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:full_unicode_source_code&amp;do=export_html.html#multi-character_escapes" class="toc">Multi-character escapes</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="basic_support_for_full_unicode_source_code_and_non-bmp_escapes"></a><h1>Basic Support for Full Unicode Source Code and non-BMP escapes</h1>
+<div class="level1">
+
+<p>
+Allen Wirfs-Brock
+</p>
+
+<p>
+<em>This page is complementary to <a href="doku.php%3Fid=harmony:unicode_supplementary_characters.html" class="wikilink1" title="harmony:unicode_supplementary_characters" onclick="return svchk()" onkeypress="return svchk()">Unicode supplementary characters</a>. The Unicode escape sequences previously proposed here have been integrated into that proposal.</em>
+</p>
+
+<p>
+ECMAScript currently only directly supports the 16-bit basic multilingual plane (BMP) subset of Unicode which is all that existed when ECMAScript was first designed.  Since then Unicode has been extended to  require up to 21-bits per code. Characters whose Unicode codepoint can not be expressed in 16-bits are called &ldquo;supplementary characters&rdquo;.  As currently specified by ES5.1, supplementary characters cannot be used in the source code of ECMAScript programs.  However, some implementation current do allow ECMAScript source code to contain supplementary characters.  This proposal makes the explicitly makes it legal for supplementary characters to appear in ECMAScript source code and provides an escape sequence syntax for explicitly expressing supplementary characters via their hexadecimal codepoints. 
+</p>
+
+<p>
+ See <a href="http://www.w3.org/International/wiki/JavaScriptInternationalization" class="urlextern" target="_blank" title="http://www.w3.org/International/wiki/JavaScriptInternationalization" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">JavaScript Internationalization</a> for the <acronym title="World Wide Web Consortium">W3C</acronym> Internationalization WG&rsquo;s take on some issues regarding Unicode support in ECMAScript.
+</p>
+
+</div>
+<!-- SECTION [1-1293] -->
+<a name="support_full_unicode_in_ecmascript_source_code"></a><h2>Support Full Unicode in ECMAScript Source Code</h2>
+<div class="level2">
+
+</div>
+<!-- SECTION [1294-1353] -->
+<a name="input_encoding"></a><h3>Input Encoding</h3>
+<div class="level3">
+
+<p>
+ Clause 6 of the ECMAScript 5.1 specification states &ldquo;ECMAScript source text is presented as a sequence of characters in the Unicode character encoding&rdquo; and it goes on to say that the text &ldquo;is expected to have been normalised to Unicode Normalization Form C&rdquo;.  However, it also states that &ldquo;source text is assumed to be a sequence of 16-bit code units for the purpose of this specification&rdquo;.
+</p>
+
+<p>
+As part of this proposal, the statement about assuming 16-bit code units will be deleted.  In addition throughout the specification all occurrence of &ldquo;code unit&rdquo; relating to ECMAScript source code and implying 16-bit characters will be replaced with &ldquo;code point&rdquo; which means the canonical encoding of any possible Unicode character.
+</p>
+
+<p>
+The definition of <em>SourceCharacter</em> is changed to:
+</p>
+
+<p>
+<em>SourceCharacter</em> :: <br/>
+  any Unicode character
+</p>
+
+<p>
+meaning any Unicode character, independent of encoding considerations. The reverts the specification to the production definition used in ES3 even though in practice ES3 required <em>SourceCharacter</em> to be 16-bit code units.
+</p>
+
+<p>
+More generally, it is beyond the scope of a language specification to require any specific external encoding of source programs of that language.  Dealing with various possible external encodings is more a matter for communication protocols, host platforms, and language implementations. What is appropriate (and necessary) is for the language specification to define a specific input alphabet for its lexical grammar. Clauses 6 and 7 will be updated to clarify that the alphabet of the lexical grammar is full Unicode Normalization Form C. Any implications concerning external source code encoding or implications that implementations must use some specific internal encoding of source program text will be removed.
+</p>
+
+</div>
+<!-- SECTION [1354-3152] -->
+<a name="no_implications_for_string_value_encodings"></a><h3>No Implications for String Value Encodings</h3>
+<div class="level3">
+
+<p>
+This specific proposal intentionally does not say anything about the encoding of supplementary characters as elements of ECMAScript string values or RegExp objects. That may be the subject or other proposals.  The only requirement of this proposal with regard to <em>StringLiteral</em> and <em>RegularExpressionLiteral</em> is that any occurrence of a full Unicode escape sequence must be treated as being semantically equivalent to the actual occurrence of the corresponding Unicode character.
+</p>
+
+</div>
+<!-- SECTION [3153-3691] -->
+<a name="backward_and_forward_comparability_considerations"></a><h3>Backward and Forward Comparability Considerations</h3>
+<div class="level3">
+
+<p>
+Some existing implementations automatically encode supplementary characters that occur in a <em>StringLiteral</em> as a two string element UTF-16 surrogate pair. In addition, some applications explicitly use sequences of the existing 16-bit Unicode escapes to explicitly express the UTF-16 encodings of supplementary characters.  For that reason, it is impossible to know for sure whether pairs of existing 16-bit Unicode escapes are intended to represent a single logical character or an explicit two character UTF-16 encoding of a Unicode characters. This makes it more difficult to change to the use of full Unicode character string elements in a manner that guarantees backwards compatibility for all existing programs. This proposal does not change in any way the current interpretation of existing 16-bit Unicode escapes in String Literals or anywhere else.  However the addition of full Unicode escapes allow programmers to unambiguously express the codepoint encoding of a single Unicode characters. This capability will be useful whether full Unicode string elements are added now or in some future edition. 
+</p>
+
+</div>
+<!-- SECTION [3692-4867] -->
+<a name="multi-character_escapes"></a><h3>Multi-character escapes</h3>
+<div class="level3">
+
+<p>
+ A possible extension is to allow multiple Unicode characters to be expressed using the new syntax.  For example, &ldquo;\u{61,62,63}&rdquo; would be equivalent to &ldquo;abc&rdquo;.
+</p>
+
+</div>
+<!-- SECTION [4868-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/9/9cd471b1b92c91b71c46ad36c11e1cd1.xhtml used -->
+</body>
+</html>

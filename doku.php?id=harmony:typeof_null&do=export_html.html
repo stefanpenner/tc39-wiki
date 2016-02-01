@@ -1,0 +1,248 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=harmony:typeof_null&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="http://wiki.ecmascript.org/feed.php?mode=list&amp;ns=harmony" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=harmony:typeof_null&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=harmony:typeof_null&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="rejected"></a><h2>Rejected</h2>
+<div class="level2">
+
+<p>
+ This proposal has been rejected. It was implemented in V8 but it turned out that it broke a lot of existing sites. In the spirit of One JavaScript this is not feasible.
+</p>
+
+</div>
+<!-- SECTION [1-191] -->
+<a name="proposal"></a><h2>Proposal</h2>
+<div class="level2">
+
+<p>
+ With opt-in to Harmony, <code>typeof null === &ldquo;null&rdquo;</code>.
+</p>
+
+<p>
+In ES5.1, 11.4.3 &ldquo;The typeof Operator&rdquo;, the row in Table 20 for <em><strong>Type of</strong> val</em> equal to Null would become 
+</p>
+<table class="inline">
+	<tr>
+		<th><em><strong>Type of</strong> val</em></th><th><em><strong>Result</strong></em></th>
+	</tr>
+	<tr>
+		<td>Null</td><td><code>&ldquo;null&rdquo;</code></td>
+	</tr>
+</table>
+<br />
+
+<p>
+ under the Harmony version, but the <em><strong>Result</strong></em> would remain <code>&ldquo;object&rdquo;</code> under the default version. Version details TBD.
+</p>
+
+</div>
+<!-- SECTION [192-559] -->
+<a name="rationale"></a><h2>Rationale</h2>
+<div class="level2">
+
+<p>
+ Some <acronym title="JavaScript">JS</acronym> on the web carefully tests both <code>typeof x === &ldquo;object&rdquo; &amp;&amp; x === null</code> or equivalent in order to distinguish <code>null</code> from an object reference. Other code is less careful. The ongoing burden on <acronym title="JavaScript">JS</acronym> authors, maintainers, teachers, and learners is a small but (over time) significant cost. The latent bugs won&rsquo;t be fixed quickly without automation.
+</p>
+
+<p>
+For Harmony, we want early errors for bad forms being banned or reformed in the new version of the language, but in this case, I believe that we agreed at the January, 2011 TC39 meeting to change <code>typeof null</code>. Discussion at the meeting showed how to write code to work in both old and new versions:
+</p>
+<pre class="code javascript">  <span class="kw1">switch</span> <span class="br0">&#40;</span><span class="kw1">typeof</span> x<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">case</span> <span class="st0">"object"</span>:
+      <span class="kw1">if</span> <span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="co1">// handle object references here...</span>
+      <span class="br0">&#125;</span>
+      <span class="co1">// FALL THROUGH</span>
+    <span class="kw1">case</span> <span class="st0">"null"</span>:
+      <span class="co1">// handle null here...</span>
+    ...
+  <span class="br0">&#125;</span></pre>
+<p>
+The proposed &ldquo;Harmonizer&rdquo; tool would check using static program analysis to try to report &ldquo;early errors&rdquo; in the Harmonizer tool sense. Implementations would simply shift semantics based on selected language version.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2011/04/28 00:00</em>
+</p>
+
+</div>
+<!-- SECTION [560-1737] -->
+<a name="discussion_of_older_object.isobject_strawman"></a><h2>Discussion of older ''Object.isObject'' strawman</h2>
+<div class="level2">
+
+<p>
+ <code>Object.isObject</code>
+</p>
+
+<p>
+It is proposed that an <code>isObject</code> property be added to the <code>Object</code> object, whose value is a function that could be implemented as <code>Code Text</code>
+</p>
+<pre class="code">  Object.isObject = function isObject(value) {
+      return typeof value === 'object' &amp;&amp; value !== null;
+  }</pre>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x40%3B%26%23x79%3B%26%23x61%3B%26%23x68%3B%26%23x6f%3B%26%23x6f%3B%26%23x2d%3B%26%23x69%3B%26%23x6e%3B%26%23x63%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x63;&#x72;&#x6f;&#x63;&#x6b;&#x40;&#x79;&#x61;&#x68;&#x6f;&#x6f;&#x2d;&#x69;&#x6e;&#x63;&#x2e;&#x63;&#x6f;&#x6d;">Douglas Crockford</a> 2010/12/15 20:04</em>
+</p>
+
+<p>
+This is presumably a convenience method to get around the fact that <code>typeof null</code> is <code>&ldquo;object&rdquo;</code>. I want to explore the actual use cases to see if adding this method is actually worth the effort.
+</p>
+
+<p>
+It seems to me that there are two use cases for this sort of test.  The first is a &ldquo;switch&rdquo; over all the built-in types:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> t = <span class="kw1">typeof</span> arg;
+<span class="kw1">if</span> <span class="br0">&#40;</span>t===<span class="st0">"number"</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/*do something for numbers*/</span> <span class="br0">&#125;</span>
+<span class="kw1">else</span> <span class="kw1">if</span> <span class="br0">&#40;</span>t===<span class="st0">"string"</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* do something for strings */</span> <span class="br0">&#125;</span>
+...
+<span class="kw1">else</span> <span class="kw1">if</span> <span class="br0">&#40;</span>t===<span class="st0">"object"</span> &amp;&amp; arg===<span class="kw2">null</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* do something for null */</span> <span class="br0">&#125;</span>
+<span class="kw1">else</span> <span class="kw1">if</span> <span class="br0">&#40;</span>t===<span class="st0">"object"</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* do something for objects */</span> <span class="br0">&#125;</span>
+<span class="kw1">else</span> <span class="br0">&#123;</span> <span class="coMULTI">/* do something for any types that weren't explicitly tested for */</span> <span class="br0">&#125;</span></pre>
+<p>
+To code this the programmer had to remember that they needed to explicitly test for the null case.  Adding <code>isObject</code> does not seem to significantly change what has to be done for this use case. (Of course the guard of the null case could be reduced to <code>arg===null</code> in which case <code>isObject</code> probably adds no improvement of readability.)  The programmer might replace the explicit <code>null</code> test with a call to <code>isObject</code>: 
+</p>
+<pre class="code javascript"><span class="kw2">var</span> t = <span class="kw1">typeof</span> arg;
+<span class="kw1">if</span> <span class="br0">&#40;</span>t===<span class="st0">"number"</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/*do something for numbers*/</span> <span class="br0">&#125;</span>
+<span class="kw1">else</span> <span class="kw1">if</span> <span class="br0">&#40;</span>t===<span class="st0">"string"</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* do something for strings */</span> <span class="br0">&#125;</span>
+...
+<span class="kw1">else</span> <span class="kw1">if</span> <span class="br0">&#40;</span>t===<span class="st0">"object"</span> &amp;&amp; !Object.<span class="me1">isObject</span><span class="br0">&#40;</span>arg<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* do something for null */</span> <span class="br0">&#125;</span>
+<span class="kw1">else</span> <span class="kw1">if</span> <span class="br0">&#40;</span>t===<span class="st0">"object"</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* do something for objects */</span> <span class="br0">&#125;</span>
+<span class="kw1">else</span> <span class="br0">&#123;</span> <span class="coMULTI">/* do something for any types that weren't explicitly tested for */</span> <span class="br0">&#125;</span></pre>
+<p>
+ or perhaps restructure the code: 
+</p>
+<pre class="code javascript"><span class="kw1">if</span> <span class="br0">&#40;</span>Object.<span class="me1">isObject</span><span class="br0">&#40;</span>arg<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* do something for objects */</span> <span class="br0">&#125;</span>
+<span class="kw1">else</span> <span class="kw1">switch</span> <span class="br0">&#40;</span><span class="kw1">typeof</span> arg<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+   <span class="kw1">case</span> <span class="st0">"number"</span>:  <span class="coMULTI">/*do something for numbers*/</span>  <span class="kw1">break</span>;
+   <span class="kw1">case</span> <span class="st0">"string"</span>:  <span class="coMULTI">/*do something for strings*/</span> <span class="kw1">break</span>;
+   <span class="kw1">case</span> <span class="st0">"object"</span>:  <span class="coMULTI">/*do something for null*/</span>    <span class="kw1">break</span>;
+   <span class="kw2">default</span>:  <span class="coMULTI">/* do something for any types that weren't explicitly tested for */</span> 
+<span class="br0">&#125;</span></pre>
+<p>
+However, in both formulations the programmer still has to remember the fact that <code>typeof null</code> is <code>&ldquo;object&rdquo;</code> and explicitly deal with it in the code.  The only thing that has changed is the specific test that is used to discriminate the <code>null</code> case.
+</p>
+
+<p>
+The other use case is  a simple determination of whether or not a value is an object: 
+</p>
+<pre class="code javascript"><span class="kw1">if</span> <span class="br0">&#40;</span>obj &amp;&amp; <span class="kw1">typeof</span> obj ===<span class="st0">"object"</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* do something for objects */</span> <span class="br0">&#125;</span>
+<span class="kw1">else</span> <span class="br0">&#123;</span> <span class="coMULTI">/* do something for other types of values */</span> <span class="br0">&#125;</span></pre>
+<p>
+Using <code>isObject</code> this simplifies to:  
+</p>
+<pre class="code javascript"><span class="kw1">if</span> <span class="br0">&#40;</span>Object.<span class="me1">isObject</span><span class="br0">&#40;</span>obj<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* do something for objects */</span> <span class="br0">&#125;</span>
+<span class="kw1">else</span> <span class="br0">&#123;</span> <span class="coMULTI">/* do something for other types of values */</span> <span class="br0">&#125;</span></pre>
+<p>
+I would agree that both the above reformulation and the switch statement based formulation of the first use case, are clearer to read.  However, it isn&rsquo;t clear that <code>isObject</code> actually reduces the complexity burden on the programmer.  Because the <code>typeof</code> operator exists the programmer still needs to understand it and know about its pitfalls and when it is and isn&rsquo;t appropriate to use it.
+</p>
+
+<p>
+What does stand out, is that situations that need to dispatch on primitive types would be simplified by a function that yields a unique value for all of the built-in types. From that perspective a function such as <code>Object.getTypeOf</code> might be even better:
+</p>
+<pre class="code javascript"><span class="kw1">switch</span> <span class="br0">&#40;</span>Object.<span class="me1">getTypeOf</span><span class="br0">&#40;</span>arg<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+   <span class="kw1">case</span> <span class="st0">"number"</span>:  <span class="coMULTI">/*do something for numbers*/</span> <span class="kw1">break</span>;
+   <span class="kw1">case</span> <span class="st0">"string"</span>:  <span class="coMULTI">/*do something for strings*/</span> <span class="kw1">break</span>;
+   <span class="kw1">case</span> <span class="st0">"object"</span>:  <span class="coMULTI">/*do something for objects*/</span> <span class="kw1">break</span>;
+   <span class="kw1">case</span> <span class="st0">"null"</span>:    <span class="coMULTI">/*do something for null*/</span>    <span class="kw1">break</span>;
+   <span class="kw2">default</span>:  <span class="coMULTI">/* do something for any types that weren't explicitly tested for */</span> 
+<span class="br0">&#125;</span></pre>
+<p>
+however it doesn&rsquo;t improve the readability of the second use case as much as <code>isObject</code>: 
+</p>
+<pre class="code javascript"><span class="kw1">if</span> <span class="br0">&#40;</span>Object.<span class="me1">getTypeOf</span><span class="br0">&#40;</span>obj<span class="br0">&#41;</span>===<span class="st0">"object"</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* do something for objects */</span> <span class="br0">&#125;</span>
+<span class="kw1">else</span> <span class="br0">&#123;</span> <span class="coMULTI">/* do something for other types of values */</span> <span class="br0">&#125;</span></pre>
+<p>
+I&rsquo;m not sure that either of these functions add enough value to justify adding them to the core language. They could be provided in a library. However, if we were only going to add one, I would probably prefer the one that provides a switchable value.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x41%3B%26%23x6c%3B%26%23x6c%3B%26%23x65%3B%26%23x6e%3B%26%23x40%3B%26%23x57%3B%26%23x69%3B%26%23x72%3B%26%23x66%3B%26%23x73%3B%26%23x2d%3B%26%23x42%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x41;&#x6c;&#x6c;&#x65;&#x6e;&#x40;&#x57;&#x69;&#x72;&#x66;&#x73;&#x2d;&#x42;&#x72;&#x6f;&#x63;&#x6b;&#x2e;&#x63;&#x6f;&#x6d;">Allen Wirfs-Brock</a> 2011/01/14 18:43</em>
+</p>
+
+<p>
+Sure, doing so adds yet another runtime meaning shift that can&rsquo;t be caught by early errors. But it could be worth it, compared to bloating <code>Object</code> with new methods.
+</p>
+
+<p>
+The best case of adding <code>Object</code> methods means we caused everyone migrating code into Harmony, or writing fresh code, to change how they would have worked if only <code>typeof</code> were sane in this regard. In such a best case, we would rather have just fixed <code>typeof</code>.
+</p>
+
+<p>
+The worst case is that hardly anyone bothers to use the new <code>Object</code> method or methods, but we have bloated the spec and the language slightly.
+</p>
+
+<p>
+Of course, with a <code>typeof null === &ldquo;null&rdquo;</code> change, there is a bad case where programmers migrate or write fresh code but forget about the change, and only find out via testing.
+</p>
+
+<p>
+Realistically, auditing code moving into Harmony is required due to the lexical-global-scope change. Auditing needs tools. Tools can find and check (static analysis) or at least warn about <code>typeof</code> usage and any dependent potential null dereferences. We would be happy to get DoctorJS doing this, and I hope Doug can make JSLint do something too.
+</p>
+
+<p>
+In this light, why not fix <code>typeof</code>?
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2011/01/14 20:18</em>
+</p>
+
+<p>
+I would very much prefer to fix <code>typeof</code>. We talked about this before, and decided that there is code out there that depends on <code>typeof</code> &lsquo;s bad behavior. Are we now saying that the migration tax is acceptable?
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x40%3B%26%23x79%3B%26%23x61%3B%26%23x68%3B%26%23x6f%3B%26%23x6f%3B%26%23x2d%3B%26%23x69%3B%26%23x6e%3B%26%23x63%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x63;&#x72;&#x6f;&#x63;&#x6b;&#x40;&#x79;&#x61;&#x68;&#x6f;&#x6f;&#x2d;&#x69;&#x6e;&#x63;&#x2e;&#x63;&#x6f;&#x6d;">Douglas Crockford</a> 2011/01/19 17:17</em>
+</p>
+
+<p>
+Migration tax was an issue for ES5 (strict or not). In the context of Harmony and focused on <code>typeof</code>, it is not clearly a showstopper.
+</p>
+
+<p>
+There is a non-migration tax too, with developers sticking to the old broken <code>typeof</code> and making mistakes or (at some grinding, minor cost that adds up over time) writing null tests carefully. This taxes the committee, too, with proposals to extend built-on objects with compensating methods such as the one proposed here: <code>Object.isObject</code>.
+</p>
+
+<p>
+For me the killer argument is Allen&rsquo;s use-case analysis: in the best case, we&rsquo;ve just imposed a different tax of about the same size, with cleaner partial semantics but the underlying bug in <code>typeof</code> unfixed. If people are to invest effort in migrating <code>typeof</code> code to use a new form, then fixing <code>typeof</code> seems strictly better.
+</p>
+
+<p>
+The downside of breaking code migrated without enough auditing and testing remains, but I&rsquo;m proposing in <a href="http://brendaneich.com/2011/01/harmony-of-my-dreams/" class="urlextern" target="_blank" title="http://brendaneich.com/2011/01/harmony-of-my-dreams/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://brendaneich.com/2011/01/harmony-of-my-dreams/</a> that we build a Harmonizer tool that can do enough static analysis to find missing null tests (not just around <code>typeof</code>, but at least around <code>typeof</code>).
+</p>
+
+<p>
+Such a Harmonizer tool may be great, but I wouldn&rsquo;t bet too big on it. We shouldn&rsquo;t change every little corner of the language that seems messy (fall-through in <code>switch</code>, e.g. &ndash; from C originally, and in Java). For <code>typeof</code>, though, I&rsquo;m willing to make a focused bet.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2011/01/19 20:56</em>
+</p>
+
+</div>
+<!-- SECTION [1738-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/f/f5bb67a551f60a372ba7ca9a1fde7585.xhtml used -->
+</body>
+</html>

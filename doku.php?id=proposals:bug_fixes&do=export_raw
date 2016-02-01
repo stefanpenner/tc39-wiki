@@ -1,0 +1,68 @@
+====== Bug fixes to ECMA-262 ======
+
+Over the last year, we have discussed and reached informal agreement to fix what seem like bugs in Editions 1-3 of ECMA-262.
+
+
+
+
+
+
+
+
+
+
+===== Small fixes =====
+
+  * [ARGUMENTS.SHOULD.BE.ARRAY] ''arguments'' should be an object that delegates to ''Array.prototype''.  See http://bugs.ecmascript-lang.org/ticket/27 for specific information.
+  * [EVAL.IS.OPERATOR] ''eval'' should be a unary operator, like ''delete''.  See [[proposals:with-bound variables]] for discussion.
+    * Compatibility with existing web content will require supporting Edition 3 ''eval'', including indirect ''eval'' at the implementation's discretion.
+    * Edition 4 should contain an informative specification recasting Edition 3 ''eval'' in Edition 4 terms, to facilitate interoperation among backward-compatible implementations.
+    * Does evaluation of the unary operator differ in meaning from direct ''eval'' application in Edition 3?  I recall someone wanting to force global scope, but that's incompatible and unnecessary.  If the problem is the ability of ''eval'' to add bindings to its dynamic scope, let's fix that by making something like ''eval("let {...}")'' instead of ''eval("...")'' be sweeter enough that it wins over time.  We could even define ''eval "..."'' (the unary operator expression) as the new ''let''-like way.
+    * Would like a separate proposal on ''eval "..."''.  --- //[[brendan@mozilla.org|Brendan Eich]] 2007/01/22 11:44//
+  * [THIS.PROPAGATES] ''this'' in a nested function called by the function's name from the outer function should bind to the outer ''this''.
+  * [IMMUTABLE.GLOBALS] ''undefined'', ''NaN'', and ''Infinity'' in the global object should be DontDelete and ReadOnly.
+  * [FUNCTION.LENGTH] There are various bug in E262-3 having to do with the value of the "length" property on function objects.  Resolved: "f.length should be the number of required and optional formal parameters, not counting this, and not counting rest args. Individual cases are marked with a comment."  Some recorded examples follow, but the stated principle should apply generally.
+    * [MAX.AND.MIN.LENGTH] From the libraries proposal: "In ECMA-262, max.length==min.length==2.  But, the actual behavior is based on arg count even with 0 or 1 args.  Decision: bug in ECMA-262 spec." 
+    * [UNSHIFT.LENGTH] From the libraries proposal: "Bug in E262 that unshift.length=1
+    * [VARARG.LENGTH] From the libraries proposal: "Several vararg functions have length > 0 in E262, but their behavior is tied to the number of args only, as if there were no formal parameters. In other words, calling with no args is not the same as calling with 1 or more args equal to their default values. 
+    * [FROMCHARCODE.LENGTH] From [[builtin classes]], Ed noted that ''String.fromCharCode.length === 1'' in Edition 3, but should be 0 to tell the truth.
+  * [REGEXP.CONSTRUCTION] ''new RegExp("pattern")'' and ''/pattern/'' mean different things: the latter is not created anew every time it is evaluated.  This is usually surprising and is probably a historical accident?  [Brendan says it was a mistake that optimized the wrong good.]  In the context of E4X it will be more surprising still, since evaluating <tag>content</tag> yields a new XML object every time.
+  * [OBJECT.TRAILING.COMMA] Allow a trailing comma in an object initialiser.
+  * [MSIE.TRAILING.COMMA] Add prose to the spec to clarify that [a,b,c,].length == 3, not 4.  (Should we have a separate page for spec clarifications?)
+    * ECMA-262 Edition 3 11.1.4 second paragraph and semantics seem clear enough to me -- did you add this because IE notoriously gets it wrong?    --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/22 21:46//
+    * Yes.  I think 11.1.4 is unambiguous, but I don't agree that it is particularly clear, and it wouldn't hurt us to add a sentence that states that a terminating comma does not add to the array length.   --- //[[lth@opera.com|Lars T Hansen]] 2006/03/23 01:23//
+  * [STRING.CHARAT.BRACKETS] Support indexing strings to get (but not set) single-character substrings: ''s[i]'' is equivalent to ''s.charAt(i)'', but it does not depend on ''charAt'' (which may be overridden or even deleted).
+  * Support the missing ''Array.prototype.indexOf'' and ''.lastIndexOf'' methods.  These take a value to find in the array, and an optional starting index.
+  * [BACKSLASH.NEWLINE.IN.STRINGS] Edition 3, 7.8.4 says "NOTE  A LineTerminator character cannot appear in a string literal, even if preceded by a backslash. Both JS1 and AS3 remove escaped line terminators before scanning (or at least they behave as though they do). Let's make this required behavior for consistency.
+  * [AUTO.SEMICOLON.IN.DO.WHILE] Automatic semicolon insertion should apply after a do-while loop; see [[http://bugzilla.mozilla.org/show_bug.cgi?id=238945|Mozilla bug 238945]].
+  * [ITERATE.NULL.AND.UNDEFINED] For MSIE compatibility all browsers allow the target object of "for..in" to be null or undefined, even though this is expressly forbidden by E262-3.  We should sanction this behavior (the loop becomes a no-op).
+  * [ORDER.OF.CONVERSION.IN.COMPARISON] The ToPrimitive conversion is called on the arguments to the abstract comparison procedure (11.8.5). But the operands are passed in different order depending on the comparison being evaluated. The order should always be left to right. The following test case shows to the correct behavior:
+<code javascript>
+js> var a = { valueOf:function() { print("a");return 1} } var b = { valueOf:function() { print("b");return 1} } a<b
+a
+b
+false
+js> a>b
+a
+b
+false
+</code>
+
+Please feel free to add directly to this list.  Also holler if something looks too big to be a "bug fix", and deserves a separate proposal.
+  * [FOR.IN.LOOP.CREATION.ORDER] Underspecified in eds. 1,2,3. For-in loop should iterate in creation order. See [[http://bugs.ecmascript-lang.org/ticket/110|Trac ticket #110]].
+
+===== Bigger issues =====
+
+These issues are split out as separate proposals but the list is preserved here just to have it.
+
+  * ''typeof'' cleanups 
+    * [[typeof|split out]].
+  * Consider supporting operator ''s[i:j]'' where ''s'' is a sequence-like type (''Array'', ''String'', etc.).  On the left-hand side of assignment this expresses a slice operation.  The advantages, as with ''s[i]'', are conciseness and optimizability.
+    * Too big for a bug fix?   --- //[[lth@opera.com|Lars T Hansen]] 2006/03/24 11:01//
+    * [[slice syntax|Ok, separated as slice syntax]].
+  * Provide static function entry points for all ''Array'' and ''String'' generic methods, to relieve users from having to write ''Array.prototype.slice.apply(arraylike, i, j)'', e.g. (see [[http://developer.mozilla.org/en/docs/New_in_JavaScript_1.6#Array_and_String_generics|Array and String generics]] for a short example, and [[http://erik.eae.net/archives/2006/02/28/00.39.52/|some motivational blogging from a JS guru]]).
+    * Split out as [[static generics]].
+  * Consider supporting ''map'', ''reduce'', ''filter'', ''each'', ''some'', and ''every'' (see [[http://developer.mozilla.org/en/docs/New_in_JavaScript_1.6#Array_extras|SpiderMonkey's array extras]] for a prototype that lacks ''reduce'' and renames ''each'' to ''forEach''). 
+    * Split out as part of [[static generics]].
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] / [[lth@acm.org|Lars T Hansen]] / [[jodyer@adobe.com|Jeff Dyer]] various dates//

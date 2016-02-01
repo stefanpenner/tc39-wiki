@@ -1,0 +1,115 @@
+====== Common syntax and semantics for pragmas ======
+
+<code>
+
+Pragmas	:
+	Pragma
+	Pragmas  Pragma
+	
+Pragma :
+	UsePragma  SemicolonFull
+	ImportPragma  SemicolonFull
+	
+UsePragma :
+	use  PragmaItems
+	
+PragmaItems :
+	PragmaItem
+	PragmaItems  ,  PragmaItem
+	
+PragmaItem :
+	PragmaIdentifier
+	PragmaIdentifier  PragmaArgument
+	
+PragmaIdentifier :	
+        decimal
+        default namespace
+        double
+        int
+        namespace
+        Number
+        precision
+        rounding
+        safe
+        standard
+        strict
+        uint
+        unsafe
+	
+PragmaArgument :
+	true
+	false
+        eval
+	Number
+	-  Number
+	String
+	SimpleQualifiedIdentifier
+	
+ImportPragma :
+	import  ImportName
+	import  Identifier  =  ImportName
+	
+ImportName :
+	PackageIdentifier  .  PropertyIdentifier
+
+</code>
+
+===== Common semantics =====
+
+Pragmas are scoped and have effect in the entire syntactic unit in which they occur.
+
+Implementations that do not recognize a pragma not defined in this standard //must// reject the program that uses that pragma.  (//Rationale//: Unlike C or C++ the standard pragmas in ECMAScript have effects on program meaning, so the only safe behavior is to reject programs that contain unknown pragmas.)
+
+===== Standard pragmas =====
+
+(This section is now somewhat advisory; semantics are properly defined in proposals linked from here.)
+
+==== Namespace ====
+
+The ''namespace'' pragma takes one or more arguments, each of which is interpreted as an expression that must evaluate to constants of type ''Namespace'' at compile time.  The pragma adds these namespaces to the set of open namespaces for the syntactic unit.  See section 16.4 in the January 2006 draft.
+
+
+
+
+==== Default Namespace ====
+
+The ''default namespace'' pragma takes one argument, which is one of: ''public'', ''internal'' or ''intrinsic''.  The pragma makes the given namespace the default namespace for all definitions that are in the scope of the current block, and adds the namespace to the list of currently open namespaces (the system default is the package internal namespace). The argument is limited to one of three builtin namespaces because to be useful this pragma must occur at the top-level of a program where the environment has only built-in namespaces. Also, the primary use cases are for implementing built-ins using ''intrinsic'' and compatibility with ES3 using ''public''. ISSUE: should we make it a syntax error to use this pragma anywhere but at the top-level?
+
+See [[meta objects]] for one compelling use-case.
+
+==== Decimal, double, int, uint, Number ====
+
+These pragmas take no arguments.  They state that "all" arithmetic in the syntactic unit should be performed using the kind of arithmetic chosen in the pragma, and that numeric literals should be interpreted as ditto literals.
+
+(We need to clarify exactly which operators are affected by this pragma, and how literals are interpreted.  See [[proposals:decimal]] and [[proposals:numbers]] for much more of this story.)
+
+
+
+==== Precision ====
+
+The ''precision'' pragma takes one argument N which is a number.  It controls the number of decimal digits in the coefficient fields of decimal arithmetic operands and results. N may be any positive integer between 1 and 34 inclusive. Coefficient results will be rounded to N decimal digits.
+See [[proposals:decimal]] proposal for details
+
+==== Rounding ====
+
+The ''rounding'' pragma takes one argument which is interpreted case-insensitively without evaluation as the name of a rounding mode.  It states that all decimal arithmetic in the syntactic unit should use that rounding mode.
+
+(We need to clarify exactly which rounding mode names exist, the [[proposals:decimal]] proposal has more.)
+
+==== Strict ====
+
+The ''strict'' pragma states that the program should be compiled in strict mode.  The pragma may only appear at the beginning of the program.  Implementations are free to ignore this pragma.
+
+(See also [[proposals:strict and standard modes]].)
+
+==== Standard ====
+
+The ''standard'' pragma states that the code in the scope of the pragma should be interpreted as being in the standard dialect (as opposed to the strict dialect).
+
+(See also [[proposals:strict and standard modes]].)
+
+==== Safe / Unsafe ====
+
+The ''safe'' pragma states that the uses of the feature named by the pragma argument shall have the "safe" semantics of that feature. The ''unsafe'' pragma states that uses of the feature named shall have the "unsafe", backward compatible semantics. Currently the only feature with safe and unsafe modes is ''eval''
+
+(See also [[proposals:resurrected eval]].)

@@ -1,0 +1,91 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:array_subtypes&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:array_subtypes&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:array_subtypes&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="array_subtypes"></a><h1>Array Subtypes</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [1-30] -->
+<a name="motivation"></a><h2>Motivation</h2>
+<div class="level2">
+
+<p>
+A common request from developers is for a mechanism that allows the creation of a &ldquo;Array subtype&rdquo;.  An Array subtype is in essence an Array instance with a custom prototype chain.
+</p>
+
+</div>
+<!-- SECTION [31-234] -->
+<a name="proposal"></a><h2>Proposal</h2>
+<div class="level2">
+
+<p>
+We propose the addition of a &lsquo;createConstructor&rsquo; function to the Array constructor object that returns a new function object with the same call semantics as the built in Array constructor, but returning an array instance with a custom prototype.
+</p>
+
+<p>
+A pseudo implementation of this function would be:
+</p>
+<pre class="code">
+Array.createConstructor = function() {
+    var constructor = function() {
+        var result = &lt;&lt;Initial Array Constructor&gt;&gt;.apply(null, arguments);
+        result.__proto__ = constructor.prototype; // recognising that this isn't actually possible in raw ES
+        return result;
+    }
+    constructor.prototype.constructor = constructor;
+    return constructor;
+}
+</pre>
+
+</div>
+<!-- SECTION [235-936] -->
+<a name="discussion"></a><h2>Discussion</h2>
+<div class="level2">
+
+<p>
+ Beware the case where <code>arguments.length == 1 &amp;&amp; arguments[0]</code> is a valid <code>length</code> value. Or did you intend to preserve that wart in <code>Array</code>? I hope not!  &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2010/11/17 22:14</em>
+</p>
+
+<p>
+ I was preserving existing behaviour as it would allow code to use the Array constructor or the subtype interchangeably, but I could go either way without any real problem &mdash; <em><a href="mailto:%26%23x6f%3B%26%23x6c%3B%26%23x69%3B%26%23x76%3B%26%23x65%3B%26%23x72%3B%26%23x40%3B%26%23x61%3B%26%23x70%3B%26%23x70%3B%26%23x6c%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6f;&#x6c;&#x69;&#x76;&#x65;&#x72;&#x40;&#x61;&#x70;&#x70;&#x6c;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Oliver Hunt</a> 2010/12/15 21:08</em>
+</p>
+
+<p>
+The <code>result.constructor</code> property is instance-invariant and should be on <code>constructor.prototype</code>, as with all the built-in and user-defined constructor functions.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2011/01/14 01:40</em>
+</p>
+
+<p>
+I believe I have now fixed the example code  &mdash; <em><a href="mailto:%26%23x6f%3B%26%23x6c%3B%26%23x69%3B%26%23x76%3B%26%23x65%3B%26%23x72%3B%26%23x40%3B%26%23x61%3B%26%23x70%3B%26%23x70%3B%26%23x6c%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6f;&#x6c;&#x69;&#x76;&#x65;&#x72;&#x40;&#x61;&#x70;&#x70;&#x6c;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Oliver Hunt</a> 2011/01/20 01:09</em> 
+</p>
+
+</div>
+<!-- SECTION [937-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/9/902f8b88868a81242e5feea3c85831f8.xhtml used -->
+</body>
+</html>

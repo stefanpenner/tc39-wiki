@@ -1,0 +1,42 @@
+====== Array.create ======
+
+It is proposed that a ''create'' property be added to the ''Array'' constructor, being a function that is similar to ''Object.create'', creating a new array that inherits from the first argument (which will usually be an object. If there is an optional second argument (which will usually be an array or array-like object) then copy the elements numbered between 0 and ''length - 1'' to the new array. The result is seen as an array by ''Array.isArray'', and the result has a magic ''length'' property, but it does not necessarily inherit from ''Array.prototype''.
+
+    myArray = Array.create(augmented_array_prototype, ['a', 'b', 'c']);
+
+''Array.create'' is simpler, more elemental, and shares more continuity with ES5 than [[strawman:array_subtypes]].
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2011/01/03 17:48//
+
+----
+The problem with the above solution is that it does not allow for inclusion of the properties descriptor argument that is the second argument of Object.create.  For consistency I would like to see all constructor.create functions accept such an argument.  As an alternative I played around with a flexible Array.create signature:
+<code javascript>
+     Array.create(proto)   //creates a zero length array object with [[Prototype]] set to proto
+     Array.create(proto, obj-not-array)  //like Object.create
+     Array.create(proto, number [, properties])  //sets initial length to number + defines own properties from property descriptor
+     Array.create(proto, array [, properties])  //Doug's proposal + optional properties descriptor
+</code>
+
+However, note that this still requires at least one extra array creation for the ''new Array(0,1,2,3,4)'' use case.
+
+Having looked at these, I think that the best alternative is to keep it simple as:
+<code javascript>
+     Array.create(proto [, properties])  //like Object.create
+</code>
+
+If somebody wants to support other use cases it would be easy enough for them to do things like:
+<code javascript>
+   Array.with = function(proto, args /*any number of additional args*/) {
+      var arr = Array.create(proto);
+      arr.push([].slice.call(arguments,1));
+      return arr;
+   }
+</code>
+
+But  [[obj initialiser meta]] is a better solution for this use case:
+<code javascript>
+  {<proto: myProto>, 1,2,3,4,5,6}
+</code>
+ --- //[[Allen@Wirfs-Brock.com|Allen Wirfs-Brock]] 2011/03/18 18:01//
+
+

@@ -1,0 +1,162 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=ses:kona&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=ses" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=ses:kona&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=ses:kona&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=ses:kona&amp;do=export_html.html#the_kona_suggestion" class="toc">The Kona Suggestion</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=ses:kona&amp;do=export_html.html#no_global_object" class="toc">No Global Object</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=ses:kona&amp;do=export_html.html#functions_are_immutable" class="toc">Functions are immutable</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=ses:kona&amp;do=export_html.html#eval" class="toc">eval</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=ses:kona&amp;do=export_html.html#this" class="toc">this</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=ses:kona&amp;do=export_html.html#object" class="toc">Object</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=ses:kona&amp;do=export_html.html#with" class="toc">with</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=ses:kona&amp;do=export_html.html#for_in" class="toc">for in</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=ses:kona&amp;do=export_html.html#delete" class="toc">delete</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=ses:kona&amp;do=export_html.html#open_questions" class="toc">Open Questions</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="the_kona_suggestion"></a><h1>The Kona Suggestion</h1>
+<div class="level1">
+
+<p>
+ At the Kona meeting, we discussed a set of minimal changes to ES3.1 strict that could produce a secure dialect that would not require a prior validation or transformation. If an agreeable secure dialect can be so obtained, then the expense of a design competition can be avoided.
+</p>
+
+<p>
+These changes were suggested.
+</p>
+
+</div>
+<!-- SECTION [1-347] -->
+<a name="no_global_object"></a><h2>No Global Object</h2>
+<div class="level2">
+
+<p>
+ There is no common global object. Instead, each compilation unit is initialized with its own context, avoiding overt leakage with other contexts. Each compilation unit can be thought of as a function body.
+</p>
+
+</div>
+<!-- SECTION [348-584] -->
+<a name="functions_are_immutable"></a><h2>Functions are immutable</h2>
+<div class="level2">
+
+<p>
+ Functions no longer operate as mutable objects. Functions will no longer have <code>prototype</code> members.  Objects will no longer inherit <code>constructor</code> members. There is no longer a need for the <code>new</code> operator. The <code>Object.create</code> function should be used instead.
+</p>
+
+<p>
+This makes it possible to hand functions representing capabilities to untrusted code without requiring that each function be individually frozen. It also makes it possible to hand an object to untrusted code without also giving up the object&rsquo;s <code>constructor</code> and <code>prototype</code>.
+</p>
+
+</div>
+<!-- SECTION [585-1167] -->
+<a name="eval"></a><h2>eval</h2>
+<div class="level2">
+
+<p>
+ The <code>eval</code> function operates in a new context. The code which is compiled and executed by <code>eval</code> does not get access to the caller&rsquo;s scope or the caller&rsquo;s global object. It instead gets a pristine new context, which can also be populated with members that are explicitly passed in through a <em>context</em> parameter.
+</p>
+
+<p>
+The <em>source</em> parameter is evaluated as an expression. Its result is returned. 
+</p>
+<pre class="code"> ''eval(''//source//, //context//'')''</pre>
+
+</div>
+<!-- SECTION [1168-1627] -->
+<a name="this"></a><h2>this</h2>
+<div class="level2">
+
+<p>
+ The <code>this</code> parameter is allowed only within function bodies. If it appears outside of a function body, it is a syntax error.
+</p>
+
+<p>
+As in ES3.1 strict, calling a function as a function binds <code>this</code> to <code>undefined</code>, not the global object.
+</p>
+
+</div>
+<!-- SECTION [1628-1883] -->
+<a name="object"></a><h2>Object</h2>
+<div class="level2">
+
+<p>
+ The <code>Object.getPrototypeOf</code> method is removed from the language. Its existence makes exchange of objects dangerous.
+</p>
+
+</div>
+<!-- SECTION [1884-2022] -->
+<a name="with"></a><h2>with</h2>
+<div class="level2">
+
+<p>
+ The <code>with</code> statement is a syntax error.
+</p>
+
+</div>
+<!-- SECTION [2023-2083] -->
+<a name="for_in"></a><h2>for in</h2>
+<div class="level2">
+
+<p>
+ The <code>for</code> <code>in</code> statement iterates over only the own properties of an object. Only keys that are strings are enumerated.
+</p>
+
+</div>
+<!-- SECTION [2084-2228] -->
+<a name="delete"></a><h2>delete</h2>
+<div class="level2">
+
+<p>
+ The delete operator does not work on variables.
+</p>
+
+</div>
+<!-- SECTION [2229-2297] -->
+<a name="open_questions"></a><h1>Open Questions</h1>
+<div class="level1">
+
+<p>
+ What support is required of the language or the <acronym title="Document Object Model">DOM</acronym> to allow the individual compilation units to selectively expose themselves to each other?
+</p>
+
+<p>
+Should it be possible to augment the primordial prototypes or their offspring?
+</p>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x40%3B%26%23x79%3B%26%23x61%3B%26%23x68%3B%26%23x6f%3B%26%23x6f%3B%26%23x2d%3B%26%23x69%3B%26%23x6e%3B%26%23x63%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x63;&#x72;&#x6f;&#x63;&#x6b;&#x40;&#x79;&#x61;&#x68;&#x6f;&#x6f;&#x2d;&#x69;&#x6e;&#x63;&#x2e;&#x63;&#x6f;&#x6d;">Douglas Crockford</a> 2008/12/01 18:42</em>
+</p>
+
+</div>
+<!-- SECTION [2298-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/9/9320b4bed3ea66babf0bf2a449ba5b74.xhtml used -->
+</body>
+</html>

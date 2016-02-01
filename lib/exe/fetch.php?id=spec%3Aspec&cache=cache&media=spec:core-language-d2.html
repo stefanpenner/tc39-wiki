@@ -1,0 +1,3300 @@
+<html>
+<head>
+<title>ECMAScript 4th Edition -- Core Language </title>
+<style>
+/* -*- indent-tabs-mode: nil -*- */
+.fixme { font-size: smaller; padding-left: 1em; color: red }
+.note { font-size: smaller; padding-left: 1em }
+.part { font-size: 24pt }
+.grammar { font-style: italic }
+.indented { padding-left: 3em }
+.nonterm { padding-top: 1em }
+.xref { border: thin solid red; }
+.section { margin-bottom: -1em; font-family: sans-serif; font-size: smaller }
+.implsection { margin-bottom: -1em; padding-bottom: 0.3em; font-family: sans-serif; font-size: smaller }
+.literal { font-style: normal; font-weight: bold }
+H1,H2,H3,H4,H5,H6 { font-family: sans-serif }
+H1 { font-size: 14pt }
+H2 { font-size: 12pt }
+H3 { font-size: 11pt }
+H4 { font-size: 10pt }
+
+P code { font-size: 10pt }
+code { font-style: normal; font-weight: normal }
+
+pre { font-size: 9pt }
+
+body { counter-reset: chapter section subsection subsubsection subsubsubsection;
+       font-size: 10pt; 
+       margin: 0.75in }
+
+table { font-size: inherit;
+        width: 70%;
+        margin: 2em; 
+        border: 1px solid lightgrey; }
+
+th { background: lightgrey; }
+
+td { padding: 1em; }
+
+.pcounter:before {
+    content: counter(para); 
+}
+
+.pcounter {
+    position: absolute; left: 0.5in;
+    counter-increment: para
+}
+
+H1:before {
+    padding-right: 1em;
+    content: counter(chapter) "  ";
+    counter-increment: chapter }
+
+H1 {
+    counter-reset: section para;
+}
+
+H2:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "  ";
+    counter-increment: section }
+
+H2 {
+    counter-reset: subsection para;
+}
+
+H3:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "  ";
+    counter-increment: subsection }
+
+H3 {
+    counter-reset: subsubsection para;
+}
+
+H4:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "  ";
+    counter-increment: subsubsection }
+
+H4 {
+    counter-reset: para;
+}
+
+H5:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "." counter(subsubsubsection) "  ";
+    counter-increment: subsubsubsection }
+
+H5 {
+    counter-reset: para;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>Values</h1>
+
+
+
+
+
+<P><span class="pcounter"></span>The evaluation of a program, described in section ..., entails among its effects the calculation
+and manipulation of values.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  Draft 1 of the specification does not include a description of evaluation.
+
+<P><span class="pcounter"></span>An <i>ECMAScript value</i> is either undefined, null, or an object. Every ECMAScript value has an
+associated ECMAScript type, called the value's <i>allocated type</i>.  The allocated type is fixed when
+the value is allocated in memory, and cannot change over the lifetime of the value.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>datatype</b> VALUE = ObjectValue <b>of</b> OBJECT
+               <b>|</b> UndefinedValue
+               <b>|</b> NullValue
+</PRE>
+
+<p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp; In the 3rd edition of the language, several individual <i>types</i> were defined. The three types
+formerly called primitive (number, string, boolean) are now represented as object values. The term
+<i>type</i> has a different meaning in the 4th edition.
+
+<h2>Object Values</h2>
+
+<P><span class="pcounter"></span>An <i>object value</i> is any ECMAScript value that is not the null value or the undefined value.
+
+<P><span class="pcounter"></span>An object value consists of a mutable property binding map, an immutable fixture map, an
+immutable object identifier, an immutable tag, and an immutable prototype reference.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> OBJECT =
+    Object <b>of</b> { propertyMap: PROPERTY_MAP,
+                fixtureMap: FIXTURE_MAP,
+                ident: OBJECT_IDENTIFIER,
+                tag: TAG,
+                proto: VALUE }
+</PRE>
+
+<h3>Property Maps</h3> 
+
+<P><span class="pcounter"></span>A <i>property map</i> associates at most one property with any name. If an object's property map
+associates a property <code>P</code> with a name <code>N</code>, then the object is said to have a <i>binding</i> for
+<code>N</code>. Alternatively, the property <code>P</code> is said to be <i>bound to</i> the name <code>N</code>, in the object.
+
+<P><span class="pcounter"></span>Bindings can be added, removed, or replaced within a property map. The semantic type of a
+property map is unspecified.
+
+<P><span class="pcounter"></span>A property map stores the order in which properties are added to the map. A property's position
+in this order is unchanged when the property is replaced. This order is used by property enumeration
+(see the chapter on Statements).
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  "Replacement" is not an adequate abstraction here; we wish to have an "update" operation.
+Replacement on the language level occurs when a property is deleted by the delete operator (or 
+an equivalent mechanism) and a new property with the same name is inserted; under this kind of
+replacement, the property's position may change.  With a "replacement" on the semantic level,
+that is to say an update, the property's position never changes.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> PROPERTY_MAP = &#x0085;
+</PRE>
+
+<h4>Properties</h4>
+
+<P><span class="pcounter"></span>A <i>property</i> consists of a type, a state, and a set of attributes. The type of a property is
+also called the property's <i>storage type</i>, to differentiate it from the allocated type of any
+value that the property may contain.
+
+<p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp; In earlier editions of the language, some characteristics of an object were modeled as
+<i>internal properties</i> with distinct names such as <code><code>[[Class]]</code></code> or <code><code>[[Value]]</code></code>. These
+characteristics of objects are described differently in the 4th edition, using a combination of
+supporting semantic and ECMAScript standard library functionality.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> PROPERTY = { ty: TYPE,
+                 state: PROPERTY_STATE,
+                 attrs: ATTRS }
+</PRE>
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  The term <i>storage type</i> is not ideal because it also applies
+to the return value constraint on a function object; there is no
+"storage" in that context.  It's possible that <i>annotated type</i>
+would be a better term.
+
+<h4>Property States</h4>
+
+<P><span class="pcounter"></span>The <i>state</i> of a property encodes either a value associated with the property, or else a pair
+of functions that describe a "virtual" value.
+
+<P><span class="pcounter"></span>If a property is in the <i>value</i> state, reading the property returns the value and writing the
+property updates the value.
+
+<P><span class="pcounter"></span>If a property is in the <i>virtual value</i> state, reading the property executes the associated
+"getter" function, and writing the property executes the associated "setter" function.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> PROPERTY_STATE = ValueProperty <b>of</b> VALUE
+                   <b>|</b> VirtualProperty <b>of</b>
+                     { getter: CLOSURE option,
+                       setter: CLOSURE option }
+</PRE>
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  It is probably not necessary for the getter and setter to be "option", the 
+missing part of the pair is always generated by the language implementation.
+
+<h4>Property Attributes</h4> 
+
+<P><span class="pcounter"></span>The <i>attributes</i> of a property govern its behavior in various operations. There are 4
+attributes on every property:
+<table>
+<tr>
+  <th>Attribute</th>
+  <th>Description</th>
+</tr>
+<tr>
+  <td><code>writable</code></td>
+  <td>  
+    An attribute that can be one of three values. When the value is <code>Writable</code>, the property can
+    be written to an arbitrary number of times. When the value is <code>WriteOnce</code>, the property can be
+    written to once, after which the attribute assumes the value <code>ReadOnly</code>. When the value is
+    <code>ReadOnly</code>, attempts to write to the property after initialization will fail.
+  </td>
+</tr>
+<tr>
+  <td><code>enumerable</code></td>
+  <td>
+    A boolean attribute. If <code>true</code>, then the property is to be enumerated by <b>for-in</b> and
+    <b>for-each-in</b> enumeration. If <code>false</code>, the property is ignored by such enumeration.
+  </td>
+</tr>
+<tr>
+  <td><code>removable</code></td>
+  <td>
+    A boolean attribute. If <code>true</code>, then the property can be removed using the <b>delete</b> operator.
+    If <code>false</code>, the <b>delete</b> operator fails.
+  </td>
+</tr>
+<tr>
+  <td><code>fixed</code></td>
+  <td>
+    <P><span class="pcounter"></span>A boolean attribute. If <code>true</code>, then the property was defined as a fixture in the object's
+      fixture map and dominates most non-fixed properties during name resolution. If <code>false</code>, then the
+      property is a dynamic addition to the object and is usually consulted <i>after</i> fixed
+      properties during name resolution.</p>
+  </td>
+</tr>
+</table>
+
+<P><span class="pcounter"></span> The <code>fixed</code> attribute is mutually exclusive with the <code>removable</code> attribute.
+
+<P><span class="pcounter"></span> If a property is not <code>Writable</code> it is also not <code>removable</code>.
+
+<P><span class="pcounter"></span> If a property is <code>fixed</code> it is not <code>enumerable</code>.
+
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>datatype</b> WRITABILITY = ReadOnly <b>|</b> WriteOnce <b>|</b> Writable
+</PRE>
+<PRE>
+<b>type</b> ATTRS = { removable: BOOLEAN,
+               enumerable: BOOLEAN,
+               fixed: BOOLEAN,
+               writable: WRITABILITY }
+</PRE>
+
+<h4>Names</h4>
+
+<P><span class="pcounter"></span>A <i>name</i> consists of a namespace and an identifier. 
+
+<P><span class="pcounter"></span>A name may identify a property binding within a property map.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>type</b> NAME = { ns: NAMESPACE, id: IDENTIFIER }
+</PRE>
+
+<h5>Identifiers</h5>
+
+<P><span class="pcounter"></span>An <i>identifier</i> is a string.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>type</b> IDENTIFIER = STRING
+</PRE>
+
+<h5>Namespaces</h5>
+
+<P><span class="pcounter"></span>A <i>namespace</i> is a semantic value that can be either transparent or opaque.
+
+<P><span class="pcounter"></span>A <i>transparent namespace</i> consists of a character string that identifies the namespace.
+
+<P><span class="pcounter"></span>An <i>opaque namespace</i> consists of a unique namespace identifier of unspecified representation.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>datatype</b> NAMESPACE =
+         TransparentNamespace <b>of</b> STRING
+       <b>|</b> OpaqueNamespace <b>of</b> OPAQUE_NAMESPACE_IDENTIFIER
+</PRE>
+<PRE>
+<b>type</b> OPAQUE_NAMESPACE_IDENTIFIER = &#x0085;
+</PRE>
+
+<h6>Special namespaces</h6>
+
+<P><span class="pcounter"></span>Two important namespaces are used throughout the following sections.
+
+<P><span class="pcounter"></span>The <i>public namespace</i> is the transparent namespace whose identifying string is the empty
+string, <b>""</b>.
+
+<P><span class="pcounter"></span>The <i>4th Edition namespace</i> is the transparent namespace whose identifying string is the string
+<b>__ES4__</b>.
+
+<P><span class="pcounter"></span>All global property names defined subsequently in this specification are written in one of two forms:
+<ul>
+<li>Qualified, using the ECMAScript qualitied name expression notation <b>namespace::identifier</b>
+<li>Unqualified, using the notation of a bare <b>identifier</b>, implicitly qualified by the 4th Edition namespace
+</ul>
+
+<P><span class="pcounter"></span>The public namespace is bound to the name <b>public</b>.
+
+<P><span class="pcounter"></span>More information on special namespaces is given in section ...Names, Special namespaces.
+
+<h3>Object Prototype</h3> 
+
+<P><span class="pcounter"></span>The <i>prototype</i> of an object is a means of dynamically delegating behavior from one object to
+another. In various conditions, the result of an unsuccessful property access on an object is
+defined in terms of subsequent property accesses on the object's prototype.
+
+<P><span class="pcounter"></span>The value of the prototype can be the null value or an object value.
+
+<h3>Object Identifier</h3>
+
+<P><span class="pcounter"></span>The <i>identifier</i> of an object uniquely identifies the object. The semantic type of an object
+identifier is unspecified, and its value cannot be directly observed by ECMAScript code. Equality of
+objects is partially defined in terms of equality of the objects' identifiers, so all identifiers
+must be comparable with one another for equality.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> OBJECT_IDENTIFIER = &#x0085;
+</PRE>
+
+<h3>Object Tag</h3> 
+
+<P><span class="pcounter"></span>The <i>tag</i> of an object encodes both the object's allocated type, and any underlying semantic
+value associated with the object.
+
+<P><span class="pcounter"></span>The <code>RecordTag</code> tag is present on an object of with the structural type <code>RecordType</code> as its allocated type. 
+
+<P><span class="pcounter"></span>The <code>ArrayTag</code> tag is present on an object of with the structural type <code>ArrayType</code> as its allocated type. 
+
+<P><span class="pcounter"></span>The <code>PrimitiveTag</code> tag is present on objects that are instances of a small number of classes,
+described in the following section.
+
+<P><span class="pcounter"></span>The <code>InstanceTag</code> tag is present on any object that is an instance of a class but does <i>not</i>
+have an <code>RecordTag</code>, <code>ArrayTag</code> or <code>PrimitiveTag</code> tag.
+
+<P><span class="pcounter"></span>The <code>NoTag</code> tag is present only on un-named objects that implement scopes.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> TAG =
+    RecordTag <b>of</b> FIELD_TYPE list
+  <b>|</b> ArrayTag <b>of</b> (TYPE list * TYPE option)
+  <b>|</b> PrimitiveTag <b>of</b> PRIMITIVE
+  <b>|</b> InstanceTag <b>of</b> CLASS
+  <b>|</b> NoTag
+</PRE>
+
+<h4>Primitive Tag</h4>
+
+<P><span class="pcounter"></span>In addition to an allocated type, some objects have an extra semantic value stored in their
+tag. Such objects are called <i>primitive objects</i> and have a <i>primitive tag</i> containing the
+semantic value. The extra semantic value is only directly accessible in semantic code.
+
+<P><span class="pcounter"></span>ECMAScript code can determine if an object is primitive through a correspondence between
+primitive tags and a set of 9 specific ECMAScript types. The correspondence is a bijection: any
+instance of these types has the corresponding primitive tag, and any object with a primitive tag is
+an value of the corresponding type.
+
+<P><span class="pcounter"></span>The allocated type of a primitive object may be a subtype of the corresponding type listed
+here. In particular, function objects may have more specific subtypes of the class
+<b>public::Function</b>, and class and interface objects are both subtypes of the interface
+<b>helper::Type</b>. In such cases, the allocated type of the object is described by the semantic value
+held by the primitive tag.
+
+<P><span class="pcounter"></span>The correspondence between primitive tags and object types is the following:
+<ul>
+<li>The primitive tag <code>BooleanPrimitive</code> corresponds to the class <b>boolean</b>.
+<li>The primitive tag <code>DoublePrimitive</code> corresponds to the class <b>double</b>.
+<li>The primitive tag <code>DecimalPrimitive</code> corresponds to the class <b>decimal</b>.
+<li>The primitive tag <code>StringPrimitive</code> corresponds to the class <b>string</b>.
+<li>The primitive tag <code>NamespacePrimitive</code> corresponds to the class <b>Namespace</b>.
+<li>The primitive tag <code>FunctionPrimitive</code> corresponds to the class <b>public::Function</b>.
+<li>The primitive tag <code>TypePrimitive</code> corresponds to the class <b>helper::Type</b>.
+<li>The primitive tag <code>GeneratorPrimitive</code> corresponds to the class <b>helper::GeneratorImpl</b>.
+<li>The primitive tag <code>ArgumentsPrimitive</code> corresponds to the class <b>helper::Arguments</b>.
+</ul>
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> PRIMITIVE =
+    BooleanPrimitive <b>of</b> BOOLEAN
+  <b>|</b> DoublePrimitive <b>of</b> IEEE_754_BINARY_64_BIT
+  <b>|</b> DecimalPrimitive <b>of</b> IEEE_754R_DECIMAL_128_BIT
+  <b>|</b> StringPrimitive <b>of</b> STRING
+  <b>|</b> NamespacePrimitive <b>of</b> NAMESPACE
+  <b>|</b> FunctionPrimitive <b>of</b> CLOSURE
+  <b>|</b> TypePrimitive <b>of</b> TYPE
+  <b>|</b> ArgumentsPrimitive <b>of</b> SCOPE
+  <b>|</b> GeneratorPrimitive <b>of</b> GENERATOR
+</PRE>
+
+<h3>Fixture Map</h3>
+
+<P><span class="pcounter"></span>A <i>fixture map</i> is a structure that describes, but does not contain, a set of fixed property
+bindings. These descriptions of fixed properties are called <i>fixtures</i>. The properties described
+by an object's fixture map are <i>lazily instantiated</i> as fixed property bindings on the object. Any
+attempt to access a property binding described by a fixture in an object's fixture map, but not
+present in the object's property map, causes the property to be added to the property map.
+
+<P><span class="pcounter"></span>All instances of a class share a single fixture map.
+
+
+<h2>Undefined Value</h2> 
+
+<P><span class="pcounter"></span>The <i>undefined value</i> is a unique constant denoted by the semantic value <code>UndefinedValue</code> and
+stored in the global constant property <b>public::undefined</b> in ECMAScript.
+
+<P><span class="pcounter"></span>The <i>undefined type</i> is the allocated type of the undefined value. The undefined value is the
+only value with the undefined type as its allocated type. The undefined type is denoted by the
+semantic value <code>UndefinedType</code>, which is denoted in ECMAScript type-expression contexts by the
+identifier <b>undefined</b>.
+
+<p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp; Inside of type-expression contexts, the token <b>undefined</b> is reserved and has a fixed
+meaning. Outside of type-expression contexts the token is interpreted as in earlier editions.
+
+
+<h2>Null Value</h2>
+
+<P><span class="pcounter"></span>The <i>null value</i> is a unique constant denoted by the semantic value <code>NullValue</code> and by the
+null literal <b>null</b> in ECMAScript.
+
+<P><span class="pcounter"></span>The <i>null type</i> is the allocated type of the null value. The null value is the only value with
+the null type as its allocated type. The null type is denoted by the semantic value <code>NullType</code> and
+denoted in ECMAScript type-expression contexts by the null literal <b>null</b>.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp; While the null and undefined values have similar meanings, they have different conventions of
+use. The null value is intended to indicate a missing object value, while the undefined value is
+intended to indicate a missing property on an existing object value or an uninitialized property or
+variable. These intended uses are conventions, and are not enforced by the language semantics.
+
+
+<h2>Semantic Values</h2>
+
+<P><span class="pcounter"></span>Many aspects of the language depend on the semantic values associated with primitive objects. The
+following sections describe the semantic values and the correspondences that exist between
+particular semantic values and the ECMAScript values they are held by.
+
+<h3>Special Constructors</h3>
+
+<P><span class="pcounter"></span>While much of the behavior of primitive objects is defined <i>inside</i> the ECMAScript language (in
+the section ...library), the means of <i>constructing</i> primitive objects and associating semantic
+values with them is (at least partially) defined <i>outside</i> the ECMAScript language, in semantic
+code and specification prose.
+
+<P><span class="pcounter"></span>Therefore the construction of any primitive object is described by a <i>special constructor</i>
+defined in semantic code and specification prose, rather than a <i>standard constructor</i> that would
+otherwise be defined in standard library code. The specifications of any such special constructors are
+given in the following sections, accompanying the specifications of the semantic values.
+
+<h3>Boolean Values</h3>
+
+<P><span class="pcounter"></span>A <i>boolean value</i> is one of two semantic values called <code>true</code> and <code>false</code>. These correspond
+to the ES4 boolean literal values <b>true</b> and <b>false</b>, which denote the two sole instances of the
+class <b>boolean</b>. Such objects are called <i>boolean objects</i>.
+
+<P><span class="pcounter"></span>No instances of the class <b>boolean</b> can be constructed aside from the two values
+<b>true</b> and <b>false</b>: the <b>boolean</b> constructor is a special constructor that always
+evaluates to one of the two boolean objects.
+
+<h3>Double Values</h3>
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp; I cut this section down significantly from ES3, since the corresponding section 8.5 in the
+old standard mostly consisted of a very weird sort of selective paraphrasing of bits of 754 itself:
+restatements of algorithms that are perfectly well described in 754, or of facts such as the
+definition of the denormalized numbers that <i>never even get used</i> in the subsequent spec. I assume
+anyone reading this section and caring about 754 doubles actually has the 754 spec and can read
+it. Spelling out the whole 754 spec title in this section likewise seems redundant, since that's the
+point of the normative references section at the beginning of the document.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp; Waldemar objects to that paring down, pointing out that the purpose of the selective
+paraphrasing was to include a specific subset of IEEE 754 arithmetic into ES3.  For example, signalling
+NaNs are not part of that subset, and there are (supposedly) competing round-to-nearest algorithms,
+of which one needed to be selected.  So it's possible that the real fix here is to be explicit
+as to why a subset of IEEE 754 arithmetic is described in the ECMAScript Specification.
+
+<P><span class="pcounter"></span>A <i>double value</i> is a double precision, 64-bit format binary floating point value, as specified
+in the IEEE 754 standard.
+
+<P><span class="pcounter"></span>A double value can be held in the primitive tag of an instance of the class
+<b>double</b>. Instances of <b>double</b> are called <i>double objects</i>.
+
+<P><span class="pcounter"></span>Two special double values are held in special double objects: one "Not-a-Number" (NaN) value,
+stored in the global constant <b>public::NaN</b>, and one "infinite" value, stored in the global
+constant <b>public::Infinity</b>.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  There are also NaN and Infinity properties (as well as others) on the <code>Number</code> object; those
+are all double values.  ES4 will have NaN and Infinity properties on the <code>decimal</code> object, 
+and probably on the <code>double</code> object for the sake of consistency.
+
+<P><span class="pcounter"></span>ECMAScript provides no way of distinguishing any of the different IEEE 754 NaN values from one
+another.  All NaN values are considered unequal to themselves, and to every other value.
+
+<P><span class="pcounter"></span>In this specification, the phrase "the number value of <i>x</i>" where <i>x</i> represents an exact
+nonzero real mathematical quantity means a number chosen according to the IEEE 754 rounding mode
+"rounds to nearest".
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  That does not take into account decimal.
+
+<P><span class="pcounter"></span>Some ECMAScript operators deal only with integers in the range -2<sup>31</sup> through
+2<sup>31</sup>-1, inclusive, or in the range 0 through 2<sup>32</sup>-1 inclusive. These operators
+accept any double or decimal value but first convert each such value to one of 2<sup>32</sup> integer
+values. See descriptions of the <code>ToInt32</code> and <code>ToUint32</code> operators in sections ...</p>
+
+<h3>Decimal Values</h3>
+
+<P><span class="pcounter"></span>A <i>decimal value</i> is a 128-bit format decimal floating point value, as specified in the IEEE
+754r standard.
+
+<P><span class="pcounter"></span>A decimal value can be held in the primitive tag of an instance of the class
+<b>decimal</b>. Such objects are called <i>decimal objects</i>.
+
+<P><span class="pcounter"></span>Some ECMAScript operators convert double values to decimal values when either operand to the
+operator is a decimal value. This conversion can be lossy.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  More information will appear here.
+
+<h3>String Values</h3>
+
+<P><span class="pcounter"></span>A <i>string value</i> is a finite ordered sequence of zero or more unsigned integer values
+("elements"). The elements of a string must be either 16 or 32 bits wide. An implementation of
+ECMAScript may provide elements of either size, but all strings in a single implementation must
+consist of elements of the same size.
+
+<P><span class="pcounter"></span>String values are generally used to represent textual data, in which case each element in the
+string is treated as a code point value (see section ...).
+
+<P><span class="pcounter"></span>A string value can be held in the primitive tag of an instance of the class <b>string</b>. Such
+objects are called <i>string objects</i>.
+
+<P><span class="pcounter"></span>Each element of a string is regarded as occupying a position within the sequence. These positions
+are indexed with nonnegative integers. The first element (if any) is at position 0, the next element
+(if any) is at position 1, and so on. The length of a string is the number of elements (16 or 32-bit
+values) within it. The empty string has length zero and therefore contains no elements.
+
+<P><span class="pcounter"></span>All operations on string (except as otherwise stated) treat them as sequences of undifferentiated
+16 or 32-bit unsigned integers. In particular, operations on strings do not ensure the resulting
+string is in normalised form, they do not ensure language-sensitive results, and they do not alter
+their behavior when dealing with 16 or 32-bit values outside the legal range of UTF-16 or UTF-32
+code points, respectively.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp; The rationale behind these decisions was to keep the implementation of strings as simple and
+high-performing as possible. The intent is that textual data coming into the execution environment
+from outside (e.g., user input, text read from a file or received over the network, etc.) be
+converted to Unicode Normalised Form C before the running program sees it. Usually this would occur
+at the same time incoming text is converted from its original character encoding to Unicode (and would
+impose no additional overhead). Since it is recommended that ECMAScript source code be in Normalised
+Form C, string literals are guaranteed to be normalised (if source text is guaranteed to be normalised), 
+as long as they do not contain any Unicode escape sequences.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp; The previous paragraphs regarding string values are adapted from ES3, but personally I think
+they are very awkward-reading, and would like to rewrite them a bit.
+
+<P><span class="pcounter"></span>String literals evaluate to string objects. 
+
+<P><span class="pcounter"></span>The equality of string objects -- in both the <b>==</b> and <b>===</b> sense -- is defined as the
+equality of the underlying string values. This in turn is established by the identities of the
+string elements, considered pairwise and in sequence. Inequalities and relational operations of
+strings are similarly defined in terms of sequence comparisons on string elements. No other forms of
+textual equality or collation are defined.
+
+<h3>Namespace Values</h3>
+
+<P><span class="pcounter"></span>Namespaces are defined in section ...namespaces.
+
+<P><span class="pcounter"></span>A namespace can be held in the primitive tag of an instance of the class <b>Namespace</b>. Such
+objects are called <i>namespace objects</i>.
+
+<P><span class="pcounter"></span>A namespace is defined as a fixture in a global or class static scope by a <b>namespace</b>
+definition.
+
+<h3>Type Values</h3>
+
+<P><span class="pcounter"></span>A <i>type value</i> is a description of a set of values. Types are described in chapter ...types. 
+
+<P><span class="pcounter"></span>A type value can be held in the tag of an object, in a primitive tag <code>TypePrimitive</code>. An object
+of such a primitive type tag is called a <i>type object</i>.
+
+<P><span class="pcounter"></span>Two sorts of type values are of particular significance: class values and interface values.
+
+<h4>Class Values</h4>
+
+<P><span class="pcounter"></span>A <i>class value</i> consists of a name and a set of namespaces, fixture maps, types and flags
+governing the behavior of various objects.
+
+<P><span class="pcounter"></span>A class value can be held in a <code>ClassType</code> value, which can be held in the tag of a type
+object. An object carrying a primitive type tag of class type is called a <i>class object</i>.
+
+<P><span class="pcounter"></span>A class value is defined as a fixture in the global scope by a <b>class</b> definition.
+
+<P><span class="pcounter"></span>Each <i>class definition</i> corresponds to zero or more class values, and thus zero or more class
+objects. If a class definition is not type-parametric, it corresponds to exactly one class object,
+and that class object is called <i>the value of</i> the class definition.
+
+<P><span class="pcounter"></span>A class value holds class fixtures and instance fixtures. If <b>C</b> is a class object, then the
+<i>class fixture map</i> of the associated class value describes the fixed properties found on the
+class object <b>C</b>, and the <i>instance fixture map</i> describes the fixed properties found on objects
+that are instances of the class value held in <b>C</b>.
+
+<P><span class="pcounter"></span>If a class definition is type-parametric, each unique application of a set of type arguments
+produces a new class object with its own property map and unique copy of the class fixture map,
+specialized to the type arguments provided.
+
+<P><span class="pcounter"></span>Class values can be <i>instantiated</i> to produce new objects. Instantiation is described in
+section....
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> CLASS =
+    Class <b>of</b>
+      { name: NAME,
+        privateNS: NAMESPACE,
+        protectedNS: NAMESPACE,
+        parentProtectedNSs: NAMESPACE list,
+        typeParams: IDENTIFIER list,
+        nonnullable: BOOLEAN,
+        dynamic: BOOLEAN,
+        extends: TYPE option,
+        implements: TYPE list,
+        classFixtureMap: FIXTURE_MAP,
+        instanceFixtureMap: FIXTURE_MAP,
+        instanceInits: HEAD,
+        constructor: CTOR option }
+</PRE>
+
+<h4>Instance Types and Class Types</h4>
+
+<P><span class="pcounter"></span>A class corresponds to a pair of types: an instance class type and a static class type.
+
+<P><span class="pcounter"></span>The <i>instance type</i> of a class value <code>C</code> is <code>InstanceType C</code>, denoted in a type
+expression by the name of <code>C</code> itself, and is the allocated type of any instance of <code>C</code>. The tag
+of any instance of <code>C</code> is <code>InstanceTag C</code>.
+
+<P><span class="pcounter"></span>The <i>class type</i> of a class value <code>C</code> is the allocated type of the class object <i>holding</i>
+<code>C</code>. The tag of such an object is <code>PrimitiveTag (TypePrimitive (ClassType C))</code>. The allocated
+type of such an object is <code>ClassType C</code>, which is defined as a subtype of the <code>InstanceType</code>
+<b>helper::ClassTypeImpl</b>. The class fixtures in the class <code>C</code> are defined as instance fixtures on
+the class object holding <code>C</code>.
+
+<h4>Interface Values</h4>
+
+<P><span class="pcounter"></span>An <i>interface value</i> consists of a name and a set of fixtures and types.
+
+<P><span class="pcounter"></span>An interface value can be held in an <code>InterfaceType</code> value, which can be held in the tag of a
+type object. An object carrying a primitive type tag of interface type is called an <i>interface
+object</i>.
+
+<P><span class="pcounter"></span>An interface value is defined as a fixture in the global scope by an <b>interface</b> definition.
+
+<P><span class="pcounter"></span>Each <i>interface definition</i> corresponds to zero or more interface objects. If an interface
+definition is not type-parametric, it corresponds to exactly one interface object, and that
+interface object is called <i>the value of</i> the interface definition.
+
+<P><span class="pcounter"></span>An interface value contains declarations of <i>instance fixtures</i>, but no definitions.
+
+<P><span class="pcounter"></span>Interfaces are <i>implemented</i> by classes, and any class implementing an interface must define,
+for each instance fixture declared in the interface, an instance fixture with the same name and type
+of the instance fixture.
+
+<P><span class="pcounter"></span>An interface value <code>I</code> also defines a type <code>InterfaceType I</code>. If a class <code>C</code> implements
+interface <code>I</code>, the type <code>ClassType C</code> is a subtype of <code>InterfaceType I</code>.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> INTERFACE =
+    Interface <b>of</b>
+      { name: NAME,
+        typeParams: IDENTIFIER list,
+        nonnullable: BOOLEAN,
+        extends: TYPE list,
+        instanceFixtureMap: FIXTURE_MAP }
+</PRE>
+
+<h3>Closure values</h3>
+
+<P><span class="pcounter"></span>A <i>closure value</i> consists of a captured scope chain, an optional captured <code>this</code> object, and
+a function value.
+
+<P><span class="pcounter"></span>A closure value can be held in the primitive tag of an instance of the class
+<b>public::Function</b>. Such objects are called <i>function objects</i>.
+
+<P><span class="pcounter"></span>A closure value is defined as a fixture in a scope using a <b>function</b> definition.
+
+<P><span class="pcounter"></span>Each <i>function definition</i> corresponds to zero of more function objects. 
+
+<P><span class="pcounter"></span>A <i>function expression</i> may also evaluate to a function object.
+
+<P><span class="pcounter"></span>A <i>function value</i> contains a set of parameter fixtures, a type, and a block of ECMAScript code. 
+
+<P><span class="pcounter"></span>Closure values can be <i>invoked</i> to evaluate the ECMAScript code stored in the block of the
+closure's associated function value. Invocation is described in section....
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  Function definitions can be type-parametric; needs to be described.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>withtype</b> CLOSURE =
+         { func: FUNC,
+           this: OBJECT option,
+           env: SCOPE }
+</PRE>
+<PRE>
+<b>and</b> FUNC =
+    Func <b>of</b>
+    { name: FUNC_NAME,
+      fsig: FUNC_SIG,
+      native: BOOLEAN,
+      generator: BOOLEAN,
+      block: BLOCK option, (* NONE <b>=></b> abstract *)
+      param: HEAD,
+      defaults: EXPRESSION list,
+      ty: TYPE,
+      loc: LOC option }
+</PRE>
+
+<h3>Generator Values</h3>
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp; fill in
+
+<h1>Reading and Writing Properties</h1>
+
+<P><span class="pcounter"></span> This chapter describes the algorithms for <i>property access</i>:
+testing objects for the presence of a property, reading from and
+writing to a property, and removing a property.  Property access is
+always by the name of the property.  A property name is represented
+either as an instance of the pre-defined class <b>Name</b>, or as a
+<b>string</b> (which represents a name in the <b>public</b> namespace).
+
+<p class="note"><b>SPEC NOTE</b>&nbsp;&nbsp;  This chapter complements the chapter on names, scopes, and
+name resolution.  At this time, there is some overlap between the two
+chapters.
+
+<P><span class="pcounter"></span> Property accesses are subject to run-time checks, and property
+access fails (an exception is thrown) if a check does not pass.  The
+exact exception depends on the particular check.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  For example, a property created by <b>let</b> or <b>const</b> or a
+property whose type is a non-nullable type without a default value
+must be written (initialized) before it is read; properties created by
+<b>const</b> cannot be written more than once; and properties that have
+type annotations can be updated with a new value only if the allocated
+type of the new value is a compatible subtype of the storage type of
+the property.  A <b>ReferenceError</b> is thrown in the first two
+instances, and a <b>TypeError</b> is thrown in the last.
+
+<P><span class="pcounter"></span> A property may be virtual, that is to say, the reading and writing
+of the property may be implemented by <i>getter</i> and <i>setter</i>
+methods on the object, and an expression that is syntactically a
+reference to the property is in fact an invocation of these methods.
+Virtual dynamic properties may be implemented by <i>catch-all</i>
+methods.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp; We need a definition of "method", this is the first use.
+
+<h2>Catch-All Methods</h2>
+
+<P><span class="pcounter"></span> This section contains a normative overview of the catch-all
+facility.  A more precise, also normative, description is given in
+later sections of this chapter, as part of the general description of
+property access.
+
+<p class="note"><b>SPEC NOTE</b>&nbsp;&nbsp;  Any conflicts between the two descriptions are obviously bugs.
+
+<P><span class="pcounter"></span> Objects may contain fixtures in the <b>meta</b> namespace: <b>meta::get</b>, <b>meta::set</b>,
+<b>meta::has</b>, and <b>meta::delete</b>.  These properties always name methods.  Jointly they are known
+as <i>catch-all methods</i>.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The requirement that the <b>meta</b> properties always name
+methods must be checked by the language implementation.  The namespace
+<b>meta</b> is reserved and known to the implementation and may only be
+used in specific circumstances.  See section (...).
+
+<P><span class="pcounter"></span> If a catch-all method is defined on the object then it is invoked when a dynamic property is
+accessed: <b>meta::has</b> is invoked to determine if the object has the property; <b>meta::get</b> is
+invoked to read the property's value; <b>meta::set</b> is invoked to update or create the property; and
+<b>meta::delete</b> is invoked to delete the property.  A catch-all method is invoked even if the
+dynamic property that is being accessed already exists on the object.
+
+<P><span class="pcounter"></span> A catch-all method operates on the receiver object of the method
+call, not on the receiver's prototype objects.
+
+<P><span class="pcounter"></span> If a catch-all method returns normally then the value it returns (if any) becomes the result of
+the property access, possibly after being converted to a canonical type.
+
+<P><span class="pcounter"></span> If a catch-all method throws an exception, and the exception
+thrown is an instance of the pre-defined class
+<b>DefaultBehaviorClass</b>, then the default behavior for the catch-all
+is triggered.
+
+<P><span class="pcounter"></span> <b>DefaultBehaviorClass</b> is a singleton class; its only instance
+is is stored in the global constant <b>DefaultBehavior</b>.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The mechanism is analogous to the one defined for iterators,
+where an instance of the singleton <b>iterator::StopIterationClass</b> is stored in
+the global property <b>iterator::StopIteration</b>.
+
+<P><span class="pcounter"></span> The <b>meta::get</b> method is invoked on one argument, a property
+name.  The value returned is the property value.  The default behavior
+for <b>meta::get</b> is to retrieve the value from a dynamic property in
+the object's property map.
+
+<P><span class="pcounter"></span> The <b>meta::set</b> method is invoked on two arguments, a property
+name and a value.  Any value returned is ignored.  The default
+behavior for <b>meta::set</b> is to update or attempt to create a dynamic
+property in the object's property map.
+
+<P><span class="pcounter"></span> The <b>meta::has</b> method is invoked on one argument, a property
+name.  Any value returned by the method is converted to <b>boolean</b>.
+The default behavior for <b>meta::has</b> is to search for a dynamic
+property in the object's property map.
+
+<P><span class="pcounter"></span> The <b>meta::delete</b> method is invoked on one argument, a property
+name.  Any value returned by the method is converted to <b>boolean</b>.
+The default behavior for <b>meta::delete</b> is to attempt to delete a
+dynamic property from the object's property map.
+
+<h2>Checking for the Presence of a Property</h2>
+
+<P><span class="pcounter"></span> The <code>HasOwnProperty</code> protocol is invoked to check whether an object <i>obj</i> contains a
+property named by <i>name</i>.
+
+<p class="note"><b>SPEC NOTE</b>&nbsp;&nbsp;  In terms of the 3rd Edition Specification, the
+<code>HasOwnProperty</code> protocol implements the test for whether an object "has
+a property", as used in the implementations of <code>[[Get]]</code>, <code>[[Put]]</code>,
+<code>[[HasProperty]]</code>, and other internal subroutines.
+
+<P><span class="pcounter"></span> An object is said to contain a property if the property is in the
+object's property map or if the <b>meta::has</b> catchall claims the
+property to be present.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> hasOwnProperty (regs : REGS)
+                   (obj  : OBJECT)
+                   (n    : NAME)
+    : bool =
+    <b>let</b>
+        <b>val</b> Object { propertyMap, ... } = obj
+    <b>in</b>
+        <b>if</b> Fixture.hasFixture (getFixtureMap regs obj) (PropName n)
+        <b>then</b> true
+        <b>else</b>
+        <b>if</b> hasFixedProp propertyMap n <b>then</b>
+            true
+        <b>else</b>
+            <b>if</b> hasFixedProp propertyMap meta_has <b>then</b>
+                <b>let</b>
+                    <b>val</b> v = evalNamedMethodCall regs obj meta_has [newName regs n]
+                <b>in</b>
+                    toBoolean v
+                <b>end</b>
+                <b>handle</b> ThrowException e <b>=></b>
+                       <b>let</b>
+                           <b>val</b> ty = typeOfVal regs e
+                           <b>val</b> defaultBehaviorClassTy =
+                               instanceType regs helper_DefaultBehaviorClass []
+                       <b>in</b>
+                           <b>if</b> ty <* defaultBehaviorClassTy <b>then</b>
+                               hasProp propertyMap n
+                           <b>else</b>
+                               throwExn e
+                       <b>end</b>
+            <b>else</b>
+                hasProp propertyMap n
+    <b>end</b>
+</PRE>
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The <code>regs</code> parameter represents the virtual machine state.  The
+operator <code>&lt;*</code> tests subtype compatibility.
+
+<h2>Reading a property value</h2>
+
+<P><span class="pcounter"></span> The <code>GetPropertyValue</code> protocol is invoked to read the value of a
+property named by <i>name</i> from an object <i>obj</i>.  The flag
+<i>isStrict</i> is true if the ES4 code that caused GetProperty to be
+invoked was compiled in strict mode.
+
+<P><span class="pcounter"></span> Specifically, there will be an AST node for the property reference
+whose <code>strict</code> flag is set because it represents a source code
+phrase that was recognized in a region of code that was covered by a
+strict mode pragma.
+
+<p class="note"><b>SPEC NOTE</b>&nbsp;&nbsp;  There may be several types of AST nodes carrying strict flags and invoking
+<code>GetPropertyValue</code>, depending on how the AST is eventually structured.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp; Strict mode is not implemented in this code.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> getPropertyValue (regs:REGS)
+                     (obj:OBJECT)
+                     (name:NAME)
+    : VALUE =
+    getPropertyValueOrVirtual regs obj name true
+</PRE>
+<PRE>
+<b>and</b> getPropertyValueOrVirtual (regs:REGS)
+                              (obj:OBJECT)
+                              (name:NAME)
+                              (doVirtual:bool)
+    : VALUE =
+    <b>let</b>
+        <b>val</b> Object { propertyMap, tag, ... } = obj
+    <b>in</b>
+        <b>case</b> findProp propertyMap name <b>of</b>
+            SOME {state=(ValueProperty v), ...}
+            <b>=></b> v
+
+          <b>|</b> SOME {state=(VirtualProperty { getter, ... }), ...}
+            <b>=></b> if doVirtual
+               <b>then</b>
+                   <b>case</b> getter <b>of</b>
+                       SOME g <b>=></b> invokeFuncClosure (withThis regs obj) g NONE []
+                     <b>|</b> _ <b>=></b> UndefinedValue
+               <b>else</b>
+                   UndefinedValue
+
+          <b>|</b> NONE <b>=></b>
+            <b>case</b> Fixture.findFixture (getFixtureMap regs obj) (PropName name) <b>of</b>
+                SOME fixture
+                <b>=></b>
+                   (reifyFixture regs obj name fixture;
+                   getPropertyValueOrVirtual regs obj name doVirtual)
+
+              <b>|</b> NONE <b>=></b>
+                <b>case</b> (isNumericName name, tag) <b>of</b>
+                    (true, ArrayTag (_, SOME defaultType))
+                    <b>=></b> let
+                            <b>val</b> defaultVal = defaultValueForType regs defaultType
+                        <b>in</b>
+                            <b>case</b> defaultVal <b>of</b>
+                                NONE <b>=></b> throwExn (newTypeErr &#x0085;)
+                              <b>|</b> SOME dv
+                                <b>=></b> (setPropertyValueOrVirtual regs obj name dv false;
+                                    dv)
+                        <b>end</b>
+                  <b>|</b> _
+                    <b>=></b> if doVirtual <b>andalso</b>
+                          Fixture.hasFixture (getFixtureMap regs obj) (PropName meta_get)
+                       <b>then</b>
+                           evalNamedMethodCall regs obj meta_get [newString regs (#id name)]
+                           <b>handle</b> ThrowException e <b>=></b>
+                                  <b>let</b>
+                                      <b>val</b> ty = typeOfVal regs e
+                                      <b>val</b> defaultBehaviorClassTy =
+                                          instanceType regs helper_DefaultBehaviorClass []
+                                  <b>in</b>
+                                      <b>if</b> ty <* defaultBehaviorClassTy <b>then</b>
+                                          getPropertyValueOrVirtual regs obj name false
+                                      <b>else</b>
+                                          throwExn e
+                                  <b>end</b>
+                       <b>else</b>
+                           <b>if</b> isDynamic regs obj
+                           <b>then</b> UndefinedValue
+                           <b>else</b> throwExn (newRefErr &#x0085;)
+    <b>end</b>
+</PRE>
+
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  A bound method has identity, so if <b>m</b> is a method on the
+class of some object <b>o</b> then the expression <b>o.m</b> always
+evaluates to the same object value (in terms of <b>===</b>).
+
+
+<h2>Writing a property value</h2>
+
+<P><span class="pcounter"></span> The <code>SetProperty</code> protocol is invoked to write a value <i>value</i> to
+a property named by <i>name</i> on an object <i>obj</i>.  The object may or
+may not have a property of that name when SetProperty is invoked, and
+SetProperty may attempt to create the property.  The flag <i>isStrict</i>
+is true if the ES4 code that caused SetProperty to be invoked was
+compiled in strict mode.
+
+<P><span class="pcounter"></span> Specifically, there will be an AST node for the property update
+whose <code>strict</code> flag is set because it represents a source code
+phrase that was recognized in a region of code that was covered by a
+strict mode pragma.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp; Strict mode is not implemented in this code.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> setPropertyValue (regs:REGS)
+                     (base:OBJECT)
+                     (name:NAME)
+                     (v:VALUE)
+    : unit =
+    setPropertyValueOrVirtual regs base name v true
+</PRE>
+<PRE>
+<b>and</b> setPropertyValueOrVirtual (regs:REGS)
+                              (obj:OBJECT)
+                              (name:NAME)
+                              (v:VALUE)
+                              (doVirtual:bool)
+    : unit =
+    <b>let</b>
+        <b>val</b> Object { propertyMap, tag, ... } = obj
+    <b>in</b>
+        <b>case</b> findProp propertyMap name <b>of</b>
+            SOME existingProp <b>=></b>
+            <b>let</b>
+                <b>val</b> { state, attrs, ty, ... } = existingProp
+                <b>val</b> { removable, enumerable, fixed, writable } = attrs
+
+                <b>fun</b> writeExisting _ = writeProperty regs propertyMap name v ty
+                                                    removable enumerable fixed
+                                                    (<b>case</b> writable <b>of</b>
+                                                         ReadOnly <b>=></b> ReadOnly
+                                                       <b>|</b> WriteOnce <b>=></b> ReadOnly
+                                                       <b>|</b> Writable <b>=></b> Writable)
+            <b>in</b>
+                <b>case</b> state <b>of</b>
+                    ValueProperty _
+                    <b>=></b> writeExisting ()
+
+                  <b>|</b> VirtualProperty { setter, ... }
+                    <b>=></b>
+                    <b>if</b> doVirtual
+                    <b>then</b>
+                        <b>case</b> setter <b>of</b>
+                            NONE <b>=></b> ()
+                          <b>|</b> SOME s <b>=></b> (invokeFuncClosure (withThis regs obj) s
+                                                         NONE [v]; ())
+                    <b>else</b>
+                        <b>if</b> writable = ReadOnly
+                        <b>then</b> throwExn (newTypeErr &#x0085;)
+                        <b>else</b> writeExisting ()
+
+            <b>end</b>
+          <b>|</b> NONE <b>=></b>
+            <b>case</b> Fixture.findFixture (getFixtureMap regs obj) (PropName name) <b>of</b>
+                SOME (ValFixture {ty, writable})
+                <b>=></b> writeProperty regs propertyMap name v ty
+                                 false false true
+                                 (<b>if</b> writable
+                                  <b>then</b> Writable
+                                  <b>else</b> ReadOnly)
+
+              <b>|</b> SOME f
+                   (reifyFixture regs obj name f;
+                    setPropertyValueOrVirtual regs obj name v doVirtual)
+
+              <b>|</b> NONE
+                <b>=></b>
+                <b>case</b> (isNumericName name, tag) <b>of</b>
+                    (true, ArrayTag (_, SOME defaultType))
+                    <b>=></b> writeProperty regs propertyMap name v defaultType true true
+                                     false Writable
+
+                  <b>|</b> _
+                    <b>=></b>
+                    <b>if</b>
+                        doVirtual <b>andalso</b>
+                        Fixture.hasFixture (getFixtureMap regs obj)
+                                           (PropName meta_set)
+                    <b>then</b>
+                        ((evalNamedMethodCall regs obj meta_set
+                                             [newString regs (#id name), v]; ())
+                        <b>handle</b> ThrowException e <b>=></b>
+                               <b>let</b>
+                                   <b>val</b> ty = typeOfVal regs e
+                                   <b>val</b> defaultBehaviorClassTy =
+                                       instanceType regs helper_DefaultBehaviorClass []
+                               <b>in</b>
+                                   <b>if</b> ty <* defaultBehaviorClassTy <b>then</b>
+                                       setPropertyValueOrVirtual regs obj name v false
+                                   <b>else</b>
+                                       throwExn e
+                               <b>end</b>
+                        <b>else</b>
+                            <b>if</b> isDynamic regs obj
+                            <b>then</b> writeProperty regs propertyMap name v AnyType true true
+                                               false Writable
+                            <b>else</b> throwExn (newTypeErr &#x0085;)
+    <b>end</b>
+</PRE>
+<PRE>
+<b>and</b> writeProperty (regs:REGS)
+                  (propertyMap:PROPERTY_MAP)
+                  (name:NAME)
+                  (v:VALUE)
+                  (ty:TYPE)
+                  (removable:BOOLEAN)
+                  (enumerable:BOOLEAN)
+                  (fixed:BOOLEAN)
+                  (writable:WRITABILITY)
+    : unit =
+    <b>let</b>
+        <b>val</b> newProp = { state = ValueProperty (checkAndConvert regs v ty),
+                        ty = ty,
+                        attrs = { removable = removable,
+                                  enumerable = enumerable,
+                                  fixed = fixed,
+                                  writable = writable } }
+    <b>in</b>
+        <b>if</b> hasProp propertyMap name
+        <b>then</b> updateProp propertyMap name newProp
+        <b>else</b> addProp propertyMap name newProp
+    <b>end</b>
+</PRE>
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  We must take into account the <code>[[CanPut]]</code> functionality from ES3!
+
+
+<h2>Deleting a property</h2>
+
+<P><span class="pcounter"></span> The <code>DeleteProperty</code> protocol is invoked to remove a property named
+by <i>name</i> from an object <i>obj</i>.  The object may or may not have a
+property of that name when DeleteProperty is invoked.  The flag
+<i>isStrict</i> is true if the ES4 code that caused DeleteProperty to be
+invoked was compiled in strict mode.
+
+<P><span class="pcounter"></span> Specifically, there will be an AST node for the property deletion
+whose <code>strict</code> flag is set because it represents a source code
+phrase that was recognized in a region of code that was covered by a
+strict mode pragma.
+
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp; Strict mode is not implemented in this code.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> deletePropertyValue (regs:REGS)
+                        (base:OBJECT)
+                        (name:NAME)
+    : VALUE =
+    deletePropertyValueOrVirtual regs base name true
+</PRE>
+<PRE>
+<b>and</b> deletePropertyValueOrVirtual (regs:REGS)
+                                 (obj:OBJECT)
+                                 (name:NAME)
+                                 (doVirtual:bool)
+    : VALUE =
+    <b>let</b>
+        <b>val</b> Object { propertyMap, tag, ... } = obj
+        <b>val</b> existingProp = findProp propertyMap name
+    <b>in</b>
+        <b>case</b> existingProp <b>of</b>
+            SOME { attrs = { fixed = true, ...}, ...}
+
+            <b>=></b> newBoolean regs false
+
+          <b>|</b> _
+            <b>=></b> if
+                doVirtual <b>andalso</b>
+                Fixture.hasFixture (getFixtureMap regs obj) (PropName meta_delete)
+            <b>then</b>
+                 ((evalNamedMethodCall regs obj meta_delete
+                                                  [newString regs (#id name)])
+                  <b>handle</b> ThrowException e <b>=></b>
+                         <b>let</b>
+                             <b>val</b> ty = typeOfVal regs e
+                             <b>val</b> defaultBehaviorClassTy =
+                                 instanceType regs helper_DefaultBehaviorClass []
+                         <b>in</b>
+                             <b>if</b> ty <* defaultBehaviorClassTy <b>then</b>
+                                 deletePropertyValueOrVirtual regs obj name false
+                             <b>else</b>
+                                 throwExn e
+                         <b>end</b>
+            <b>else</b>
+                <b>case</b> existingProp <b>of</b>
+                    SOME { attrs = { removable = true, ... }, ... }
+                    <b>=></b> (delProp propertyMap name;
+                        newBoolean regs true)
+
+                  <b>|</b> _
+                    <b>=></b> newBoolean regs false
+    <b>end</b>
+</PRE>
+
+<h1>Types</h1>
+
+
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  Double-check that the specification and implementation of the
+subtype relation are consistent.
+
+<P><span class="pcounter"></span>ECMAScript includes a gradual type system that supports optional
+type annotations on properties (e.g., on variables and fields).  These
+type annotations are currently enforced dynamically, during evaluation.
+
+<P><span class="pcounter"></span>Every value has an <i>allocated type</i>. The allocated type is the
+type given to a value when it is created and which defines its fixed
+structure. 
+
+<P><span class="pcounter"></span>Every property and fixture has a <i>storage type</i>. The storage type of a property or fixture is
+given by its declaration and constrains the set of values that can be stored in the property. The
+storage type of a property or fixture is also called it's <i>type constraint</i>.
+
+<P><span class="pcounter"></span>The declarations of properties can carry type <i>annotations</i>,
+which define the storage type of the property. Annotation is denoted
+by following the annotated property name with a colon and a type
+expression. Annotations are not required: any property lacking an
+annotation is implicitly given the storage type <code><b>*</b></code>, meaning that
+the property can hold a value of any allocated type.
+
+<P><span class="pcounter"></span>If a property holds a value, then that value must have an allocated
+type that is a <i>compatible subtype</i> of property's storage type. The
+compatible subtype relation is an extension of the traditional subtype
+relation that supports interoperation between typed and untyped code.
+The definition of the compatible subtype relation is included below.
+
+<P><span class="pcounter"></span>For a given type <code><b>T</b></code>, a set of values is said to <i>populate</i>
+<code><b>T</b></code> if the values all have allocated types that are compatible
+subtypes of <code><b>T</b></code>. Some types are specified by specifying the values
+that populate them.
+
+<h2>The Type Language</h2>
+
+<P><span class="pcounter"></span>ES4 includes the following types:
+
+<h3>The any type</h3>
+
+<P><span class="pcounter"></span>The <i>any type</i> is the type populated by every possible value. In
+other words, every other type is a compatible subtype of the any type.
+
+<P><span class="pcounter"></span>The any type is denoted in a type expression as <code><b>*</b></code>.
+
+<P><span class="pcounter"></span>No value has the any type as its allocated type. The any type
+is meaningful only as the storage type of a property.
+
+<h3>The null type</h3>
+
+<P><span class="pcounter"></span>The <i>null type</i> is the type populated only by the semantic value <code>NullValue</code>.
+
+<P><span class="pcounter"></span>The null type is denoted in a type expression as <code><b>null</b></code>.
+
+<h3>The undefined type</h3>
+
+<P><span class="pcounter"></span>The <i>undefined type</i> the type populated only by the semantic value <code>UndefinedValue</code>.
+
+<P><span class="pcounter"></span>The undefined type is denoted in type expressions as <code><b>undefined</b></code>.
+
+<h3>Nominal types</h3>
+
+<P><span class="pcounter"></span>A <i>nominal type</i> is either a class type, an instance type or an interface type.
+
+<P><span class="pcounter"></span>A <i>class type</i> and an <i>instance type</i> are both defined by a class definition. 
+
+<P><span class="pcounter"></span>An <i>interface type</i> is a type defined by an interface definition.
+
+<P><span class="pcounter"></span>Nominal types are arranged in an explicit subtype relation through the use of <code><b>extends</b></code> and
+<code><b>implements</b></code> clauses in class and interface definitions.
+
+<P><span class="pcounter"></span>An instance or interface type is denoted in type expressions by the name of the class or
+interface that defined the type, respectively.
+
+<P><span class="pcounter"></span>An instance or interface type <code><b>C</b></code> (or <code><b>C.&lt;T<sub>1</sub>, .., T<sub>n</sub>></b></code>) can be
+declared as a <i>non-null</i> type via any of the following declarations:
+
+<b>
+<PRE>
+    class C! ..
+    class C.&lt;X<sub>1</sub>, .., X<sub>n</sub>>! ..
+    interface C! ..
+    interface C.&lt;X<sub>1</sub>, .., X<sub>n</sub>>! ..
+</PRE>
+</b>
+<P><span class="pcounter"></span>An instance or interface type is <i>nullable</i> if it is not a non-null type.
+
+<h3>Record types</h3>
+
+<P><span class="pcounter"></span>A <i>record type</i> is a subtype of the <code><b>public::Object</b></code> instance
+type that has additional type constraints on some specific set of
+named properties.
+
+<P><span class="pcounter"></span>Record types are arranged implicitly into a subtype relation
+through structural comparison of their property constraints.
+
+<P><span class="pcounter"></span>A record type is denoted in a type expression by listing the names
+of the specified properties in a comma separated list, with optional
+type annotations, enclosed in curly braces.
+
+<P><span class="pcounter"></span>An example is <code><b>{x: Number, y: String}</b></code>, which denotes a record
+type with two properties <code><b>x</b></code> and <code><b>y</b></code>, the first constrained to
+type <code><b>Number</b></code> and the second to type <code><b>String</b></code>. The type <code><b>{ }</b></code>
+denotes the empty record type.
+
+<h3>Array types</h3>
+
+<P><span class="pcounter"></span>An <i>array type</i> is a subtype of the <code><b>public::Array</b></code> type that
+has type constraints on some prefix of the set of all possible
+unsigned-integer-indexed properties. An array type may be either
+<i>fixed-length</i> or <i>variable-length</i>.
+
+<P><span class="pcounter"></span>Array types are arranged implicitly into a subtype relation through
+structural comparison of their property constraints.
+
+<h4>Fixed-length array types</h4>
+
+<P><span class="pcounter"></span>A <i>fixed-length array type</i> describes an explicit set of initial
+integer-indexed property constraints that must be satisfied by properties
+found at those indices. 
+
+<P><span class="pcounter"></span>A fixed-length array type is denoted in a type expression by
+listing the types of the specified properties in a comma-separated
+list enclosed in square brackets.
+
+<P><span class="pcounter"></span>For example, the type <code><b>[Number, String]</b></code> describes fixed-length
+arrays of length at least 2, where the entry at index 0 has type
+<code><b>Number</b></code> and the entry at index 1 has type <code><b>String</b></code>.
+
+<P><span class="pcounter"></span>The type <code><b>[ ]</b></code> describes fixed-length arrays of length at least
+0, that is, it describes all fixed-length arrays.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  Do we need to discuss holes here?
+
+<h4>Variable-length array types</h4>
+
+<P><span class="pcounter"></span>A <i>variable-length array type</i> describes an explicit set of
+initial integer-indexed property constraints and then a <i>final
+constraint</i> that is implied for any further integer-indexed
+properties (including zero further properties).
+
+<P><span class="pcounter"></span>A variable length array type is denoted, initially, the same way a
+fixed-length array is, but concludes its type list with symbol <code><b>...</b></code>
+and a trailing type expression.
+
+<P><span class="pcounter"></span>For example, the type <code><b>[Number, ... String]</b></code> describes arrays of
+length at least 1, where the entry at index 0 has type <code><b>Number</b></code>, and
+any remaining entries have type <code><b>String</b></code>. The type <code><b>[ ... Number]</b></code>
+describes arrays of zero or more elements, all of which must be of
+type <code><b>Number</b></code>.
+
+<h3>Union types</h3>
+
+<P><span class="pcounter"></span>A <i>union type</i> is a storage type that is populated by all values
+that populate all of the types that make up the union.
+
+<P><span class="pcounter"></span>A union type is denoted in a type expresison by listing the types of 
+the union members, separated by the vertical-bar character, enclosed 
+in parentheses.
+
+<P><span class="pcounter"></span>For example, the type <code><b>(Number | String)</b></code> denotes a type that is
+populated by both <code><b>Number</b></code> and <code><b>String</b></code> values. A property
+annotated with this type can therefore hold either instances of the
+<code><b>Number</b></code> type <i>or</i> instances of the <code><b>String</b></code> type.
+
+<P><span class="pcounter"></span>No value has a union type as its allocated type. Union types
+are only meaningful as the storage types of properties.
+
+<h3>Function types</h3>
+
+<P><span class="pcounter"></span>A <i>function type</i> is a subtype of the <code><b>public::Function</b></code> type
+that describes additional type constraints on any function populating
+it.
+
+<P><span class="pcounter"></span>A function type describes the number and type of required
+parameters, any optional parameters, any trailing "rest" parameter
+that accumulates excess arguments, and the return value.
+
+<P><span class="pcounter"></span>Function types are denoted with the keyword <code><b>function</b></code>, followed
+by a parenthesis-enclosed, comma-separated list of parameter types --
+optionally including default and rest symbols -- and an optional colon
+and trailing return type. 
+
+<P><span class="pcounter"></span>An example of a function type is:
+
+<b>
+<PRE>
+    function (Number, String) : String
+</PRE>
+</b>
+
+<P><span class="pcounter"></span>This function type is populated by any function that is declared as
+taking a <code><b>Number</b></code> value and a <code><b>String</b></code> value as parameters, and
+returning a <code><b>String</b></code> value.
+
+<P><span class="pcounter"></span>The return type of a function type can be omitted, in which case
+the return type is implicity the any type.
+
+<P><span class="pcounter"></span>If a function should not return a value, the function return type can be annotated as <code><b>void</b></code>,
+which is a special notation for indicating the absence of a return type; there is no separate "void
+type" that can be denoted elsewhere.
+
+<P><span class="pcounter"></span>A function type may include a type constraint for the <code><b>this</b></code>
+binding. Such a constraint must be listed as the first parameter in 
+the function type parameter list, and must be denoted with the keyword
+<code><b>this</b></code> and a colon. For example, the function type
+
+<b>
+<PRE>
+    function(this : Number, String) : String
+</PRE>
+</b>
+
+denotes a type of functions that require a <code><b>Number</b></code> value as their
+implicit <code><b>this</b></code> parameter, as well as taking a <code><b>String</b></code> argument and
+returning a <code><b>String</b></code>. The type constraint for the <code><b>this</b></code> binding
+defaults to the any type <code><b>*</b></code> if omitted.
+
+<P><span class="pcounter"></span>A function type may denote the presence of default value
+assignments for some suffix of its parameter types by annotating the
+types of such parameters with trailing <code><b>=</b></code> symbols. For example, the
+function type
+
+<b>
+<PRE>
+    function(Number, String=) : String
+</PRE>
+</b>
+
+denotes a type of function that takes a mandatory <code><b>Number</b></code> argument
+and an optional second <code><b>String</b></code> argument, and returns a <code><b>String</b></code>. 
+
+<P><span class="pcounter"></span>A function type may denote the presence of a trailing
+"rest-argument" with the symbol <code><b>...</b></code> in the final position of the
+function parameter list. This final parameter, if present, indicates
+that there is no maximum number of arguments to the function:
+additional arguments beyond the parameter list are collected into an
+array object and passed to the function. For example, the function
+type
+
+<b>
+<PRE>
+    function(String, ... ) : String
+</PRE>
+</b>
+
+denotes a type of function that takes a <code><b>String</b></code> and any number of
+additional arguments (of any type), returning a <code><b>String</b></code>. Rest
+arguments cannot have type constraints.
+
+<P><span class="pcounter"></span>Function types can optionally include a parameter name preceding
+each argument type, and separated from that type by a colon. These
+parameter names are for documentation purposes only. For example, the
+type of a <code>substring</code> function might be specified as:
+
+<b>
+<PRE>
+    function(str : String, start : double, end : double ) : String
+</PRE>
+</b>
+
+<h3>Nullable types</h3>
+
+<P><span class="pcounter"></span> A <i>nullable type</i> is an abbreviation for a union between some 
+type and the null type.
+
+<P><span class="pcounter"></span>A nullable type is denoted <code><b>?T</b></code> for some type <code><b>T</b></code>.
+
+<P><span class="pcounter"></span>For example, the nullable type <code><b>?String</b></code> is an abbreviation for
+the union type <code><b>(String | null)</b></code>. 
+
+<P><span class="pcounter"></span>Nullable types are purely a syntactic convenience, and are not
+given further special treatment.
+
+
+<h3>Non-null types</h3>
+
+<P><span class="pcounter"></span> A <i>non-null type</i> is a type that excludes the <code><b>null</b></code> value from the population of a nullable
+instance or interface type.
+
+<P><span class="pcounter"></span>A non-null type is denoted <code><b>!T</b></code> for some instance or interface type <code><b>T</b></code>.
+
+<P><span class="pcounter"></span>For example, the non-null type <code><b>!String</b></code> is populated by instances of <code><b>public::String</b></code> but
+<i>excludes</i> null values.
+
+<h3>Parametric types</h3>
+
+<P><span class="pcounter"></span>A <i>parametric type</i> is a user-defined <i>type constructor</i> -- not a proper type -- associated
+with some type definition such as an instance type, interface type or type abbreviation. A
+parametric type takes some number of types as arguments and produces a new type as its result.
+
+<P><span class="pcounter"></span>Parametric types are denoted by appending a type-parameter list to
+the name of a class, interface, or type at the site of its
+definition. A type parameter list consists of a single period, a
+less-than (or "left angle bracket") character, a comma-separated list
+of identifiers, and a greater-than (or "right angle-bracket")
+character.
+
+<P><span class="pcounter"></span>For example, the class definition
+
+<b>
+<PRE>
+    class Vector.&lt;X&gt; { .. }
+</PRE>
+</b>
+
+defines a class <code><b>Vector</b></code> that is parameterized over a single type variable <code><b>X</b></code>. This class
+definition itherefore also serves as a parametric instance type that can be used in type
+applications to form proper types.
+
+
+<h3>Type applications</h3>
+
+
+<P><span class="pcounter"></span>A <i>type application</i> is a combination of a parametric type with a
+set of <i>type arguments</i> that serve to <i>instantiate</i> the parametric
+type into a proper type that can be populated by values.
+
+<P><span class="pcounter"></span>A type application is denoted by appending a type-argument list to
+the name of a parametric type. A type argument list consists of a
+single period, a less-than character, a comma-separated list of type
+expressions, and a greater-than character.
+
+<P><span class="pcounter"></span>For example, the type application <code><b>Vector.&lt;Number&gt;</b></code> denotes an
+instance type that can be used as the allocated type of new objects.
+
+
+<h3>Type names</h3>
+
+<P><span class="pcounter"></span>A <i>type name</i> is a symbolic reference to an instance type, an interface type, a type
+abbreviation, or a type variable bound by a parameter in a parametric type.
+
+<P><span class="pcounter"></span>A type name is denoted in a type expression by the same syntax as
+a name expression. 
+
+<P><span class="pcounter"></span>Type names are resolved during <i>type resolution</i>, described in
+Section 3.3 below.
+
+<h2>Semantics of the Type Language</h2>
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> TYPE =
+    AnyType
+  <b>|</b> NullType
+  <b>|</b> UndefinedType
+  <b>|</b> RecordType <b>of</b> (NAME_EXPRESSION * TYPE) list
+  <b>|</b> ArrayType  <b>of</b> (TYPE list * TYPE option)
+  <b>|</b> UnionType <b>of</b> TYPE list
+  <b>|</b> FunctionType <b>of</b> FUNCTION_TYPE
+  <b>|</b> NonNullType <b>of</b> TYPE
+  <b>|</b> AppType <b>of</b> (TYPE * TYPE list)
+  <b>|</b> TypeName <b>of</b> (NAME_EXPRESSION * NONCE option)
+  <b>|</b> ClassType <b>of</b> CLASS
+  <b>|</b> InstanceType <b>of</b> CLASS
+  <b>|</b> InterfaceType <b>of</b> INTERFACE
+</PRE>
+<PRE>
+<b>and</b> FUNCTION_TYPE =
+    { typeParams : IDENTIFIER list,
+      thisType   : TYPE,
+      params  : TYPE list,
+      minArgs : int,
+      hasRest : BOOLEAN,
+      result  : TYPE option    (* NONE indicates return <b>type</b> is void *)
+    }
+</PRE>
+<PRE>
+<b>type</b> NONCE = int
+</PRE>
+
+To help avoid name collisions, each type variable bound in a type
+parameter list is assigned a unique integer, or <i>nonce</i>.
+Any reference to that type variable is then resolved
+into a <code>TypeName</code> that includes that nonce.
+
+<h2>Type Resolution</h2>
+
+<P><span class="pcounter"></span> At run-time, when a type <code><b>T</b></code> is encountered in the source program,
+that type is immediately <i>resolved</i>. This type resolution process proceeds as follows:
+
+<P><span class="pcounter"></span>
+In the scope of a type definition
+
+<b>
+<PRE>
+    type X = S
+</PRE>
+</b>
+
+any reference to a type variable <code><b>X</b></code> in <code><b>T</b></code>
+is replaced by the type <code><b>S</b></code>.
+
+<P><span class="pcounter"></span>
+In the scope of a parametric type definition
+
+<b>
+<PRE>
+    type X.&lt;y<sub>1</sub>, .., y<sub>n</sub>> = S
+</PRE>
+</b>
+
+a type application <code><b>X.&lt;S<sub>1</sub>, .., S<sub>n</sub>></b></code> in <code><b>T</b></code> is
+replaced by the type <code><b>S[y<sub>1</sub>:=S<sub>1</sub>, .., y<sub>n</sub>:=S<sub>n</sub>]</b></code>.
+  
+<P><span class="pcounter"></span> In the scope of a class definition that associates a
+non-nullable instance type name <code><b>C</b></code> with a class definition <code>D</code>,
+type resolution replaces any <code>TypeName</code> that refers to <code><b>C</b></code> with
+<code>InstanceType D</code>. For references to a nullable instance type, the same
+replacement is made, but the result (or the enclosing <code>AppType</code>
+node, if there is one) is unioned with the <code><b>null</b></code> type. 
+
+<P><span class="pcounter"></span> Similarly, in the scope of an interface definition that associates
+an interface name <code><b>I</b></code> with an interface definition <code>D</code>, type
+resolution replaces any <code>TypeName</code> that refers to <code><b>I</b></code> with
+<code>InterfaceType D</code> (again, unioned with the <code><b>null</b></code> type, if <code><b>I</b></code>
+is a nullable interface).
+
+<h3>Implementation of Type Resolution</h3>
+
+<P><span class="pcounter"></span>The following function <code>resolveTypeNames</code> performs type
+resolution on a particular type <code>ty</code> in the context of an
+environment <code>env</code>.
+
+<P><span class="pcounter"></span>This function relies on the auxiliary function
+<code>Fixture.resolveNameExpr</code> (described in section ...) to resolve each
+type name. The function <code>Fixture.resolveNameExpr</code> finds the
+corresponding fixture,
+and returns a triple containing
+(1) the environment that fixture was defined in;
+(2) the fully-resolved name for the given name expression,
+and (3) the
+corresponding fixture.
+
+<P><span class="pcounter"></span> If the resulting fixture is for a non-parametric type definition,
+the body of that type definition is resolved in its 
+environment, and then replaces the original type name.
+
+<P><span class="pcounter"></span> If the resulting fixture is for a class or interface definition, the type name is replaced by an
+instance type or an interface type (unioned with the type <code><b>null</b></code> if the instance or interface type
+is declared as nullable).
+
+<P><span class="pcounter"></span> A type application that refers to a type-parametric type
+definition is replaced by the body of that type definition, after the
+replacement of each formal parameter name with the corresponding
+resolved type argument.
+
+<P><span class="pcounter"></span> A type application of a type name that refers to a type-parametric
+instance type or interface type is replaced by a type application that
+directly includes that instance or interface type (unioned with the type
+<code><b>null</b></code> if the nominal type is declared as nullable).
+
+<P><span class="pcounter"></span> If none of the above cases apply, then <code>resolveTypeNames</code> uses
+the helper function <code>mapType</code> to perform type name resolution on
+each sub-term of the given type.
+
+<P><span class="pcounter"></span>The function <code>error</code> reports error messages, and the module
+<code>LogErr</code> contains functions for converting various data structures
+into corresponding Strings.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp; Is the "LogErr." prefix too verbose on calls to error?
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>fun</b> resolveTypeNames (env : FIXTURE_MAPS)
+                     (ty  : TYPE)
+    : TYPE =
+    <b>let</b> fun maybeUnionWithNull nonnullable ty =
+            <b>if</b> nonnullable <b>then</b>
+                ty
+            <b>else</b>
+                UnionType [ty, NullType]
+        <b>fun</b> checkArgs typeArgs typeParams =
+            <b>if</b> length typeArgs = length typeParams <b>then</b>
+                ()
+            <b>else</b>
+                error ["Incorrect no <b>of</b> arguments to parametric typedefn"]
+    <b>in</b>
+    <b>case</b> ty <b>of</b>
+
+        TypeName (nameExpr, _) <b>=></b>
+        <b>let</b> in
+            <b>case</b> (Fixture.resolveNameExpr env nameExpr) <b>of</b>
+
+                (envOfDefn, _,  TypeFixture ([], typeBody)) <b>=></b>
+                resolveTypeNames envOfDefn typeBody
+
+              <b>|</b> (_, _, ClassFixture (c <b>as</b> Class {nonnullable, typeParams=[], ...})   ) <b>=></b>
+                maybeUnionWithNull nonnullable (InstanceType c)
+
+              <b>|</b> (_, _,
+                 InterfaceFixture (i <b>as</b> Interface {nonnullable, typeParams=[], ...})) <b>=></b>
+                maybeUnionWithNull nonnullable (InterfaceType i)
+
+              <b>|</b> (_, n, _) <b>=></b> error ["name ", LogErr.name  n, " <b>in</b> type expression ",
+                                    LogErr.ty ty, " is not a proper <b>type</b>"]
+        <b>end</b>
+
+      <b>|</b> AppType (TypeName (nameExpr, _), typeArgs) <b>=></b>
+        <b>let</b> in
+            <b>case</b> Fixture.resolveNameExpr env nameExpr <b>of</b>
+                (envOfDefn, _,  TypeFixture (typeParams, typeBody)) <b>=></b>
+                <b>let</b> in
+                    checkArgs typeArgs typeParams;
+                    resolveTypeNames envOfDefn
+                                     (substTypes typeParams
+                                                 (map (resolveTypeNames env)
+                                                      typeArgs)
+                                                 typeBody)
+                <b>end</b>
+
+              <b>|</b> (_, _, ClassFixture (c <b>as</b> Class {nonnullable, typeParams, ...})) <b>=></b>
+                <b>let</b> in
+                    checkArgs typeArgs typeParams;
+                    maybeUnionWithNull nonnullable (AppType (InstanceType c, typeArgs))
+                <b>end</b>
+
+              <b>|</b> (_, _,
+                 InterfaceFixture (i <b>as</b> Interface {nonnullable, typeParams, ...})) <b>=></b>
+                <b>let</b> in
+                    checkArgs typeArgs typeParams;
+                    maybeUnionWithNull nonnullable (AppType (InterfaceType i, typeArgs))
+                <b>end</b>
+
+              <b>|</b> _ <b>=></b> mapType (resolveTypeNames env) ty
+        <b>end</b>
+
+      <b>|</b> _ <b>=></b> mapType (resolveTypeNames env) ty
+    <b>end</b>
+</PRE>
+
+<PRE>
+<b>fun</b> mapType (f : TYPE -> TYPE)
+            (ty: TYPE)
+    : TYPE =
+    <b>case</b> ty <b>of</b>
+        RecordType fields <b>=></b>
+        RecordType (map (<b>fn</b> (name, ty) <b>=></b> (name, f ty)) fields)
+      <b>|</b> UnionType types <b>=></b>
+        UnionType (map f types)
+      <b>|</b> ArrayType (types, restType) <b>=></b>
+        ArrayType (map f types, Option.map f restType)
+      <b>|</b> FunctionType { typeParams, params, result, thisType, hasRest, minArgs } <b>=></b>
+        FunctionType { typeParams = typeParams,
+                       params = map f params,
+                       result = Option.map f result,
+                       thisType = f thisType,
+                       hasRest = hasRest,
+                       minArgs = minArgs }
+      <b>|</b> NonNullType ty <b>=></b>
+        NonNullType (f ty)
+      <b>|</b> AppType ( base, args ) <b>=></b>
+        AppType ( f base, map f args )
+      <b>|</b> _ <b>=></b> ty
+</PRE>
+
+<h3>Resolved Types</h3>
+
+<P><span class="pcounter"></span>A <i>resolved type</i> is one that is the result of the preceding
+type resolution process.
+
+<P><span class="pcounter"></span>Resolved types do not include:
+
+<UL>
+  <LI> type names that refer to instance or interface types (<code>InstanceType</code> and <code>InterfaceType</code> are used instead)
+  <LI> type names that refer to type abbreviations (which are inlined)
+</UL>
+  
+<P><span class="pcounter"></span> Resolved types may include type names that refer to type parameters; these references include a
+nonce.
+  
+
+<h2>The Subtype and Type Equivalence Relations</h2>
+
+<h3>The Subtype Relation</h3>
+
+<P><span class="pcounter"></span>The <i>subtype relation</i> is a binary relation on types.  It is
+defined by the collection of subtype rules described below and in the
+following subsections.
+
+<P><span class="pcounter"></span>
+Subtyping is reflexive, so every type is a subtype of itself.
+
+<P><span class="pcounter"></span> Subtyping is transitive, so if <code><b>S</b></code> is a subtype of <code><b>T</b></code>
+and <code><b>T</b></code> is in turn a subtype of <code><b>U</b></code>, then <code><b>S</b></code> is
+also a subtype of <code><b>U</b></code>.
+
+<h3>Implementation of the Subtype Relation</h3>
+
+<P><span class="pcounter"></span> The subtype relation is defined by the following function
+<code>subType</code>.  This function takes an additional argument called
+<code>extra</code>, which is later used to extend the subtype relation with
+additional rules (for example, to define the compatible-subtyping
+relation below).
+
+<P><span class="pcounter"></span>Reflexivity is included explicitly in the code below, whereas
+transitivity is a consequence of the remainder of the algorithm.
+This function dispatches to additional subtype functions
+described in the following subsections.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>fun</b> subType (extra : TYPE -> TYPE -> bool)
+            (type1 : TYPE)
+            (type2 : TYPE)
+    : bool =
+    (type1 = type2)                     <b>orelse</b>
+    (subTypeRecord   extra type1 type2) <b>orelse</b>
+    (subTypeArray    extra type1 type2) <b>orelse</b>
+    (subTypeUnion    extra type1 type2) <b>orelse</b>
+    (subTypeFunction extra type1 type2) <b>orelse</b>
+    (subTypeNominal  extra type1 type2) <b>orelse</b>
+    (subTypeStructuralNominal extra type1 type2) <b>orelse</b>
+    (extra type1 type2)
+</PRE>
+
+<h3>The Type Equivalence Relation</h3>
+
+<P><span class="pcounter"></span>The type <i>equivalence</i>/ relation is also a binary relation on types.
+Two types are equivalent if and only if they are both subtypes of each other.
+
+<h4>Implementation of the Type Equivalence Relation</h4>
+
+The function <code>equivType</code> below checks type equivalence in a
+straightforward manner by checking subtyping in both directions. Like
+<code>subType</code>, <code>equivType</code> also takes an <code>extra</code> parameter.
+
+<p class="note"><b>IMPLEMENTATION NOTE</b>&nbsp;&nbsp; The following implementation is straightforward and sufficies
+for a specification, but its worst-case time complexity is exponential
+in the height of a type, and so this naive approach would be
+inadequate in an implementation.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> equivType (extra : TYPE -> TYPE -> bool)
+              (type1 : TYPE)
+              (type2 : TYPE)
+    : bool =
+      (subType extra type1 type2) <b>andalso</b>
+      (subType (<b>fn</b> type1 <b>=></b> fn type2 <b>=></b> extra type2 type1)
+               type2 type1)
+</PRE>
+
+<h3>Subtyping Record Types</h3>
+
+<P><span class="pcounter"></span> A record type <code><b>{N<sub>1</sub>:S<sub>1</sub>, .., N<sub>n</sub>:S<sub>n</sub>}</b></code> (where each
+distinct <code><b>N<sub>i</sub></b></code> is a name and each <code><b>S<sub>i</sub></b></code> is a type) is
+a subtype of <code><b>{N<sub>1</sub>:T<sub>1</sub>, .., N<sub>m</sub>:T<sub>m</sub>}</b></code> if m &#x2264; n and
+<code><b>S<sub>i</sub></b></code> is equivalent to <code><b>T<sub>i</sub></b></code> for all i in 1..m.
+
+<P><span class="pcounter"></span> The ordering of the <code><b>Name:Type</b></code> bindings in a record type is
+irrelevant, and so re-arranging these bindings yields an equivalent
+type.  In particular, this re-arranging may be necessary in order to
+make the above rule applicable. The function <code>nameExpressionEqual</code>
+checks if two field names are equal.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> subTypeRecord extra type1 type2 =
+    <b>case</b> (type1, type2) <b>of</b>
+
+        (RecordType fields1, RecordType fields2) <b>=></b>
+        List.all (<b>fn</b> ( name2, type2 ) <b>=></b>
+                     List.exists (<b>fn</b> ( name1, type1 ) <b>=></b>
+                                     nameExpressionEqual name2 name1 <b>andalso</b>
+                                     equivType extra type2 type1)
+                                 fields1)
+                 fields2
+
+      <b>|</b> _ <b>=></b> false
+</PRE>
+<PRE>
+<b>fun</b> nameExpressionEqual (name1 : NAME_EXPRESSION)
+                        (name2 : NAME_EXPRESSION)
+    : bool
+  = &#x0085;
+</PRE>
+
+
+<h3>Subtyping Array Types</h3>
+
+<P><span class="pcounter"></span> A fixed-length array type <code><b>[S<sub>1</sub>, .., S<sub>n</sub>, S]</b></code> is a subtype of
+<code><b>[S<sub>1</sub>, .., S<sub>n</sub>]</b></code>.  The supertype demands one fewer element in the
+array than the subtype does.  For example, <code><b>[Number, String,
+Boolean]</b></code> is a subtype of <code><b>[Number, String]</b></code>.
+
+<P><span class="pcounter"></span> A fixed-length array type <code><b>[S<sub>1</sub>, .., S<sub>n</sub>]</b></code> is a subtype of <code><b>[T<sub>1</sub>,
+.., T<sub>n</sub>]</b></code> if each <code><b>S<sub>i</sub></b></code> is equivalent to <code><b>T<sub>i</sub></b></code> for i in 1..n.
+
+<P><span class="pcounter"></span> A variable-length array type <code><b>[S<sub>1</sub>, .., S<sub>n</sub>, S, ... S]</b></code> is a
+subtype of <code><b>[S<sub>1</sub>, .., S<sub>n</sub>, ... S]</b></code>.  The supertype demands one fewer
+element in the array than the subtype does.  For example, <code><b>[Number,
+String, Boolean, ... Function]</b></code> is a subtype of <code><b>[Number,
+... Function]</b></code>, via transitivity.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp; Since <code><b>...</b></code> denotes concrete syntax, we use the
+ <i>meta-syntax</i> <code><b>S<sub>1</sub>, .., S<sub>n</sub></b></code> to denote a sequence of
+ zero-or-more comma-separated types.
+
+<P><span class="pcounter"></span> A variable-length array type <code><b>[S<sub>1</sub>, .., S<sub>n</sub>, ... S]</b></code> is a subtype
+of <code><b>[T<sub>1</sub>, .., T<sub>n</sub>, ... T]</b></code> if <code><b>S</b></code> is equivalent to <code><b>T</b></code> and if each
+<code><b>S<sub>i</sub></b></code> is equivalent to <code><b>T<sub>i</sub></b></code> for i in 1..n.
+
+<P><span class="pcounter"></span>Via transitivity, the above rules may be applied multiple times, in
+various combinations. The following code combines all of these rules
+into a single deterministic algorithm for array subtyping.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> subTypeArray extra type1 type2 =
+    <b>case</b> (type1, type2) <b>of</b>
+
+        (ArrayType (types1, rest1),
+         ArrayType (types2, rest2))
+        <b>=></b>
+        <b>let</b>
+            <b>val</b> min = Int.min( length types1, length types2 )
+        <b>in</b>
+            ListPair.all (<b>fn</b> (type1, type2) <b>=></b> equivType extra type1 type2)
+                         (List.take(types1, min),
+                          List.take(types2, min))
+            <b>andalso</b>
+            (<b>case</b> (rest1, rest2) <b>of</b>
+                 (NONE,    NONE   ) <b>=></b> length types1 >= length types2
+               <b>|</b> (NONE,    SOME _ ) <b>=></b> false
+               <b>|</b> (SOME _,  NONE   ) <b>=></b> false
+               <b>|</b> (SOME t1, SOME t2) <b>=></b>
+                 length types1 >= length types2 <b>andalso</b>
+                 equivType extra t1 t2 <b>andalso</b>
+                 List.all (<b>fn</b> types1 <b>=></b> equivType extra type1 t2)
+                          (List.drop(types1, length types2)))
+        <b>end</b>
+
+      <b>|</b> _ <b>=></b> false
+</PRE>
+
+<h3>Subtyping Union Types</h3>
+
+<P><span class="pcounter"></span> A union type <code><b>(S<sub>1</sub> | .. | S<sub>n</sub>)</b></code> is a subtype of a type <code><b>T</b></code> if
+<code><b>S<sub>i</sub></b></code> is a subtype of <code><b>T</b></code> for all i in 1..n.
+
+<P><span class="pcounter"></span> A type <code><b>S</b></code> is a subtype of <code><b>(T<sub>1</sub> | .. | T<sub>n</sub>)</b></code> if
+there exists some i in 1..n such that <code><b>S</b></code> is a subtype of <code><b>T<sub>i</sub></b></code>.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> subTypeUnion extra type1 type2 =
+    <b>case</b> (type1, type2) <b>of</b>
+
+        (UnionType types1, type2)
+        <b>=></b> List.all    (<b>fn</b> type1 <b>=></b> subType extra type1 type2) types1
+
+      <b>|</b> (type1, UnionType types2)
+        <b>=></b> List.exists (<b>fn</b> type2 <b>=></b> subType extra type1 type2) types2
+
+      <b>|</b> _ <b>=></b> false
+</PRE>
+
+
+<h3>Subtyping Function Types</h3>
+
+<P><span class="pcounter"></span> A function type <code><b>function(S<sub>1</sub>, .., S<sub>n</sub>) : U</b></code> is a subtype of
+<code><b>function(T<sub>1</sub>, .., T<sub>n</sub>) : R</b></code> if <code><b>U</b></code> is a subtype of <code><b>R</b></code> and <code><b>S<sub>i</sub></b></code> is
+equivalent to <code><b>T<sub>i</sub></b></code> for all i in 1..m.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  Function subtyping is invariant in the argument position, and
+covariant in the result type.
+
+<P><span class="pcounter"></span> This rule generalizes to <code><b>this</b></code> arguments, default arguments,
+and rest arguments according to the following rule, where the number
+of default arguments (indicated via the <code><b>=</b></code> symbol) in each function
+type may be zero, and where <code><b>[...]</b></code> indicates an optional rest
+argument.  A function type
+
+<b>
+<PRE>
+    function(this:S<sub>1</sub>, S<sub>2</sub>, .., S<sub>n</sub>, S<sub>n+1</sub>=, .., S<sub>m</sub>=, [...]) : U
+</PRE>
+</b>
+is a subtype of
+<b>
+<PRE>
+    function(this:T<sub>1</sub>, T<sub>2</sub>, .., T<sub>p</sub>, T<sub>p+1</sub>=, .., T<sub>q</sub>=, [...]) : R
+</PRE>
+</b>
+
+if <code><b>U</b></code> is a subtype of <code><b>R</b></code> and n &#x2264; p and <code><b>S<sub>i</sub></b></code> is equivalent
+to <code><b>T<sub>i</sub></b></code> for all i in 1..min(q,m). In addition:
+
+<UL>
+  <LI>If neither function type  has a rest argument, then we require that  q &#x2264; m.
+
+  <LI>If only the first function type has a rest argument, then no
+additional conditions are needed.
+
+  <LI>If only the second function type has a rest argument, then
+  subtyping does not hold.
+
+  <LI>If both function types have a rest argument, then <code><b>S<sub>i</sub></b></code> must be
+equivalent to the any type <code><b>*</b></code> for all i in (q+1)..m.
+
+</UL>
+
+<P><span class="pcounter"></span>
+For type-parametric functions, alpha-renaming of the type variable preserves
+the meaning of types.  Moreover,
+
+<b>
+<PRE>
+    function.&lt;X<sub>1</sub>,..,X<sub>n</sub>> (argtypes1) : R1
+</PRE>
+</b>
+is a subtype of
+<b>
+<PRE>
+    function.&lt;X<sub>1</sub>,..,X<sub>n</sub>> (argtypes2) : R2
+</PRE>
+</b>
+
+if and only if
+
+<b>
+<PRE>
+    function(argtypes1) : R1
+</PRE>
+</b>
+is a subtype of
+<b>
+<PRE>
+    function(argtypes2) : R2
+</PRE>
+</b>
+
+Hence, to check subtyping between type-parametric functions, we alpha-rename
+the type variables to be identical in both types, and then proceed to
+check subtyping on the non-type-parametric versions of the two function types.
+
+<P><span class="pcounter"></span> The types in a subtype relation may contain free type variables,
+which are assumed to denote the same unknown type in both arguments to
+the subtype relation. For example, within the scope of a binding for a
+type variable <code><b>X</b></code>, the type <code><b>[X, ... X]</b></code> is a subtype of the type
+<code><b>[ ... X]</b></code>.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> subTypeFunction extra type1 type2 =
+    <b>case</b> (type1, type2) <b>of</b>
+
+        (FunctionType
+             { typeParams = typeParams1,  params     = params1,
+               result     = result1,      thisType   = thisType1,
+               hasRest    = hasRest1,     minArgs    = minArgs1 },
+         FunctionType
+             { typeParams = typeParams2,  params     = params2,
+               result     = result2,      thisType   = thisType2,
+               hasRest    = hasRest2,     minArgs    = minArgs2 })
+        <b>=></b>
+        (* set up a substitution to alpha-rename typeParams to be identical *)
+        <b>let</b>
+            <b>val</b> subst = rename typeParams1 typeParams2
+            <b>val</b> min = Int.min( length params1, length params2 )
+        <b>in</b>
+            length typeParams1 = length typeParams2
+          <b>andalso</b>
+            (<b>case</b> (result1, result2) <b>of</b>
+                 (SOME type1, SOME type2) <b>=></b> subType extra type1 (subst type2)
+               <b>|</b> (NONE,       NONE)       <b>=></b> true)
+          <b>andalso</b>
+            equivType extra thisType1 (subst thisType2)
+          <b>andalso</b>
+            minArgs1 <= minArgs2
+          <b>andalso</b>
+            ListPair.all (<b>fn</b> (type1, type2) <b>=></b> equivType extra type1 (subst type2))
+                         (List.take(params1, min),
+                          List.take(params2, min))
+          <b>andalso</b>
+            (<b>case</b> (hasRest1, hasRest2) <b>of</b>
+                 (false, false) <b>=></b> length params2 <= length params1
+               <b>|</b> (true,  false) <b>=></b> true
+               <b>|</b> (false, true ) <b>=></b> false
+               <b>|</b> (true,  true ) <b>=></b>
+                     List.all (<b>fn</b> t <b>=></b> equivType extra t AnyType)
+                              (List.drop(params1, min)))
+        <b>end</b>
+
+      <b>|</b> _ <b>=></b> false
+</PRE>
+
+<P><span class="pcounter"></span> The following function <code>rename</code> performs the capture-free
+substitution of references to any of the identifiers in
+<code>typeParams1</code> with references to the corresponding identifier in
+<code>typeParams2</code> in the type <code>ty</code>.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>fun</b> rename (typeParams1 : IDENTIFIER list)
+           (typeParams2 : IDENTIFIER list)
+           (ty : TYPE)
+    :  TYPE
+  = &#x0085;
+</PRE>
+
+
+<h3>Subtyping Nominal Types</h3>
+
+<P><span class="pcounter"></span>
+Given a class definition
+
+<b>
+<PRE>
+    class C extends D implements I<sub>1</sub>, .., I<sub>n</sub> { ... }
+</PRE>
+</b>
+
+the instance type <code><b>C</b></code> is a subtype of instance type <code><b>D</b></code>, and instance type <code><b>C</b></code> is also a subtype of
+interface type <code><b>I<sub>j</sub></b></code> for j in 1..n.
+
+
+<P><span class="pcounter"></span>
+Given an interface definition
+
+<b>
+<PRE>
+    interface K extends I<sub>1</sub>, .., I<sub>n</sub> { ... }
+</PRE>
+</b>
+
+the type <code><b>K</b></code> is a subtype of <code><b>I<sub>j</sub></b></code> for j in 1..m.
+
+<P><span class="pcounter"></span>These rules generalize to applications of type-parametric instance and interface types via
+appropriate renaming of bound variables. For example, given a type-parametric interface type defined by
+
+<b>
+<PRE>
+    class C.&lt;x<sub>1</sub>, .., x<sub>n</sub>> extends D.&lt;T<sub>1</sub>, .., T<sub>m</sub>> { ... }
+</PRE>
+</b>
+
+we have that <code><b>C.&lt;S<sub>1</sub>, .., S<sub>n</sub>></b></code> is a subtype of
+
+<b>
+<PRE>
+    D.&lt;T<sub>1</sub>[x<sub>1</sub>:=S<sub>1</sub>,..,x<sub>n</sub>:=S<sub>n</sub>], .., T<sub>m</sub>[x<sub>1</sub>:=S<sub>1</sub>,..,x<sub>n</sub>:=S<sub>n</sub>]>
+</PRE>
+</b>
+
+<P><span class="pcounter"></span>Also,
+<code><b>C.&lt;T<sub>1</sub>, .., T<sub>n</sub>></b></code> is a subtype of
+<code><b>C.&lt;S<sub>1</sub>, .., S<sub>n</sub>></b></code> if each type <code><b>T<sub>i</sub></b></code> is equivalent to the
+corresponding type <code><b>S<sub>i</sub></b></code> for i in 1..n.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp; 
+The notation <code><b>T[x<sub>1</sub>:=S<sub>1</sub>,..,x<sub>n</sub>:=S<sub>n</sub>]</b></code> denotes the type <code><b>T</b></code> with each
+occurrence of the type variable <code><b>x<sub>i</sub></b></code> replaced (in a capture-free
+manner) by the corresponding type <code><b>S<sub>i</sub></b></code>.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The above rules also apply if <code><b>C</b></code> is declared as a
+non-nullable instance type.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  There is a distinction between the type name <code><b>C</b></code> and the
+instance type to which it refers, in that the type name <code><b>C</b></code>  includes
+the type <code><b>null</b></code> if <code><b>C</b></code> is a nullable type, whereas the instance type
+<code><b>C</b></code> describes only class instances.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> subTypeNominal extra type1 type2 =
+    <b>case</b> (type1, type2) <b>of</b>
+
+        ( InstanceType (Class { typeParams = [], extends, implements, ...}), _ )
+        <b>=></b> (<b>case</b> extends <b>of</b>
+                NONE <b>=></b> false
+              <b>|</b> SOME extends <b>=></b> subType extra extends type2)
+           <b>orelse</b>
+           List.exists
+               (<b>fn</b> iface <b>=></b> subType extra iface type2)
+               implements
+
+      <b>|</b> ( AppType
+              (InstanceType (Class { typeParams, extends, implements, ...}),
+               typeArgs),
+          _ )
+        <b>=></b> (<b>case</b> extends <b>of</b>
+                NONE <b>=></b> false
+              <b>|</b> SOME extends <b>=></b> subType extra
+                                        (substTypes typeParams typeArgs extends)
+                                        type2)
+           <b>orelse</b>
+           List.exists
+               (<b>fn</b> iface <b>=></b> subType extra
+                                    (substTypes typeParams typeArgs iface)
+                                    type2)
+               implements
+
+      <b>|</b> ( InterfaceType (Interface { typeParams = [], extends, ...}), _ )
+        <b>=></b> List.exists
+               (<b>fn</b> iface <b>=></b> subType extra iface type2)
+               extends
+
+      <b>|</b> ( AppType
+              (InterfaceType (Interface { typeParams, extends, ...}),
+               typeArgs),
+          _ )
+        <b>=></b> List.exists
+               (<b>fn</b> iface <b>=></b> subType extra
+                                    (substTypes typeParams typeArgs iface)
+                                    type2)
+               extends
+
+      <b>|</b> ( AppType (typeConstructor1, typeArgs1),
+          AppType (typeConstructor2, typeArgs2) )
+        <b>=></b>
+        typeConstructor1 = typeConstructor2 <b>andalso</b>
+        length typeArgs1 = length typeArgs2 <b>andalso</b>
+        ListPair.all
+            (<b>fn</b> (type1, type2) <b>=></b> equivType extra type1 type2)
+            (typeArgs1, typeArgs2)
+
+      <b>|</b> _ <b>=></b> false
+</PRE>
+
+The following function <code>substTypes</code> performs the capture-free
+replacement of all occurrences of <code>typeParams</code> by <code>typeArgs</code>
+within the type <code>ty</code>.
+
+<PRE>
+<b>fun</b> substTypes (typeParams : IDENTIFIER list)
+               (typeArgs   : TYPE list)
+               (ty         : TYPE)
+    : TYPE
+  = &#x0085;
+</PRE>
+
+<h3>Relating Structural and Nominal Types</h3>
+
+<P><span class="pcounter"></span> A record type <code><b>{N<sub>1</sub>:S<sub>1</sub>, .., N<sub>n</sub>:S<sub>n</sub>}</b></code>  is a subtype of the instance
+type <code><b>public::Object</b></code>.
+
+<P><span class="pcounter"></span> An array type <code><b>[S<sub>1</sub>, .., S<sub>n</sub>]</b></code>  is a subtype of the instance
+type <code><b>public::Array</b></code>, which is a subtype of the instance type <code><b>public::Object</b></code>.
+
+<P><span class="pcounter"></span> Any function type  is a subtype of the instance
+type <code><b>public::Function</b></code>, which is a subtype of the instance type <code><b>public::Object</b></code>.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> subTypeStructuralNominal extra type1 type2 =
+    <b>case</b> (type1, type2) <b>of</b>
+
+        (RecordType _,  InstanceType (Class { name, ... }))
+        <b>=></b> nameEq name Name.public_Object
+
+      <b>|</b> (ArrayType _, InstanceType (Class { name, ... }))
+        <b>=></b> nameEq name Name.public_Array <b>orelse</b>
+           nameEq name Name.public_Object
+
+      <b>|</b> (FunctionType _, InstanceType (Class { name, ... }))
+        <b>=></b> nameEq name Name.public_Function <b>orelse</b>
+           nameEq name Name.public_Object
+
+      <b>|</b> _ <b>=></b> false
+</PRE>
+
+<h2>Compatible Types</h2>
+
+<P><span class="pcounter"></span>The <i>compatibility</i> relation is a binary relation on type values. A type
+<code><b>S</b></code> is compatible with a type <code><b>T</b></code> if <code><b>T</b></code> can be obtained from
+<code><b>S</b></code> by replacing certain portions of <code><b>S</b></code> by the any type <code><b>*</b></code>.
+
+<P><span class="pcounter"></span>For example, the record type <code><b>{x : double}</b></code> is compatible with
+both <code><b>{x : *}</b></code> and with <code><b>*</b></code>, but the type <code><b>{x : *}</b></code> is not
+compatible with <code><b>{x : double}</b></code>.
+
+<P><span class="pcounter"></span> Also, <code><b>T.&lt;Number></b></code> is compatible with <code><b>T.&lt;*></b></code>.
+
+<P><span class="pcounter"></span>This compatibility relation is reflexive and transitive, but not
+symmetric.
+
+<h2>Compatible-Subtyping</h2>
+
+<P><span class="pcounter"></span>The <i>compatible-subtype</i> relation is a binary relation on types.  A
+type <code><b>S</b></code> is a compatible-subtype of a type <code><b>T</b></code> if there exists
+some type <code><b>U</b></code> such that <code><b>S</b></code> is a subtype of <code><b>U</b></code> and <code><b>U</b></code>
+compatible with <code><b>T</b></code>.
+
+<P><span class="pcounter"></span>For example, the record type <code><b>{x : double, y : boolean}</b></code> is a
+compatible-subtype of the types <code><b>{x : *, y : *}</b></code>, <code><b>{x : double}</b></code>,
+<code><b>{x : *}</b></code>, and <code><b>*</b></code>.
+
+<P><span class="pcounter"></span>The compatible-subtyping relation is reflexive and transitive, but not symmetric.
+
+<P><span class="pcounter"></span>The compatible-subtyping relation is implemented by calling the
+previously-defined <code>subType</code> predicate and passing in an <code>extra</code>
+parameter that implements the compatibility relation, that every type is
+compatible with <code><b>*</b></code>.
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>fun</b> compatibleSubtype (type1 : TYPE) (type2 : TYPE) : bool =
+    subType
+        (<b>fn</b> type1 <b>=></b> fn type2 <b>=></b> type2 = AnyType)
+        type1 type2
+</PRE>
+
+
+<h2>Type Invariants at Run Time</h2>
+
+<P><span class="pcounter"></span>A type is <i>allocatable</i> if it is not the any type or a union type.
+
+<P><span class="pcounter"></span>Every value in ES has an associated <i>allocated type</i>, which is a type that is
+associated with the value when the value is first allocated or created. An allocated
+type is always an allocatable type. The allocated type of a value is invariant; for example,
+updating the fields of an object cannot change the allocated type of that object.
+
+<P><span class="pcounter"></span>If a property of storage type <code><b>T</b></code> hold a value <code><b>v</b></code> of type
+<code><b>S</b></code>, then <code><b>S</b></code> is a compatible-subtype of <code><b>T</b></code>.
+
+
+
+<h1>Names</h1>
+
+
+
+<P><span class="pcounter"></span>Names in ECMAScript are defined in section ...names.
+
+<P><span class="pcounter"></span>Names are used to identify properties within property maps and fixtures within fixture maps. 
+
+<P><span class="pcounter"></span>A name is calculated from a name expression found in ECMAScript source code.
+
+<h2>Name Expressions</h2>
+
+<P><span class="pcounter"></span>A <i>name expresison</i> is either qualified or unqualified.
+
+<P><span class="pcounter"></span> A <i>qualified name expression</i> consists of a namespace expression and an identifier.  The
+former is either a literal namespace value (resulting from using a string as a namespace qualifier)
+or else a further name expression identifying a namespace fixture in the lexical environment. Examples
+of a qualified names are <b>intrinsic::subtring</b> or <b>"org.w3.dom"::DOMNode</b>
+
+<P><span class="pcounter"></span>An <i>unqualified name expression</i> consists of an identifier and a list of sets of open
+namespaces, determined by context. An example of an unqualified name is <b>encodeURI</b>.
+
+<P><span class="pcounter"></span>An unqualified name is subject to <i>name resolution</i>, and must resolve to a unique qualified
+name. The algorithm for name resolution is presented in subsequent sections, and differs depending
+on the context the unqualified name occurs within. 
+
+<P><span class="pcounter"></span>Names that are used in contexts denoting types and namespaces must be resolved statically at
+definition time. Names that denote other properties may be resolved repeatedly at evaluation time.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp; In a qualified name such as <b>intrinsic::substring</b> the leftmost identifier, <b>intrinsic</b>,
+is itself unqualified and subject to definition-time resolution.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> NAME_EXPRESSION =
+    QualifiedName <b>of</b> { namespace: NAMESPACE_EXPRESSION,
+                       identifier: IDENTIFIER }
+  <b>|</b> UnqualifiedName <b>of</b> { identifier: IDENTIFIER,
+                         openNamespaces: OPEN_NAMESPACES }
+</PRE>
+<PRE>
+<b>and</b> NAMESPACE_EXPRESSION =
+    Namespace <b>of</b> NAMESPACE
+  <b>|</b> NamespaceName <b>of</b> NAME_EXPRESSION
+</PRE>
+
+
+<h3>Open namespaces list</h3>
+
+<P><span class="pcounter"></span>The <i>open namespaces list</i> of an unqualified name expression is a list of sets of namespaces
+open at the point of the program where the name expression occurs, and is ordered by priority, with
+sets of namespaces earlier in the list taking priority over sets later in the list. The list
+reflects the nesting of lexical scopes, with the namespaces opened in the "innermost" lexical scope
+held in the first set of namespaces in the list, and subsequent sets holding namespaces opened in
+enclosing lexical scopes.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>type</b> NAMESPACE_SET = &#x0085;
+</PRE>
+<PRE>
+<b>type</b> OPEN_NAMESPACES = NAMESPACE_SET list
+</PRE>
+
+<h3>Special namespaces</h3>
+
+<P><span class="pcounter"></span>Several namespaces are assigned special meaning, and are generated by an ECMAScript
+implementation in specific contexts. 
+
+<P><span class="pcounter"></span>These namespaces are bound to predefined names and implicitly opened in their associated
+scopes. In the following sections, when a namespace is said to be <i>implicitly opened</i> in a given
+lexical scope, the specified meaning is that a new namespace set is added to the front of the open
+namespaces list for the duration of the scope containing the implicitly opened namespaces.
+
+<h4>Public and 4th Edition namespaces</h4>
+
+<P><span class="pcounter"></span>The public and 4th Edition namespaces are defined in section Standard Namespaces of Values, and
+are defined identically in all programs and lexical scopes.
+
+<P><span class="pcounter"></span>The 4th Edition namespace is bound to the global property name <b>""::__ES4__</b> (that is, the name
+formed by qualifying the identifier <b>__ES4__</b> with the public namespace) and can therefore be seen
+by code loaded in either 3rd Edition or 4th Edition mode.
+
+<P><span class="pcounter"></span>The public namespace is bound to the global property name <b>__ES4__::public</b> (that is, the name
+formed by qualifying the identifier <b>public</b> with the 4th Edition namespace). 
+
+<P><span class="pcounter"></span>When a program is loaded in 3rd Edition or 4th Edition mode, the public namespace is implicitly
+opened.
+
+<P><span class="pcounter"></span>When a program is loaded in 4th Edition mode, after the public namespace is implicitly opened,
+the 4th edition namespace is implicitly opened. The 4th Edition namespace is therefore opened at 
+a higher priority than the public namespace.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The <b>public</b> namespace is distinguished in several ways. The names of properties added
+dynamically to objects are qualified by <b>public</b> by default, so all properties created by 3rd
+Edition code running on a 4th Edition implementation are <b>public</b>, and <b>public</b> is sometimes
+called "the compatibility namespace" for that reason. The default namespace qualifier that is
+applied to declarations in every scope is <b>public</b>, so absent other qualification every property
+on every object and every lexically bound name is in the <b>public</b> namespace.
+
+<h4>Internal namespaces</h4>
+
+<P><span class="pcounter"></span>Each program (compilation unit) has a new implementation-generated opaque namespace implicitly
+defined as its <i>internal namespace</i> at the start of the definition phase.
+
+<P><span class="pcounter"></span>The internal namespace for a program is bound to the name <b>internal</b> in the global fixture map
+for the duration of definition and evaluation. The binding to <b>internal</b> is removed after
+definition and evaluation of a program, and is re-bound to new internal namespaces for any
+subsequent programs loaded.
+
+<P><span class="pcounter"></span>When a program is loaded in 4th Edition mode, after the 4th Edition namespace is implicitly
+opened, the program's internal namespace is implicitly opened. The internal namespace is therefore
+opened at a higher priority than the 4th Edition namespace.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp; An internal namespace can be used to qualify definitions that are not intended to be visible
+to any other program.
+
+<h4>Private and protected namespaces</h4>
+
+<P><span class="pcounter"></span>Each class definition has two new implementation-generated opaque namespaces implicitly defined
+as its <i>private namespace</i> and <i>protected namespace</i>.
+
+<P><span class="pcounter"></span>The private and protected namespaces for a class are bound to the names <b>private</b> and
+<b>protected</b>, respectively, within the lexical scope of the class definition they are associated
+with.
+
+<P><span class="pcounter"></span>The private and protected namespaces for a class are implicitly opened within the lexical scope
+of the class.
+
+<P><span class="pcounter"></span>The protected namespace for a class <code>C</code> is also implicitly opened within the lexical scope of
+<i>every class that extends <code>C</code></i>.
+
+<h2>Reference Expressions</h2>
+
+<P><span class="pcounter"></span>A <i>reference expression</i> provides context for resolving a name expression to a name, and
+identifying a particular fixture or property to which the name refers. A reference expression is
+either a lexical reference, an object name reference, or an object index reference.
+
+<P><span class="pcounter"></span>A <i>lexical reference</i> is a reference expression that resolves to a name within a lexical scope,
+and therefore a property or fixture stored in a scope object. Some lexical references are required
+to be resolved to fixtures statically during program definition, while others may be resolved
+dynamically during program evaluation.  Examples of lexical references are <b>encodeURI</b> or
+<b>public::Function</b>.
+
+<P><span class="pcounter"></span>An <i>object name reference</i> is formed by conjoining an object expression and a name expression
+with a period ("."). A name expression in an object name reference resolves to the name of a fixture
+or property on the provided object, or a fixture or property on the object's prototype chain. Some
+object references may be resolved to fixtures statically, but the specified behavior of object
+references is as if they are always resolved dynamically during program evaluation. Examples of
+object references are <b>s.length</b> or <b>s.intrinsic::substring</b>, where <b>s</b> is the name of an
+object.
+
+<P><span class="pcounter"></span>An <i>object index reference</i> is similar to an object name reference, in that it combines an
+expression for a name with an object and resolves the calculated name against the provided
+object. An object index reference differs from an object name reference by the fact that there is no
+proper name expression inside it: rather an object expression is conjoined with a general ECMAScript
+expression, enclosed within square brackets, and determining the name to resolve may require
+arbitrary evaluation of the bracketed expression. An example of an object index reference is
+<b>s[f()]</b>, where <b>s</b> is the name of an object, and the name to be resolved against <b>s</b> is
+<i>calculated dynamically</i> by evaluating the function expression <b>f()</b>. Object index expressions
+can therefore never be resolved statically.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+datatype EXPRESSION =
+         LexicalReference of { name: NAME_EXPRESSION }
+       | ObjectNameReference of { object: EXPRESSION,
+                                  name: NAME_EXPRESSION }
+       | ObjectIndexReference of { object: EXPRESSION,
+                                   index: EXPRESSION }
+       &#x0085;
+</PRE>
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  An <code>ObjectIndexReference</code> is evaluated by evaluating its <code>index</code> operand to a <code>Name</code>
+object and then treating that value the same as a resolved qualified name.  Index operands that do
+not evaluate to <code>Name</code> objects are converted to <code>string</code>, and a <code>Name</code> object is formed from
+the string and the <b>public</b> namespace.
+
+<h2>Lexical scopes</h2>
+
+<P><span class="pcounter"></span>Lexical scopes are defined in section ...scopes. 
+
+<P><span class="pcounter"></span>Defining and binding forms introduce names into a lexical scope. These names are then visible to
+lexical references that occur within the scope of the binding. The scope of a binding is primarily
+determined by the textual boundaries of the scope (ECMAScript is primarily <i>lexically scoped</i>) and
+depends also on the defining or binding form that introduced the binding.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp; For example, the scope of a <b>var</b> binding inside a block statement is the entire body of the
+function or program containing the block, whereas the scope of a <b>let</b> binding inside a block
+statement is that block statement.
+
+<P><span class="pcounter"></span>Scopes nest textually, and a name that is bound in one scope may be <i>shadowed</i> in an inner
+scope by a binding of the same name in the inner scope; name expressions in the inner scope will not
+be able to access the outer binding.
+
+<P><span class="pcounter"></span>In this specification, the nesting of scopes is modelled as a list of fixture maps in the
+definition phase and a list of objects during evaluation. The former list is called the <i>static
+scope chain</i> or the <i>static environment</i>. The latter list is called the <i>dynamic scope chain</i>
+or the <i>dynamic environment</i>.  Both lists are generically referred to as <i>scope chains</i>, with
+the distinction between the static and dynamic environments indicated where not otherwise clear from
+context.
+
+<P><span class="pcounter"></span>Each scope holds a fixture map of the named fixtures defined in that scope. 
+
+<P><span class="pcounter"></span>The fixture maps in the static environment are arranged into a simple list. 
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> FIXTURE_MAPS = ((FIXTURE_NAME * FIXTURE) list) list
+</PRE>
+
+<P><span class="pcounter"></span>The fixture maps in the dynamic environment are arranged into accompanying objects, each with a
+corresponding property map in which values may be stored as properties.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> SCOPE =
+    Scope <b>of</b> { object: OBJECT,
+               parent: SCOPE option,
+               temps: TEMPS,
+               kind: SCOPE_KIND }
+</PRE>
+<PRE>
+<b>and</b> SCOPE_KIND =
+    WithScope
+  <b>|</b> GlobalScope
+  <b>|</b> InstanceScope <b>of</b> CLASS
+  <b>|</b> ClassScope
+  <b>|</b> ActivationScope
+  <b>|</b> BlockScope
+  <b>|</b> TypeArgScope
+  <b>|</b> EvalScope
+</PRE>
+
+<P><span class="pcounter"></span>At each point in the program, both during definition and evaluation, exactly one scope chain is
+in effect. This scope chain is called <i>the scope chain</i> or <i>the environment</i> containing an
+expression, statement or definition.
+
+<P><span class="pcounter"></span>Some objects that appear on evaluation-time scope chains are dynamically extensible. For
+example, class objects appear on the scope chain of class and instance methods, and properties can
+be added to and removed from class objects; however, these properties are not visible to lexical
+references within the class.
+
+<h3>Prototype chain</h3>
+
+<P><span class="pcounter"></span>Every object has a distinguished value called its <i>prototype</i> (see section Object prototype in
+Values).
+
+<P><span class="pcounter"></span>If the prototype value of an object is another object, then the prototype value is called the
+object's <i>prototype object</i>, and the connection between the initial object and its prototype
+object is called its <i>prototype link</i>.
+
+<P><span class="pcounter"></span>The <i>prototype chain</i> is the list of objects formed by following prototype links from an
+object. The prototype chain of an object begins with the object itself, and ends with the first
+object having a null prototype value.
+
+<P><span class="pcounter"></span>When a name is to be resolved against an object, if resolution initially fails because the object
+does not contain a property matching the name, then resolution continues along the object's
+prototype chain.
+
+
+<h2>Name Resolution</h2>
+
+<h3>Overview</h3>
+
+<P><span class="pcounter"></span> The purpose of name resolution is to take an unresolved name and a
+list of objects and return an unambiguous name (consisting of a
+namespace value and an identifier) and an object that contains a
+property with that name.  The objects are searched in order, and the
+first object to contain a property with the name is selected.
+
+
+
+<P><span class="pcounter"></span> There are two complications. The first appears with the need for disambiguation.
+When an unqualified name is resolved the resolution is performed in
+the context of the namespaces that were open at the point of
+reference.  Thus the search of any one object may find multiple
+bindings that match the name, up to one binding per open namespace.
+Instead of making this an error, the name resolver disambiguates by
+trying to select the most desirable of those namespaces.  Selection is
+performed by filtering the applicable namespaces until we are left
+with one.  (If we have more than one then the name is deemed
+ambiguous.)
+
+<P><span class="pcounter"></span> We first select those namespaces among the matching namespaces
+that are in use by the least specific class of the object that
+contains the name.  For example, if <code><b>C</b></code> is a subclass of <code><b>B</b></code> and
+<code><b>B</b></code> is a subclass of <code><b>A</b></code>, and our name <code><b>n</b></code> matched <code><b>ns1::n</b></code>,
+<code><b>ns2::n</b></code>, and <code><b>ns3::n</b></code>, and <code><b>ns1::n</b></code> and <code><b>ns2::n</b></code> were defined
+in <code><b>B</b></code> and <code><b>ns3::n</b></code> was defined in <code><b>C</b></code>, then we'd be left with just
+<code><b>ns1</b></code> and <code><b>ns2</b></code>.
+
+<P><span class="pcounter"></span> (The motivation for using the order in which names are introduced
+in the class hierarchy is to guarantee that the meaning of valid references
+to object properties doesn't change. In other words, if <b>o.x</b> is ever
+valid, then it shall always refer to the same property <b>x</b> as long as the type
+of <b>o</b> doesn't change.)
+
+<P><span class="pcounter"></span> We then filter by namespace priority.  The open namespaces are
+organized in a prioritized list of namespace sets.  If one of the
+matching names has a namespace that is from a set with a higher
+priority than all the other matching names, then that's the namespace
+we want.  So if the referencing context of <code><b>n</b></code> opened <code><b>ns2</b></code> in a
+scope nested inside the one that opened <code><b>ns1</b></code>, then we are left with
+just <code><b>ns2</b></code> -- and a single binding, <code><b>ns2::n</b></code>.
+
+<P><span class="pcounter"></span> (The motivation for disambiguation by the scope in which a namespace
+is opened, is simple: it allows more programs to run.  Furthermore, since 
+the priority of namespaces during disambiguation is under the control of 
+the programmer, the programmer can rely on disambiguation to control which
+names are found.)
+
+<P><span class="pcounter"></span> The second complication is that some names are required to be
+resolved successfully at definition time -- names that denote
+namespaces and types.  (We require definition-time resolution in order
+to make names and types constant, which generally simplifies the
+language and makes programs more easily comprehensible.)  The
+consequence is that namespace and type references are illegal inside
+scopes introduced by <b>with</b> or scopes that may be extended by the
+<b>eval</b> operator, because those scopes make definition time
+resolution impossible -- their contents are unknown.  Such programs
+result in a syntax error being signalled.  (It is possible to ease
+that restriction in various ways but we have not done so.)
+
+<P><span class="pcounter"></span> However, we also require that type and namespace names that are
+resolved at definition time must resolve to the same bindings that
+they would resolve to if they were to be resolved at evaluation time.
+(We require that because it simplifies the user's model of the
+language: equal names in the same scope have the same meaning,
+provided they resolve at all.)  The consequence is that the language
+must provide protection against ambiguities that can be introduced at
+a later time.  If a name is resolved at definition time to a global
+binding then compilation units loaded later may introduce new global
+bindings that will make the resolved binding ambiguous.  For example,
+consider the following program.
+
+<PRE>
+namespace NS1
+namespace NS2
+NS1 type T
+use namespace NS1, namespace NS2
+
+   ... var x: T
+</PRE>
+
+<P><span class="pcounter"></span> The reference to <b>T</b> in the type annotation is resolved uniquely
+at definition time to <b>NS1::T</b>.  Then another compilation unit is
+loaded:
+
+<PRE>
+NS2 type T = ...
+</PRE>
+
+<P><span class="pcounter"></span> Since the global environment is "flat"--code in earlier
+compilation units can see bindings introduced by later compilation
+units--the reference to <b>T</b> from the first program is now ambiguous.
+
+<P><span class="pcounter"></span> ES4 protects against this eventuality by <i>reserving</i> global
+names that are resolved at definition time.  When <b>T</b> is resolved in
+the first program and found to be in <b>NS1</b>, the name <b>NS2::T</b> is
+reserved: it is made off-limits to later programs.  As a consequence,
+the second program above would not be loaded, because the introduction
+of <b>NS2::T</b> would be an error.
+
+<P><span class="pcounter"></span> Names are reserved in namespaces at the same or higher priority
+level as the namespace that the name was resolved to, so in the
+example above neither <b>public::T</b> nor <b>internal::T</b> would become
+reserved, as those namespaces are at lower priority levels than
+<b>NS1</b> and <b>NS2</b>.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  Top-level "use&nbsp;namespace" pragmas are given a higher
+priority level than names originating "outside" the compilation unit,
+as is the case for <b>public</b> and <b>internal</b>.
+
+
+<h3>Definition-Time Resolution of Namespace and Type Expressions</h3>
+
+<P><span class="pcounter"></span> The definition time scope chain is modelled as a list of fixture maps, defined elsewhere.  A fixture map
+maps names to fixture bindings that result from defining and binding forms (<b>var</b>, <b>function</b>,
+<b>type</b>, <b>class</b>, <b>interface</b>, <b>namespace</b>, and others).  Fixture maps have no dynamic properties.
+
+<P><span class="pcounter"></span> Definition time resolution resolves name expressions that denote
+namespaces and types, and performs reservation of global names if
+necessary.
+
+<P><span class="pcounter"></span> The following algorithm resolves a name expression to a specific
+name and fixture in the list of fixture maps.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> resolveNameExpr (fixtureMaps : Ast.FIXTURE_MAPS)
+                    (ne   : Ast.NAME_EXPRESSION)
+    : (Ast.FIXTURE_MAPS * Ast.NAME * Ast.FIXTURE) =
+
+    <b>case</b> ne <b>of</b>
+        Ast.QualifiedName { namespace, identifier }
+        <b>=></b> resolveQualifiedName fixtureMaps identifier namespace
+
+      <b>|</b> Ast.UnqualifiedName { identifier, openNamespaces, ... }
+        <b>=></b> case (resolveUnqualifiedName fixtureMaps identifier openNamespaces) <b>of</b>
+
+            NONE
+            <b>=></b> error ["unresolved name ", LogErr.nameExpr ne]
+
+          <b>|</b> SOME ([], _)
+            <b>=></b> error ["unresolved name ", LogErr.nameExpr ne]
+
+          <b>|</b> SOME ([fixtureMap], name)
+            <b>=></b> ( reserveNames name openNamespaces ;
+                 ([fixtureMap], name, getFixture fixtureMap (Ast.PropName name)) )
+
+          <b>|</b> SOME (fixtureMaps, name)
+            <b>=></b> (fixtureMaps, name, getFixture (hd fixtureMaps) (Ast.PropName name))
+</PRE>
+
+
+<h4>Qualified Name Expressions</h4>
+
+<P><span class="pcounter"></span> A qualified name expression is resolved by resolving the namespace
+part and then returning the tail of the list of fixture maps such that the
+first fixture map on the tail contains a binding for the name.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The name can't be ambiguous because there is only one namespace.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>fun</b> resolveQualifiedName (fixtureMaps          : Ast.FIXTURE_MAPS)
+                         (identifier    : IDENTIFIER)
+                         (namespaceExpr : Ast.NAMESPACE_EXPRESSION)
+    : (Ast.FIXTURE_MAPS * NAME * Ast.FIXTURE) =
+    <b>let</b>
+        <b>val</b> ns = resolveNamespaceExpr fixtureMaps namespaceExpr
+        <b>val</b> name = { ns = ns, id = identifier }
+        <b>fun</b> search (r::rs) = <b>if</b> hasFixture r (Ast.PropName name) <b>then</b>
+                                 (r::rs)
+                             <b>else</b>
+                                 search rs
+          <b>|</b> search [] = []
+    <b>in</b>
+        <b>case</b> (search fixtureMaps) <b>of</b>
+            []
+            <b>=></b> error ["qualified name not present <b>in</b> fixtureMaps: ", LogErr.name name]
+
+          <b>|</b> fixtureMaps'
+            <b>=></b> (fixtureMaps', name, getFixture (hd fixtureMaps') (Ast.PropName name))
+    <b>end</b>
+</PRE>
+
+<h4>Unqualified Name Expressions</h4>
+
+<P><span class="pcounter"></span> An unqualified name expression is resolved according to the full
+algorithm outlined above.  It returns the tail of the list of fixture maps
+such that the first fixture map on the tail contains an unambiguous binding
+for the name.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> resolveUnqualifiedName (fixtureMaps           : Ast.FIXTURE_MAPS)
+                           (identifier     : IDENTIFIER)
+                           (openNamespaces : OPEN_NAMESPACES)
+    : (Ast.FIXTURE_MAPS * NAME) option =
+    <b>let</b>
+        <b>val</b> namespaces = List.concat (openNamespaces)
+        <b>val</b> matches = fixtureMapListSearch (fixtureMaps, namespaces, identifier)
+    <b>in</b>
+        <b>case</b> matches <b>of</b>
+            NONE
+            <b>=></b> NONE
+
+          <b>|</b> SOME (fixtureMaps, [namespace])
+            <b>=></b> SOME (fixtureMaps, {ns=namespace, id=identifier})
+
+          <b>|</b> SOME (fixtureMaps, namespaces)
+            <b>=></b> case selectNamespaces (identifier,
+                                      namespaces,
+                                      [],
+                                      openNamespaces) <b>of</b>
+
+                   [namespace]
+                   <b>=></b> SOME (fixtureMaps, {ns=namespace, id=identifier})
+
+                 <b>|</b> ns::nss
+                   <b>=></b> error ["ambiguous reference: ", Ustring.toAscii identifier]
+    <b>end</b>
+</PRE>
+<PRE>
+<b>fun</b> fixtureMapListSearch ([], _, _) = NONE
+
+  <b>|</b> fixtureMapListSearch (fixtureMaps       : Ast.FIXTURE_MAPS,
+                   namespaces : NAMESPACE_SET,
+                   identifier : IDENTIFIER)
+    : (Ast.FIXTURE_MAPS * NAMESPACE_SET) option =
+    <b>case</b> fixtureMapSearch (hd fixtureMaps, namespaces, identifier) <b>of</b>
+        NONE
+        <b>=></b> fixtureMapListSearch (tl fixtureMaps, namespaces, identifier)
+
+      <b>|</b> SOME (_, m)
+        <b>=></b> SOME (fixtureMaps, m)
+</PRE>
+<PRE>
+<b>fun</b> fixtureMapSearch (fixtureMap        : Ast.FIXTURE_MAP,
+               namespaces : NAMESPACE_SET,
+               identifier : IDENTIFIER)
+    : (Ast.FIXTURE_MAP * NAMESPACE_SET) option =
+    <b>case</b> List.filter (<b>fn</b> ns <b>=></b>
+                         hasFixture fixtureMap (Ast.PropName {ns=ns, id=identifier}))
+                     namespaces <b>of</b>
+        [] <b>=></b> NONE
+      <b>|</b> m  <b>=></b> SOME (fixtureMap, m)
+</PRE>
+
+<h4>Reserving Names</h4>
+
+<P><span class="pcounter"></span> Statically resolved names must keep their meaning at runtime and
+therefore cannot be shadowed or be made ambiguous by the later
+introduction of names.  Therefore we reserve the set of names that
+would cause such conflicts at runtime.
+
+<P><span class="pcounter"></span> Given a name and a list of sets of open namespaces, the following
+algorithm computes a set of names consisting of the identifier and
+each of the open namespaces with an equal or higher priority than the
+given namespace.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  Obviously we need more prose here.  Also we want to be sure
+to note that reservation only happens in the global object.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> reserveNames (name)
+                 (openNamespaces)
+    = &#x0085;
+</PRE>
+
+
+<h3>Evaluation-time Resolution of Lexical References</h3>
+
+<P><span class="pcounter"></span> The evaluation time scope chain is modelled as a list of arbitrary
+objects.  A scope object maps names to properties (both fixtures and
+dynamic properties).  Apart from scope objects introduced by the
+<b>with</b> statement, the evaluation time scope chain mirrors the
+definition time scope chain.
+
+<P><span class="pcounter"></span> The following algorithm resolves a name expression to an object
+and the name of a property on that object.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> resolveLexicalReference (regs            : REGS)
+                            (nameExpression  : NAME_EXPRESSION)
+                            (errorIfNotFound : bool)
+    : (OBJECT * NAME) =
+    <b>let</b>
+        <b>val</b> {scope, ...} = regs
+    <b>in</b>
+        <b>case</b> nameExpression <b>of</b>
+
+            QualifiedName {identifier, namespace}
+            <b>=></b> resolveQualifiedLexicalReference regs identifier namespace
+
+          <b>|</b> UnqualifiedName { identifier, openNamespaces, ... }
+            <b>=></b> resolveUnqualifiedLexicalReference regs identifier openNamespaces
+    <b>end</b>
+</PRE>
+
+<h4>Qualified Lexical References</h4>
+
+<P><span class="pcounter"></span> To resolve a qualified lexical reference we evaluate its namespace
+expression (it must yield a namespace value) and then look up the name
+comprised of the namespace value and the qualified reference's
+identifier.  If a binding is not found then we return the global
+object, otherwise the object that contained the binding for the name.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> resolveQualifiedLexicalReference (regs          : REGS)
+                                     (identifier    : IDENTIFIER)
+                                     (namespaceExpr : NAMESPACE_EXPRESSION)
+    : (OBJECT * NAME) =
+    <b>let</b>
+        <b>val</b> {scope, global, ...} = regs
+        <b>val</b> namespace = evalNamespaceExpr regs namespaceExpr
+        <b>val</b> result = searchScopeChain (regs, SOME scope, identifier, [namespace])
+    <b>in</b>
+        <b>case</b> result <b>of</b>
+            NONE
+            <b>=></b> (global, {ns=publicNS, id=identifier})
+
+          <b>|</b> SOME (object, namespaces)
+            <b>=></b> (object, {ns=namespace, id=identifier})
+    <b>end</b>
+</PRE>
+
+<h4>Unqualified Lexical References</h4>
+
+<P><span class="pcounter"></span> To resolve an unqualified lexical reference we make use of the
+full algorithm outlined above, finding the first object that maches
+the unqualified name in all open namespaces and then disambiguating
+the set of resulting namespaces.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> resolveUnqualifiedLexicalReference (regs           : REGS)
+                                       (identifier     : IDENTIFIER)
+                                       (openNamespaces : OPEN_NAMESPACES)
+    : (OBJECT * NAME) =
+    <b>let</b>
+        <b>val</b> {scope, global, ...} = regs
+        <b>val</b> namespaces = List.concat openNamespaces
+        <b>val</b> result = searchScopeChain (regs, SOME scope, identifier, namespaces)
+    <b>in</b>
+        <b>case</b> result <b>of</b>
+            NONE
+            <b>=></b> (global, {ns=publicNS, id=identifier})
+
+          <b>|</b> SOME (object, namespaces)
+            <b>=></b> let
+                   <b>val</b> classFixtureMaps = [getFixtureMap regs object]
+                   <b>val</b> result = Fixture.selectNamespaces (identifier,
+                                                          namespaces,
+                                                          classFixtureMaps,
+                                                          openNamespaces)
+               <b>in</b>
+                   <b>case</b> result <b>of</b>
+                       [namespace]
+                       <b>=></b> (object, {ns=namespace, id=identifier})
+
+                     <b>|</b> _
+                       <b>=></b> error regs ["ambiguous reference"]
+               <b>end</b>
+    <b>end</b>
+</PRE>
+
+<h4>Resolve on a Scope Chain</h4>
+
+<P><span class="pcounter"></span> To find an object matching an identifier and a set of namespaces
+in a scope chain.
+
+[CHANGE] remove second lookup pass
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> searchScopeChain (regs, NONE, _, _) = NONE
+
+  <b>|</b> searchScopeChain (regs       : REGS,
+                      SOME scope : SCOPE option,
+                      identifier : IDENTIFIER,
+                      namespaces : NAMESPACE_SET)
+    : (OBJECT * NAMESPACE_SET) option =
+    <b>let</b>
+        <b>val</b> matches = searchScope (regs, scope, namespaces, identifier)
+        <b>val</b> Scope { parent, ... } = scope
+    <b>in</b>
+        <b>case</b> matches <b>of</b>
+            NONE
+            <b>=></b> searchScopeChain (regs, parent, identifier, namespaces)
+
+          <b>|</b> _
+            <b>=></b> matches
+    <b>end</b>
+</PRE>
+<PRE>
+<b>fun</b> searchScope (regs       : REGS,
+                 scope      : SCOPE,
+                 namespaces : NAMESPACE_SET,
+                 identifier : IDENTIFIER)
+    : (OBJECT * NAMESPACE_SET) option =
+    <b>let</b>
+        <b>val</b> (object, kind) = getScopeObjectAndKind (scope)
+    <b>in</b>
+        <b>case</b> kind <b>of</b>
+            (WithScope <b>|</b> EvalScope <b>|</b> GlobalScope)  (* FIXME EvalScope is unused *)
+            <b>=></b> searchObject (regs, SOME object, NONE, identifier, namespaces, false)
+
+          <b>|</b> (InstanceScope class)
+            <b>=></b> searchObject (regs, SOME object, SOME class, identifier, namespaces, true)
+
+          <b>|</b> _
+            <b>=></b> searchObject (regs, SOME object, NONE, identifier, namespaces, true)
+    <b>end</b>
+</PRE>
+
+<h3>Evaluation-Time Resolution of Object References</h3>
+
+<P><span class="pcounter"></span> Object references are resolved along the prototype chain of the
+object.  Both fixed and dynamic properties are searched in each
+object, in a single pass over the prototype chain.
+
+<P><span class="pcounter"></span> <code>ObjectIndexReference</code> expressions represent computed lookup.
+The index expression is computed; if it evaluates to a <b>Name</b> object
+then it is used as is, otherwise the value is converted to <b>string</b>
+and qualified with the <b>public</b> namespace.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  The following algorithm does not yet handle <b>Name</b> objects.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> resolveObjectReference (regs:REGS)
+                           (ObjectNameReference { object, name, ... }: EXPRESSION)
+    : (OBJECT option * (OBJECT * NAME)) =
+    <b>let</b>
+        <b>val</b> obj = evalObjectExpr regs object
+    <b>in</b>
+        <b>case</b> name <b>of</b>
+            UnqualifiedName { identifier, openNamespaces, ... }
+            <b>=></b> (SOME obj, resolveUnqualifiedObjectReference regs obj identifier
+                                                            openNamespaces)
+
+          <b>|</b> QualifiedName { namespace, identifier }
+            <b>=></b> (SOME obj, resolveQualifiedObjectReference regs obj identifier
+                                                          namespace)
+    <b>end</b>
+
+  <b>|</b> resolveObjectReference regs
+                           (ObjectIndexReference {object, index, ...}) =
+    <b>let</b>
+        <b>val</b> obj = evalObjectExpr regs object
+        <b>val</b> idx = evalExpr regs index
+        <b>val</b> identifier = toUstring regs idx
+        (* FIXME <b>if</b> its an Name, <b>then</b> don't convert *)
+        <b>val</b> namespace = Namespace publicNS
+    <b>in</b>
+        (SOME obj, resolveQualifiedObjectReference regs obj identifier namespace)
+    <b>end</b>
+</PRE>
+
+<h4>Qualified Object References</h4>
+
+<P><span class="pcounter"></span>Here we describe how an identifier and a namespace expression is resolved to
+a name of a binding on a specfic object.
+
+<P><span class="pcounter"></span> To resolve a qualified object reference we evaluate its namespace
+expression (it must yield a namespace value) and then simply return
+the object value and the evaluated name.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> resolveQualifiedObjectReference (regs: REGS)
+                                    (object: OBJECT)
+                                    (identifier: IDENTIFIER)
+                                    (namespaceExpr: NAMESPACE_EXPRESSION)
+    : (OBJECT * NAME) =
+    <b>let</b>
+        <b>val</b> namespaces = [evalNamespaceExpr regs namespaceExpr]
+        <b>val</b> openNamespaces = []
+    <b>in</b>
+        resolveOnObject regs object identifier namespaces openNamespaces
+    <b>end</b>
+</PRE>
+
+<h4>Unqualified Object References</h4>
+
+<P><span class="pcounter"></span> To resolve an unqualified object reference we make use of the
+full algorithm outlined above, finding the first object that maches
+the unqualified name in all open namespaces and then disambiguating
+the set of resulting namespaces.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> resolveUnqualifiedObjectReference (regs: REGS)
+                                      (object: OBJECT)
+                                      (identifier: IDENTIFIER)
+                                      (openNamespaces: OPEN_NAMESPACES)
+    : (OBJECT * NAME) =
+    <b>let</b>
+        <b>val</b> namespaces = List.concat openNamespaces
+    <b>in</b>
+        resolveOnObject regs object identifier namespaces openNamespaces
+    <b>end</b>
+</PRE>
+
+<h4>Resolve Name on an Object</h4>
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>and</b> resolveOnObject (regs:REGS)
+                    (object:OBJECT)
+                    (identifier:IDENTIFIER)
+                    (namespaces:NAMESPACE_SET)
+                    (openNamespaces: OPEN_NAMESPACES)
+    : (OBJECT * NAME) =
+    <b>let</b>
+        <b>val</b> result = searchObject (regs, SOME object, NONE, identifier,
+                                   namespaces, false)
+    <b>in</b>
+        <b>case</b> result <b>of</b>
+            NONE <b>=></b> (object, {ns=publicNS, id=identifier})
+          <b>|</b> SOME (object, namespaces) <b>=></b>
+            selectNamespacesByInstanceFixtureMaps regs object identifier
+                                                  namespaces openNamespaces
+    <b>end</b>
+</PRE>
+
+<h3>Common Name Resolution Algorithms</h3>
+
+<P><span class="pcounter"></span> The following algorithms are common to the preceding resolver
+algorithms.
+
+<h4>Single Object Search</h4>
+
+<P><span class="pcounter"></span> Given an object, an identifier and a set of namespaces, this
+algorithm searches for a matching property name in the object and the
+object's prototype chain.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>fun</b> searchObject (_, NONE, _, _, _, _) = NONE
+
+  <b>|</b> searchObject (regs        : REGS,
+                  SOME object : OBJECT option,
+                  class       : Ast.CLASS option,
+                  identifier  : IDENTIFIER,
+                  namespaces  : NAMESPACE_SET,
+                  fixedOnly   : bool)
+    : (OBJECT * NAMESPACE_SET) option =
+    <b>let</b>
+        <b>val</b> matches = getBindingNamespaces (regs,
+                                            object,
+                                            class,
+                                            identifier,
+                                            namespaces,
+                                            fixedOnly)
+    <b>in</b>
+        <b>case</b> matches <b>of</b>
+            []
+            <b>=></b> if fixedOnly <b>then</b>
+                   NONE
+               <b>else</b>
+                   searchObject (regs,
+                                 getPrototypeObject (object),
+                                 NONE,
+                                 identifier,
+                                 namespaces,
+                                 fixedOnly)
+
+          <b>|</b> _
+            <b>=></b> SOME (object, matches)
+    <b>end</b>
+</PRE>
+
+<h4>Disambiguation by Filtering</h4>
+
+<P><span class="pcounter"></span> Given an identifier, a list of namespaces, a list of classes, a
+list of open namespaces, the following algorithm coordinates the
+filtering of the set of namespaces: according to the order that the
+namespaces appear in bindings in the given classes first, and in the
+priority given by the list of open namespaces second.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>fun</b> selectNamespaces (identifier     : IDENTIFIER,
+                      namespaces     : NAMESPACE_SET,
+                      instanceFixtureMaps   : Ast.FIXTURE_MAPS,
+                      openNamespaces : OPEN_NAMESPACES)
+    : NAMESPACE_SET =
+    <b>let</b>
+        <b>val</b> openNamespaceSet = List.concat (openNamespaces)
+    <b>in</b>
+        <b>case</b> namespaces <b>of</b>
+
+            _ :: []
+            <b>=></b> namespaces
+
+          <b>|</b> _ <b>=></b>
+            <b>let</b>
+                <b>val</b> matches' =
+                    selectNamespacesByClass (instanceFixtureMaps,
+                                             openNamespaceSet,
+                                             identifier)
+            <b>in</b>
+                <b>case</b> matches' <b>of</b>
+                    []
+                    <b>=></b> raise (LogErr.NameError "internal error")
+
+                  <b>|</b> [_]
+                    <b>=></b> matches'
+
+                  <b>|</b> _ <b>=></b>
+                    <b>let</b>
+                        <b>val</b> matches'' =
+                            selectNamespacesByOpenNamespaces (openNamespaces,
+                                                              namespaces)
+                    <b>in</b>
+                        <b>case</b> matches'' <b>of</b>
+
+                            []
+                            <b>=></b> raise (LogErr.NameError "internal error")
+
+                          <b>|</b> _
+                            <b>=></b> matches''
+                    <b>end</b>
+            <b>end</b>
+    <b>end</b>
+</PRE>
+
+<h5>Class Base Namespace Filtering</h5>
+
+<P><span class="pcounter"></span> Given a list of classes, an identifier and a set of namespaces,
+the following algorithm selects the namespaces used on the most
+generic class of that list. This step is necessary to avoid object
+integrity issues that arise when a derived class introduces a binding
+with the same identifier and a different namespace in the open
+namespaces.
+
+<P><span class="pcounter"></span> <b>Informal description</b>: Search a class for any instance fixture
+name bindings that are named by the provided identifier and any of the
+namespaces in the provided set. Collect the set of matching namespaces
+used in all such bindings. If the set of matching namespaces is
+nonempty, return it. Otherwise repeat the process on the next instance
+fixture map.  If all the classes in the list are searched and no matching
+namespaces are found, return the empty set.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>fun</b> selectNamespacesByClass ([], namespaces, _) = namespaces
+
+ <b>|</b>  selectNamespacesByClass (instanceFixtureMaps : Ast.FIXTURE_MAPS,
+                             namespaces   : NAMESPACE_SET,
+                             identifier   : IDENTIFIER)
+    : NAMESPACE list =
+    <b>let</b>
+        <b>val</b> fixtureMap = hd instanceFixtureMaps
+        <b>val</b> bindingNamespaces =
+            getInstanceBindingNamespaces (fixtureMap, identifier, namespaces)
+        <b>val</b> matches =
+            intersectNamespaces (bindingNamespaces, namespaces)
+    <b>in</b>
+        <b>case</b> matches <b>of</b>
+
+            []
+            <b>=></b> selectNamespacesByClass (tl instanceFixtureMaps,
+                                        namespaces,
+                                        identifier)
+
+          <b>|</b> _
+            <b>=></b> matches
+    <b>end</b>
+</PRE>
+
+<h5>Open Namespace Based Namespace Filtering</h5>
+
+<P><span class="pcounter"></span> Given a list of sets of open namespaces (ordered from most
+recently opened to least recently opened) and a set of matching
+namespaces, this algorithm returns a subset of the matching set that
+occurs entirely within a single open namespace set.
+
+<P><span class="pcounter"></span> <b>Informal description</b>: intersect the head of the provided open
+namespace list with the provided set of namespaces. If that
+intersection is nonempty, return it. Otherwise repeat the process with
+the tail of the open namespace list. If the end of the list of open
+namespace sets is reached without producing a nonempty intersection,
+return an empty set.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+<b>fun</b> selectNamespacesByOpenNamespaces ([], _) = []
+
+ <b>|</b>  selectNamespacesByOpenNamespaces (namespacesList : NAMESPACE_SET list,
+                                      namespaces     : NAMESPACE_SET)
+    : NAMESPACE list =
+    <b>let</b>
+        <b>val</b> matches = intersectNamespaces (hd namespacesList, namespaces)
+    <b>in</b>
+        <b>case</b> matches <b>of</b>
+
+            []
+            <b>=></b> selectNamespacesByOpenNamespaces (tl namespacesList, namespaces)
+
+          <b>|</b> _
+            <b>=></b> matches
+    <b>end</b>
+</PRE>
+
+
+
+
+</body>
+</html>

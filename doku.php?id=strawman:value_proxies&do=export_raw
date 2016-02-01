@@ -1,0 +1,184 @@
+====== Value Proxies ======
+
+This page lists an extension to [[harmony::proxies]] that supports operator overloading.
+It is a work-in-progress and likely inconsistent in some parts.
+
+
+===== Goals =====
+  * Enable implementing new kinds of values for which the behavior of standard operators such as '+' can be customized.
+  * Keep consistency with [[harmony::proxies]] where possible.
+  * Performance, as far as possible.
+
+
+===== Use cases =====
+  * Decimal
+  * Bignum
+  * Rationals
+  * Complex numbers
+  * Matrices
+  * Taint analysis (and provenance tracking)
+  * [[http://en.wikipedia.org/wiki/Automatic_differentiation|Automatic differentiation]]
+
+
+
+
+
+
+===== Design Choices =====
+  * For performance reasons, we want a complex number to be represented in a single block of memory, which we call a value proxy. This value proxy should include both the real and complex components, plus a pointer to data/methods etc that are common to all complex numbers.  The alternative of having separate proxy and handler objects (plus closure state) for each complex seems too heavyweight.
+  * We want the state in the value proxy to be immutable. This fits with the notion of 'immutable values'. Also, it allows equality on value proxies, if not trapped, to default to equality on the components. Hence there is no possibility of comparing value proxies for pointer equality, and so value proxies have no notion of identity, only observable equivalence.
+  * The state in the value proxy needs to be accessed by the methods of the value proxy. We could use some notion of private names to make this state encapsulated or private to the value proxy, but instead choose to also allow that state to be visible externally.
+
+
+
+
+
+
+===== Operator Handler =====
+
+An operator handler is an object that implements the following collection of traps. In each trap (aka method), ''this'' is bound to an underlying value proxy:
+
+<code javascript>
+{
+  // unary operators
+  neg: function() -> result    // for unary -
+  pos: function() -> result    // for unary +
+  invert: function() -> result // for unary ~, invert is python's name
+  // additional traps
+  test: function() -> result     // return a boolean for use in conditionals
+
+  // binary operators. 
+  // The 'add'  trap is called when the left argument to '+' is a value proxy.
+  // The 'radd' trap is called when the left argument is not a proxy and the right argument is.
+  add:  function(rarg) -> result    // python uses __add__
+  radd: function(larg) -> result    // python uses __radd__
+  ...
+  
+  ditto for the following binary operators:
+    sub,    rsub    (-)
+    mul,    rmul    (*)
+    div,    rdiv    (/)     
+    mod,    rmod    (%)
+    lshift, rlshift (<<)
+    rshift, rrshift (>>)
+    bitand, rbitand (&) 
+    bitor,  rbitor  (|)        
+    bitxor, rbitxor (^)
+
+  // comparison operators (perhaps required to return booleans)
+    equal, requal (for ==)
+    compare(rarg) - returns negative for <, zero for ===, positive for >
+    rcompare(larg)  
+}
+</code>
+
+This operator handler has a large collection of traps.
+We refer to the above traps as **derived traps**.
+If a particular derived trap is not implemented, it is multiplexed onto the following smaller collection of **fundamental traps**:
+
+<code javascript>
+{
+  // unary operators
+  unary: function(opstring, opfn) -> result
+
+  // binary operators
+  left : function(opstring, opfn, rarg) -> result
+  right: function(opstring, opfn, larg) -> result
+}
+</code>
+
+Each fundamental trap is passed the operator in two forms: as a string ''opstring'' and as a function ''opfn'', which is either a unary or binary function that performs that operation on its arguments. Thus the default implementation of the derived trap ''mul'' dispatches to the ''left'' trap as follows:
+
+<code javascript>
+
+function mul (rarg) {
+  return this.left( "*",
+                    function (l,r) { return l * r },
+                    rarg )
+}
+</code>
+
+An error is raised (which?) an operator is applied to a proxy for which neither a fundamental or derived trap is defined.
+
+MarkM says: a TypeError, since that's the error a normal method missing (''({}).foo()'') turns into.
+
+
+
+===== Comparison Traps =====
+
+There are eight comparison operators ''=='', ''!='', ''==='', ''!=='', ''<'', ''%%<=%%'', ''>'', ''>=''. These are all required to return booleans. (This helps optimizations and understandability.)
+
+There is no trap for !=, it is handled by the == trap ''equal''. There is no ''requal'' trap; it is also handled by ''equal''.
+
+The remaining 6 comparison operators are all handled by ''compare''. There is no need for an ''rcompare'' trap; it is also handled by ''compare''.
+
+Note that we could have a larger collection of traps for comparison operators that could allow more general behaviors (eg a non-symmetric ''=='' operator).
+
+Note that both ''=='' and ''==='' on
+value proxies must be defined via traps.
+
+In contrast, value proxies cannot override the proposed 'egal' function. 
+On value proxies, 'egal' should check for equality of the (immutable) components of the value proxy (perhaps recursively, if those components are in turn value proxies, but there is no need for an expensive cycle check). 
+
+MarkM asks: Why is there no need for a cycle check? Is it impossible to build an infinite rational value?
+
+
+===== Creating Value Proxies =====
+
+A value proxy needs to combine:
+  * an operator handler that should implement the above traps. It should not implement the [[harmony::proxies]] traps; if necessary, the prototype could be such an object proxy.
+  * a prototype to contain methods on value proxies, such as ''complex.abs()'' etc. (May be an object proxy).
+  * an answer for ''typeof'' queries. (It should be one of the existing ''typeof'' answers, excluding "function".)
+  * information about the number and name of fields in the value proxy.  
+
+Since these four kinds of information is likely common to many value proxies, we pre-allocate them in a ''ValueType'' object, and then reference that object from multiple value proxies. 
+ 
+<code javascript>
+var proxyValueType = Proxy.createValueType(operatorhandler, proto, 
+                      typeofString, { x:float64, y:float64} );
+
+var proxy = Proxy.createValue(proxyValueType, 2.0, 3.0);
+
+// example uses
+assert proxy.x == 2.0
+
+proxy.abs() // calls proto.abs() with this bound to proxy
+
+proxy + 1 // calls operatorhandler.add(1)
+
+typeof(proxy) // returns typeofstring
+</code>
+
+
+The last argument to ''createValueType'' uses block types from the [[strawman:binary data]] strawman. What block type should we use for an arbitrary JS value? 
+
+
+
+
+
+===== Pending Items =====
+  * Do we need geti and seti traps, when a (value) proxy is used as an object index?
+  * What should ''typeof'' return? Perhaps one of the following
+    * Any existing typeof result, excluding ''function'' (proposed above)
+    * Always ''object''
+    * Any string
+  * Membrane code needs some way to distinguish real primitive values from value proxies.  The example membrane code uses a hypothetical ''Object.isPrimitive(val)'' method. This method (or equivalent functionality) is required as part of this proposal.
+  * Each value proxy has both a prototype (for methods) and a handler (for operator traps). These could be merged into a single prototype object, but then the handler traps would be exposed and could be called explicitly on the value proxy, (eg ''proxy.left(...)''), which seems problematic.
+
+
+
+
+
+
+===== See Also =====
+  * [[http://docs.python.org/reference/datamodel.html#emulating-numeric-types|Pythons API]] for emulating numeric types.
+  * [[strawman:value types]] 
+  * [[http://www.soe.ucsc.edu/research/report?ID=1595|Virtual Values for Language Extension]]: a more formal presentation of these ideas for a simpler language than Javascript.  In terms of the nine traps of this paper, [[harmony::proxies]] implements (variants of) ''call'', ''getr'', ''setr''. This proposal adds ''unary'', ''left'', ''right'', ''test'' (called ''truth'' above) and leaves pending ''geti'' and ''seti''.
+
+
+
+
+
+===== Notes from 2 Dec discussion =====
+
+  * Likely want geti handlers, or perhaps __index__ as in python

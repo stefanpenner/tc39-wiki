@@ -1,0 +1,229 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:contracts&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:contracts&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:contracts&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:contracts&amp;do=export_html.html#motivation" class="toc">Motivation</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:contracts&amp;do=export_html.html#proposal" class="toc">Proposal</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:contracts&amp;do=export_html.html#bound_contracts" class="toc">Bound contracts</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:contracts&amp;do=export_html.html#unbound_contracts" class="toc">Unbound contracts</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:contracts&amp;do=export_html.html#arguments_to_contracts" class="toc">Arguments to contracts</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:contracts&amp;do=export_html.html#arbitrary_expressions_for_contracts" class="toc">Arbitrary expressions for contracts</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:contracts&amp;do=export_html.html#subtyping_and_conversion" class="toc">Subtyping and Conversion</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:contracts&amp;do=export_html.html#contract_erasure" class="toc">Contract erasure</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:contracts&amp;do=export_html.html#contract_combinators" class="toc">Contract combinators</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:contracts&amp;do=export_html.html#blame" class="toc">Blame</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:contracts&amp;do=export_html.html#granularity_of_blame" class="toc">Granularity of blame</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:contracts&amp;do=export_html.html#modes" class="toc">Modes</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:contracts&amp;do=export_html.html#dave_s_original_discussion" class="toc">Dave's original discussion</a></span></li>
+</ul>
+</div>
+</div>
+
+<p>
+This proposal has been deferred. For now, <a href="doku.php%3Fid=proposals:type_refinements.html" class="wikilink1" title="proposals:type_refinements" onclick="return svchk()" onkeypress="return svchk()">type refinements</a> is a less ambitious proposal that could ultimately lead to the development of a more sophisticated, post-ES4 contract system.
+</p>
+
+<a name="motivation"></a><h1>Motivation</h1>
+<div class="level1">
+
+<p>
+ Types are a great tool for programmers to specify invariants about their programs, but they are limited in their expressive power. There are plenty of invariants programmers would like to specify that cannot easily be expressed as types, either due to limitations of the type system or actual computability limitations.
+</p>
+
+<p>
+In those cases, allowing the programmer to express the invariants as dynamic checks that produce runtime errors allows them to program with contracts and still catch the errors relatively early.
+</p>
+
+<p>
+Furthermore, research on dynamic contract systems has shown that it&rsquo;s possible to detect specific information about which component is to blame for a contract violation, beyond merely indicating that something went wrong. For programming in the large, this ability to narrow down the source of a bug to a particular component can be indispensible.
+</p>
+
+</div>
+<!-- SECTION [191-1082] -->
+<a name="proposal"></a><h1>Proposal</h1>
+<div class="level1">
+
+<p>
+ In the strict mode (see <a href="doku.php%3Fid=proposals:strict_and_standard_modes.html" class="wikilink1" title="proposals:strict_and_standard_modes" onclick="return svchk()" onkeypress="return svchk()">strict and standard modes</a>), contracts are expressed as refinements of types. These can take one of two forms: <em>bound contracts</em> and <em>unbound contracts</em>.
+</p>
+
+</div>
+<!-- SECTION [1083-1292] -->
+<a name="bound_contracts"></a><h2>Bound contracts</h2>
+<div class="level2">
+
+<p>
+ In the case where a contract is a bound method (with the return type <code>Boolean</code>) defined in the class of the object in question, a contract can simply be specified with the name of the method. When the value is received at runtime, the system implicitly invokes the method on the object; if the result is <code>false</code>, a contract violation is signalled.
+</p>
+
+<p>
+For example, imagine that the <code>Int</code> class has a method called <code>isNatural</code> which checks whether the integer is non-negative:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Int <span class="br0">&#123;</span>
+    ...
+    <span class="kw2">function</span> isNatural<span class="br0">&#40;</span><span class="br0">&#41;</span> : Boolean <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="kw1">this</span> &gt;= <span class="nu0">0</span> <span class="br0">&#125;</span>
+    ...
+<span class="br0">&#125;</span></pre>
+<p>
+Then an expression typed as <code>Int</code> may refine the type with the bound contract <code>isNatural</code> via some special operator (<code>&ldquo;@&rdquo;</code>? <code>&ldquo;#&rdquo;</code>? <code>&ldquo;|&rdquo;</code>? <code>&ldquo;.&rdquo;</code> would be nice but I believe introduces ambiguities with package qualifiers):
+</p>
+<pre class="code javascript"><span class="kw2">function</span> factorial<span class="br0">&#40;</span>n : Int#isNatural<span class="br0">&#41;</span> <span class="br0">&#123;</span> ... <span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [1293-2219] -->
+<a name="unbound_contracts"></a><h2>Unbound contracts</h2>
+<div class="level2">
+
+<p>
+ Unbound functions may be used as contracts as well. In this case, the type of the function used for the contract must have as its <code>this</code> type a compatible type with the type being refined.
+</p>
+<pre class="code javascript"><span class="kw2">function</span> trimmedString<span class="br0">&#40;</span><span class="kw1">this</span>:String<span class="br0">&#41;</span> : Boolean <span class="br0">&#123;</span>
+    <span class="kw1">return</span> <span class="br0">&#40;</span><span class="kw1">this</span>.<span class="me1">length</span> == <span class="nu0">0</span><span class="br0">&#41;</span> || <span class="br0">&#40;</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span> != <span class="st0">' '</span><span class="br0">&#41;</span> &amp;&amp; <span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#91;</span><span class="kw1">this</span>.<span class="me1">length</span> - <span class="nu0">1</span><span class="br0">&#93;</span> != <span class="st0">' '</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">function</span> trim<span class="br0">&#40;</span>s : String<span class="br0">&#41;</span> : String#trimmedString <span class="br0">&#123;</span> ... <span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [2220-2661] -->
+<a name="arguments_to_contracts"></a><h2>Arguments to contracts</h2>
+<div class="level2">
+
+<p>
+ It should also be possible to pass extra arguments to contracts. For example:
+</p>
+<pre class="code javascript"><span class="kw2">function</span> hasLength<span class="br0">&#40;</span><span class="kw1">this</span>:String, n:Int#isNatural<span class="br0">&#41;</span> : Boolean <span class="br0">&#123;</span> <span class="kw1">return</span> s.<span class="me1">length</span> == n <span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">function</span> repeat<span class="br0">&#40;</span>n : Int#isNatural, s : String<span class="br0">&#41;</span> : String#hasLength<span class="br0">&#40;</span>n * s.<span class="me1">length</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> ... <span class="br0">&#125;</span></pre>
+<p>
+Here the unbound method <code>hasLength</code> receives as its argument the value <code>n * s.length</code>. Notice that the arguments to <code>repeat</code> are in scope for the contract expression.
+</p>
+
+</div>
+<!-- SECTION [2662-3148] -->
+<a name="arbitrary_expressions_for_contracts"></a><h2>Arbitrary expressions for contracts</h2>
+<div class="level2">
+
+<p>
+ The syntax used above may not be conducive to using complex expressions for contracts. We may also want a syntax that allows any expression to be used (for unbound contracts), such as:
+</p>
+<pre class="code javascript"><span class="kw2">function</span> foo<span class="br0">&#40;</span><span class="br0">&#41;</span> : <span class="br0">&#91;</span> String | <span class="coMULTI">/* complicated expression */</span><span class="br0">&#40;</span>args, ...<span class="br0">&#41;</span> <span class="br0">&#93;</span> <span class="br0">&#123;</span> ... <span class="br0">&#125;</span></pre>
+<p>
+This reads something like &ldquo;<code>foo</code> has return type <code>String</code>, where the string must pass the predicate specified by calling the unbound method returned by the <em>complicated expression</em> on arguments <em>args</em>.&rdquo;
+</p>
+
+</div>
+<!-- SECTION [3149-3698] -->
+<a name="subtyping_and_conversion"></a><h2>Subtyping and Conversion</h2>
+<div class="level2">
+
+<p>
+ Int#isNatural is a subtype of Int. 
+</p>
+
+<p>
+Int#isNatural and  Int#isPositive  are not subtypes of each other, but they are convertible.
+</p>
+
+<p>
+Similarly, Int is convertible to  Int#isNatural.
+</p>
+
+</div>
+<!-- SECTION [3699-3917] -->
+<a name="contract_erasure"></a><h2>Contract erasure</h2>
+<div class="level2">
+
+<p>
+ In order for the static type checker to work, it must be able to erase contract annotations and just look at the static type portions of the annotations. This is an obvious algorithm for the system described so far. Function types and class refinements can easily be erased.
+</p>
+
+</div>
+<!-- SECTION [3918-4223] -->
+<a name="contract_combinators"></a><h2>Contract combinators</h2>
+<div class="level2">
+
+<p>
+ It&rsquo;s also useful to use contract combinators like <code>and</code> and <code>or</code>. In this case, though, it&rsquo;s not as obvious how to do contract erasure. For this case, it might be useful only to allow <code>and</code> and <code>or</code> of non-function types, and to force the contract combinators to go within the refinement. I need a little more time to flesh this out.
+</p>
+
+</div>
+<!-- SECTION [4224-4600] -->
+<a name="blame"></a><h2>Blame</h2>
+<div class="level2">
+
+<p>
+ The distinction between contracts and vanilla assertions is that contracts indicate an agreement between parties, particularly for functions and methods: argument contracts are preconditions, i.e., requirements on the client, and return contracts are postconditions, i.e., requirements on the function/method implementation. A well-designed contract system can actually keep track of these responsibilities as the values flow through the program, and assign blame to the guilty party whenever a contract is violated.
+</p>
+
+<p>
+Our system should require these blame annotations. I&rsquo;ll work on ways of specifying this as precisely (hopefully formally) as possible.
+</p>
+
+</div>
+<!-- SECTION [4601-5273] -->
+<a name="granularity_of_blame"></a><h2>Granularity of blame</h2>
+<div class="level2">
+
+<p>
+ An important decision is the granularity of the parties involved in the blame assignment. Blame can be as specific as individual source expressions and as wide as modules. Contracts are most important for programming in the large, where you want to pinpoint individual modules in a large system. And contract checking incurs a serious performance hit. Therefore it usually behooves the designer to pick a level of granularity narrow enough to be helpful in narrowing down bugs, but wide enough not to degrade performance too badly.
+</p>
+
+<p>
+Furthermore, it&rsquo;s important to keep in mind that return type contracts prevent tail calls from exhibiting iterative control behavior, because they introduce an extra operation to perform on return. Thus, disabling contract checking at the intra-module level allows tail-recursive and mutually tail-recursive functions even when they are wrapped in return-type contracts, while possibly preventing inter-module tail calls.
+</p>
+
+<p>
+This also means that programmers who truly want iterative behavior even across module boundaries have to know not to put contracts on the return types of their exported functions and methods.
+</p>
+
+<p>
+We will need to decide whether we want blame assignment to be at the level of granularity of individual classes, or namespaces, or packages.
+</p>
+
+</div>
+<!-- SECTION [5274-6598] -->
+<a name="modes"></a><h2>Modes</h2>
+<div class="level2">
+
+<p>
+ Contracts should be available both in the strict mode and the standard mode (see <a href="doku.php%3Fid=proposals:strict_and_standard_modes.html" class="wikilink1" title="proposals:strict_and_standard_modes" onclick="return svchk()" onkeypress="return svchk()">strict and standard modes</a>). Perhaps the two modes can remain syntactically identical, with the type portion of the annotation translating to nothing more than an additional dynamic contract in the standard mode. This is worth discussing more.
+</p>
+
+</div>
+<!-- SECTION [6599-6946] -->
+<a name="dave_s_original_discussion"></a><h1>Dave's original discussion</h1>
+<div class="level1">
+
+<p>
+ Moved to <a href="doku.php%3Fid=proposals:discussion_about_contracts.html" class="wikilink1" title="proposals:discussion_about_contracts" onclick="return svchk()" onkeypress="return svchk()">discussion about contracts</a> 
+</p>
+
+</div>
+<!-- SECTION [6947-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/5/5e0086b4f912bebc180447f06009a218.xhtml used -->
+</body>
+</html>

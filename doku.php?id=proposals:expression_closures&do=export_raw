@@ -1,0 +1,98 @@
+(Also see the [[discussion:expression closures|discussion page]] page for this proposal.)
+
+====== Rationale ======
+
+Having a syntax for closures that have expression bodies could solve several problems:
+  * allows refactoring of code into closures without changing the meaning, where ''return'' makes this problematic for statements
+  * makes expression-based or functional style programming much more readable
+  * fits nicely into the language, by symmetry to the ''let'' expression form
+  * doesn't change the semantics of existing programs, by making previously illegal syntax legal
+
+====== Syntax ======
+
+We extend the syntax for function expressions to allow them to have expression bodies as opposed to just blocks. The body of such a function would not be allowed to begin with an open brace (as usual), and as we've been discussing with ''let'' and ''yield'', its body should be an ''AssignmentExpression'' as opposed to a ''CommaExpression'':
+
+<code ebnf>
+FunctionExpression ::= ...
+                    |  "function"            Arguments {la != "{"} AssignmentExpression
+                    |  "function" Identifier Arguments {la != "{"} AssignmentExpression
+</code>
+
+==== Examples ====
+
+<code javascript>
+function(x, y, z) x + y
+function() 7
+function(x)x
+function(a,b)(g(),h())
+foo(function(x)x,function(y)y,3) // three arguments to foo
+</code>
+
+...and just for fun:
+
+<code javascript>
+(function(f)(f(f)))(function(g)(g(g)))
+</code>
+
+
+==== Question about syntax ====
+
+Why not make the body of an expression closure a //ListExpression// as in //LetExpression// and //YieldExpression//, and make it a peer of those non-terminals. This would be more consistent and flexible. But then your last example would have to be bracketed as would an analogous ''let'' or ''yield'':
+
+<code>
+foo((function(x)x),(function(y)y),3) // three arguments to foo
+</code>
+
+As it is, the user might not know if they get three arguments or just one. With this change, he would get an error and be forced to parenthesize.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/09/27 16:11//
+
+That makes sense to me.  I think the use of AssignmentExpression was quasi-arbitrary, influenced by ongoing discussion of ''let'' and ''yield'' and our then-current thinking on those.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/09/28 00:25//
+
+I thought we had agreed that both ''let'' and ''yield'' would change to have ''AssignmentExpression'' bodies instead of ''ListExpression''...?
+
+I agree that we should be consistent across all three forms (expression ''let'', ''yield'', and expression ''function''). So in order to deal with the ambiguity of any of these three forms being followed by a comma, we have three basic options:
+  - Pick a precedence to resolve the ambiguity and hope people find it intuitive.
+  - Force parenthesization of ''let'', ''yield'', and expression-function expressions if they //are followed by// commas. I.e., specify their bodies as ''ListExpression''s.
+  - Force parenthesization of the bodies of ''let'', ''yield'', and expression-functions if they //contain// commas. I.e., specify their bodies as ''AssignmentExpression''s.
+Nobody likes option 1. Brendan originally suggested option 2, which means you can express:
+<code javascript>
+yield 1,2,3
+function() 1,2,3
+let (x=true) 1,2,3
+</code>
+without parenthesization, but you must parenthesize:
+<code javascript>
+f((yield 1),2,3)
+f((function() 1),2,3)
+f((let (x=true) 1),2,3)
+</code>
+With option 3, you must parenthesize:
+<code javascript>
+yield (1,2,3)
+function() (1,2,3)
+let (x=true) (1,2,3)
+</code>
+but you can now express:
+<code javascript>
+f(yield 1,2,3)
+f(function() 1,2,3)
+f(let (x=true) 1,2,3)
+</code>
+without parenthesization. I prefer option 3, because I expect it to be common for these expressions to occur as arguments to functions.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2006/09/28 21:08//
+
+We did agree at the f2f to make the bodies of these constructs //AssignmentExpression//, but I got cold feet. The ensuing dialog is posted at [[discussion:iterators and generators]]. Basically, we ended up with a modified version of Brendan's original proposal; //AssignmentExpression// with syntax errors when found in a non-//ListExpression// comma delimited list. Let us know if you agree with the reasoning there. The problem with your #3 is that a user still might not be clear about how many arguments are being passed to a function, for example.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/09/29 05:51//
+
+A common practice is to have a function which returns an object literal. If such a function is mechanically converted to this form, it might produce a syntax error, or worse, the object literal might be interpreted as a valid function body.
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2007/03/25 18:02//
+
+====== Semantics ======
+
+The meaning of <code javascript>function(x1, ..., xn) e</code> is defined to be equivalent to <code javascript>function(x1, ..., xn) { return e; }</code>

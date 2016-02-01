@@ -1,0 +1,663 @@
+====== The content on this page is OBSOLETE ======
+
+===== Semantics of Proxies =====
+
+| **This API is superseded by the newer [[harmony:proxies spec]].** |
+
+A proxy is a new language type, its internal properties having the following semantics (cfr. table 8 in ES5 spec):
+
+**behavior for both object proxies and function proxies:**
+
+%%[[Prototype]]%% : for object proxies: the ''proto'' argument of ''Proxy.create'' or ''null'' if none given. For function proxies: ''Function.prototype'' (can't be changed by fixing) (used by instanceof)
+
+%%[[Class]]%% : "Object" for object proxies, "Function" for function proxies (visible via Object.prototype.toString)
+
+%%[[Extensible]]%% : always returns 'true' until fixed (Object.isExtensible)
+
+%%[[DefineOwnProperty]]%% : reify as 'defineProperty' trap (Object.defineProperty)
+
+%%[[GetOwnProperty]]%% : reify as 'getOwnPropertyDescriptor' trap (Object.getOwnPropertyDescriptor)
+
+%%[[GetProperty]]%% : reify as 'getPropertyDescriptor' trap
+
+%%[[Get]]%% : reified as a 'get' trap.
+
+%%[[Put]]%% : reified as a 'set' trap. the return value of the trap indicates whether or not set succeeded. if (set failed && strict) throw TypeError;
+
+%%[[HasProperty]]%% : reify as 'has' trap
+
+%%[[Delete]]%% : reify as 'delete' trap. the return value of the trap indicates whether or not the delete succeeded. if (delete failed && strict) throw TypeError else return value of trap;
+
+%%[[CanPut]]%% : always returns true
+
+%%[[DefaultValue]]%% : used for "valueof", same semantics as default %%[[DefaultValue]]%% (8.12.8)
+
+**additional behavior for function proxies:**
+
+%%[[Call]]%% : reify as 'callTrap' passed in createFunction factory
+
+%%[[Construct]]%% : reify as 'constructTrap' passed in createFunction factory, or throw TypeError if undefined
+
+%%[[HasInstance]]%% : used for "instanceof", same semantics as default %%[[HasInstance]]%% (15.3.5.3)
+
+
+
+
+
+
+==== Proxy ====
+
+** Proxy.create (O, Proto) **
+
+When the ''create'' function is called, the following steps are taken:
+
+  - If Type(O) is not Object, throw a TypeError exception
+  - If the argument Proto is present and not undefined,
+    * If Type(Proto) is not Object or Null, throw a TypeError exception
+  - Else, let Proto be the null value
+  - Let p be a new trapping Proxy object
+  - Set the %%[[Handler]]%% internal property of p to O
+  - Set the %%[[Class]]%% internal property of p to "Object"
+  - Set the %%[[Prototype]]%% internal property of p to Proto
+  - Set the %%[[Extensible]]%% internal property of p to true
+  - Return p
+
+**Note:** A Proxy object is an ECMAScript object with built-in methods as specified in the following section.
+
+** Proxy.createFunction (O, Call, Construct) **
+
+When the ''createFunction'' function is called, the following steps are taken:
+
+  - If Type(O) is not Object, throw a TypeError exception
+  - If IsCallable(Call) is false, throw a TypeError exception
+  - If the argument Construct is present and not undefined
+    * If IsCallable(Construct) is false, throw a TypeError exception
+  - Let p be a new trapping FunctionProxy object
+  - Set the %%[[Handler]]%% internal property of p to O
+  - Set the %%[[Class]]%% internal property of p to "Function"
+  - Set the %%[[Prototype]]%% internal property of p to the standard built-in Function prototype object as specified in 15.3.3.1.
+  - Set the %%[[CallHandler]]%% internal property of p to Call
+  - Set the %%[[ConstructHandler]]%% internal property of p to Construct
+  - Set the %%[[Extensible]]%% internal property of p to true
+  - Return p
+
+**Note:** A FunctionProxy object is an ECMAScript object with built-in methods as specified in the following two sections.
+
+==== Detailed semantics of behavior for object and function proxies ====
+
+**%%[[Prototype]]%%**
+
+For object proxies: if the ''proto'' argument passed to Proxy.create is ''undefined'', then ''null'' otherwise ''proto''
+
+For function proxies: ''Function.prototype''
+
+Upon fixing the proxy, the fixed proxy's %%[[Prototype]]%% remains unchanged.
+
+**%%[[Class]]%%**
+
+For object proxies: "Object"
+For function proxies: "Function"
+
+**%%[[Extensible]]%%** : 'true' for trapping proxies, set to 'false' when the proxy is fixed.
+
+**%%[[DefineOwnProperty]]%% (P, Desc, Throw)**
+
+When the %%[[DefineOwnProperty]]%% internal method of a trapping proxy O is called with property name P, property descriptor Desc and Boolean flag Throw, the following steps are taken:
+
+  - Let descObj be FromGenericPropertyDescriptor(Desc)
+  - Call TrapDefineOwnProperty(O, P, descObj, Throw)
+  - Return true
+
+**TrapDefineOwnProperty (Proxy, P, DescObj, Throw)**
+
+When the abstract operation TrapDefineOwnProperty is called with a trapping proxy Proxy, a property name P, an Object DescObj and a Boolean flag Throw, the following steps are taken:
+
+  - Let handler be the value of the %%[[Handler]]%% internal property of Proxy.
+  - Let defineProperty be the result of calling the %%[[Get]]%% internal method of handler with argument "defineProperty".
+  - If defineProperty is undefined, throw a TypeError exception.
+  - If IsCallable(defineProperty) is false, throw a TypeError exception.
+  - Return the result of calling the %%[[Call]]%% internal method of defineProperty providing handler as the this value, P as the first argument and DescObj as the second argument.
+
+Notes:
+  * The return value of ''TrapDefineOwnProperty'', and consequently that of the ''defineProperty'' trap, is ignored. ''Object.defineProperty'', which calls %%[[DefineOwnProperty]]%% always return the object on which the property is defined (in this case the proxy). If the handler wants to indicate that defining the property failed, it should throw a ''TypeError''.
+  * It is impossible to define properties on a trapping proxy itself. When the proxy becomes fixed, its %%[[DefineOwnProperty]]%% method implementation is changed to the default implementation (8.12.9)
+  * The ''Object.defineProperty'' built-in directly calls the ''TrapDefineOwnProperty'' operation. This is to circumvent the restriction of %%[[DefineOwnProperty]]%% which requires its ''Desc'' argument to be an internal property descriptor. ''Object.defineProperty'' can pass property descriptor objects that contain additional, non-standard attributes. That is why ''TrapDefineOwnProperty'' expects a property descriptor Object, rather than an internal property descriptor.
+
+**%%[[GetOwnProperty]]%% (P)**
+
+When the %%[[GetOwnProperty]]%% internal method of a trapping proxy O is called with property name P, the following steps are taken:
+
+  - Let descriptor be the result of calling TrapGetOwnProperty(O, P)
+  - If descriptor is undefined, return undefined
+  - Let desc be ToCompletePropertyDescriptor(descriptor)
+  - If %%desc.[[Configurable]]%% is false, throw a TypeError Exception.
+  - Return desc
+
+Notes:
+  * when the proxy becomes fixed, its %%[[GetOwnProperty]]%% method implementation is changed to the default implementation (8.12.1)
+  * The built-in ''Object.getOwnPropertyDescriptor'' invokes the ''TrapGetOwnProperty'' operation directly, to be able to normalize the returned descriptor, rather than to turn it into an internal property descriptor.
+  * step 4 is controversial, see the [[strawman:fixed_properties|fixed properties]] strawman.
+
+**TrapGetOwnProperty (Proxy, P)**
+
+When the abstract operation TrapGetOwnProperty is called with a trapping proxy Proxy and a property name P, the following steps are taken:
+
+  - Let handler be the value of the %%[[Handler]]%% internal property of Proxy.
+  - Let getOwnProperty be the result of calling the %%[[Get]]%% internal method of handler with argument "getOwnPropertyDescriptor".
+  - If getOwnProperty is undefined, throw a TypeError exception.
+  - If IsCallable(getOwnProperty) is false, throw a TypeError exception.
+  - Return the result of calling the %%[[Call]]%% internal method of getOwnProperty providing handler as the this value and P as the first argument.
+
+**%%[[GetProperty]]%% (P)**
+
+When the %%[[GetProperty]]%% internal method of a trapping proxy O is called with property name P, the following steps are taken:
+
+  - Let descriptor be the result of calling TrapGetProperty(O, P)
+  - If descriptor is undefined, return undefined
+  - Let desc be ToCompletePropertyDescriptor(descriptor)
+  - If %%desc.[[Configurable]]%% is false, throw a TypeError Exception.
+  - Return desc
+
+Notes:
+  * When the proxy becomes fixed, its %%[[GetProperty]]%% method implementation is changed to the default implementation (8.12.2)
+  * The built-in ''Object.getPropertyDescriptor'' invokes the ''TrapGetProperty'' operation directly, to be able to normalize the returned descriptor, rather than to turn it into an internal property descriptor.
+  * step 4 is controversial, see the [[strawman:fixed_properties|fixed properties]] strawman.
+
+**TrapGetProperty (Proxy, P)**
+
+When the abstract operation TrapGetProperty is called with a trapping proxy Proxy and a property name P, the following steps are taken:
+
+  - Let handler be the value of the %%[[Handler]]%% internal property of Proxy.
+  - Let getProperty be the result of calling the %%[[Get]]%% internal method of handler with argument "getPropertyDescriptor".
+  - If getProperty is undefined, throw a TypeError exception.
+  - If IsCallable(getProperty) is false, throw a TypeError exception.
+  - Return the result of calling the %%[[Call]]%% internal method of getProperty providing handler as the this value and P as the first argument.
+
+**%%[[Get]]%% (P)**
+
+When the %%[[Get]]%% internal method of a trapping proxy O is called with property name P, the following steps are taken:
+  - Let handler be the value of the %%[[Handler]]%% internal property of O.
+  - Let get be the result of calling the %%[[Get]]%% internal method of handler with argument "get".
+  - If get is undefined, return the result of calling %%Object.[[Get]](P)%% on O.
+  - If IsCallable(get) is false, throw a TypeError exception.
+  - Return the result of calling the %%[[Call]]%% internal method of get providing handler as the this value, O as the first argument and P as the second argument.
+
+Notes:
+  * ''get'' is a derived trap. If missing, the [[harmony:proxies#trap_defaults|default behavior]] is executed. %%Object.[[Get]]%% refers to the default implementation for Objects, ES5 8.12.3. The intent is that the call to %%[[GetProperty]]%% in that algorithm refers to the implementation for Proxies, and calls the handler's "getPropertyDescriptor" trap.
+
+**%%[[Put]]%% (P, V, Throw)**
+
+When the %%[[Put]]%% internal method of a trapping proxy O is called with property name P, value V and Boolean flag Throw the following steps are taken:
+
+  - Let handler be the value of the %%[[Handler]]%% internal property of O.
+  - Let set be the result of calling the %%[[Get]]%% internal method of handler with argument "set".
+  - If set is undefined,
+    * a. Call DefaultPut(O,P,V,Throw).
+    * b. Return.
+  - If IsCallable(set) is false, throw a TypeError exception.
+  - If the result of calling the %%[[Call]]%% internal method of set providing handler as the this value, O as the first argument, P as the second argument and V as the third argument is false
+    * a. Reject
+  - Return.
+
+Notes:
+  * ''set'' is a derived trap. If missing, the [[harmony:proxies#trap_defaults|default behavior]] is executed. The below ''DefaultPut'' algorithm mimics the default %%[[Put]]%% algorithm for Objects (ES5 8.12.5), but does not separately call %%[[CanPut]]%% as this would lead to redundant calls to the "getOwnPropertyDescriptor" and "getPropertyDescriptor" traps.
+
+**DefaultPut(O,P,V,Throw)**
+
+When the ''DefaultPut'' abstract operation is called with a trapping proxy O, property name P, value V and Boolean flag Throw the following steps are taken:
+
+  - Let ownDesc be the result of calling the %%[[GetOwnProperty]]%% internal method of O with argument P.
+  - If ownDesc is not undefined and IsDataDescriptor(ownDesc) is true, then
+    * a. If ownDesc.%%[[Writable]]%% is false, reject
+    * b. Let valueDesc be the Property Descriptor %%{[[Value]]: V}%%.
+    * c. Call the %%[[DefineOwnProperty]]%% internal method of O passing P, valueDesc, and Throw as arguments.
+    * d. Return.
+  - If ownDesc is not undefined, then it must be an accessor descriptor
+    * a. If desc.%%[[Set]]%% is undefined, reject
+    * b. Let setter be desc.%%[[Set]]%% which cannot be undefined.
+    * c. Call the %%[[Call]]%% internal method of setter providing O as the this value and providing V as the sole argument.
+    * d. Return.
+  - Let desc be the result of calling the %%[[GetProperty]]%% internal method of O with argument P. This may be either an inherited accessor property descriptor or an inherited data property descriptor.
+  - If desc is not undefined and IsDataDescriptor(desc) is true, then
+    * a. If desc.%%[[Writable]]%% is false, reject
+    * b. Let valueDesc be the Property Descriptor %%{[[Value]]: V}%%.
+    * c. Call the %%[[DefineOwnProperty]]%% internal method of O passing P, valueDesc, and Throw as arguments.
+    * d. Return.
+  - If desc is not undefined, then it must be an accessor descriptor
+    * a. If desc.%%[[Set]]%% is undefined, reject
+    * b. Let setter be desc.%%[[Set]]%% which cannot be undefined.
+    * c. Call the %%[[Call]]%% internal method of setter providing O as the this value and providing V as the sole argument.
+    * d. Return.
+  - Else, create a named data property named P on object O as follows
+    * a. Let newDesc be the Property Descriptor %%{[[Value]]: V, [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: true}%%.
+    * b. Call the %%[[DefineOwnProperty]]%% internal method of O passing P, newDesc, and Throw as arguments.
+  - Return.
+
+Note: the intent is that the calls to %%[[GetOwnProperty]]%%, %%[[GetProperty]]%% and %%[[DefineOwnProperty]]%% in the above algorithm refer to the implementation for Proxies, and may call the handler's "getOwnPropertyDescriptor", "getPropertyDescriptor" and "defineProperty" traps.
+
+**%%[[HasProperty]]%% (P)**
+
+When the %%[[HasProperty]]%% internal method of a trapping proxy O is called with property name P the following steps are taken:
+
+  - Let handler be the value of the %%[[Handler]]%% internal property of O.
+  - Let has be the result of calling the %%[[Get]]%% internal method of handler with argument "has".
+  - If has is undefined, return the result of calling %%Object.[[HasProperty]](P)%% on O.
+  - If IsCallable(has) is false, throw a TypeError exception.
+  - Let result be the result of calling the %%[[Call]]%% internal method of has providing handler as the this value, O as the first argument and P as the second argument.
+  - Return ToBoolean(result)
+
+Notes:
+  * ''has'' is a derived trap. If missing, the [[harmony:proxies#trap_defaults|default behavior]] is executed. %%Object.[[HasProperty]]%% refers to the default implementation for Objects, ES5 8.12.6. The intent is that the call to %%[[GetProperty]]%% in that algorithm refers to the implementation for Proxies, and calls the handler's "getPropertyDescriptor" trap.
+
+**%%[[Delete]]%% (P, Throw)**
+
+When the %%[[Delete]]%% internal method of a trapping proxy O is called with property name P and the Boolean flag Throw the following steps are taken:
+
+  - Let handler be the value of the %%[[Handler]]%% internal property of O.
+  - Let delete be the result of calling the %%[[Get]]%% internal method of handler with argument "delete".
+  - If delete is undefined, throw a TypeError exception.
+  - If IsCallable(delete) is false, throw a TypeError exception.
+  - Let success be the result of calling the %%[[Call]]%% internal method of delete providing handler as the this value and P as the first argument
+  - If ToBoolean(success) is false
+    * a. If Throw then throw a TypeError exception, else return false.
+  - Return true.
+
+**%%[[CanPut]]%% (P)**
+
+When the %%[[CanPut]]%% internal method of a trapping proxy O is called with property name P the following steps are taken:
+
+  - Return true.
+
+Note: this internal method should actually never be invoked.
+Why is %%[[CanPut]]%% not applicable on proxies? It is used in:
+  - the definition of %%[[Put]]%% built-in method for Objects. Since %%[[Put]]%% has different semantics for proxies, %%[[CanPut]]%% will not be called on proxies.
+  - the definition of PutValue(Ref, Value) when Ref has a primitive base. Since proxies are not primitive, %%[[CanPut]]%% will not be called on proxies.
+
+Note: we should not make %%[[CanPut]]%% return 'false', as the spec dictates that %%[[Put]]%% operations should not be allowed on any property names for which %%[[CanPut]]%% returns false.
+
+**%%[[DefaultValue]]%% (hint)**
+
+The implementation of %%[[DefaultValue]]%% for a proxy is the same as the default implementation of %%[[DefaultValue]]%% for Objects (8.12.8)
+
+
+
+==== Detailed semantics of additional behavior for function proxies ====
+
+**%%[[Call]]%% (thisValue, listOfArguments)**
+
+When the %%[[Call]]%% internal method of a function proxy F is called with a this value and a list of arguments, the following steps are taken:
+
+  - Let callhandler be the value of the %%[[CallHandler]]%% internal property of F.
+  - If IsCallable(callhandler) is false, throw a TypeError exception.
+  - Let argArray be listOfArguments converted into an Array.
+  - Return the result of calling the %%[[Call]]%% internal method of callhandler providing undefined as the this value, thisValue as the first argument and argArray as the second argument.
+
+Note: we could also perform step 2 in the ''Proxy.createFunction'' method.
+
+**%%[[Construct]]%% (listOfArguments)**
+
+When the %%[[Construct]]%% internal method of a function proxy F is called with a list of arguments the following steps are taken:
+
+  - Let constructhandler be the value of the %%[[ConstructHandler]]%% internal property of F.
+  - If constructhandler is undefined
+    * Let callhandler be the value of the %%[[CallHandler]]%% internal property of F.
+    * If callhandler doesn't have a %%[[Construct]]%% internal method, throw a TypeError exception.
+    * Let result be the result of calling the %%[[Construct]]%% internal method of callhandler providing the argument list passed to %%[[Construct]]%% as //args//.
+    * return result.
+  - If IsCallable(constructhandler) is false, throw a TypeError exception.
+  - Let argArray be listOfArguments converted into an Array.
+  - Let result be the result of calling the %%[[Call]]%% internal method of constructhandler providing undefined as the this value and argArray as the first argument.
+  - return result.
+
+**%%[[HasInstance]]%%**
+
+Same semantics as default %%[[HasInstance]]%% (15.3.5.3)
+
+** 15.3.4.2 Function.prototype.toString ()**
+
+When called on a function proxy, returns the result of applying the built-in ''Function.prototype.toString'' on the function proxy's call trap.
+
+
+==== Modifications to Object.seal, Object.preventExtensions, Object.freeze ====
+
+Informally:
+  * When fixing a proxy, all of its object internal methods are overridden with the default internal methods from section 8.6.2 and its %%[[Extensible]]%% property is set to false.
+  * When fixing a function proxy, %%[[Call]]%% and %%[[Construct]]%% remain as is.
+
+**15.2.3.9 Object.freeze ( O )**
+
+When the **freeze** function is called with argument O, the following steps are taken:
+
+  - If Type(O) is not Object throw a TypeError exception.
+  - If O is a trapping proxy
+    * a. Let handler be the value of the %%[[Handler]]%% internal property of O.
+    * b. Let fix be the result of calling the %%[[Get]]%% internal method of handler with argument "fix".
+    * c. If fix is undefined, throw a TypeError exception.
+    * d. If IsCallable(fix) is false, throw a TypeError exception.
+    * e. Let props be the result of calling the %%[[Call]]%% internal method of fix providing handler as the this value and an empty argument list.
+    * f. If props is undefined
+      * i. throw TypeError
+    * g. set the internal %%[[Class]]%% property of O to "Object" if O is an object proxy or to "Function" otherwise
+    * h. delete the internal %%[[Handler]]%% property of O (enables handler to be garbage-collected)
+    * i. set the %%[[Get]]%%, %%[[Put]]%%, %%[[HasProperty]]%%, %%[[Delete]]%%, %%[[CanPut]]%%, %%[[DefineOwnProperty]]%%, %%[[GetOwnProperty]]%% and %%[[GetProperty]]%% internal methods of O to their default implementations
+    * j. perform Object.defineProperties(O, props) (according to 15.2.3.7)
+    * k. If O was a function proxy, and "length" or "prototype" are not defined, initialize these properties according to the corresponding properties of the function proxy's call trap.
+  - Perform the regular Object.freeze steps according to 15.2.3.9, starting from step 2.
+
+The same prologue is inserted in Object.seal (15.2.3.8) and Object.preventExtensions (15.2.3.10) except that in step 3 the appropriate method is invoked.
+
+**Note:** recursive fixing should be disallowed. If ''fix()'' is called on a proxy handler while the same proxy is already being fixed (an earlier call to fix() is already on the stack), a ''TypeError'' should be thrown. This is not (yet) reflected in the above semantics.
+
+==== Modifications to Object.isSealed, Object.isFrozen ====
+
+Informally:
+  * When one of these primitives is invoked on a trapping proxy, return false, otherwise perform the default behavior.
+
+**15.2.3.12 Object.isFrozen ( O )**
+
+When the **isFrozen** function is called with argument O, the following steps are taken:
+
+  - If Type(O) is not Object throw a TypeError exception.
+  - If O is a trapping Proxy
+    * a. return false.
+  - Otherwise, perform the regular Object.isFrozen steps according to 15.2.3.12, starting from step 2.
+
+The same prologue is inserted in Object.isSealed (15.2.3.11) except that in step 3 the appropriate method is invoked.
+
+Object.isExtensible (15.2.3.13) need not be changed, as the %%[[Extensible]]%% attribute for trapping proxies is ''true'' and for fixed proxies is ''false''.
+
+==== Modifications to other Object built-ins ====
+
+**15.2.3.3 Object.getOwnPropertyDescriptor ( O, P )**
+
+When the **getOwnPropertyDescriptor** function is called, the following steps are taken:
+
+  - If Type(O) is not Object throw a TypeError exception.
+  - Let name be ToString(P)
+  - If O is a trapping proxy
+    * a. Let descObj be the result of calling TrapGetOwnProperty(O, P)
+    * b. Let normalizedDesc be the result of calling NormalizeAndCompletePropertyDescriptor(descObj)
+    * c. Return normalizedDesc
+  - Let desc be the result of calling the %%[[GetOwnProperty]]%% internal method of O with argument name.
+  - Return the result of calling FromPropertyDescriptor(desc) (8.10.4).
+
+** Object.getPropertyDescriptor ( O, P )**
+
+Note: this built-in does not exist in ES5.
+
+When the **getPropertyDescriptor** function is called, the following steps are taken:
+
+  - If Type(O) is not Object throw a TypeError exception.
+  - Let name be ToString(P)
+  - If O is a trapping proxy
+    * a. Let descObj be the result of calling TrapGetProperty(O, P)
+    * b. Let normalizedDesc be the result of calling NormalizeAndCompletePropertyDescriptor(descObj)
+    * c. Return normalizedDesc
+  - Let desc be the result of calling the %%[[GetProperty]]%% internal method of O with argument name.
+  - Return the result of calling FromPropertyDescriptor(desc) (8.10.4).
+
+**15.2.3.4 Object.getOwnPropertyNames ( O )**
+
+When the **getOwnPropertyNames** function is called, the following steps are taken:
+
+  - If Type(O) is not Object throw a TypeError exception.
+  - If O is a trapping proxy
+    * a. Let names be the result of calling TrapGetOwnPropertyNames(O)
+    * b. return ToStringArray(names).
+  - Perform the regular Object.getOwnPropertyNames steps according to 15.2.3.4, starting from step 2.
+
+**TrapGetOwnPropertyNames(O)**
+
+When the TrapGetOwnPropertyNames abstract operation is called on a trapping proxy O, the following steps are taken:
+
+  - Let handler be the value of the %%[[Handler]]%% internal property of O.
+  - Let getOwnPropertyNames be the result of calling the %%[[Get]]%% internal method of handler with argument "getOwnPropertyNames".
+  - If getOwnPropertyNames is undefined, throw a TypeError exception.
+  - If IsCallable(getOwnPropertyNames) is false, throw a TypeError exception.
+  - Return the result of calling the %%[[Call]]%% internal method of getOwnPropertyNames providing handler as the this value and an empty argument list.
+
+**Object.getPropertyNames ( O )**
+
+Note: this built-in does not exist in ES5.
+
+When the **getPropertyNames** function is called, the following steps are taken:
+
+  - If Type(O) is not Object throw a TypeError exception.
+  - If O is a trapping proxy
+    * a. Let names be the result of calling TrapGetPropertyNames(O)
+    * b. return ToStringArray(names).
+  - Let names be the result of calling Object.getOwnPropertyNames(O)
+  - Let proto be O.%%[[Prototype]]%%
+  - while proto is not null
+    * a. Let newnames be the result of calling Object.getOwnpropertyNames(proto)
+    * b. Set props to the result of calling Array.prototype.concat, passing names as the this value and newnames as the sole argument
+    * c. Set proto to proto.%%[[Prototype]]%%
+  - Remove any duplicate property names from names
+  - Return names
+
+**TrapGetPropertyNames(O)**
+
+When the TrapGetPropertyNames abstract operation is called on a trapping proxy O, the following steps are taken:
+
+  - Let handler be the value of the %%[[Handler]]%% internal property of O.
+  - Let getPropertyNames be the result of calling the %%[[Get]]%% internal method of handler with argument "getPropertyNames".
+  - If getPropertyNames is undefined, throw a TypeError exception.
+  - If IsCallable(getPropertyNames) is false, throw a TypeError exception.
+  - Return the result of calling the %%[[Call]]%% internal method of getPropertyNames providing handler as the this value and an empty argument list.
+
+**15.2.3.6 Object.defineProperty ( O, P, Attributes )**
+
+When the **defineProperty** function is called, the following steps are taken:
+
+  - If Type(O) is not Object throw a TypeError exception.
+  - Let name be ToString(P).
+  - If O is a trapping proxy
+    * a. Let descObj be the result of NormalizePropertyDescriptor(Attributes)
+    * b. Call TrapDefineOwnProperty(O, name, descObj, true)
+    * c. Return O.
+  - Let desc be the result of ToPropertyDescriptor(Attributes)
+  - Call the %%[[DefineOwnProperty]]%% internal method of O with arguments name, desc, and true.
+  - Return O.
+
+**15.2.3.7 Object.defineProperties ( O, Properties )**
+
+Replace step 6.c. by:
+  * 6.c. Call Object.defineProperty(O, P, desc), using the above definition of Object.defineProperty
+
+Notes:
+  * This change is necessary so that calling ''Object.defineProperties'' on a trapping proxy will correctly pass on non-standard property descriptor attributes.
+
+**15.2.3.14 Object.keys ( O )**
+
+When the **keys** function is called with argument O, the following steps are taken:
+
+  - If Type(O) is not Object throw a TypeError exception.
+  - If O is a trapping proxy
+    * a. Let handler be the value of the %%[[Handler]]%% internal property of O.
+    * b. Let keys be the result of calling the %%[[Get]]%% internal method of handler with argument "keys".
+    * c. If keys is undefined,
+      * i. Let trapResult be the result of calling TrapGetOwnPropertyNames(O)
+      * ii. Let names be the result of calling FilterEnumerableOwn(O, trapResult)
+      * iii. Return names
+    * d. If IsCallable(keys) is false, throw a TypeError exception.
+    * e. Let names be the result of calling the %%[[Call]]%% internal method of keys providing handler as the this value and an empty argument list.
+    * f. Return ToStringArray(names).
+  - Perform the regular Object.keys steps according to 15.2.3.14, starting from step 2.
+
+Notes:
+  * ''keys'' is a derived trap. If missing, the [[harmony:proxies#trap_defaults|default behavior]] is performed by consulting the handler's "getOwnPropertyNames" and "getOwnPropertyDescriptor" traps.
+
+**15.2.4.5 Object.prototype.hasOwnProperty ( V )**
+
+When the **hasOwnProperty** method is called with argument V, the following steps are taken:
+  - Let P be ToString(V).
+  - Let O be the result of calling ToObject passing the this value as the argument.
+  - If O is a trapping proxy
+    * a. Let handler be the value of the %%[[Handler]]%% internal property of O.
+    * b. Let hasOwn be the result of calling the %%[[Get]]%% internal method of handler with argument "hasOwn".
+    * c. If hasOwn is not undefined,
+      * i. If IsCallable(hasOwn) is false, throw a TypeError exception.
+      * ii. Let result be the result of calling the %%[[Call]]%% internal method of hasOwn providing handler as the this value and P as the single argument.
+      * iii. Return ToBoolean(result).
+  - Perform the regular Object.prototype.hasOwnProperty steps according to 15.2.4.5, starting from step 3.
+
+Notes:
+  * ''hasOwn'' is a derived trap. If missing, the [[harmony:proxies#trap_defaults|default behavior]] is executed. In this case, the regular ''Object.prototype.hasOwnProperty'' algorithm (ES5 15.2.4.5) is executed, and should trigger the handler's "getOwnPropertyDescriptor" trap.
+
+==== Modifications to the evaluation of expressions and statements ====
+
+**12.6.4 The for-in Statement**
+
+  * 1. through 5. unmodified
+  * 6. If obj is a trapping proxy
+    * a. Let handler be the value of the %%[[Handler]]%% internal property of obj.
+    * b. Let enumerate be the result of calling the %%[[Get]]%% internal method of handler with argument "enumerate".
+    * c. If enumerate is undefined
+      * i. Let trapResult be the result of calling TrapGetPropertyNames(O)
+      * ii. Let propertyNames be the result of calling FilterEnumerable(O, trapResult)
+    * d. Else, enumerate is defined
+      * i. If IsCallable(enumerate) is false, throw a TypeError exception.
+      * ii. Let names be the result of calling the %%[[Call]]%% internal method of enumerate providing handler as the this value and an empty argument list.
+      * iii. Let propertyNames be ToStringArray(names).
+    * g. For each P in propertyNames
+      * i. Perform steps 6.b to 6.g.i from the original algorithm.
+    * h. Return (normal, V, empty).
+  * Perform the original step 6 in the algorithm.
+
+Notes:
+  * If ''for-in'' encounters a non-proxy object ''obj'' whose %%[[Prototype]]%% is a Proxy object ''p'', then the original for-in algorithm must be modified such that, after all of ''obj'''s properties have been enumerated, the "enumerate" trap of ''p'' is invoked, returning an array of properties ''props''. The for-in algorithm should then continue enumerating properties based on ''props'', with already enumerated properties filtered out. After ''p'''s properties have been enumerated, the for-in algorithm should not attempt to enumerate the properties of ''p'''s prototype.
+  * ''enumerate'' is a derived trap. If missing, the [[harmony:proxies#trap_defaults|default behavior]] is executed by consulting the handler's "getPropertyNames" and "getPropertyDescriptor" traps.
+
+==== Utilities ====
+
+ToStringArray is called to make sure that the result of traps such as ''getOwnPropertyNames'' is fresh and well-formed.
+
+** ToStringArray ( O )**
+  - If Type(O) is not Object, throw a TypeError exception
+  - Let len be the result of calling the %%[[Get]]%% internal method of O with argument "length"
+  - Let n be ToUint32(len)
+  - Let array be the result of creating a new Object as if by the expression new Array(n) where Array is the standard built-in constructor with that name.
+  - Let index be 0.
+  - Repeat, while index < n
+    * a. Let nextElement be the result of calling the %%[[Get]]%% internal method of O with argument ToString(index).
+    * b. Let s be ToString(nextElement)
+    * c. If s is the same as any previous s obtained in this loop, throw a TypeError exception.
+    * d. Call the %%[[DefineOwnProperty]]%% internal method of array with arguments ToString(index), the PropertyDescriptor {%%[[Value]]%%: s, %%[[Writable]]%%: true, %%[[Enumerable]]%%: true, %%[[Configurable]]%%: true}, and true.
+    * e. Increment index by 1.
+  - Return array.
+
+ToCompletePropertyDescriptor creates a fresh, complete, internal property descriptor.
+
+** ToCompletePropertyDescriptor ( Obj ) **
+  - If Type(Obj) is not Object, throw a TypeError exception
+  - Let desc be the result of calling ToPropertyDescriptor(Obj)
+  - If IsGenericDescriptor(desc) or IsDataDescriptor(desc) is true, then
+    * a. If the value of an attribute field of desc, considered as a data descriptor, is absent, set it to its default value.
+  - Else if the value of an attribute field of desc, considered as an accessor descriptor, is absent, set it to its default value.
+  - Return desc.
+
+FromGenericPropertyDescriptor creates a new ECMAScript Object based on a generic (potentially incomplete) internal property descriptor.
+
+** FromGenericPropertyDescriptor ( Desc ) **
+  - If Desc is undefined, return undefined
+  - Let obj be the result of creating a new object as if by the expression new Object() where Object is the standard built-in constructor with that name.
+  - If Desc has a %%[[Value]]%% field,
+    * a. Call the %%[[DefineOwnProperty]]%% internal method of obj with arguments "value", Property Descriptor {%%[[Value]]%%: Desc.%%[[Value]]%%, %%[[Writable]]%%: true, %%[[Enumerable]]%%: true, %%[[Configurable]]%%: true}, and true.
+  - If Desc has a %%[[Writable]]%% field,
+    * a. Call the %%[[DefineOwnProperty]]%% internal method of obj with arguments "writable", Property Descriptor {%%[[Value]]%%: Desc.%%[[Writable]]%%, %%[[Writable]]%%: true, %%[[Enumerable]]%%: true, %%[[Configurable]]%%: true}, and true.
+  - If Desc has a %%[[Get]]%% field,
+    * a. Call the %%[[DefineOwnProperty]]%% internal method of obj with arguments "get", Property Descriptor {%%[[Value]]%%: Desc.%%[[Get]]%%, %%[[Writable]]%%: true, %%[[Enumerable]]%%: true, %%[[Configurable]]%%: true}, and true.
+  - If Desc has a %%[[Set]]%% field,
+    * a. Call the %%[[DefineOwnProperty]]%% internal method of obj with arguments "set", Property Descriptor {%%[[Value]]%%: Desc.%%[[Set]]%%, %%[[Writable]]%%: true, %%[[Enumerable]]%%: true, %%[[Configurable]]%%: true}, and true.
+  - If Desc has a %%[[Enumerable]]%% field,
+    * a. Call the %%[[DefineOwnProperty]]%% internal method of obj with arguments "enumerable", Property Descriptor {%%[[Value]]%%: Desc.%%[[Enumerable]]%%, %%[[Writable]]%%: true, %%[[Enumerable]]%%: true, %%[[Configurable]]%%: true}, and true.
+  - If Desc has a %%[[Configurable]]%% field,
+    * a. Call the %%[[DefineOwnProperty]]%% internal method of obj with arguments "configurable", Property Descriptor {%%[[Value]]%%: Desc.%%[[Configurable]]%%, %%[[Writable]]%%: true, %%[[Enumerable]]%%: true, %%[[Configurable]]%%: true}, and true.
+  - Return obj
+
+** NormalizePropertyDescriptor ( Attributes ) **
+
+When the abstract operation NormalizePropertyDescriptor is called with object Attributes, the following steps are taken:
+
+  - If Type(Attributes) is not Object throw a TypeError exception.
+  - Let desc be the result of calling ToPropertyDescriptor(Attributes)
+  - Let descObj be the result of calling FromGenericPropertyDescriptor(desc)
+  - For each enumerable property name N in Attributes that is not a standard property descriptor attribute name,
+    * a. Let attr be the result of calling the %%[[Get]]%% internal method of Attributes with N.
+    * b. Call the %%[[DefineOwnProperty]]%% internal method of descObj with arguments N, the Property Descriptor {%%[[Value]]%%: attr, %%[[Writable]]%%:true, %%[[Enumerable]]%%:true, %%[[Configurable]]%%:true}, and true.
+  - Return descObj.
+
+Notes:
+  * The standard property descriptor attribute names are ''"value"'', ''"writable"'', ''"get"'', ''"set"'', ''"enumerable"'' and ''"configurable"''.
+  * step 4 is determined as if by performing a for-in loop over Attributes. If Attributes is a Proxy, this will trigger that Proxy's "enumerate" trap.
+  * Any enumerable own and inherited properties of Attributes, whose name is non-standard, are treated as "custom" attributes. This is consistent with ''ToPropertyDescriptor'''s use of %%[[HasProperty]]%% and %%[[Get]]%% to determine the standard attributes (Section 8.10.5).
+  * Custom attributes are defined as own enumerable, configurable, writable data properties on the new descriptor object. This is consistent with ''FromPropertyDescriptor'''s definition of the standard attributes (Section 8.10.4)
+
+** NormalizeAndCompletePropertyDescriptor ( Attributes ) **
+
+When the abstract operation NormalizeAndCompletePropertyDescriptor is called with object Attributes, the following steps are taken:
+
+  - If Attributes is undefined, return undefined
+  - If Type(Attributes) is not Object throw a TypeError exception.
+  - Let desc be the result of calling ToCompletePropertyDescriptor(Attributes)
+  - Let descObj be the result of calling FromPropertyDescriptor(desc)
+  - For each enumerable property name N in Attributes that is not a standard property descriptor attribute name,
+    * a. Let attr be the result of calling the %%[[Get]]%% internal method of Attributes with N.
+    * b. Call the %%[[DefineOwnProperty]]%% internal method of descObj with arguments N, the Property Descriptor {%%[[Value]]%%: attr, %%[[Writable]]%%:true, %%[[Enumerable]]%%:true, %%[[Configurable]]%%:true}, and true.
+  - Return descObj.
+
+**FilterEnumerableOwn ( P, V )**
+
+When the FilterEnumerableOwn abstract operation is called on a trapping proxy P with a value V, the following steps are taken:
+
+  - Let O be the result of calling ToObject(V)
+  - Let lenValue be the result of calling the %%[[Get]]%% internal method of O with the argument "length".
+  - Let len be ToUint32(lenValue).
+  - Let A be a new array created as if by the expression new Array() where Array is the standard built-in constructor with that name.
+  - Let k be 0.
+  - Let to be 0.
+  - Repeat, while k < len
+    * a. Let Pk be ToString(k).
+    * b. Let kPresent be the result of calling the %%[[HasProperty]]%% internal method of O with argument Pk.
+    * c. If kPresent is true, then
+      * i. Let kValue be the result of calling the %%[[Get]]%% internal method of O with argument Pk.
+      * ii. Let name be ToString(kValue)
+      * iii. Let desc be the result of calling the %%[[GetOwnProperty]]%% internal method of P, passing name as the sole argument
+      * iv. If desc is not undefined and desc.%%[[Enumerable]]%% is true, then
+        * 1. Call the %%[[DefineOwnProperty]]%% internal method of A with arguments ToString(to), Property Descriptor %%{[[Value]]: name, [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: true}%%, and true.
+        * 2. Increase to by 1.
+    * d. Increase k by 1.
+  - Return A.
+
+Notes:
+  * The above specification is based on that of ''Array.prototype.filter'' (ES5 section 15.4.4.20)
+  * This algorithm is called as part of the default behavior of ''Object.keys'' on a trapping proxy, when the handler does not implement the derived ''keys'' trap.
+  * The call to %%[[GetOwnProperty]]%% in step 7.c.iii. may trigger the proxy's "getOwnPropertyDescriptor" trap.
+
+**FilterEnumerable ( P, V )**
+
+When the FilterEnumerable abstract operation is called on a trapping proxy P with a value V, the following steps are taken:
+
+  - Let O be the result of calling ToObject(V)
+  - Let lenValue be the result of calling the %%[[Get]]%% internal method of O with the argument "length".
+  - Let len be ToUint32(lenValue).
+  - Let A be a new array created as if by the expression new Array() where Array is the standard built-in constructor with that name.
+  - Let k be 0.
+  - Let to be 0.
+  - Repeat, while k < len
+    * a. Let Pk be ToString(k).
+    * b. Let kPresent be the result of calling the %%[[HasProperty]]%% internal method of O with argument Pk.
+    * c. If kPresent is true, then
+      * i. Let kValue be the result of calling the %%[[Get]]%% internal method of O with argument Pk.
+      * ii. Let name be ToString(kValue)
+      * iii. Let desc be the result of calling the %%[[GetProperty]]%% internal method of P, passing name as the sole argument
+      * iv. If desc is not undefined and desc.%%[[Enumerable]]%% is true, then
+        * 1. Call the %%[[DefineOwnProperty]]%% internal method of A with arguments ToString(to), Property Descriptor %%{[[Value]]: name, [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: true}%%, and true.
+        * 2. Increase to by 1.
+    * d. Increase k by 1.
+  - Return A.
+
+Notes:
+  * The above specification is based on that of ''Array.prototype.filter'' (ES5 section 15.4.4.20)
+  * This algorithm is called as part of the default behavior of ''for (var val in proxy){...}'' on a trapping proxy, when the handler does not implement the derived ''enumerate'' trap.
+  * The call to %%[[GetProperty]]%% in step 7.c.iii. may trigger the proxy's "getPropertyDescriptor" trap.

@@ -1,0 +1,653 @@
+(Also see the [[discussion:iterators and generators|discussion page]].)
+
+====== Iterators and Generators ======
+
+This proposal extends the ''for-in'' loop in ES1-3 and the ''for-each-in''
+loop from E4X (ECMA-357) by imitating Python's
+[[http://www.python.org/peps/pep-0234.html|iteration protocol]].
+It builds on this protocol with support for generators (see
+[[http://www.python.org/peps/pep-0255.html|PEP 255]] and
+[[http://www.python.org/peps/pep-0342.html|PEP 342]]) and array comprehensions
+modeled on Python's [[http://www.python.org/peps/pep-0202.html|list
+comprehensions]] (full grammar [[http://www.python.org/doc/current/ref/lists.html#l2h-238|here]]).
+Where language differences or sufficiently better
+ideas provide strong enough reason, this proposal differs in substance
+from the Python prior art.
+
+The premises of this proposal are:
+
+  * The ''for-in'' loop is broken, because it does **enumeration**, not **iteration**, of property identifiers.
+    * As under-specified in ES1-3, enumeration visits properties in an implementation-defined order. In reality, browser inter-operation requires visiting in creation order, since Netscape 2.
+    * Enumeration skips DontEnum properties. Prior to ES4, you could not set a DontEnum property, so user-set properties can break ''for-in'' loops and are anathema to [[http://erik.eae.net/archives/2005/06/06/22.13.54/|Ajax gurus]].
+    * Enumeration walks the prototype chain, skipping enumerable but "shadowed" properties (where a property of the same name exists ahead of the shadowed property on the prototype object).
+    * Enumeration coerces the property name to ''string'' type, when it could more usefully remain, e.g., ''uint'' for ''Array'' elements.
+    * Enumeration skips properties that existed at the start of the loop but that were deleted before visited.
+  * Iteration over a well-ordered sequence of values is what most users want when they write ''for-in'' loops.
+    * Inspecting existing objects via ''for-in'' should work as before.
+    * New ES4 and user-defined objects may customize iteration.
+  * ''for-each-in'' loops (from E4X) also enumerate, but (this is the first premise again) were intended to iterate.
+    * In E4X they iterate in a well-defined (natural number) order over ''XMLList'' element values.
+    * Any iteration over enumerable prototype property values is unintended and such user-set proto-properties will break E4X scripts.
+    * A common confusion, or request for enhancement: that ''for-in'' iterates over ''Array'' values, not indexes. Resolvable by using ''for-each-in'', but more usably fixed if the language supported customizable iteration.
+  * Compelling use cases for a special form of a function that can yield values to a caller (directly to the caller, no arbitrary stack unwinding and rewinding) exist in common ES embeddings.
+  * Conserving syntax should be done if the revised meaning is a [[bug fixes|bug fix]] (i.e., more likely to please than frustrate).
+  * Sharing syntax with Python is a secondary but still worthy goal.
+
+The conclusion embodied by this proposal is that there should be an iteration protocol used by the ''for-in'' loop for all object types, defaulting to enumeration, which may be overridden. The ES4 spec and new code may define objects that are **iterators**, which implement the protocol. Further, there should be a way to write **generator** functions that yield values via special syntax, and that may participate in the iteration protocol. Finally, **comprehension** syntax for populating arrays from iterators is proposed as a nicety familiar to Python and other programmers.
+
+
+===== Iteration Protocol =====
+
+**Spec location:** [[spec:chapter_6_types#iterator_types|Chapter 6 Types: Iterator types]]
+
+Let ''iterator'' name a built-in namespace:
+
+<code javascript>
+namespace iterator;
+</code>
+
+In this proposal, the following pragma is in effect except where overridden explicitly:
+
+<code javascript>
+use default namespace iterator;
+</code>
+
+Let ''Iterable'' be the following structural type:
+
+<code javascript>
+type Iterable.<T> = {
+  iterator::get: function (boolean=) : Iterator.<T>
+};
+</code>
+
+The ''iterator::get'' method finds or creates an iterator for the iterable. Its ''boolean'' parameter,
+which by convention defaults to ''false'', controls whether the iterator considers prototype objects.
+Getting an iterator for an iterable is thus delegated to the iterable's implementation.
+
+Let ''Iterator'' be the following structural type:
+
+<code javascript>
+type Iterator.<T> = {
+  next: function () : T
+};
+</code>
+
+By convention, an iterator is iterable and returns itself as the result of its ''iterator::get'' method.
+So viewed as an iterable, an iterator is its own iterator.
+
+Not all iterables are iterators.  Only those iterables that both
+
+  * return themselves from their ''iterator::get'' methods, and
+  * match ''Iterator'', that is, have a ''next'' method taking no arguments and returning a value of a given type
+
+are iterators.
+
+Let ''StopIteration'' be a global constant pre-bound to a singleton exception object:
+
+<code javascript>
+class StopIterationClass {
+  public function toString() : string 
+    "[object StopIteration]";
+}
+public const StopIteration : StopIterationClass = new StopIterationClass;
+</code>
+
+An iterator returns zero or more values from its ''next'' method, throwing
+''StopIteration'' when it is exhausted.  Repeated calls to ''next'' on an
+exhausted iterator throw ''StopIteration'' for each call.
+
+Note that there is no ''Iterator'' nominal type (contrast with [[http://developer.mozilla.org/en/docs/New_in_JavaScript_1.7#Iterators|JS1.7]]). It is misleading to programmers unfamiliar with structural type systems to have such a type; such programmers are likely to want to subclass ''Iterator'' to implement an iterator type, when there is no such requirement.
+
+The ''for-in'' loop specified in ES3 12.6.4 can be written as a ''while'' loop using the iteration protocol:
+
+<code javascript>
+for (i in o)
+  ...
+</code>
+
+is equivalent to:
+
+<code javascript>
+{
+  let $it = iterator::GET(o, true);
+  while (true) {
+    try {
+      i = $it.next();
+    } catch (e : iterator::StopIterationClass) {
+      break;
+    }
+    ...
+  }
+}
+</code>
+
+where ''$it'' is guaranteed not to collide with any name bound in ''...'', or shadow any name used in ''...''. The function ''iterator::GET'' is defined (in the ''iterator'' namespace) as:
+
+<code javascript>
+const function GET(start: Object!, deep: boolean): Iterator.<*>
+  (start like iterator::Iterable.<*>)
+  ? start.iterator::get(deep)
+  : iterator::DEFAULT_GET(start, deep);
+</code>
+
+===== Enumeration =====
+
+''Enumerator'' is a parameterized class that may be instantiated with the iteration result type ''T''. Once instantiated, an ''Enumerator.<T>'' type may be constructed via ''new'' with a result function ''f'' to get an iterator over the enumerable properties of an object ''v'', and optionally (depending on the ''e'' flag) of objects along the initial object's prototype chain. Each iteration step invokes the result function on the property's identifier and the initial object value passed to the constructor (''v'', if it is of type ''Object!''). The ''Enumerator'' class is callable as a shorthand for constructing a new instance.
+
+<code javascript>
+type EnumerableId      = (string, Name);
+type EnumerableIdArray = [EnumerableId];
+
+class Enumerator.<T> {
+  type ResultFun = function(EnumerableId, Object!) : T;
+
+  function Enumerator(v, f : ResultFun, e : boolean = false) {
+    initial_obj = (v is Object) ? v : null;
+    current_obj = initial_obj;
+    current_ids = magic::getEnumerableIds(initial_obj);
+    result_fun = f;
+    enumerate = e;
+  }
+
+  meta static function invoke(v) : Iterator.<T>
+    new Enumerator(v);
+
+  iterator function get(e : boolean = false) : Iterator.<T>
+    (e == enumerate) ? this : new Enumerator.<T>(inital_obj, result_fun, e);
+
+  public function next() : T {
+    if (current_obj === null)
+      throw StopIteration;
+
+  loop:
+    while (true) {
+      if (current_index === current_ids.length) {
+        if (!enumerate)
+          throw StopIteration;
+
+        // No more properties in current_obj: try walking up the prototype chain.
+        current_obj = magic::getPrototype(current_obj);
+        if (current_obj === null)
+          throw StopIteration;
+ 
+        current_ids = magic::getEnumerableIds(current_obj);
+        current_index = 0;
+      }
+
+      let id : EnumerableId = current_ids[current_index++];
+
+      // Check for a shadowing property from initial_obj to current_obj on the prototype chain.
+      for (let obj : Object = initial_obj; obj !== current_obj; obj = magic::getPrototype(obj)) {
+        if (magic::hasOwnProperty(obj, id))
+          continue loop;
+      }
+ 
+      // Check whether name is still bound in order to skip deleted properties.
+      if (magic::hasOwnProperty(current_obj, id))
+        return result_fun(id, initial_obj);
+  }
+
+  private var initial_obj   : Object,
+              current_obj   : Object,
+              current_ids   : EnumerableIdArray,
+              current_index : uint,
+              result_fun    : ResultFun,
+              enumerate     : boolean;
+}
+</code>
+
+The ''magic::getEnumerableIds'' primitive has type ''function (Object) : EnumerableIdArray'' and returns an array of values identifying enumerable properties in its argument object, or an empty array for ''null''. The identifiers are arrayed in property creation order. If an identifier fits in ''int'', it is stored using type ''int'', likewise for ''uint''; otherwise it is stored as a ''string'' unless it is a namespace-qualified identifier, in which case it is stored as a ''[[proposals:name objects|Name object]]'' (this is prefigured by the ''QName'' object in E4X).
+
+The ''magic::getEnumerableIds'' primitive is a specification device only. Implementations may avoid ever allocating anything like the array that it returns, so long as they observably behave the same as the reference implementation that is based on this primitive.
+
+All objects are iterable by the ''for-in'' loop. If an object does not define ''iterator::get'', it delegates to the ''iterator::DEFAULT_GET'' constant function, which is defined as follows (once again, in default namespace ''iterator''):
+
+<code javascript>
+const function DEFAULT_GET(start: Object!, deep: boolean = false): Iterator.<string>
+  new Enumerator.<string>(start,
+                          function (id: string, obj: Object!): string
+                            (id is Name) ? id.identifier : string(id),
+                          deep);
+</code>
+
+Thus the ''for-in'' loop enumerates as specified by prose in ECMA-262 Edition 3, section 12.6.4, the last two paragraphs. In contrast to ES1-3, the current proposal specifies and implements enumeration using self-hosted code based on only the [[iterators and generators#iteration protocol|iteration protocol]] and the new ''magic::getEnumerableIds'' primitive.
+
+Note that ''Object.prototype.iterator::get'' is left undefined. This proposal modifies the logic underlying ''for-in'' loops to test whether the object on the right of ''in'' is ''like iterator::Iterable.<*>'', and to default to enumeration if not. This is similar to how Python detects its ''%%__iter__%%'' method, which is not defined for all Python types. Expressed in ES4 terms, a loop of the form ''for (i in o) ...'' tests whether ''o like iterator::Iterable.<*>''. If the ''like'' test succeeds, it calls ''o.iterator::get(true)''; if the test fails, ''iterator::DEFAULT_GET(o, true)''.
+
+
+===== Itemization =====
+
+E4X specifies the ''for-each-in'' loop as iterating over values of enumerable properties, rather than names (see ECMA-357 section 12.3 and note the erratum: deleted properties not yet visited MUST NOT be visited, per ECMA-262 12.6.4, the next-to-last paragraph). Call this kind of iteration "itemization". Since ES4's grammar includes ''for each'' loop syntax, and it is part of several existing implementations (AS3, JS1.6+), we propose to support it as follows:
+
+<code javascript>
+type KeyType   = EnumerableId,
+     ValueType = *,
+     ItemType  = [KeyType, ValueType];
+
+const function values(v: *, deep: boolean = false): Iterator.<ValueType> {
+  if (v is Itemizable.<KeyType, ValueType, ItemType>)
+    return v.iterator::getValues(deep);
+  if (v is Object!)
+    return DEFAULT_GET_VALUES(v, deep);
+  return null;
+}
+
+const function DEFAULT_GET_VALUES(start: Object!, deep: boolean = false): Iterator.<ValueType>
+  new Enumerator.<ValueType>(start,
+                             function (id: EnumerableId, obj: Object!): ValueType
+                               obj[id],
+                             deep);
+</code>
+
+As with ''iterator::get'', the ''iterator::DEFAULT_GET_VALUES'' function is used when an object does not define or inherit its own ''iterator::getValues'' property.
+
+Using ''iterator::values'', a ''for-each-in'' loop can be rewritten as a ''for-in'' loop.  This loop:
+
+<code javascript>
+for each (v in o)
+  ...
+</code>
+
+is equivalent to this loop:
+
+<code javascript>
+for (v in iterator::values(o))
+  ...
+</code>
+
+The [[destructuring assignment]] proposal introduces another variant of the ''for-in'' loop:
+
+<code javascript>
+for ([k, v] in o)
+  ...
+</code>
+
+This form iterates ''k'' and ''v'' over the key (index, identifier, or qualified name) and value of each enumerable property in ''o''. To generalize it via the iteration protocol, we introduce ''iterator::DEFAULT_GET_ITEMS'' in the same way that ''iterator::DEFAULT_GET_VALUES'' back-stops ''for-each-in'':
+
+<code javascript>
+const function items(v, deep: boolean = false): Iterator.<ItemType> {
+  if (v is Itemizable.<KeyType, ValueType, ItemType>)
+    return v.iterator::getItems(deep);
+  if (v is Object!)
+    return DEFAULT_GET_ITEMS(v, deep);
+  return null;
+}
+
+const function DEFAULT_GET_ITEMS(start: Object!, deep: boolean = false): Iterator.<ItemType>
+  new Enumerator.<ItemType>(start,
+                            function (id: EnumerableId, obj: Object!): ItemType
+                              [id, obj[id]],
+                            deep);
+</code>
+
+Users of JS1.7 (see [[https://bugzilla.mozilla.org/show_bug.cgi?id=366941|Mozilla bug 366941]]) want general destructuring of iterated values, e.g. ''for ([s,v,o] in triple_db) ...'' and are surprised that using a ''[k, v]'' pattern has special meaning, or is the only destructuring pattern allowed.
+  * Should general destructuring be allowed?
+  * If so, should there be a ''[k, v]'' itemization special case?
+  * If so, how should general destructuring interact with the ''[k, v]'' itemization special form?
+
+This proposal specifies that general destructuring **is** allowed, but that there **is not** a ''[k, v]'' special case. Thus, in general, ''for-in'' loops with destructuring patterns on the left of ''in'' rewrite from:
+
+<code javascript>
+for (pattern in o)
+  ...
+</code>
+
+to:
+
+<code javascript>
+{
+  let $it = iterator::GET(o, true);
+  while (true) {
+    try {
+      pattern = $it.next();
+    } catch (e : iterator::StopIterationClass) {
+      break;
+    }
+    ...
+  }
+}
+</code>
+
+Users who want to iterate over key-value items must write ''for ([k, v] in iterator::items(o)) ...'' or equivalent. This avoids any confusing double-meaning of the length-2 array pattern.
+
+For symmetry with ''values'' and ''items'', there is a ''keys'' function in ''iterator'', which delegates to a ''getKey'' method on its ''v'' parameter:
+
+<code javascript>
+function keys(v, deep: boolean = false): Iterator.<KeyType> {
+  if (v is Itemizable.<KeyType, ValueType, ItemType>)
+    return v.iterator::getKeys(deep);
+  if (v is Object!)
+    return DEFAULT_GET_KEYS(v, deep);
+  return null;
+}
+
+const function DEFAULT_GET_KEYS(start: Object!, deep: boolean = false): Iterator.<KeyType>
+  new Enumerator.<KeyType>(start,
+                           function (id: EnumerableId, obj: Object!): KeyType
+                             id,
+                           deep);
+</code>
+
+The ''iterator::DEFAULT_GET_KEYS'' method is used when the iterable object has no ''iterator::getKeys'' property.
+
+The ''getKeys'', ''getValues'', and ''getItems'' protocols imply a structural type for itemizable objects:
+
+<code javascript>
+type Itemizable.<K, V, I> = {
+  iterator::getKeys:   function (boolean=) : Iterator.<K>,
+  iterator::getValues: function (boolean=) : Iterator.<V>,
+  iterator::getItems:  function (boolean=) : Iterator.<I>
+};
+</code>
+
+Given the default functions used for these names, all objects are itemizable. But if an object were to override any method name with an incompatibly-typed value, that object would no longer be itemizable. This may be desirable, e.g., for an unordered set data type.
+
+Using the itemizable protocol, collection classes can customize all the loop forms. To customize ''for-in'', set ''iterator::get'' and ''iterator::getKeys'' to the same function that yields keys. To customize ''for-each-in'', set ''iterator::getValues''. To customize ''for ([k, v] in o)'' loops and comprehensions, set ''iterator::getItems''.
+
+In any event, ''iterator::get'' may be set to make the shortest kind of ''for-in'' loop perform the default or natural iteration for the given type on the right of ''in''. Some types will want ''for-in'' to iterate values by default, others keys -- still others items. This proposal intentionally supports all combinations.
+
+===== Compatibility =====
+
+As specified above under [[iterators and generators#enumeration|Enumeration]], ''magic::getPropertyIds'' returns an array of values identifying properties indexed in the order in which those properties were created. This matches behavior required for inter-operation among browser-based ES1-3 implementations.
+
+Strict compatibility with ES1-3 as written (see 12.6.4 step 3, and 9.9 ''ToObject'') requires that a ''TypeError'' be thrown for any loop over ''null'' or ''undefined'', but inter-operation on the Web imposes an additional requirement beyond visiting properties in creation order: browser implementations must tolerate ''for (i in null)'' and ''for (i in undefined)'', iterating zero times. ES4 should take this [[proposals:bug fixes|bug fix]] by amending the [[iterators and generators#iteration_protocol|translation]] from ''for (i in o)'' loop to a ''while'' loop as follows:
+
+<code javascript>
+{
+  let $v = o;
+  if ($v !== null && $v !== undefined) {
+    let $it = iterator::GET($v, true);
+    while (true) {
+      try {
+        i = $it.next();
+      } catch (e : iterator::StopIterationClass) {
+        break;
+      }
+      ...
+    }
+  }
+}
+</code>
+
+Note that ES3 specifies the ''in'' operator as throwing a ''TypeError'' on ''null'' and ''undefined'', and no inter-operation pressure exists to change its behavior on these inputs. Thus ''for-in'' and ''in'' disagree at these edge cases. See [[http://bugs.ecmascript.org/ticket/241|#241]].
+
+===== Coherence =====
+
+Apart from the ''null'' and ''undefined'' edge cases, ''for-in'' and the ''in'' operator agree by default when enumerating.  That is,
+
+<code javascript>
+let a = [3, 4, 5];
+
+for (let i in a) {
+  assert(i in a);
+  assert(a.indexOf(a[i]) != -1);
+}
+</code>
+
+Iteration and ''in''-tested membership are **coherent**.
+
+E4X's ''for-each-in'' did not alter ''in'' or add an ''each in'' (sic) operator, resulting in loss of coherent meaning of ''in'' when itemizing:
+
+<code javascript>
+for each (let v in a) {
+  let i = a.indexOf(v);
+  assert(i != -1);
+  assert(i in a);
+}
+</code>
+
+Customization of the iteration protocol can result in similarly incoherent ''in'' operator results. Therefore ES4 supports a companion protocol for extending the ''in'' operator, which is distinct from the [[operators]] that can be overridden using static class methods. This difference is intended to facilitate retrofitting, e.g.:
+
+<code javascript>
+Array.prototype.iterator::get      = iterator::DEFAULT_GET_VALUES;
+Array.prototype.iterator::contains = function (v) this.indexOf(v) != -1;
+</code>
+
+Note how operand order from operator ''in'' is reversed when calling ''iterator::contains'': ''a in b'' may translate to ''b.iterator::contains(a)''.
+
+The implementation of the ''in'' operator checks whether its right operand is ''like iterator::Container.<*>'', and invokes that type's ''contains'' method if found. If not found, the ''iterator::DEFAULT_CONTAINS'' function is used for backward-compatible ''in'' testing:
+
+
+<code javascript>
+const function DEFAULT_CONTAINS(obj: Object!, id: EnumerableId): boolean {
+  do {
+    if (magic::hasOwnProperty(obj, id))
+      return true;
+    obj = magic::getPrototype(obj);
+  } while (obj !== null);
+  return false;
+}
+</code>
+
+Thus there exists a container structural subtype of the iterable type (in default namespace ''iterator'' as usual):
+
+<code javascript>
+type Container.<T> = {
+  iterator::get:      function (boolean=) : Iterator.<T>,
+  iterator::contains: function (Name|string) : boolean
+};
+</code>
+
+For an interesting attempt to unify iteration and contains-testing, see [[http://www.cs.cornell.edu/Projects/jmatch/|JMatch]], which uses modal declarations for forward (contains-testing) and backward (iteration) directions of operation; boolean formulas may be used to unify both modes in one expression.
+
+===== Generators =====
+
+Let a new reserved identifier keyword ''yield'' introduce a variant of //AssignmentExpression//:
+
+<code>
+AssignmentExpression ::= "yield" AssignmentExpression
+</code>
+
+A function containing a ''yield'' expression is a generator function, which when called binds formal parameters to actual arguments but evaluates no part of its body.  Instead, it returns a generator-iterator of nominal type ''Generator'':
+
+<code javascript>
+interface Generator.<O, I, E> {
+  public function next() : O;
+  public function send(i: I) : O;
+  public function throw(e : E) : O;
+  public function close() : void;
+};
+</code>
+
+The aspects of this interface are as follows:
+  * The type ''O'' ("output") is the type of values being generated via evaluated operands to ''yield''.
+  * The type ''I'' ("input") is the type of values being sent to the generator via parameters to ''send''.
+  * The type ''E'' ("exception") is the type of exceptions being thrown at the generator via parameters to ''throw''.
+  * The method call ''send(x)'' resumes evaluation of the generator function with the value ''x'' as the result of the last ''yield'', and returns the operand of the next ''yield''.
+  * The method call ''next()'' is equivalent to the method call ''send(undefined)''.
+  * The method call ''throw(x)'' forces the generator to throw the exception value ''x'' in its current suspended context (as if the ''yield'' that suspended were a ''throw x'' statement), and then returns the result of the next ''yield''.
+  * The method call ''close()'' forces the generator to close itself. The effect of ''close()'' is to "return" from the generator where it's suspended.  This is so that ''finally'' clauses active in the generator function can be run. If such a ''finally'' clause throws an exception other than StopIteration, the exception is propagated to the caller of ''close()''.
+
+When it is written above that a method call "returns the operand of the next yield" the call may instead terminate abruptly with a ''StopIteration'' exception.
+
+A generator must be started by a method call to ''next()'' or ''send(undefined)''. It is a ''TypeError'' to ''send'' a value other than ''undefined'' to a newborn generator.
+
+An example that prints the first ten Fibonacci numbers:
+
+<code javascript>
+function fib() {
+  let i = 0, j = 1;
+  while (true) {
+    yield i;
+    [i, j] = [j, i + j];
+  }
+}
+
+let g = fib();
+for (let i = 0; i < 10; i++)
+  print(g.next());
+</code>
+
+Another example, a natural number generator:
+
+<code javascript>
+function naturals(n : uint) {
+  for (let i : uint = 0; i < n; i++)
+    yield i;
+}
+</code>
+
+The method ''close()'' is called automatically only for a generator iterator that is started by a ''for-in'' or ''for-each-in'' loop or comprehension, upon normal or abrupt termination of the loop. All but the first call to ''close()'' have no effect. Thus the ''for-in'' loop over a generator iterator can be translated from:
+
+<code javascript>
+for (i in naturals(20))
+  ...
+</code>
+
+to:
+
+<code javascript>
+{
+  let $gen = naturals(20);
+  try {
+    while (true) {
+      try {
+        i = $gen.next();
+      } catch (e : iterator::StopIterationClass) {
+        break;
+      }
+      ...
+    }
+  } finally {
+    $gen.close();
+  }
+}
+</code>
+
+Note that ''close'' is called whether or not the generator iterator denoted by ''$gen'' can be reached via other references.
+
+This translation is a specification device only. Implementations cannot analyze all ''for-in'' loops and discern generator iteration statically, so must check at runtime for a newborn generator iterator on the right of ''in''.
+
+
+
+
+
+===== Comprehensions =====
+
+ES4 provides syntactic sugar for common ways of populating a new ''Array'' instance.  The initializer below shows an example of an array comprehension:
+
+<code javascript>
+let squares = [i * i for (i in naturals(10))];
+</code>
+
+The ''squares'' declaration is equivalent to:
+
+<code javascript>
+let $arr = [];
+for (let i in naturals(10))
+    $arr[$arr.intrinsic::length] = i * i;
+let squares = $arr;
+</code>
+
+(Again assume that ''$arr'' is a generated, non-colliding name.)
+
+Note that the variable ''i'' is scoped as if by ''for (let i ...)'', so its scope is confined to the body of the comprehension. Note also the evaluation of the expression ''i * i'' in the body of the loop, and the use of ''intrinsic::length''.
+
+Syntactically, an array comprehension is a special form of array initializer.  The square brackets contain an initializing expression followed by one or more ''for'', ''for each'', ''if'', and/or ''let'' clauses.
+
+<code>
+ArrayComprehension
+    ::= AssignmentExpression(allowColon, allowIn)  ComprehensionExpression
+
+ComprehensionExpression
+    ::= for  (  TypedPattern(noIn)  in  CommaExpression(allowColon, allowIn)  )  ComprehensionClause
+      | for  each  (  TypedPattern(noIn)  in  CommaExpression(allowColon, allowIn)  )  ComprehensionClause
+      | let  (  LetBindingList  )  ComprehensionClause
+      | if  ParenExpression  ComprehensionClause
+
+ComprehensionClause
+    ::= «empty»
+      | ComprehensionExpression 
+</code>
+
+The semantics of an array comprehension may be described by expanding it to an equivalent expression that initializes the array procedurally.  (The exact rules for this expansion are best given in ML, but in short, an array comprehension ''[''//expr//'' ''//clauses//'']'' expands to ''(function () { let $arr = []; ''//clauses//'' $arr[$arr.intrinsic::length] = ''//expr//''; return $arr; }())'' where ''$arr'' is a fresh variable.  ''let'' is inserted after ''for ('' or ''for each ('' in //clauses//.  Lastly, each instance the form ''let (''//bindings//'') ''//statement//, which is not an ES4 statement, is replaced with ''{ let ''//bindings//''; ''//statement//'' }''.)
+
+''for-in'' loop heads may be nested within a comprehension:
+
+<code javascript>
+let flat_mat = [i * j for (i in naturals(8)) for (j in naturals(8))];
+</code>
+
+A ''for each'' clause iterates over values rather than names when itemizing:
+
+<code javascript>
+let odd_squares = [i * i for each (i in [1, 3, 5, 7])];
+</code>
+
+An ''if (''//condition//'')'' clause filters elements out of the resulting array:
+
+<code javascript>
+let funny_mat = [i * j for (i in naturals(8)) for (j in naturals(8)) if (i != 0 && j != 0)];
+
+let adminAddrs = [addr
+                   for each (user in users)
+                     if (user.isAdministrator)
+                       for each (addr in user.addresses)];
+
+// A leading "if" clause is useful in functions accepting optional arguments.
+// Here bag.values() is not called if bag is undefined.
+this.names = [item.name if (bag != undefined) for each (item in bag.values())];
+
+this.vals = [start if (start != undefined)];   // 0 or 1 element(s)
+</code>
+
+Lastly, a ''let (''//bindings//'')'' clause, like a ''let'' expression, evaluates expressions and binds the resulting values to names in a new scope:
+
+<code javascript>
+admins = [user.name for each (id in userIds)
+                      let (user = lookupUser(id))
+                        if (user.isAdministrator)]
+</code>
+
+The variables introduced by ''for'', ''for each'', and ''let'' clauses are lexically bound within new block scopes introduced by those clauses.  Note that the scope of the variable ''user'' in this example includes the controlling expression of the ''if'' clause, as well as the initializing expression ''user.name'', but not the controlling expression of the ''for each'' clause.
+
+Each variable name in a ''for'', ''for each'', or ''let'' clause may be followed by an optional type annotation.
+
+====== Example ======
+
+Here's an example of a common DOM programming style that's made simpler with iterators and generators: imagine an animation that flashes a DOM element on and off //n// times:
+
+<code javascript>
+function animate(n) {
+    let i = 0;
+    let id = window.setInterval(function() {
+                                    if (i >= n)
+                                        window.clearInterval(id);
+                                    else {
+                                        if (isHighlighted())
+                                            unhighlight();
+                                        else {
+                                            highlight();
+                                            i++;
+                                        }
+                                    }
+                                },
+                                100);
+}
+
+animate(3);
+</code>
+
+Using ''yield'', we could implement this with a loop instead:
+
+<code javascript>
+let id;
+
+function makeAnimator(n) {
+    let i = 0;
+    while (i <= n) {
+        if (isHighlighted())
+            unhighlight();
+        else {
+            highlight();
+            i++;
+        }
+        yield;
+    }
+    window.clearInterval(id);
+}
+
+id = window.setInterval(makeAnimator(3), 100);
+</code>
+
+(This assumes a slight DOM extension for ''window.setInterval'' to accept an ''Iterator'' as its first argument. Otherwise you'd just use ''function(){animator.next()}''.)

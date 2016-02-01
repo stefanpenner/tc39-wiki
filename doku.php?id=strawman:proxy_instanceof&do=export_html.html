@@ -1,0 +1,104 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:proxy_instanceof&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:proxy_instanceof&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:proxy_instanceof&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="trapping_instanceof"></a><h2>Trapping instanceof</h2>
+<div class="level2">
+
+<p>
+ Andreas Gal discovered that in order to wrap the <acronym title="Document Object Model">DOM</acronym> faithfully, proxies need to trap <code>instanceof</code>. Apparently, the <acronym title="Document Object Model">DOM</acronym> implements some kind of multiple inheritance relationship that can only be emulated by trapping <code>instanceof</code>. (the issue has to do with &ldquo;mixin&rdquo; interfaces such as <code>EventTarget</code>)
+</p>
+
+<p>
+A proposed extension to the Proxy <acronym title="Application Programming Interface">API</acronym> is to enable proxies to trap <code>instanceof</code> when used as the right-hand operand. That is, if <code>p</code> is a proxy with handler <code>h</code>, then <code>x instanceof p</code> traps as <code>h.hasInstance(x)</code>.
+</p>
+
+<p>
+The <code>hasInstance</code> trap would be a derived (optional) trap. If absent, <code>x instanceof p</code> defaults as follows:
+</p>
+<ul>
+<li class="level1"><div class="li"> If <code>p</code> is an object proxy, throw a <code>TypeError</code> (this mimics step 6 of algorithm 11.8.6)</div>
+</li>
+<li class="level1"><div class="li"> If <code>p</code> is a function proxy, default to the built-in <code>[[HasInstance]]</code> behavior for Functions.</div>
+</li>
+</ul>
+
+<p>
+ The <code>hasInstance</code> trap can be triggered by providing proxies with a custom implementation of the <code>[[HasInstance]]</code> built-in method:
+</p>
+
+<p>
+<strong> [[HasInstance]] (V) </strong>
+</p>
+
+<p>
+When the [[HasInstance]] internal method of a proxy <code>P</code> is called with argument <code>V</code>, the following steps are taken: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let handler be the value of the [[Handler]] internal property of P.</div>
+</li>
+<li class="level1"><div class="li"> Let hasInstance be the result of calling the [[Get]] internal method of handler with argument &ldquo;hasInstance&rdquo;.</div>
+</li>
+<li class="level1"><div class="li"> If hasInstance is undefined,</div>
+<ul>
+<li class="level2"><div class="li"> a. If <code>P</code> is an object proxy, throw a TypeError (as per ES5 section 11.8.6, step 6).</div>
+</li>
+<li class="level2"><div class="li"> b. If <code>P</code> is a function proxy, return the result of performing the default [[HasInstance]] behavior for Functions (as per ES5 section 15.3.5.3).</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> If hasInstance is not callable, throw a TypeError.</div>
+</li>
+<li class="level1"><div class="li"> Let result be the result of calling the [[Call]] internal method of hasInstance providing handler as the this value and V as the first argument.</div>
+</li>
+<li class="level1"><div class="li"> Return ToBoolean(result).</div>
+</li>
+</ol>
+
+<p>
+ There is no need to modify the evaluation of <code>instanceof</code> in ES5 section 11.8.6 as it just calls the right-hand operand&rsquo;s <code>[[HasInstance]]</code> internal method if present, which redirects to the above implementation if the right-hand operand is a proxy.
+</p>
+
+</div>
+<!-- SECTION [1-2148] -->
+<a name="feedback"></a><h4>Feedback</h4>
+<div class="level4">
+
+<p>
+ TC39 November 2010 meeting: after a meeting with the Web IDL editors, agreed that Web IDL should not expose the multiple inheritance. Hence, a custom [[HasInstance]] would not be necessary to wrap these host objects.
+</p>
+
+<p>
+There may be other use cases for a custom [[HasInstance]] (outside of Web IDL), but until such cases are identified we agreed not to pursue this strawman in the interest of not further complicating the Proxy <acronym title="Application Programming Interface">API</acronym>.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x74%3B%26%23x6f%3B%26%23x6d%3B%26%23x76%3B%26%23x63%3B%26%23x2e%3B%26%23x62%3B%26%23x65%3B%26%23x40%3B%26%23x67%3B%26%23x6d%3B%26%23x61%3B%26%23x69%3B%26%23x6c%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x74;&#x6f;&#x6d;&#x76;&#x63;&#x2e;&#x62;&#x65;&#x40;&#x67;&#x6d;&#x61;&#x69;&#x6c;&#x2e;&#x63;&#x6f;&#x6d;">Tom Van Cutsem</a> 2010/11/19 3:00</em> 
+</p>
+
+</div>
+<!-- SECTION [2149-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/e/eef76b66149060709201d20258bd7df0.xhtml used -->
+</body>
+</html>

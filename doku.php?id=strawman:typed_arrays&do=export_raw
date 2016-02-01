@@ -1,0 +1,380 @@
+====== Typed Arrays ======
+
+The [[http://www.webgl.org|WebGL]] spec needs a method for high-performance access to native-typed data.  That group invented its own set of objects for this, but it has now been adopted in [[http://dev.w3.org/2006/webapi/FileAPI/#readAsArrayBuffer|FileAPI]], [[http://www.w3.org/TR/file-writer-api/#dfn-arraybuffer|FileWriter]], [[http://dev.w3.org/2006/webapi/XMLHttpRequest-2/#the-response-attribute|XHR2]], and is being considered for [[http://lists.w3.org/Archives/Public/public-webapps/2011JanMar/0131.html|Web Sockets]].  Other groups like CommonJS have also been [[http://wiki.commonjs.org/wiki/Binary|working on something similar]].
+
+The core of the proposal is found here [[https://cvs.khronos.org/svn/repos/registry/trunk/public/webgl/doc/spec/TypedArray-spec.html]] and is descibed in ECMA-262 style [[typed_array#Typed Array compatible object APIs in ECMA-262 style|below]].
+Here's an overview:
+
+  * An ArrayBuffer type is introduced, which is an opaque buffer.  It is created with an explicit length, and is fixed length during its lifetime.  ArrayBuffer contents cannot be accessed directly.
+  * A number of types are introduced that describe how to interpret the bytes in an ArrayBuffer.  For example, an Int32Array views the bytes in an ArrayBuffer (or a subregion of an ArrayBuffer) as 32-bit signed integers.
+  * Multiple views can exist for the same ArrayBuffer, allowing for complex data structures to be built up, albeit with some difficulty.  
+  * A DataView type is introduced which allows arbitrary indexed reads and writes of basic types from the bytes in the underlying ArrayBuffer.
+  * The goal is to allow as close to the native byte access as possible with very few performance penalties, while still retaining safety.
+
+Example code:
+
+<code javascript>
+  var buf = new ArrayBuffer(100);  // create 100-byte ArrayBuffer
+
+  var ints = new Int32Array(buf);  // view that buffer as 32-bit integers
+  print(ints.length == 25);        // true -- 4 bytes for each element 
+  print(ints.byteLength == 100);   // true -- the length of ints is 100 bytes
+
+  var fourShorts = new Int16Array(buf, 20, 4);  // 4 16-bit integers  starting at byte 20 in the buffer
+  print(fourShorts.length == 4);         // true -- 4 elements, as specified
+  print(fourShorts.byteLength == 8);     // true -- 4 elements, 2 bytes each
+  print(fourShorts.byteOffset == 20);    // true -- the offset into the ArrayBuffer is 20, as specified
+
+  ints[5] = 0x11223344;
+  print(fourShorts[0] == 0x3344);        // true -- same bytes were modified
+  print(fourShorts[1] == 0x1122);        // true -- platform endianness for arrays created by JS, 
+</code>
+
+
+**Comments**
+
+Looks mostly good, although I'm a little concerned that exposing native endian-ness might introduce incompatibilities.
+ --- //[[cormac@soe.ucsc.edu|Cormac Flanagan]] 2010/01/27 00:14//
+
+Would typed arrays be extended to any value type, so it can be a buffer of "structs"?
+ --- //[[ihab.awad@gmail.com|Ihab Awad]] 2010/05/24 23:25//
+
+@cormac: For scenarios like file reading and network protocol binary parsing, it is important to be able to observe and control endianness explicitly.  The DataView object provides this capability directly.
+@ihab: If the Binary Data proposal adopts the ArrrayBufferView interface for it's ArrayTypes, it can be used to provide compatible arrays of struct types.  
+ --- //[[lukeh@microsoft.com|Luke Hoban]] 2011/05/17 22:56//
+
+
+
+====== Typed Array compatible object APIs in ECMA-262 style ======
+==== 1	 ArrayBuffer Objects ====
+=== 1.1	The ArrayBuffer Constructor Called as a Function ===
+When ArrayBuffer is called as a function rather than as a constructor, it creates and initialises a new ArrayBuffer object.  Thus the function call ArrayBuffer(…) is equivalent to the object creation expression new ArrayBuffer (…) with the same arguments.
+=== 1.2	The ArrayBuffer Constructor ===
+When ArrayBuffer is called as part of a new expression, it is a constructor: it initialises the newly created object.
+\\ \\ ** 1.2.1	new ArrayBuffer(len) ** \\ 
+
+The %%[[Prototype]]%% internal property of the newly constructed object is set to the original ArrayBuffer prototype object, the one that is the initial value of ArrayBuffer.prototype (16.1.3.1). The %%[[Class]]%% internal property of the newly constructed object is set to "ArrayBuffer". The %%[[Extensible]]%% internal property of the newly constructed object is set to true.
+
+The length property of the newly constructed object is set to ToUInt32(len). 
+
+A fresh native buffer nativeBuffer of length bytes is allocated.  The contents of this native buffer are zero initialized.  If the requested number of bytes could not be allocated, a RangeError is raised.  The %%[[NativeBuffer]]%% internal property of the newly constructed object is set to nativeBuffer.
+=== 1.3	Properties of the ArrayBuffer Constructor ===
+The value of the %%[[Prototype]]%% internal property of the ArrayBuffer constructor is the Function prototype object (15.3.4).
+
+Besides the internal properties and the length property (whose value is 1), the ArrayBuffer constructor has the following properties:
+\\ \\ ** 1.3.1	ArrayBufer.prototype ** \\ 
+The initial value of ArrayBuffer.prototype is the ArrayBuffer prototype object (16.1.4).
+
+This property has the attributes { %%[[Writable]]%%: false, %%[[Enumerable]]%%: false, %%[[Configurable]]%%: false }.
+=== 1.4	Properties of the ArrayBuffer Prototype Object  ===
+The value of the %%[[Prototype]]%% internal property of the Array prototype object is the standard built-in Object
+prototype object (15.2.4). The %%[[Class]]%% internal property of the newly constructed object is set to "Object". The %%[[Extensible]]%% internal property of the newly constructed object is set to true.
+\\ \\ ** 1.4.1	ArrayBuffer.prototype.constructor ** \\ 
+The initial value of ArrayBuffer.prototype.constructor is the standard built-in ArrayBuffer constructor.
+=== 1.5	Properties of the ArrayBuffer Instances ===
+ArrayBuffer instances inherit properties from the ArrayBuffer prototype object and their %%[[Class]]%% internal property value is "ArrayBuffer". ArrayBuffer instances also have the following properties.
+\\ \\ ** 1.5.1	byteLength ** \\ 
+The byteLength property of this ArrayBuffer object is a data property whose value is the length of the ArrayBuffer in bytes, as fixed at construction time.
+
+The length property has the attributes { %%[[Writable]]%%: false, %%[[Enumerable]]%%: false, %%[[Configurable]]%%: false }.
+==== 2	TypeArray Objects ====
+For each Type in the following table, a separate TypeArray constructor object, with corresponding prototype and instances as described below is available.
+^ Type	^ Array Name	^ Size	^ Description	^ Equivalent C Type ^
+| Int8	| Int8Array	| 1	| 8-bit 2's complement signed integer	| signed char |
+| Uint8	| Uint8Array	| 1	| 8-bit unsigned integer	| unsigned char | 
+| Int16	| Int16Array	| 2	| 16-bit 2's complement signed integer	| Short |
+| Uint16	| Uint16Array	| 2	| 16-bit unsigned integer	| unsigned short | 
+| Int32	| Int32Array	| 4	| 32-bit 2's complement signed integer	| Int | 
+| Uint32	| Uint32Array	| 4	| 32-bit unsigned integer	| unsigned int | 
+| Float32	| Float32Array	| 4	| 32-bit IEEE floating point	| Float | 
+| Float64	| Float64Array	| 8	| 64-bit IEEE floating point	| Double | 
+In the descriptions below, the phrase “the size in bytes of Type” refers to the value in the Size column of the above table in the row corresponding to Type. 
+=== 2.1	The TypeArray Constructor Called as a Function ===
+When TypeArray is called as a function rather than as a constructor, it creates and initialises a new TypeArray object.  Thus the function call TypeArray(…) is equivalent to the object creation expression new TypeArray (…) with the same arguments.
+=== 2.2	The TypeArray Constructor ===
+When TypeArray is called as part of a new expression, it is a constructor: it initialises the newly created object.
+\\ \\ ** 2.2.1	new TypeArray(arg0 [, arg1, [, arg2 ] ) ** \\ 
+The %%[[Prototype]]%% internal property of the newly constructed object is set to the original TypeArray prototype object, the one that is the initial value of TypeArray.prototype (16.2.3.1). The %%[[Class]]%% internal property of the newly constructed object is set to "TypeArray". The %%[[Extensible]]%% internal property of the newly constructed object is set to true.
+
+The remaining properties of the newly constructed object are set as follows:
+  -	If the argument arg0 is a Number:
+    -	The length property of the newly constructed object is set to ToUInt32(arg0)
+    -	The byteLength property of the newly constructed object is set to length multiplied by the size in bytes of Type.
+    -	Let arrayBuffer be an object constructed as if by a call to the built-in ArrayBuffer constructor, as “new ArrayBuffer(byteLength)”.
+    -	The buffer property of the newly constructed object is set to arrayBuffer.
+    -	The byteOffset property of the newly constructed object is set to 0.
+  -	Otherwise:
+    -	Let O be the result of calling ToObject(arg0).
+    -	Let class be the value of the %%[[Class]]%% internal property of O. 
+    -	If class is “ArrayBuffer”:
+      -	Let byteOffset be the result of calling ToUInt32 on arg1, if provided, or else 0.
+      -	If byteOffset is not an integer multiple of the size in byte of Type, raise a RangeError exception.
+      -	Let bufferLength be the result of calling %%[[Get]]%% on O with property name “byteLength”.
+      -	Let byteLength be the result of calling ToUInt32 on arg2, if provided, or else bufferLength – byteOffset.
+      -	If byteOffset + byteLength is greater than bufferLength, raise a RangeError exception.
+      -	Let length be the result of dividing byteLength by the size in bytes of Type.
+      -	If ToUInt32(length) !== length, raise a RangeError exception.
+      -	The length property of the newly constructed object is set to length.  
+      -	The byteLength property of the newly constructed object is set to byteLength.
+      -	The buffer property of the newly constructed object is set to O.
+      -	The byteOffset property of the newly constructed object is set to byteOffset.
+    -	Else:
+      -	Let n to be the result of calling %%[[Get]]%% on V with property name "length".
+      -	Let length be the result of calling ToUInt32(n).
+      -	The length property of the newly constructed object is set to length.
+      -	The byteLength property of the newly constructed object is set to length multiplied by the size in bytes of Type.
+      -	Let arrayBuffer be an object constructed as if by a call to the built-in ArrayBuffer constructor, as “new ArrayBuffer(byteLength)”.
+      -	Initialize i to be 0.
+      -	While i < length: 
+        -	Let x be the result of calling %%[[Get]]%% on arrayBuffer with property name ToString(i).
+        -	Let indexDesc be a property descriptor.
+        -	Set indexDesc.Writable to true.
+        -	Set indexDesc.Enumerable to true.
+        -	Set indexDesc.Configurable to false.
+        -	Set indexDesc.Value to x.
+        -	Call %%[[DefineOwnProperty]]%% on the newly constructed object with arguments ToString(i), indexDesc, and false.  
+        -	Set i to i + 1.
+      -	The buffer property of the newly constructed object is set to arrayBuffer.
+      -	The byteOffset property of the newly constructed object is set to 0.
+=== 2.3	Properties of the TypeArray Constructor ===
+The value of the %%[[Prototype]]%% internal property of the TypeArray constructor is the Function prototype object (15.3.4).
+
+Besides the internal properties and the length property (whose value is 3), the TypeArray constructor has the following properties:
+\\ \\ ** 2.3.1	TypeArray.prototype ** \\ 
+The initial value of TypeArray.prototype is the TypeArray prototype object (16.2.4).
+
+This property has the attributes { %%[[Writable]]%%: false, %%[[Enumerable]]%%: false, %%[[Configurable]]%%: false }.
+\\ \\ ** 2.3.2	TypeArray.BYTES_PER_ELEMENT ** \\ 
+The initial value of TypeArray.BYTES_PER_ELEMENT is the size in bytes of Type.
+
+This property has the attributes { %%[[Writable]]%%: false, %%[[Enumerable]]%%: false, %%[[Configurable]]%%: false }.
+=== 2.4	Properties of the TypeArray Prototype Object ===
+The value of the %%[[Prototype]]%% internal property of the TypeArray prototype object is the standard built-in Object prototype object (15.2.4). It’s %%[[Class]]%% is "TypeArray". 
+\\ \\ ** 2.4.1	TypeArray.prototype.constructor ** \\ 
+The initial value of TypeArray.prototype.constructor is the standard built-in TypeArray constructor.
+\\ \\ ** 2.4.2	TypeArray.prototype.set(array [, offset] ) ** \\ 
+Set multiple values in the TypedArray, reading from the array input., reading input values from the array. The optional offset value indicates the index in the current array where values are written. If omitted, it is assumed to be 0. 
+  -	If this does not have class “TypeArray”, throw a TypeError.
+  -	Let offsetIndex be ToUInt32(offset)
+  -	Let O be the result of calling ToObject(array).
+  -	Let srcLength be the result of calling %%[[Get]]%% on O with property name “length”.
+  -	Let targetLength be the result of calling %%[[Get]]%% on this with property name “length”
+  -	If srcLength + offset > targetLength, throw a RangeError.
+  -	Let temp be a new TypeArray created as if by a call to “new TypeArray(srcLength)”
+  -	Let k be 0
+  -	While k < srcLength
+    -	Let v be the result of calling %%[[Get]]%% on src with property name toString(k)
+    -	Call %%[[Put]]%% on temp with arguments  ToString(k), v, and false
+  -	Let k be offset
+  -	While k < targetLength
+    -	Let v be the result of calling %%[[Get]]%% on temp with property name ToString(k-offset)
+    -	Call %%[[Put]]%% on temp with arguments  ToString(k), v, and false
+\\ \\ ** 2.4.3	TypeArray.prototype.subarray(begin [, end] ) ** \\ 
+Returns a new TypedArray view of the ArrayBuffer store for this TypedArray, referencing the elements at begin, inclusive, up to end, exclusive. If either begin or end is negative, it refers to an index from the end of the array, as opposed to from the beginning.
+  -	If this does not have class “TypeArray”, throw a TypeError.
+  -	Let srcLength be the result of calling %%[[Get]]%% on this with property name “length”
+  -	Let beginInt be ToInt32(begin)
+  -	If beginInt < 0, let beginInt be srcLength + beginInt
+  -	Let beginIndex be min(srcLength, max(0, beginInt))
+  -	Let endInt be ToInt32(end) if end was provided, else srcLength.
+  -	If endInt <0,let endInt be srcLength + endInt
+  -	Let endIndex be max(0,min(srcLength, endInt))
+  -	If endIndex < beginIndex, let endIndex be beginIndex
+  -	Return a new TypeArray with the following values for it’s proeprties:
+    -	The length property of the newly constructed object is set to endIndex - beginIndex
+    -	The byteLength property of the newly constructed object is set to length multiplied by the size in bytes of Type.
+    -	The buffer property of the newly constructed object is set to this.buffer.
+    -	The byteOffset property of the newly constructed object is set to this.offset + beginIndex.
+=== 2.5	Properties of TypeArray instances ===
+TypeArray instances inherit properties from the TypeArray prototype object and their %%[[Class]]%% internal property value is "TypeArray". TypeArray instances also have the following properties.
+\\ \\ ** 2.5.1	 %%[[DefineOwnProperty]]%% ( p, desc, throw ) ** \\ 
+TypeArray objects use a variation of the %%[[DefineOwnProperty]]%% internal method used for other native ECMAScript objects (8.12.9).
+
+When the %%[[DefineOwnProperty]]%% internal method of A is called with property P, Property Descriptor Desc and Boolean flag Throw, the following steps are taken:
+  -	Let succeeded be the result of calling the default %%[[DefineOwnProperty]]%% internal method (8.12.9) on A passing P, Desc, and Throw as arguments.
+  -	If succeeded is false, return false.
+  -	If Desc contains a Value field, let newValue be Desc.Value
+  -	Let convertedValue to ToType(newValue)
+  -	Let index be ToUInt32(P)
+  -	Call the SetValueInBuffer internal operation with arguments A.buffer.%%[[NativeBuffer]]%%, A.byteOffset, index, convertedValue, and Type.
+  -	Return true.
+The internal operation SetValueInBuffer takes five parameters, a native buffer nativeBuffer, an integer byteOffset, an integer index, a value of type Type newValue, and a Type valueType.  It operates as follows:
+  -	Let size be the size in bytes of the type valueType.
+  -	Let bytes be the array of bytes from nativeBuffer between offset byteOffset+(index*size) and offset byteOffset+( (index+1)*size)-1 inclusive.
+  -	Let newValueBytes be the result of converting newValue to an array of bytes, using the platform endianness.  
+  -	Set each byte of bytes from the corresponding byte of newValueBytes.
+\\ ** 2.5.2	%%[[GetOwnProperty]]%% ( P) ** \\ 
+TypeArray objects use a variation of the %%[[GetOwnProperty]]%% internal method used for other native ECMAScript objects (8.12.1). This special internal method provides access to named properties corresponding to the individual index values of the TypeArray objects.
+
+When the %%[[GetOwnProperty]]%% internal method of A is called with property name P, the following steps are taken:
+  -	Let desc be the result of calling the default %%[[GetOwnProperty]]%% internal method (8.12.1) on A with argument P.
+  -	If desc is not undefined return desc.
+  -	If ToString(abs(ToInteger(P) ) ) is not the same value as P, return undefined.
+  -	Let length be the result of a calling %%[[Get]]%% on A with parameter “length”
+  -	Let index be ToInteger(P).
+  -	If length ≤ index, return undefined.
+  -	Let isLittleEndian be true if the platform endianness is little endian, else false.
+  -	Let value be the result of calling the GetValueFromBuffer internal operation with arguments A.buffer.%%[[NativeBuffer]]%%, A.byteOffset, index, Type, and littleEndian.
+  -	Return a Property Descriptor { %%[[Value]]%%: value, %%[[Enumerable]]%%: true, %%[[Writable]]%%: true, %%[[Configurable]]%%: false }
+The internal operation GetValueFromBuffer takes three parameters, a native buffer nativeBuffer, an integer byteOffset, an integer index, a Type valueType, and a boolean isLittleEndian.  It operates as follows:
+  -	Let size be the size in bytes of the type valueType.
+  -	Let bytes be the array of bytes from nativeBuffer between offset byteOffset+(index*size) and offset byteOffset+( (index+1)*size)-1 inclusive.
+  -	Let rawValue be the result of convert the array bytes to a value of type valueType, using little endian if isLittleEndian is true, otherwise big endian. 
+  -	If valueType is Float32 and rawValue is a Float32 representation of IEEE754 NaN, return the NaN Number value.
+  -	Else, if valueType is Float64 and rawValue is a Float64 representation of IEEE754 NaN, return the NaN Number value.
+  -	Else, return the Number value that that represents the same numeric value as rawValue
+\\ ** 2.5.3	length ** \\ 
+The value of the length property is the length of the TypeArray object, which was fixed at creation.  This property has attributes { %%[[Writable]]%%: false, %%[[Enumerable]]%%: false, %%[[Configurable]]%%:false }.
+\\ \\ ** 2.5.4	byteLength  ** \\ 
+The value of the byteLength property is the length of the TypeArray object, which was fixed at creation.  This property has attributes { %%[[Writable]]%%: false, %%[[Enumerable]]%%: false, %%[[Configurable]]%%:false }.
+\\ \\ ** 2.5.5	buffer ** \\ 
+The value of the buffer property is the length of the TypeArray object, which was fixed at creation.  This property has attributes { %%[[Writable]]%%: false, %%[[Enumerable]]%%: false, %%[[Configurable]]%%:false }.
+\\ \\ ** 2.5.6	byteOffset ** \\ 
+The value of the byteOffset property is the length of the TypeArray object, which was fixed at creation.  This property has attributes { %%[[Writable]]%%: false, %%[[Enumerable]]%%: false, %%[[Configurable]]%%:false }.
+==== 3	DataView Objects ====
+=== 3.1	The DataView Constructor Called as a Function ===
+When DataView is called as a function rather than as a constructor, it creates and initialises a new DataView object.  Thus the function call DataView(…) is equivalent to the object creation expression new DataView(…) with the same arguments.
+=== 3.2	The DataView Constructor ===
+When DataView is called as part of a new expression, it is a constructor: it initialises the newly created object.
+\\ \\ ** 3.2.1	new DataView(buffer [, byteOffset [, byteLength]]) ** \\ 
+The %%[[Prototype]]%% internal property of the newly constructed object is set to the original DataView prototype object, the one that is the initial value of DataView.prototype (16.1.3.1). The %%[[Class]]%% internal property of the newly constructed object is set to "DataView". The %%[[Extensible]]%% internal property of the newly constructed object is set to true.
+
+The remaining proeprties are set as follows:
+  -	Let O be ToObject(buffer)
+  -	If the %%[[Class]]%% internal property of O is not “ArrayBuffer”, raise a TypeError.
+  -	Let byteOffset be the result of calling ToUInt32 on byteOffset, if provided, or else 0.
+  -	Let bufferLength be the result of calling %%[[Get]]%% on O with property name “byteLength”.
+  -	Let byteLength be the result of calling ToUInt32 on byteLength, if provided, or else bufferLength – byteOffset.
+  -	If byteOffset + byteLength is greater than bufferLength, raise a RangeError exception.
+  -	The byteLength property of the newly constructed object is set to byteLength.
+  -	The buffer property of the newly constructed object is set to O.
+  -	The byteOffset property of the newly constructed object is set to byteOffset.
+=== 3.3	Proeprties of the DataView Constructor ===
+The value of the %%[[Prototype]]%% internal property of the DataView constructor is the Function prototype object (15.3.4).
+
+Besides the internal properties and the length property (whose value is 3), the DataView constructor has the following properties:
+\\ \\ ** 3.3.1	DataView.prototype ** \\ 
+The initial value of DataView.prototype is the DataView prototype object (16.1.4).
+
+This property has the attributes { %%[[Writable]]%%: false, %%[[Enumerable]]%%: false, %%[[Configurable]]%%: false }.
+=== 3.4	Properties of the DataView Prototype Object ===
+The value of the %%[[Prototype]]%% internal property of the DataView prototype object is the standard built-in Object
+prototype object (15.2.4). The %%[[Class]]%% internal property of the newly constructed object is set to "Object". The %%[[Extensible]]%% internal property of the newly constructed object is set to true.
+
+The internal operation GetValue(byteOffset, isLittleEndian, type) used by functions on DataView instances is defined as follows:
+  -	Let byteOffsetInt be ToUInt32(byteOffset)
+  -	Let totalOffset be byteOffsetInt plus the result of calling %%[[Get]]%% on this with parameter “byteOffset”
+  -	Let byteLength be the result of calling %%[[Get]]%% on this with parameter “byteLength”
+  -	If totalOffset >= byteLength, raise a RangeError
+  -	Let value be the result of calling the GetValueFromBuffer internal operation (2.5.2) with arguments this.buffer.%%[[NativeBuffer]]%%, totalOffset, 0 and type.
+  -	Return value
+
+The internal operation SetValue(byteOffset, isLittleEndian, type, value) used by functions on DataView instances  is defined as follows:
+  -	Let byteOffsetInt be ToUInt32(byteOffset)
+  -	Let totalOffset be byteOffsetInt plus the result of calling %%[[Get]]%% on this with parameter “byteOffset”
+  -	Let byteLength be the result of calling %%[[Get]]%% on this with parameter “byteLength”
+  -	If totalOffset >= byteLength, raise a RangeError
+  -	Let value be the result of calling the SetValueInBuffer internal operation (2.5.2) with arguments this.buffer.%%[[NativeBuffer]]%%, totalOffset, 0, value and type.
+  -	Return value
+\\ ** 3.4.1	DataView.prototype.constructor ** \\ 
+The initial value of DataView.prototype.constructor is the standard built-in DataView constructor.
+\\ \\ ** 3.4.2	DataView.prototype.getInt8(byteOffset) ** \\ 
+Gets the Int8 value at offset byteOffset in the DataView.
+  -	Let O be ToObject(this)
+  -	If the %%[[Class]]%% internal property of O is not “DataView”, raise a TypeError.
+  -	Return GetValue(byteOffset, true, Int8)
+\\ ** 3.4.3	DataView.prototype.getUint8(byteOffset) ** \\ 
+Gets the UInt8 value at offset byteOffset in the DataView.
+  -	Let O be ToObject(this)
+  -	If the %%[[Class]]%% internal property of O is not “DataView”, raise a TypeError.
+  -	Return GetValue(byteOffset, true, UInt8)
+\\ ** 3.4.4	DataView.prototype.getInt16(byteOffset, littleEndian) ** \\ 
+Gets the Int16 value at offset byteOffset in the DataView, using the provided endianness.
+  -	Let O be ToObject(this)
+  -	Let isLittleEndian be ToBoolean(littleEndian) if provided, else false
+  -	If the %%[[Class]]%% internal property of O is not “DataView”, raise a TypeError.
+  -	Return GetValue(byteOffset, isLittleEndian, Int16)
+\\ ** 3.4.5	DataView.prototype.getUint16(byteOffset, littleEndian) ** \\ 
+Gets the Uint16 value at offset byteOffset in the DataView, using the provided endianness.
+  -	Let O be ToObject(this)
+  -	Let isLittleEndian be ToBoolean(littleEndian) if provided, else false
+  -	If the %%[[Class]]%% internal property of O is not “DataView”, raise a TypeError.
+  -	Return GetValue(byteOffset, isLittleEndian, Uint16)
+\\ ** 3.4.6	DataView.prototype.getInt32(byteOffset, littleEndian) ** \\ 
+Gets the Int32 value at offset byteOffset in the DataView, using the provided endianness.
+  -	Let O be ToObject(this)
+  -	Let isLittleEndian be ToBoolean(littleEndian) if provided, else false
+  -	If the %%[[Class]]%% internal property of O is not “DataView”, raise a TypeError.
+  -	Return GetValue(byteOffset, isLittleEndian, Int32)
+\\ ** 3.4.7	DataView.prototype.getUint32(byteOffset, littleEndian) ** \\ 
+Gets the Uint32 value at offset byteOffset in the DataView, using the provided endianness.
+  -	Let O be ToObject(this)
+  -	Let isLittleEndian be ToBoolean(littleEndian) if provided, else false
+  -	If the %%[[Class]]%% internal property of O is not “DataView”, raise a TypeError.
+  -	Return GetValue(byteOffset, isLittleEndian, Uint32)
+\\ ** 3.4.8	DataView.prototype.getFloat32(byteOffset, littleEndian) ** \\ 
+Gets the Float32 value at offset byteOffset in the DataView, using the provided endianness.
+  -	Let O be ToObject(this)
+  -	Let isLittleEndian be ToBoolean(littleEndian) if provided, else false
+  -	If the %%[[Class]]%% internal property of O is not “DataView”, raise a TypeError.
+  -	Return GetValue(byteOffset, isLittleEndian, Float32)
+\\ ** 3.4.9	DataView.prototype.getFloat64(byteOffset, littleEndian) ** \\ 
+Gets the Float64 value at offset byteOffset in the DataView, using the provided endianness.
+  -	Let O be ToObject(this)
+  -	Let isLittleEndian be ToBoolean(littleEndian) if provided, else false
+  -	If the %%[[Class]]%% internal property of O is not “DataView”, raise a TypeError.
+  -	Return GetValue(byteOffset, isLittleEndian, Float64)
+\\ ** 3.4.10	DataView.prototype.setInt8(byteOffset, value) ** \\ 
+Sets the Int8 value at offset byteOffset in the DataView.
+  -	Let O be ToObject(this)
+  -	If the %%[[Class]]%% internal property of O is not “DataView”, raise a TypeError.
+  -	Return GetValue(byteOffset, true, Int8, ToInt8(value) )
+\\ ** 3.4.11	DataView.prototype.setUint8(byteOffset, value) ** \\ 
+Sets the Uint8 value at offset byteOffset in the DataView.
+  -	Let O be ToObject(this)
+  -	If the %%[[Class]]%% internal property of O is not “DataView”, raise a TypeError.
+  -	Return GetValue(byteOffset, true, Uint8, ToUint8(value) )
+\\ ** 3.4.12	DataView.prototype.setInt16(byteOffset, value, littleEndian) ** \\ 
+Sets the Int16 value at offset byteOffset in the DataView.
+  -	Let O be ToObject(this)
+  -	Let isLittleEndian be ToBoolean(littleEndian) if provided, else false
+  -	If the %%[[Class]]%% internal property of O is not “DataView”, raise a TypeError.
+  -	Return GetValue(byteOffset, isLittleEndian, Int16, ToInt16(value))
+\\ ** 3.4.13	DataView.prototype.setUint16(byteOffset, value, littleEndian) ** \\ 
+Sets the Uint16 value at offset byteOffset in the DataView.
+  -	Let O be ToObject(this)
+  -	Let isLittleEndian be ToBoolean(littleEndian) if provided, else false
+  -	If the %%[[Class]]%% internal property of O is not “DataView”, raise a TypeError.
+  -	Return GetValue(byteOffset, isLittleEndian, Uint16, ToUint16(value))
+\\ ** 3.4.14	DataView.prototype.setInt32(byteOffset, value, littleEndian) ** \\ 
+Sets the Int32 value at offset byteOffset in the DataView.
+  -	Let O be ToObject(this)
+  -	Let isLittleEndian be ToBoolean(littleEndian) if provided, else false
+  -	If the %%[[Class]]%% internal property of O is not “DataView”, raise a TypeError.
+  -	Return GetValue(byteOffset, isLittleEndian, Int32, ToInt32(value))
+\\ ** 3.4.15	DataView.prototype.setUint32(byteOffset, value, littleEndian) ** \\ 
+Sets the Uint32 value at offset byteOffset in the DataView.
+  -	Let O be ToObject(this)
+  -	Let isLittleEndian be ToBoolean(littleEndian) if provided, else false
+  -	If the %%[[Class]]%% internal property of O is not “DataView”, raise a TypeError.
+  -	Return GetValue(byteOffset, isLittleEndian, Uint32, ToUint32(value))
+\\ ** 3.4.16	DataView.prototype.setFloat32(byteOffset, value, littleEndian) ** \\ 
+Sets the Float32 value at offset byteOffset in the DataView.
+  -	Let O be ToObject(this)
+  -	Let isLittleEndian be ToBoolean(littleEndian) if provided, else false
+  -	If the %%[[Class]]%% internal property of O is not “DataView”, raise a TypeError.
+  -	Return GetValue(byteOffset, isLittleEndian, Float32, ToFloat32(value))
+\\ ** 3.4.17	DataView.prototype.setUint16(byteOffset, value, littleEndian) ** \\ 
+Sets the Float64 value at offset byteOffset in the DataView.
+  -	Let O be ToObject(this)
+  -	Let isLittleEndian be ToBoolean(littleEndian) if provided, else false
+  -	If the %%[[Class]]%% internal property of O is not “DataView”, raise a TypeError.
+  -	Return GetValue(byteOffset, isLittleEndian, Float64, ToFloat64(value))
+=== 3.5	Propeties of DataView Instances ===
+DataView instances inherit properties from the DataView prototype object and their %%[[Class]]%% internal property value is "DataView". DataView instances also have the following properties.
+\\ \\ ** 3.5.1	byteLength ** \\ 
+The value of the byteLength property is the length of the DataView object, which was fixed at creation.  This property has attributes { %%[[Writable]]%%: false, %%[[Enumerable]]%%: false, %%[[Configurable]]%%:false }.
+\\ \\ ** 3.5.2	buffer ** \\ 
+The value of the buffer property is the length of the DataView object, which was fixed at creation.  This property has attributes { %%[[Writable]]%%: false, %%[[Enumerable]]%%: false, %%[[Configurable]]%%:false }.
+\\ \\ ** 3.5.3	byteOffset ** \\ 
+The value of the byteOffset property is the length of the DataView object, which was fixed at creation.  This property has attributes { %%[[Writable]]%%: false, %%[[Enumerable]]%%: false, %%[[Configurable]]%%:false }.

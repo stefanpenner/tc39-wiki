@@ -1,0 +1,79 @@
+===== Semantics notation =====
+
+(Also see the [[discussion:reference evaluator|discussion page]] for this proposal) 
+
+===== Proposal =====
+
+The semantics of the verification and evaluation phases will each be defined by a Standard ML program that takes an abstract syntax tree as input and may produce a value as output. The verifier will produce a boolean result, and the evaluator might produce an ECMAScript value result, throw an exception or never terminate.
+
+
+===== Rationale =====
+
+We want a notation that is precise and readable. We toyed with inventing our own notation, but our invention looked strikingly like ML. We settled on Standard ML because it is more stable than other ML dialects and is formally defined.
+
+===== Sample text =====
+
+Here is a sketch of part of the evaluator (not actually valid SML).
+
+<code>
+
+type expr = 
+    LetExpr of letExpr
+  | VarExpr of varExpr
+  | ObjectLiteral of nameAndValue list
+	
+let evalExpr = function 
+    env LetExpr e -> evalLetExpr env e.let_ds e.let_body
+  | env VarExpr e -> evalVarExpr env e.var_id
+	
+and evalLetExpr env ds body =
+  let bindings = makeObject Types.objectT in
+  let newenv = extendEnvironment env bindings in 
+  createBndings bindings ds env;
+  evalExpr newenv body
+
+and createBindings bindings env ds =
+  List.iter (createBinding bindings env) ds
+
+and createBinding = function
+
+    bindings env Plain { plain_id = id;  
+			 plain_init = None }
+    -> setPropertyValue bindings id Values.undefined
+
+  | bindings env Plain { plain_id = id;
+			 plain_init = Some e }
+    -> setPropertyValue bindings id (evalExpr env e)
+
+  | bindings env Destructuring { destructuring_pattern = pattern;
+				 destructuring_init = e }
+    -> destructureAndBind bindings pattern (evalExpr env e)
+
+and destructureAndBind = function 
+    bindings (ObjectLiteral pat) e -> use pat
+  | bindings (Array pat) e -> use pat
+
+and evalVarExpr env id =
+  match lookupInEnv env (makeMultiName env id) with
+    None -> raise referenceeError id
+  | Some v -> v
+
+and lookupInEnv env multiname =
+  match env with 
+    [] -> None
+  | r::rs -> 
+      (match getValueProtocol r multiname with
+	None -> lookupInEnv env multiname
+      | result -> result)
+
+and getValueProtocol obj multiname =
+  match getPropertyValue obj multiname with    
+    None -> 
+      (match getPrototype obj with
+	None -> None
+      | Some proto -> getValueProtocol proto multiname)
+  | result -> result
+
+and getPropertyValue obj multiname = (* IMPLEMENTME *)
+
+</code>

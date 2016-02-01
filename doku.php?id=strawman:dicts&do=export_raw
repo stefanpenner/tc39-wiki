@@ -1,0 +1,60 @@
+===== Dicts =====
+
+ECMAScript's objects and functions have a number of special cases (both in the official spec and in unofficial extensions) that can become hazards in practical programming. For example, prototype inheritance as well as magic properties such as ''%%__proto__%%'' pollute object tables and can introduce bugs when people use objects as tables.
+
+At the same time, the [[strawman:tuples]], [[strawman:records]] and [[strawman:shorter function syntax|sharp functions]] proposals define new core primitive types that could be used to define the core semantics of objects and functions. They also provide cleaner building blocks that are useful for programmers.
+
+This strawman proposes a new primitive called //dicts//, which conceptually represent the own-property table of objects. An object can be conceptualized as an immutable [[strawman:records|record]] of internal properties, including one property mapping to a dict containing the object's own-property descriptors, and another property pointing to a prototype object.
+
+Dicts are mutable and can grown and shrink. But they do not contain a prototype or any of ECMAScript's traditional internal properties.
+
+<code javascript>
+var table = [foo: "howdy", 42: true, "hey, cool!": "not bad, huh?"];
+table["foo"]; // "howdy"
+delete table.foo;
+table.foo; // undefined
+typeof table; // "dict"
+</code>
+
+===== Type =====
+
+The ''typeof'' operator returns ''"dict"'' for dict values.
+
+Dicts are not objects; the object operations (such as ''Object.getPrototypeOf'' or ''Object.getOwnPropertyDescriptor'') do not work for dicts.
+
+===== Keys =====
+
+The allowable keys of a dict are exactly the same as the allowable keys of an object.
+
+===== Enumeration =====
+
+The enumeration order of a dict is exactly the same as the [[strawman:enumeration]] order of an object, but of course without walking the prototype chain.
+
+===== Attributes =====
+
+Dict properties do not have attributes. All properties of a dict are treated as writable and enumerable.
+
+===== Syntax =====
+
+The syntax of dict literals is analogous to that of object literals, but with square brackets and without the additional syntax for getters and setters.
+
+(Parsers only need one token of lookahead when reading the first token after the left-bracket, to determine whether the next token is a colon.)
+
+An empty dict is written ''[| |]''.
+
+===== Alternative syntaxen =====
+
+  * optionally allow the ''|'' tokens for non-empty dicts, for consistency
+  * mandate the ''|'' regardless, for consistency
+  * switch to ''{| ... |}'' and make them mandatory, for consistency
+
+===== Comments =====
+
++1 on this strawman. A few thoughts and issues beyond syntax:
+
+  * Shared mutable value types may give some folks pause, but this is the big, obvious, "dict-not-object" use-case, and poorly served by object.
+  * We may want a method to wrap a dict into an object that can be optimized to adopt the dict if it is about to become garbage (has only one reference via the argument to this method), so the object can then be frozen, etc.
+  * Given the sharp syntax proposed for [[strawman:records]], [[strawman:tuples]], etc., ''#[a: 1, b: 2, c: 3]'' is an easy and complementary extension to this proposal that allows frozen-from-birth dicts and may relieve need for the last bullet's method.
+  * Without object clothing (in particular delegation to ''Object.prototype''), what does the spec's internal ''ToString'' abstract operation do with a ''dict''?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/03/13 20:15//

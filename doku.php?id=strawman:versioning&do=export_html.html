@@ -1,0 +1,112 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:versioning&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:versioning&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:versioning&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="good_news"></a><h4>Good News</h4>
+<div class="level4">
+
+<p>
+ Excellent proposal from dherman coming very soon.  &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2011/12/31 21:09</em>
+</p>
+
+</div>
+<!-- SECTION [1-133] -->
+<a name="prior_work"></a><h4>Prior Work</h4>
+<div class="level4">
+
+<p>
+ See <a href="doku.php%3Fid=proposals:versioning.html" class="wikilink1" title="proposals:versioning" onclick="return svchk()" onkeypress="return svchk()">versioning</a> for the back-story.
+</p>
+
+</div>
+<!-- SECTION [134-205] -->
+<a name="goal_thoughts"></a><h4>Goal Thoughts</h4>
+<div class="level4">
+
+<p>
+ The goal is to allow new versions of ES with syntactic and non-syntactic extensions to degrade gracefully in downrev browsers, while upgrading the user experience for uprev browsers without taxing developers too much.
+</p>
+
+<p>
+Audiences competing here include implementors, developers, and ultimately users who benefit from progressive enhancement. On the Web, with Ajax apps, progressive enhancement may mean the regressive experience is slighly less shiny (no <acronym title="Cascading Style Sheets">CSS</acronym> transition), or perhaps a &ldquo;Web 1.0&rdquo; window-popup or form field instead of <acronym title="Cascading Style Sheets">CSS</acronym> popup or editable text widget.
+</p>
+
+<p>
+For <acronym title="JavaScript">JS</acronym> hackers wanting to use new versions of ES, the problems consist of selecting and detecting support for the new version and compensating with fallback for lack of new features. For browser implementors, complexity and version combination explosion may be overriding.
+</p>
+
+</div>
+<!-- SECTION [206-1071] -->
+<a name="issue_dump"></a><h4>Issue Dump</h4>
+<div class="level4">
+
+<p>
+ This is a brain-dump or laundry-list. It might better be factored into audience-specific use-cases from which we can derive requirements. 
+</p>
+<ul>
+<li class="level1"><div class="li"> Object model extensions generally fly under &ldquo;the default version&rdquo; you get with <code>&lt;script&gt;...&lt;/script&gt;</code>.</div>
+<ul>
+<li class="level2"><div class="li"> Developers can object-detect in order to feature-detect, they do not need to use <code>&lt;script&gt;</code> attributes or extra <code>version=...</code> parameters.</div>
+</li>
+<li class="level2"><div class="li"> We should try to continue this to avoid explosive combination of feature-hiding code in implementations.</div>
+</li>
+<li class="level2"><div class="li"> But for new syntax, developers need to hide <code>&lt;script&gt;</code> content using that syntax from downrev browsers.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Script tag <a href="http://www.rfc-editor.org/rfc/rfc4329.txt" class="urlextern" target="_blank" title="http://www.rfc-editor.org/rfc/rfc4329.txt" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">version</a> parameter values should be well-defined for ES standards.</div>
+</li>
+<li class="level1"><div class="li"> Script tag version parameter values defined also for multi-vendor experimental versions if it makes sense.</div>
+</li>
+<li class="level1"><div class="li"> In-language version selection via a <code>use version </code><em>n</em><code>;</code> pragma. This wins for many developers who are not good script-tag configurators.</div>
+</li>
+<li class="level1"><div class="li"> Something like <a href="doku.php%3Fid=proposals:versioning.html" class="wikilink1" title="proposals:versioning" onclick="return svchk()" onkeypress="return svchk()">versioning</a>&lsquo;s <code>__MAX_ECMASCRIPT_VERSION__</code> property, for runtime script version selection.</div>
+</li>
+<li class="level1"><div class="li"> A different notion of &ldquo;max&rdquo;, for frame-wise restriction to a maximum version of the language to preserve security proofs.</div>
+<ul>
+<li class="level2"><div class="li"> Crock points out this could be abused and tend to freeze progress.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> A frame-wise version selection that sets the default for all script tags and event handlers was <a href="http://www.w3.org/TR/REC-html40/interact/scripts.html#default-script" class="urlextern" target="_blank" title="http://www.w3.org/TR/REC-html40/interact/scripts.html#default-script" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">specified</a> in HTML4 but not implemented by all browsers.</div>
+<ul>
+<li class="level2"><div class="li"> We might want an HTML5 solution that is easier to express than an <acronym title="Hyper Text Transfer Protocol">HTTP</acronym> header equated via a <code>&lt;meta&gt;</code> tag!</div>
+</li>
+<li class="level2"><div class="li"> &ldquo;Min&rdquo; as well as &ldquo;Max&rdquo; version stipulation might be necessary for certain web apps or pages.</div>
+</li>
+<li class="level2"><div class="li"> Better syntax with alternative content than the old <code>&lt;script&gt;</code> tag, which has no fallback markup within its container, might be appropriate.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2009/09/23 22:52</em> 
+</p>
+
+</div>
+<!-- SECTION [1072-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/7/7461cfaeaeb0259c3229abd7d363d74b.xhtml used -->
+</body>
+</html>

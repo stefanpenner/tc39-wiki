@@ -1,0 +1,168 @@
+====== Explicit Inherited Soft Fields ======
+
+The following derived abstraction combines the explicitness of [[harmony:weak_maps#explicit soft own fields]] with the visibility across inheritance chains of [[harmony:weak_maps#inherited soft fields]]. Below is an executable specification as a wrapper around [[harmony:weak maps]]. This strawman page suggests standardizing this derived abstraction because a primitive implementation is likely to be more efficient that the code below.
+
+As with our previous "''EphemeronTable''", the name "''SoftField''" is only a placeholder until someone suggests an acceptable name.
+
+<code javascript>
+  class SoftField {
+    private weakMap, mascot;
+    constructor() {
+      private(this).weakMap = WeakMap();
+      private(this).mascot = {};
+    }
+    get(base) {
+      while (base !== null) {
+        const result = private(this).weakMap.get(base);
+        if (result !== undefined) { 
+          return result === private(this).mascot ? undefined : result; 
+        }
+        base = Object.getPrototypeOf(base);
+      }
+      return undefined;
+    }
+    set(key, val) {
+      private(this).weakMap.set(key, val === undefined ? private(this).mascot : val);
+    }
+    has(key) {
+      return private(this).weakMap.get(key) !== undefined;
+    }
+    delete(key) {
+      private(this).weakMap.set(key, undefined);
+    }
+  }
+</code>
+
+
+===== A transposed representation =====
+
+The following is an alternative explanation that implements the same semantics but more closely reflects expected implementation. This is no longer quite an executable specification in that it builds on a new internal property, here spelled ''%%SoftFields___%%''. The safety of the following spec depends on the ''%%SoftFields___%%'' property not being used by any other spec beyond the following.
+
+<code javascript>
+  function init___(obj) {
+    if (obj !== Object(obj)) { throw new TypeError(...) }
+    if (!obj.SoftFields___) {
+      obj.SoftFields___ = WeakMap();
+    }
+  }
+
+  function SoftField() {
+    const mascot = {};
+    function get(base) {
+      init___(base)
+      while (base !== null) {
+        const result = base.SoftFields___.get(get);
+        if (result !== undefined) { 
+          return result === mascot ? undefined : result; 
+        }
+        base = Object.getPrototypeOf(base);
+      }
+      return undefined;
+    }
+    return Object.freeze({
+      get: get,
+      set: function(key, val) {
+        init___(key);
+        key.SoftFields___.set(get, val === undefined ? mascot : val);
+      },
+      has: function(key) {
+        init___(key);
+        return key.SoftFields___.get(get) !== undefined;
+      },
+      delete: function(key) {
+        init___(key)
+        key.SoftFields___.set(get, undefined);
+      }
+    });
+  }
+</code>
+
+The overall logic is very similar, except that the underlying weak maps are now stored on the SoftField's key objects, while each SoftField itself only holds on to the fixed state of the key used to look up values in those weak maps. Even though the above algorithm still manually encodes walking the prototype chain, because this walk is now consulting a map stored within each object, two transparent performance benefits may follow:
+   * The optimizations already in place for normal property lookup may be more readily adapted to soft field lookup. 
+   * The conventional portion of a GC algorithm that does not take account of weak maps will nevertheless collect that soft state that is only reachable from non-reachable objects, even in the presence of cycles between that soft state and those objects. For soft fields, the weak map portion of a GC algorithm is only needed to collect those soft fields that can no longer be "named" but are still present on objects that are reachable.
+
+This representation parallels the implementation techniques and resulting performance benefits expected for [[strawman:private names]] but without the semantic problems (leaking via proxy traps and inability to associate soft state with frozen objects).
+
+Regarding the GC point, when soft fields are used in patterns such as [[strawman:classes_with_trait_composition#adding_class-private_instance_variables|class-private instance variables]], a soft field adds soft state to a set of objects, each of whom also points at that soft field itself. In that case, the soft field has a lifetime at least as long as any of the objects it indexes. Thus, the conventional portion of GC algorithms is adequate to pick up all the resulting collectable soft state.
+
+
+===== Should we tolerate primitive keys? =====
+
+Since soft fields -- unlike weak maps -- look up the key's inheritance chain until it find a match, it makes sense to allow primitive data types (numbers, strings, and booleans, but still not null or undefined) to serve as keys. When used as a key, the operations above would first convert it to an object using the internal %%[[ToObject]]%% function. (Unlike ''Object'', %%[[ToObject]]%% on a null or undefined throws a TypeError.) For strings, numbers, and booleans, this results in a fresh wrapper, which therefore has no soft own state. Lookup would therefore always proceed to the respective prototypes, so that, e.g., a primitive string would seem to inherit soft state from ''String.prototype'', much as it currently seems to inherit properties from ''String.prototype''. 
+
+
+
+
+
+
+
+
+
+
+===== Can we subsume Private Names? =====
+
+Two use cases shown at [[strawman:private names]] that simple soft fields cannot provide are a certain form of [[strawman:private_names#accessing_private_names_as_values|polymorphism between names and strings]], and so-called "[[strawman:private_names#private_name_properties_support_only_weak_encapsulation|weak encapsulation]]". (MarkM here suspends value judgements about whether we should seek to support so-called "weak encapsulation", and addresses here only how to do so, were we to agree on its desirability.) If [[strawman:value proxies]] are accepted for Harmony, then Soft fields can grow to support both these use cases without further expansion of kernel semantics, by defining a soft field as equivalent to a value proxy that overloads [], to whit:
+
+<code javascript>
+  const softFieldOpHandler = Object.freeze({
+    // overload larg[proxy]
+    rgeti: function(larg)        { return this.get(larg); },
+    // overload larg[proxy] = val;
+    rseti: function(larg, val)   {        this.set(larg, val); }
+  });
+  // Move the SoftField code into softFieldProto
+  const softFieldProto = Object.freeze({
+    get:    ..., //as above, but with "this.weakMap" instead of "weakMap"
+    set:    ..., //as above
+    has:    ..., //as above
+    delete: ...  //as above
+  });
+  const softFieldValueType = Proxy.createValueType(
+      softFieldOpHandler, softFieldProto,
+      "string", // bad idea, but suspending judgement
+      { weakMap: object });
+  function SoftFieldValue() {
+    return Proxy.createValue(softFieldValueType, new WeakMap());
+  }
+  const softFieldValue = SoftFieldValue();
+</code>
+
+(Detail: The above code doesn't quite work as is, because there's no where safe to put the mascot. By delegating to an encapsulated [[harmony:weak_maps#explicit soft own fields]] instead of a ''WeakMap'', we can encapsulate the mascot in this extra layer. This is a detail because it effects only the apparent cost of this executable specification, not the actual cost of an implementation.)
+
+A "weakly encapsulating" soft field, or //wesf//, can then be coded as:
+
+<code javascript>
+  // Move the SoftField code into softFieldProto
+  const wesfProto = Object.freeze({
+    toString: function()         { return improbableName; },
+    get:      function(key)      { return key[improbableName] },
+    set:      function(key, val) {        key[improbableName] = val; },
+    has:      function(key)      { return improbableName in key; },
+    delete:   function(key)      { return delete key[improbableName]; }
+  });
+  const wesfValueType = Proxy.createValueType(
+      softFieldOpHandler, wesfProto,
+      "string", // bad idea, but suspending judgement
+      { improbableName: string });
+  function WesfValue(opt_name) {
+    const name = String(opt_name) || Math.random() + '___';
+    return Proxy.createValue(wesfValueType, name);
+  }
+  const wesfValue = WesfValue();
+</code>
+
+Then polymorphic code such as
+
+<code javascript>
+  function foo(n) {
+    return base[n];
+  }
+</code>
+
+can be called with a softFieldValue, a wesfValue, or a string, where each provides the degree of encapsulation and collision avoidance it claims. This supports the ability to modularly refactor code between encapsulating, "weakly" encapsulating, and obviously non-encapsulating fields.
+
+====== See ======
+
+The thread beginning at [[https://mail.mozilla.org/pipermail/es-discuss/2010-August/011654.html| WeakMap API questions?]]
+
+[[http://wiki.ecmascript.org/doku.php?id=strawman:inherited_explicit_soft_fields&rev=1290377489#a_less_aggressive_gc_contract|Older GC discussion]] now obsolete but still potentially interesting.

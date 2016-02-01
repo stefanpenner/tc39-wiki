@@ -1,0 +1,304 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:enumeration_type&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:enumeration_type&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:enumeration_type&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="rationale"></a><h1>Rationale</h1>
+<div class="level1">
+
+<p>
+An enumeration type defines a type name for a related group of symbolic constants. Enumerations are used for &ldquo;multiple choice&rdquo; scenarios, in which a runtime decision is made from a fixed number of choices that are known at compile-time.
+</p>
+
+<p>
+The use of enumerations is superior to the use of integer constants (or classes with static final fields) — as is common in languages without the notion of enumerations — because the use of enumerations makes the code more readable and self-documenting. The self-documenting nature of the code also makes it possible for the development tool to assist with code writing and other &ldquo;designer&rdquo; activities.
+</p>
+
+<p>
+An enumeration type is a distinct type with named constants.
+</p>
+
+<p>
+Syntax 
+</p>
+<pre class="code">
+[modifiers] enum enumName [ : typeAnnotation] {
+  enumValue1 [ = initializer1]
+  [,enumValue2 [ = initializer2]
+  [, ... [,enumValueN [ = initializerN ] ]]]
+}
+</pre>
+
+<p>
+ Where: 
+</p>
+<pre class="code">
+modifiers 
+Optional. Modifiers that control the visibility and behavior of the enumeration.
+
+enumName 
+Required. Name of the enumerated type.
+
+typeAnnotation 
+Optional. The underlying data type of the enumeration. Must be an integral data type. The default is int.
+
+enumValue1, enumValue2, ..., enumValueN 
+Optional. An enumerated type member.
+
+initializer1, initializer2, ..., initializerN 
+Optional. A constant expression that overrides the default numerical value of an enumeration member.
+</pre>
+
+<p>
+Sample: 
+</p>
+<pre class="code">
+enum Color
+{
+    Red,
+    Green,
+    Blue
+}
+</pre>
+
+<p>
+The declaration of an enumeration type is similar to a class declaration. However the following additions rules apply:
+</p>
+<ol>
+<li class="level1"><div class="li"> We use the keyword enum</div>
+</li>
+<li class="level1"><div class="li"> enumeration types are implicitly <del>static and</del> final</div>
+</li>
+<li class="level1"><div class="li"> the allowed class modifiers are public and private</div>
+</li>
+<li class="level1"><div class="li"> enum types are integral.</div>
+</li>
+</ol>
+
+<p>
+ An enum declaration introduces a new enumerated data type into the program. An enum declaration can appear only in contexts where a class declaration can appear, that is, at global scope, at package scope, or at class scope, but not inside a function or method.
+</p>
+
+<p>
+You can declare the underlying type of an enumeration to be any integral data type. Enumeration members implicitly coerce to and from the underlying data type, allowing for direct assignments of numeric data to variables typed as enum. By default, the underlying data type of an enumeration is int.
+</p>
+
+<p>
+Each enumerated type member has a name and an optional initializer. An initializer must be a compile-time, constant expression that is of the same type as the enumeration specified, or convertible to that type. The value of the first enumerated type member is zero or the value of the initializer, if provided. The value of each subsequent enumerated type member is one more then the previous member or the value of the initializer, if provided. 
+</p>
+<ul>
+<li class="level1"><div class="li"> The constant value for each enum member shall be in the range of the underlying type for the enum.</div>
+</li>
+<li class="level1"><div class="li"> Multiple enum members can share the same associated value. The associated value of an enum member shall not, directly or indirectly, use the value of its own associated enum member. Other than this circularity restriction, enum member initializers can freely refer to other enum member initializers, regardless of their textual position.</div>
+</li>
+<li class="level1"><div class="li"> Within an enum member initializer, values of other enum members are always treated as having the type of their underlying type, so that casts are not necessary when referring to other enum members.</div>
+</li>
+</ul>
+
+<p>
+ An enum value is accessed in a manner that&rsquo;s similar to accessing a static class member. The name of the member must be qualified with the name of the enumeration, for example Color.Red. When assigning a value to a variable of an enum type, one of following may be used: a fully qualified name (such as Color.Red), a string representation of the name (such as &ldquo;Red&rdquo;), or a numeric value.
+</p>
+
+<p>
+If an enum is assigned a string that is known at compile time, the compiler will perform the necessary conversion. For example, &ldquo;Red&rdquo; would be replaced with Color.Red. If the string is not known at compile time, a conversion will be made at run time. That conversion may fail if the string is not a valid member of the enumerated type. Because the conversion takes time and run-time errors may be generated, avoid assigning a string-typed variable to an enum.
+</p>
+
+<p>
+A variable of an enumerated type can hold values outside the range of declared values. One use of this feature is to allow combinations of members used as bit flags, as in done in the example below. Converting an enum variable to a string results in the string representation of the member name. In the case where a union of bit flags results in a value that is not one of the named constants, converting an enum variable to a string results in the stringified representaition of the numeric value.
+</p>
+
+<p>
+Example: 
+</p>
+<pre class="code">
+enum FormatFlags {
+   // Can't use the default values, since we need explicit bits
+   ToUpperCase = 1,   // Should not combine ToUpper and ToLower.
+   ToLowerCase = 2,
+   TrimLeft    = 4,   // Trim leading spaces.
+   TrimRight   = 8,   // Trim trailing spaces.
+   UriEncode   = 16   // Encode string as a URI.
+}
+
+function Format(s : String, flags : FormatFlags) : String {
+   var ret : String = s;
+
+   if (flags &amp; FormatFlags.ToUpperCase) ret = ret.toUpperCase();
+   if (flags &amp; FormatFlags.ToLowerCase) ret = ret.toLowerCase();
+   if (flags &amp; FormatFlags.TrimLeft)    ret = ret.replace(/^\s+/g, &quot;&quot;);
+   if (flags &amp; FormatFlags.TrimRight)   ret = ret.replace(/\s+$/g, &quot;&quot;);
+   if (flags &amp; FormatFlags.UriEncode)   ret = encodeURI(ret);
+
+   return ret;
+}
+
+// Combine two enumeration values and store in a FormatFlags variable.
+var trim : FormatFlags = FormatFlags.TrimLeft | FormatFlags.TrimRight;
+
+// Combine two enumeration values and store in an int variable.
+var lowerURI : int = FormatFlags.UriEncode | FormatFlags.ToLowerCase;
+
+var str : String = &quot;  hello, WORLD  &quot;;
+
+print(trim + &quot;: &quot; + Format(str, trim));
+print(FormatFlags.ToUpperCase + &quot;: &quot; + Format(str, FormatFlags.ToUpperCase));
+print(lowerURI + &quot;: &quot; + Format(str, lowerURI));
+</pre>
+
+<p>
+The above code would print the following: 
+</p>
+<pre class="code">
+12: hello, WORLD
+ToUpperCase:   HELLO, WORLD
+18: %20%20hello,%20world%20%20
+</pre>
+
+<p>
+<strong>Semantics</strong>
+</p>
+
+<p>
+<strong>Instantiation</strong>: Consider an enumeration as applying a constraint on the underlying type bounding it to a specific set of values – then an enum type is just representing a set of constants. Suppose we permit explicit instantiation we could end up with multiple enum objects. What should be the semantics of the equality operators &lsquo;==&rsquo; and &lsquo;!=&rsquo; ? Should they support reference semantics or value semantics? To keep things simple, we should not permit the user to explicitly instantiate an enum using the new operator.
+</p>
+
+<p>
+<strong>Declared accessiblity</strong>: &lsquo;public&rsquo; and &lsquo;private&rsquo; can be the declared accessibility.
+</p>
+
+<p>
+<strong>Default values</strong>: Each enum member has an associated constant value. The associated value of an enum member can be assigned either implicitly or explicitly.
+</p>
+
+<p>
+If the declaration of the enum member has a constant-expression initializer, the value of that constant expression, implicitly converted to the underlying type of the enum, is the associated value of the enum member.
+</p>
+
+<p>
+If the declaration of the enum member has no initializer, its associated value is set implicitly, as follows:
+</p>
+<ul>
+<li class="level1"><div class="li"> If the enum member is the first member declared in the enum type, its associated value is 0.</div>
+</li>
+<li class="level1"><div class="li"> Otherwise, the associated value of the member is obtained by incrementing the associated value of the lexically preceding member by 1. This incremented value must be within the range of values that can be represented by the underlying type.</div>
+</li>
+</ul>
+
+<p>
+ <strong>enum members</strong>: Each enum member has an associated constant value. Multiple enum members may share the same associated value. It should be possible to associate a constant with each enum member at compile-time. Consequently, this association should not involve any circular reference. Other than this circularity restriction, enum member initializers may freely refer to other enum member initializers, regardless of their lexical position.
+</p>
+
+<p>
+<strong>Assignment</strong>: An enumeration type cannot be implicitly converted to its underlying type; an explicit cast shall be required.
+</p>
+
+<p>
+<strong>enum values and operations</strong>: Each enum type defines a distinct type; an explicit enumeration conversion is required to convert between two enum types. The set of values that an enum type can take on is not limited by its enum members. In particular, any value of the underlying type of an enum can be cast to the enum type, and is a distinct valid value of that enum type.
+</p>
+
+<p>
+The following operators can be used on values of enum types: ==, !=, &lt;, &gt;, &lt; = , &gt;=, +, -, ^, &amp;, |, ~ .
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x70%3B%26%23x72%3B%26%23x61%3B%26%23x74%3B%26%23x61%3B%26%23x70%3B%26%23x6c%3B%26%23x40%3B%26%23x6d%3B%26%23x69%3B%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x73%3B%26%23x6f%3B%26%23x66%3B%26%23x74%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x70;&#x72;&#x61;&#x74;&#x61;&#x70;&#x6c;&#x40;&#x6d;&#x69;&#x63;&#x72;&#x6f;&#x73;&#x6f;&#x66;&#x74;&#x2e;&#x63;&#x6f;&#x6d;">Pratap Lakshman</a> 2007/02/22 09:19</em> 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+ Given the earlier &lsquo;minimalist&rsquo; discussion, I would like this proposal withdrawn.  &mdash; <em><a href="mailto:%26%23x70%3B%26%23x72%3B%26%23x61%3B%26%23x74%3B%26%23x61%3B%26%23x70%3B%26%23x6c%3B%26%23x40%3B%26%23x6d%3B%26%23x69%3B%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x73%3B%26%23x6f%3B%26%23x66%3B%26%23x74%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x70;&#x72;&#x61;&#x74;&#x61;&#x70;&#x6c;&#x40;&#x6d;&#x69;&#x63;&#x72;&#x6f;&#x73;&#x6f;&#x66;&#x74;&#x2e;&#x63;&#x6f;&#x6d;">Pratap Lakshman</a> 2007/03/16 13:28</em>
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+ Proposal revived. 
+</p>
+
+<p>
+This proposal has merit and should be accepted or rejected based on the net value it provides to ES4. AS3 users have been asking for an enumeration type and other languages have them. This is evidence that they belong in ES4. Let&rsquo;s not cut them prematurely.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6a%3B%26%23x6f%3B%26%23x64%3B%26%23x79%3B%26%23x65%3B%26%23x72%3B%26%23x40%3B%26%23x61%3B%26%23x64%3B%26%23x6f%3B%26%23x62%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6a;&#x6f;&#x64;&#x79;&#x65;&#x72;&#x40;&#x61;&#x64;&#x6f;&#x62;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Jeff Dyer</a> 2007/03/18 12:45</em>
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+ Here is a repro that I had said I would plug in after the last phone meeting:
+</p>
+<pre class="code">
+enum Color { Red, Green };
+
+var c : Color = Color.Red;
+print(c);               // Red
+
+var c2 : Color = &quot;Red&quot;;
+print(c2);              // Red
+
+print(c2 == Color.Red); // true
+print(c2 == c);         // true
+
+var c3 : Color = (Color) (0);
+print(c3);              // Red
+print(c3 == Color.Red); // true
+print(c3 == c2);        // true
+print(c3 == c);         // true
+</pre>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x70%3B%26%23x72%3B%26%23x61%3B%26%23x74%3B%26%23x61%3B%26%23x70%3B%26%23x6c%3B%26%23x40%3B%26%23x6d%3B%26%23x69%3B%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x73%3B%26%23x6f%3B%26%23x66%3B%26%23x74%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x70;&#x72;&#x61;&#x74;&#x61;&#x70;&#x6c;&#x40;&#x6d;&#x69;&#x63;&#x72;&#x6f;&#x73;&#x6f;&#x66;&#x74;&#x2e;&#x63;&#x6f;&#x6d;">Pratap Lakshman</a> 2007/03/21 13:23</em>
+</p>
+
+<p>
+I think this is a low value feature. ECMAScript already has strings, which (because === works on strings) can act as atomic symbols. The switch statement can work on strings, so most of the usefulness of enum is already built into the language. For the applications that require explicit mapping of symbols to numbers, ECMAScript has object and array structures that can easily do the mapping.
+</p>
+
+<p>
+We already have too many low value features. We should only be adding high value features.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x40%3B%26%23x79%3B%26%23x61%3B%26%23x68%3B%26%23x6f%3B%26%23x6f%3B%26%23x2d%3B%26%23x69%3B%26%23x6e%3B%26%23x63%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x63;&#x72;&#x6f;&#x63;&#x6b;&#x40;&#x79;&#x61;&#x68;&#x6f;&#x6f;&#x2d;&#x69;&#x6e;&#x63;&#x2e;&#x63;&#x6f;&#x6d;">Douglas Crockford</a> 2007/03/24 11:00</em>
+</p>
+
+<p>
+Strings can&rsquo;t be checked for misspellings (typos are a real problem in string-based code, in scripted <acronym title="Microsoft">MS</acronym> COM and Mozilla XPCOM to cite two relevant example domains). They also are not categorical sum types, so you can&rsquo;t get that warning for a forgotten <code>case</code> in <code>switch</code> that lacks <code>default</code>. And maintaining string &harr; integer mappings is verbose and error prone (in part because of prototype-delegated pollution of the mapping object). See <a href="http://lxr.mozilla.org/mozilla/source/js/narcissus/jsdefs.js#141" class="urlextern" target="_blank" title="http://lxr.mozilla.org/mozilla/source/js/narcissus/jsdefs.js#141" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">an example from Narcissus</a>.
+</p>
+
+<p>
+This is a deferred proposal, but it seems better to avoid advocacy in the proposals namespace, or start a discussion page if we must. For now I will record technical costs imposed by deferring enums, and make a quantitative point: Of course many things in the language can be done in a simpler language. <code>do-while</code> and <code>switch</code> could have been left out of Edition 2. I left them out of JS1.0 in 1995 because I was in a rush. That they could be rewritten using other primitives does not make them fruitless, or mean that their addition harmed the language.
+</p>
+
+<p>
+Wasting programmers&rsquo; time reinventing custom wheels, writing verbose and error-prone boilerplate, and missing standard forms from related programming languages &ndash; these all exact a cost too. The cost grows as the language becomes more popular and more people have to reinvent, write too much code, and repeat the same kinds of mistakes. Hence the larger feature surface of mature languages, including draft ES4.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2007/03/24 23:16</em> 
+</p>
+
+</div>
+
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/8/8011fd9b94d569999fa7a7f99e150d9a.xhtml used -->
+</body>
+</html>

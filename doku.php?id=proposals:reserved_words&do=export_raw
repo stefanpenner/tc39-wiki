@@ -1,0 +1,67 @@
+====== Reserved words ======
+
+(Also see the [[discussion:reserved_words|discussion page]] for this proposal)
+
+
+
+
+
+
+
+
+==== Lists of reserved identifiers ====
+
+Future reserved words are abolished. Identifiers are either completely reserved or contextually reserved. ''debugger'' and ''goto'' are made Contextually Reserved and ''enum'', ''class'', ''extends'' and ''super'' are made Reserved. ''abstract'', ''synchronized'', ''throws'', ''transient'', ''volatile'' are released back into the wild. Here's the current list. Here is an updated fragment of the syntax:
+
+For compatibility's sake we cannot reserve for all contexts any identifier that is not already reserved by ES3 or the web. In addition to those reserved by ES3, the web reserves ''class'', ''enum'', ''extends'' and ''super'' (because IE4-7 reserve them). Here are the lexical grammars for ReservedIdentifier and ContextuallyReservedIdentifier:
+
+<code>
+ReservedIdentifier [one of]	
+	break case catch class continue default delete do else enum extends false 
+	finally for function if in instanceof new null return super switch this throw
+	true try typeof var void while with 
+	
+ContextuallyReservedIdentifier [one of]	
+	call cast const debugger decimal double dynamic each eval final get goto has
+	implements import include int interface internal intrinsic is let namespace 
+	native Number override package precision private protected prototype public 
+	rounding standard strict to set static type uint undefined use xml yield
+</code>
+
+Except in the syntactic contexts specifically shown in the [[proposals::normative grammar]], the ContextuallyReservedIdentifiers can be used as user defined identifiers.
+
+
+==== Unreserving identifiers after dot and in object literals ====
+
+After ''function'', ''.'', ''..'' and ''::'', and property names in ObjectLiteral, we allow Reserved and Contextually Reserved identifiers. Here is an updated fragment of the syntax:
+
+<code>
+FieldName	
+	NonAttributeQualifiedIdentifier
+	String
+	Number
+	ReservedIdentifier
+	ParenExpression
+</code>
+
+<code>
+SimpleQualifiedIdentifier	
+	PropertyIdentifier
+	Qualifier  ::  PropertyIdentifier
+	Qualifier  ::  ReservedIdentifier
+	Qualifier  ::  Brackets
+</code>
+
+<code>
+PropertyOperator	
+	.  ReservedIdentifier
+	.  QualifiedIdentifier
+	..  QualifiedIdentifier
+	.  ParenListExpression
+	.  ParenListExpression  ::  PropertyIdentifier
+	.  ParenListExpression  ::  ReservedIdentifier
+	.  ParenListExpression  ::  Brackets
+	Brackets
+</code>
+
+If the implementation also implements E4X, an identifier after ''@'' is contextually reserved.

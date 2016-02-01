@@ -1,0 +1,83 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:array.prototype.pushall&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:array.prototype.pushall&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:array.prototype.pushall&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="proposal"></a><h1>Proposal</h1>
+<div class="level1">
+
+<p>
+ Add a <code>pushAll</code> generic method to <code>Array.prototype</code> for pushing all elements of an array-like object to the end of this array-like object.
+</p>
+
+<p>
+Currently, you can do this by calling <code>a1.push.apply(a1, a2)</code> but it can blow the stack on popular engines if <code>a2</code> is too large.
+</p>
+<pre class="code javascript"><span class="br0">&#40;</span><span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>Array.<span class="me1">prototype</span>, <span class="st0">'pushAll'</span>, <span class="br0">&#123;</span>
+        value: <span class="kw2">function</span> pushAll<span class="br0">&#40;</span>other, start, end<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+            other = ToObject<span class="br0">&#40;</span>other<span class="br0">&#41;</span>;
+            <span class="kw1">if</span> <span class="br0">&#40;</span><span class="kw1">typeof</span> start === <span class="st0">'undefined'</span><span class="br0">&#41;</span>
+                start = <span class="nu0">0</span>;
+            start = ToUint32<span class="br0">&#40;</span>start<span class="br0">&#41;</span>;
+            <span class="kw2">var</span> otherLength = ToUint32<span class="br0">&#40;</span>other.<span class="me1">length</span><span class="br0">&#41;</span>;
+            <span class="kw1">if</span> <span class="br0">&#40;</span><span class="kw1">typeof</span> end === <span class="st0">'undefined'</span><span class="br0">&#41;</span>
+                end = otherLength;
+            end = ToUint32<span class="br0">&#40;</span>end<span class="br0">&#41;</span>;
+            <span class="kw2">var</span> self = ToObject<span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>;
+            <span class="kw2">var</span> length = ToUint32<span class="br0">&#40;</span>self.<span class="me1">length</span><span class="br0">&#41;</span>;
+            <span class="kw1">for</span> <span class="br0">&#40;</span><span class="kw2">var</span> i = <span class="nu0">0</span>, j = length; i &lt; end; i++, j++<span class="br0">&#41;</span>
+                self<span class="br0">&#91;</span>j<span class="br0">&#93;</span> = other<span class="br0">&#91;</span>i<span class="br0">&#93;</span>;
+            self.<span class="me1">length</span> = j;
+            <span class="kw1">return</span>;
+        <span class="br0">&#125;</span>,
+        configurable: <span class="kw2">true</span>,
+        enumerable: <span class="kw2">false</span>,
+        writable: <span class="kw2">true</span>
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+<span class="br0">&#125;</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;</pre>
+</div>
+<!-- SECTION [1-1100] -->
+<a name="to_do"></a><h1>To do</h1>
+<div class="level1">
+<ul>
+<li class="level1"><div class="li"> edge cases: start &lt; 0, start &gt; end, end &gt; other.length</div>
+</li>
+<li class="level1"><div class="li"> use [[DefineOwnProperty]] etc instead of <code>self[j] = ...</code>?</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1101-1253] -->
+<a name="references"></a><h1>References</h1>
+<div class="level1">
+
+<p>
+ Originally proposed by Jeff Walden on <a href="https://mail.mozilla.org/pipermail/es-discuss/2011-July/016124.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2011-July/016124.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">es-discuss</a>.
+</p>
+
+</div>
+<!-- SECTION [1254-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/8/886b87b3120a09ae530df15e3413cdfb.xhtml used -->
+</body>
+</html>

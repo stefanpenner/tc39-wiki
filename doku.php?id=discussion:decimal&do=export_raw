@@ -1,0 +1,290 @@
+This is the discussion page for [[proposals:decimal]].
+
+
+
+
+===== Assorted Issues ====
+
+I've been working with QA on testing the decimal additions to Tamarin.  Several questions have come up.  There was some discussion within the ActionScript team, but it was agreed that things should be opened up to discussion with a wider audience.  Here are issues in no particular order:
+
+  *  1.  What should typeof(x) return for var x:decimal?  It is currently the case in AS3 that typeof() returns "Number" for things of type Number, int, and uint.  Lars suggests that typeof() should return Number for things of type decimal as well.
+
+  *  2.  There is currently a public definition of Infinity to be 
+
+   public const Infinity:Number = 1/0;
+
+There is a declaration in the decimal class of
+
+  public const POSITIVE_INFINITY = 1m / 0m;
+
+The two infinities can be losslessly interchanged, but typeof() returns different values (of course if the answer to 1. above is "Number", then that problem goes away).
+  * 3. What should be the behavior of === when comparing variables of different number types?  Currently in AS3, if a Number (aka double in ES4) has an integral value, it is === to an int or uint with that value.  I could certainly do the same for decimal vs int or uint.  For double vs decimal, there is the problem that the space of representable numeric values has regions of non-overlap.  My current code just says no for an === compare between double and decimal, but if === returns true with integral values it should probably work if the double and decimal are integral.  The == code converts  the double to the closest decimal and compares the result.
+
+  * 4. What about the toString(radix) method on the decimal class?  The internal discussion suggests that it should truncate to an integral value before conversion.
+
+  * 5. It is my understanding that operations like bitand and bitor will convert the decimal to an int before doing the & or |.  Do you folks agree?
+
+  * 6. What does use precision affect?  Consider the following code:
+
+  var x: decimal = 1 / 3m;
+  
+  { use precision 5;
+    var y: decimal = x;
+    trace(y); // writes out 34 3's
+    trace(y + 0); // writes out 5 3's
+  }
+
+In my current implementation, the precision pragma applies to the result of arithmetic operations.  It does not apply to assignments.
+
+  * 7. I added a number of useful methods to the decimal class.  I understand there is discussion about whether the Math.mumble() functions should be polymorphic, but for now, they are typed to return Number so I duplicated the ones I wanted in the decimal class.
+
+  use precision 5;
+  var x = decimal.sqrt(2);
+  trace(x); // prints out 34 digits
+  trace(x+0); // prints out 5 digits
+
+Again, this behavior is consistent with precision applying to the arithmetic operations.  To make the methods in the decimal class obey the pragma (which are statically scoped) I would have to secretly supply the pragma inforation as an additional parameter.  That doesn't strike me as a good idea.
+ --- //[[sweet@adobe.com|Dick Sweet]] 2007/07/24 16:16//
+
+  * 8. IEEE754R specifies minNum and maxNum operations on decimal floating point as follows:  
+
+  minNum(x,y) is the canonical floating-point number x if x < y, y if y < x, 
+  the canonicalized floatingpoint number if one operand is a floating-point 
+  number and the other a NaN. Otherwise it is either x or y.
+  
+  maxNum(x,y) is the canonical floating-point number y if x < y, x if y < x, 
+  the canonicalized floatingpoint number if one operand is a floating-point 
+  number and the other a NaN. Otherwise it is either x or y.
+
+on the other hand, Ecma-262 defines min and max for Numbers with the requirement: "If any value is NaN, the result is NaN".  My question is should the behavior decimal.min and decimal.max agree with the IEEE spec or model what ES has done with doubles in the past? --- //[[sweet@adobe.com|Dick Sweet]] 2007/07/25 10:59//
+
+At [[meetings:minutes_jul_31_2007]] I believe we agreed to stick with ECMA-262 and not IEEE on ''NaN'' poisoning the well for ''Math.min'' and ''Math.max''.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/08/01 13:46//
+
+According to Wikipedia,
+
+   In order to support operations such as windowing in which a NaN input 
+   should be quietly replaced with one of the end points, min and max are 
+   defined to select a number, x, in preference to a quiet NaN:
+
+    * min(x,NaN) = min(NaN,x) = x
+    * max(x,NaN) = max(NaN,x) = x
+
+   In the current draft, these functions are called minnum and maxnum to 
+   indicate their preference for a number over a NaN.
+
+I could see having ''Math.min'' and ''Math.max'' and ''Math.minnum'' and 
+''Math.maxnum'', providing both sets of ''NaN'' behavior. I doubt that it
+is worth it. I think ''minnum'' looks like a misspelling of ''minimum''.
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2007/08/01 16:41//
+
+===== Note on precision =====
+
+  * There 64-bit binary fp numbers which don't map to 128-bit decimal numbers:
+    * Quoting a conversation from IRC:
+      * ''<tbrownaw> 2^-n is 10^-n*5^n. So in base10, 2^-n takes ~.699n (log(5)/log(10)) digits to represent precisely''
+      * ''<tbrownaw> any 2^-n with n>50 will need more than 34 decimal digits''
+    * So we likely have to use a decimal which is wider than IEEE754r decimal128.
+
+----
+
+It's true that to represent a 53-bit binary floating-point (BFP) number exactly you need 53 decimal digits in the decimal floating-point (DFP) number (you get one power of two in each digit).  However, far fewer are needed for a safe reversible conversion (BFP -> DFP -> BFP giving the identical BFP to that which one started with).  It's 17.  
+
+Why 17?  Think of the significand as a 53-bit integer.  This can have (simplifying slightly, but erring on the safe side) 2^53 different values.  All we need to do is convert each of those values to a different decimal string (and ensure that converting back gives us the original binary integer).  To do that we need a decimal number that can encode more than 2^53 values.
+
+2^53 is 9007199254740992, which has 16 digits.  For various reasons ('jitter' at the right-hand digit is a way of explaining it) we need one more digit than that, which is 17 digits.
+
+For lots more on this, see the 'Conversions' section of links at:
+[[http://www2.hursley.ibm.com/decimal/#links]], especially Steele & White's paper.
+ 
+As for the exact conversion, see [[http://www2.hursley.ibm.com/decimal/decifaq1.html#inexact]] item 2 for a couple of examples where you need over 50 digits for the //exact// conversion of a BFP double.
+
+And here's a brief proof-by-example:
+
+Consider the binary double which has all ones and an exponent of zero; that is, the binary fraction 1.1111111....  (53 ones in all).  That's 2^0 + 2^-1 + 2^-2 + .... + 2^-52.
+
+Now consider the first and last terms of this (no term is smaller than 2^-52, no term is larger than the first, and we know the total will be less than 2.0):
+
+  2^0 = 1
+
+  2^-52 = 0.0000000000000002220446049250313080847263336181640625
+
+The sum of these is:
+
+  1.0000000000000002220446049250313080847263336181640625
+
+which has (surprise!) 53 digits.
+
+[Mike Cowlishaw]  
+
+----
+
+From further correspondence with Mike:
+
+<code>
+It's safe in the sense that there won't have been mixed BFP/DFP in the 
+past, so nothing will break.  There might be a tiny loss of precision (if 
+X is 64-bit), but if a computation is about to take place that's unlikely 
+to be a big deal, and would only be detectable in the case of aligned 
+fractional adds, which would be very rare.  If X is 128-bit I can't see 
+any real problem at all. 
+</code>
+
+I'm comfortable considering this an expert recommendation, and simply promoting to decimal128, accepting (and noting for users) that there can be some small loss of precision in the conversion, and if they are deeply concerned they should either:
+
+  * Avoid using decimal numbers, if you feel the need for the extra precision of binary FP bits.
+  * Start with decimal numbers, rather than convert from doubles.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/05/19 14:05//
+
+====== Comments ======
+
+
+
+===== Note on pragmas =====
+
+At the risk of introducing complexity where it's not needed, might it be good to decouple "use decimal" from specifying the rounding?  Consider a program:
+
+<code javascript>
+   var x : Array<decimal> = f();
+   var y : decimal = 0.0m;
+   for ( let i : int = 0 ; i < f.length / 2 ; i++ ) {
+      use decimal(ROUND_UP);
+      y += x[i*2];
+   }
+</code>
+
+By the rules of the current proposal the computation ''i*2'' in the loop body must be done using decimal if I am not mistaken, but the intention of the pragma is just to handle the rounding in the sum of the elements of ''x''.
+
+I would propose that we introduce pragmas along the line of ''use rounding up'' instead of piggybacking directly on ''use decimal''.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/10 00:51//
+
+Agreed, though I'm not sure all the rounding modes are implemented in most binary fp hardware. I guess we can select a subset.
+
+(Yes, BFP uses just 4 of the modes.  Decimal needs at leasat 1 more (as added in the IEEE 754r draft), although Java and other implementations (including our forthcoming hardware) supply all 7 modes. [mfc])
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/04/10 11:37//
+
+Corrected.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/04/13 17:25//
+
+
+
+
+===== Selectable precision? =====
+
+Mike Cowlishaw's spec explains that //precision// is part of the user-modifiable arithmetic context (just like rounding).  A few places in the same writeup there is the vague implication that the changing the precision is a useful technique and perhaps even that users will expect such a facility to be available.
+
+  * Do we want to support user-selectable precision?  (''use precision 9'')
+  * Are hardware implementations of decimal arithmetic expected to support selectable precision?
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/12 04:26//
+
+
+I'm not sure how crucial it is; I imagine most real world (legal) precision requirements are met by the quad-or-larger decimal types we're discussing here, but if it's a general package we're using (eg. the decNumber type) then I also don't see a problem with letting the user pick their precision. So long as the default is big enough to keep the bug reports down; It seems very unlikely the user will care about speed, at least in web content.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/05/12 15:55//
+
+It's not just about getting more precision, but about getting less.  Sometimes you don't want to keep more precision in the numbers than you know you have in the input.
+
+(I am probably opposed to including arbitrary-precision Decimal in ECMAScript.  Even 256-bit seems excessive IMO.)
+
+--lars
+
+Would you want less precision in the numbers due to wanting to use fewer computer resources? Or is there an arithmetical rationale?
+
+I agree that 256-bit is probably absurdly large. But I don't quite know what to make of Mike's comments above wrt. conversion. The point of coercing a BFP up to a DFP is not just to convert it //back//; the point is to produce a DFP number which denotes the same number as your BFP, such that it can participate in arithmetic operations with other DFP numbers.
+
+As far as I can tell, we only have two options:
+
+  - Use a DFP form which supports at least 53 digits, to preserve all BFPs on promotion
+  - Accept that some BFPs will be lost on promotion
+    * Possibly introduce an exception type to handle this
+    * Possibly tell the user to live with it
+    * Possibly something else?
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/05/16 12:08//
+
+Computational resources is a big deal for me.  This has several aspects.  For a SW implementation I would like to support a format that is useful to many users without wasting precious resources (memory, CPU) on smaller systems.  But I would also like us to choose a format that stands a chance of seeing a hardware implementation if DFP becomes popular (as I believe it ought to become, now that I've read some about it).  My gut feeling, and I hope others will feel free to correct me on this as appropriate, is that I doubt arbitrary-precision DFP will be directly supported in hardware, and though I am more uncertain about 256-bit DFP, that sounds like a rather large datum to support directly in hardware too.
+  
+128-bit DFP seems like a decent compromise.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/20 06:23//
+
+We (IBM) will definitely be directly supporting 128-bit DFP in hardware (see, for example [http://news.zdnet.com/2100-9584_22-6124451.html]).  I agree that 256-bit is unlikely (in fact the IEEE 754r draft does not even define such a format).
+ --- //[[MFC@uk.ibm.com|Mike Cowlishaw]] 2006/05/29 23:47//
+
+One question on the //decimal_precision N// pragma:  the proposal currently allows N to be 'any positive integer between 0 and 34.  This should read 1 through 34?  Also I'd recommend adding some sort of 'health warning' along the following lines:
+
+*Note that small values of //N// (for example, values less than 6) are generally only useful for very specialized applications.  The setting of //N// affects all decimal computations, so even
+the operation of loops may be affected by rounding if small values are used.
+
+ --- //[[MFC@uk.ibm.com|Mike Cowlishaw]] 2006/10/18 02:53//
+
+
+
+
+
+
+
+====== Old proposal and discussion ======
+
+This proposal involves providing a number type which performs arithmetic in decimal floating point, not binary.
+
+It has the following components:
+
+  * A decimal floating point type, disjoint from the double type.
+  * Possibly addition of some form of pragma to switch the interpretation of "unadorned" number literals for the current compilation unit, package, class, file, or similar entity.
+  * Possibly lexemes for specifically decimal literals (or make them the default and simply add a function to convert decimal->binary when you want it)
+  * Rules governing the interaction of decimal with the other number types. Since all binary fp numbers can be accurately represented (possibly inefficiently) as decimal fp numbers, we assume "promote to decimal" will be the guideline. 
+
+----
+
+Some conclusions from discussion:
+
+  * a literal for decimal numbers
+  * no pragma for operators
+  * automatic conversion from integer and double values to decimal when used in expressions with a decimal
+  * implicit conversion on assignment among all number types (current behavior in AS3)
+  * user-defined cast operators to force a certain representation
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/16 17:37//
+
+C# uses a suffix 'm' for decimal literals, they otherwise follow the floating-point syntax.  Is there any good reason not to follow C#?  
+
+C# reference for decimal is [[http://msdn.microsoft.com/library/default.asp?url=/library/en-us/csspec/html/vclrfcsharpspec_4_1.asp|here]] (click on the link "The decimal type").
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/17 10:43//
+
+The decimal format used by C# is described at [[http://msdn.microsoft.com/library/default.asp?url=/library/en-us/cpref/html/frlrfsystemdecimalclasstopic.asp|here]]
+
+ --- //[[rokyu@microsoft.com|Rok Yu]] 2006/03/17 14:20//
+
+Cameron Purdy again, very funny: [[http://jroller.com/page/cpurdy?entry=the_seven_habits_of_highly1|In your face! BigDecimal, BigInteger and BigMistake]].  See the [[http://jroller.com/page/cpurdy?entry=the_seven_habits_of_highly1&popup=true#comments|comments]] for the punchline.
+
+From the C# example, an initializer for a ''decimal''-typed variable need not use the ''m'' suffix.  Does any Edition 4 prototype interpret literal initializer according to its initialized variable's type annotation?
+
+More real-world motivation for decimal [[http://www.mikeindustries.com/blog/archive/2004/08/apple-calculator|here]] (not that we need more!).
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/17 22:49//
+
+A couple of comments on the above:
+
+C# literals: Unfortunately, Cameron's C# example is not valid.  If you try and compile it, you get several messages of the form:
+
+  tryJRoller.cs(12,20): error CS0664: Literal of type double cannot be implicitly
+    converted to type 'decimal'; use an 'M' suffix to create a literal of
+    this type
+
+The ISO C committee decided that an 'm' suffix or equivalent is too clumsy (though they do define and allow such suffixes); they invented a 'translation time data type' -- see the [[http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1154.pdf|N1154 Technical Report draft]] section 7.1 (p16 of the PDF).
+
+On real-world motivation: Professor Kahan also showed some of the problems that Excel has in this area at [[http://arith17.polito.it/|Arith 17]] last year.
+See [[http://www.cs.berkeley.edu/~wkahan/ARITH_17.pdf|his invited paper]], starting at p7.  
+
+For other decimal issues and lots of links, //etc.//, see [[http://www2.hursley.ibm.com/decimal/|my web page]], and in particular the [[http://www2.hursley.ibm.com/decimal/decifaq.html|FAQ]].
+
+ --- //[[MFC@uk.ibm.com|Mike Cowlishaw]] 2006/03/20 01:43//

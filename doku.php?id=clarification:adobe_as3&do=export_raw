@@ -1,0 +1,125 @@
+====== AS3 compatibility ======
+
+This section describes known incompatabilities between ES4 and AS3. This includes language constructs that have a different meaning in ES4 than they do in AS3. Not included are AS3 features that are not in ES4 (see below) and ES4 features that are not in AS3.
+
+===== 'new String' and ': String' =====
+
+==== Rationale ====
+
+AS3 makes ''class String'' final and sealed. For web compatibility, ES4 must retain the ES3 behavior of allowing ''String'' instances to be extended with dynamic properties.
+
+==== Incompatibility ====
+
+AS3 programs that use ''String'' as a constructor or an annotation will change meaning in the following ways:
+
+  * values created by ''new String'' are mutable and are unique with respect to ''===''
+  * properties annotated with '': String'' are nullable and values assigned to them will be converted to String objects as though with ''new String''
+  * programs that continue to run might run slower because of possible late binding to string methods
+
+ES4 introduces a new class named ''string'' that has the behavior of the primitive ''string'' type in ES3 and approximates the behavior of the ''String'' class in AS3. The main difference between ES4 ''string'' and AS3 ''String'' is that ''string'' is non-nullable.
+
+
+
+==== Workaround ====
+
+  * Replace occurances of ''': String''' (type annotation) that are intended to be nullable with ''': ?string'''
+  * Replace occurances of ''': String''' that are intended to be non-nullable with ''': string'''
+  * Replace occurances of '' 'new String' '' with '' 'new string' '', or simply the string literal that is the constructor argument
+
+==== Issues ====
+
+When a computed name is used to lookup a constructor, there is no way for a compiler to detect a change in behavior between AS3 and ES4 and generate compatible code. In this case, we will need runtime checks in the vm to distinguish between references to "String" and "string". E.g.
+
+<code>
+    var n = "String"     // AS3 or ES4 String?
+    new this[n] ("foo")
+</code>
+
+
+===== 'new Boolean' and ': Boolean' =====
+
+==== Rationale ====
+
+AS3 makes ''class Boolean'' final and sealed. For web compatibility, ES4 must retain the ES3 behavior of ''Boolean'' instances.
+
+==== Incompatibility ====
+
+AS3 programs that use ''Boolean'' as a constructor or a type annotation change meaning in the following ways:
+
+  * values created by ''new Boolean'' are mutable and are unique with respect to ''===''
+  * properties annotated with '': Boolean'' are nullable and values assigned to them will be converted to Boolean objects as though with ''new Boolean''
+
+The meaning of the literals ''true'' and ''false'' is the same in AS3 as it is in ES3 and ES4. Therefore only AS3 programs that explicitly create Boolean objects using ''new'' or use ''Boolean'' as an annotation will be affected. 
+
+
+==== Workaround ====
+
+  * Replace occurances of ''': Boolean''' (type annotation) with ''': boolean'''
+  * Replace occurances of '' 'new Boolean' '' with '' 'new boolean' '', or simply the boolean literal that is the constructor argument
+
+==== Issues ====
+
+See String Issues above.
+
+===== 'is' RHS expressions =====
+
+==== Background ====
+
+AS3 allows an ordinary expression on the right side of the binary 'is' operator. ES4 allows only a type expression
+
+==== Incompatibility ====
+
+AS3 programs that use an expression that is not a type expression on the right side of the 'is' operator will result in a syntax error
+
+==== Workaround ====
+
+  * replace the non-type expression on the right side of '' 'is' '' with a type expression. This might result in a loss of flexibility, but also greater reliability
+
+===== 'is' operator =====
+
+The is operator respects nullability in ES4 but not in AS3. E.g.
+
+<code>
+    print(null is Object)   // prints true in ES4 and false in AS3
+</code>
+
+==== Workaround ====
+
+Add ''!'' after ''Object'' on the rhs of ''is''. Do the same for all other nullable types.
+
+
+====== AS3 extensions ======
+
+This section describes features in AS3 that have not been adopted in ES4. The ES4 conformance clause allows such extensions by conforming implementations, and so these are true incompatibilities.
+
+
+===== Packages and import =====
+
+Packages are mostly syntactic sugar for namespaces. They are not included in ES4 because they do not provide significant additional value. In particular, they don't support common module or loading use cases.
+
+
+===== 'as' operator =====
+
+The AS3 'as' operator is replaced by 'cast'. The cast operator throws a runtime error where 'as' returns ''null''.
+
+
+
+===== E4X =====
+
+E4X is not included in ES4 because it is too complicated and buggy to be digested in the time allowed.
+
+
+
+
+===== int and uint =====
+
+The 'int' and 'uint' types are inconsistent with the ES4 (and AS3) type system. They are really optimization annotations, but their actual performance benefits are unclear.
+
+
+===== 'virtual' attribute =====
+
+The 'virtual' attribute is not supported in ES4, and is the default where allowed in AS3.
+
+===== Static strict mode =====
+
+AS3 style static checking is seen as a feature of development environments, which vary widely among ES4 implementations. There is interest in specifying an optional static semantics that implementations should follow if they do ahead of time error checking. The effort to specify those semantics was put on hold until the run time type system is fully specified.

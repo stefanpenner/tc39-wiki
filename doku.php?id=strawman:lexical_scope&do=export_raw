@@ -1,0 +1,64 @@
+====== Rationale ======
+
+Lexical scope is an important principle in programming: it provides better abstraction and makes programs less brittle for refactoring. It also enables faster implementations since compilers and interpreters can resolve variable references early, preventing expensive runtime searches through the scope chain.
+
+This proposal introduces a pragma enforcing lexical scope in any textual block of code, including the program top level. This enforcement requires preventing certain constructs such as ''with'' and ''eval'' from dynamically modifying the scope chain. Programmers receive several benefits:
+
+  * Free variables, caused for example by simple misspellings, are a statically enforceable error.
+  * Programs are less sensitive to subtle and potentially malicious changes in behavior by external code.
+  * Implementations may be able to improve the efficiency of variable lookup.
+
+
+====== Syntax ======
+
+<code ebnf>
+    Pragma ::= ... | "lexical" "scope"
+</code>
+
+====== Semantics ======
+
+The ''use lexical scope'' pragma changes the scoping semantics of its block (or the program, if it occurs at top level) to use pure lexical scope. This involves the following semantic changes:
+
+  - The ''with'' construct is disallowed; any occurrence of ''with'' --- anywhere, at any level of nesting within the block --- is a static error.
+  - The ''eval'' construct may not modify its containing block's scope. Attempts to do so result in a dynamic error.
+  - The scope chain for the block no longer contains the global object. In its place is a lexical frame containing standard (host environment-specific) bindings. These must include at least the //initial// bindings of the standard library (such as ''Array'', ''Boolean'', ''String'', ''Object'', etc.).
+  - The ''delete'' operator may not remove any bindings from any part of the scope chain.
+  - No language construct may dynamically modify a frame in the scope chain (e.g., non-standard conditional binding constructs).
+
+It is expected that ''use lexical scope'' might be subsumed by another pragma such as ''use strict'' (and perhaps even eliminated as a separate pragma).
+
+====== Consequences ======
+
+  * With the ''use lexical scope'' pragma, all free variable references become an error. This error may be detected statically, since no construct is able to change the meaning of a variable reference at runtime.
+  * Because ''use lexical scope'' does not affect the initial meaning of ''this'', the global object is still accessible to programs, but it no longer affects variable scope.
+  * References to top-level bindings may still occur without prefix since the scope chain binds the initial properties of the global object at its outermost level.
+  * However, dynamic tests must be prefixed by ''this.'' in order to detect the presence or absence of global properties. It is expected that this will require a moderate but not unreasonable amount of refactoring for code that wishes to make use of the ''use lexical scope'' pragma.
+
+====== Restrictions ======
+
+The ''use lexical scope'' pragma is disallowed in certain contexts to ensure that dynamic objects never appear in the scope chain:
+
+  - Use of ''use lexical scope'' within the scope of a ''with'' block results in a compile-time error:<code javascript>
+with (obj) {
+    use lexical scope; // compile-time error
+    ...
+}
+</code>
+  - Use of ''use lexical scope'' within the body of code evaluated by an occurrence of ''eval'' that occurs in the scope of a ''with'' block results in a runtime error before evaluation of the ''eval''ed code begins:<code javascript>
+with(obj) {
+    eval("use lexical scope; ...") // run-time error
+    ...
+}
+</code>
+
+====== Issues ======
+
+  * Should ''eval'' be restricted in ''lexical scope'' mode to operate in the initial scope?
+  * Nested ''use lexical scope'': what to use for top-level frame? Initial bindings or current bindings? Example:
+<code javascript>
+alert = function() {}
+{
+    use lexical scope;
+    alert('hello, world')
+}
+</code>

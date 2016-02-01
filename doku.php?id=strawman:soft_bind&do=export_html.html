@@ -1,0 +1,124 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:soft_bind&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:soft_bind&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:soft_bind&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="soft_binding"></a><h1>Soft Binding</h1>
+<div class="level1">
+
+<p>
+ Some have expressed a desire (<a href="http://infrequently.org/2010/09/javascript-uxo-removal/" class="urlextern" target="_blank" title="http://infrequently.org/2010/09/javascript-uxo-removal/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://infrequently.org/2010/09/javascript-uxo-removal/</a> TODO more links) for a this-binding strength intermediate between JavaScript&rsquo;s default loose <code>this</code>-binding rule and the tight <code>this</code> binding provided by Function.prototype.bind. There have been several proposals for such intermediate binding operations (TODO provide links) but these proposals ran aground on problematic edge cases demonstrating deeper semantic issues. The following new proposal seems better, but is also less examined.
+</p>
+
+<p>
+Introduce a new <code>soft bind</code> operation, parallel to the existing <code>bind</code> operation, producing a similarly bound function object that uses its captured <code>this</code>-binding under normal non-reflective invocation &ndash; including being invoked as a function and as a method. However, when invoked reflectively via <code>call</code>, <code>apply</code>, <code>bind</code>, or <code>softBind</code>, the function would use the <code>this</code>-binding provided by the reflective call rather than its captured one.
+</p>
+
+<p>
+The following is an approximate executable specification. As usual for JavaScript, it is a bit sloppy regarding when it uses, for example, the original or current binding of <code>Array.prototype.concat</code>. Whenever reasonable, <em>original</em> should be assumed.
+</p>
+<pre class="code javascript">   <span class="kw2">Function</span>.<span class="me1">prototype</span>.<span class="me1">softBind</span> = <span class="kw2">function</span><span class="br0">&#40;</span>thisArg, ...<span class="me1">leftArgs</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+     <span class="kw2">var</span> f = <span class="kw1">this</span>;
+     <span class="kw2">var</span> result = f.<span class="me1">bind</span><span class="br0">&#40;</span>thisArg, ...<span class="me1">leftArgs</span><span class="br0">&#41;</span>;
+     result.<span class="me1">apply</span> = <span class="kw2">function</span><span class="br0">&#40;</span>newThis, rightArgs<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       <span class="kw1">return</span> f.<span class="me1">apply</span><span class="br0">&#40;</span>newThis, <span class="br0">&#91;</span>...<span class="me1">leftArgs</span>, ...<span class="me1">rightArgs</span><span class="br0">&#93;</span><span class="br0">&#41;</span>;
+     <span class="br0">&#125;</span>;
+     result.<span class="me1">call</span> = <span class="kw2">function</span><span class="br0">&#40;</span>newThis, ...<span class="me1">rightArgs</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       <span class="kw1">return</span> f.<span class="me1">call</span><span class="br0">&#40;</span>newThis, ...<span class="br0">&#91;</span>...<span class="me1">leftArgs</span>, ...<span class="me1">rightArgs</span><span class="br0">&#93;</span><span class="br0">&#41;</span>;
+     <span class="br0">&#125;</span>;
+     result.<span class="me1">bind</span> = <span class="kw2">function</span><span class="br0">&#40;</span>newThis, ...<span class="me1">rightArgs</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       <span class="kw1">return</span> f.<span class="me1">bind</span><span class="br0">&#40;</span>newThis, ...<span class="br0">&#91;</span>...<span class="me1">leftArgs</span>, ...<span class="me1">rightArgs</span><span class="br0">&#93;</span><span class="br0">&#41;</span>;
+     <span class="br0">&#125;</span>;
+     result.<span class="me1">softBind</span> = <span class="kw2">function</span><span class="br0">&#40;</span>newThis, ...<span class="me1">rightArgs</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       <span class="kw1">return</span> f.<span class="me1">softBind</span><span class="br0">&#40;</span>newThis, ...<span class="br0">&#91;</span>...<span class="me1">leftArgs</span>, ...<span class="me1">rightArgs</span><span class="br0">&#93;</span><span class="br0">&#41;</span>;
+     <span class="br0">&#125;</span>;
+     <span class="kw1">return</span> result;
+   <span class="br0">&#125;</span>;</pre>
+<p>
+The following approximation works today, enabling easy experimentation, by using <code>arguments</code> and <code>apply</code> rather than &ldquo;<code>...</code>&ldquo;. Where the semantics differ from the above (e.g., does <code>call</code> delegate to <code>f.call</code> or <code>f.apply</code>), the above code should be taken as more authoritative.
+</p>
+<pre class="code javascript"> <span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+   <span class="st0">"use strict"</span>;
+&nbsp;
+   <span class="kw2">Function</span>.<span class="me1">prototype</span>.<span class="me1">softBind</span> = <span class="kw2">function</span><span class="br0">&#40;</span>thisArg, var_args<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+     <span class="kw2">var</span> f = <span class="kw1">this</span>;
+     <span class="kw2">var</span> result = f.<span class="me1">bind</span>.<span class="me1">apply</span><span class="br0">&#40;</span>f, arguments<span class="br0">&#41;</span>;
+     <span class="kw2">var</span> leftArgs = <span class="br0">&#91;</span><span class="br0">&#93;</span>.<span class="me1">slice</span>.<span class="me1">call</span><span class="br0">&#40;</span>arguments, <span class="nu0">1</span><span class="br0">&#41;</span>;
+     result.<span class="me1">apply</span> = <span class="kw2">function</span><span class="br0">&#40;</span>newThis, rightArgs<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       <span class="kw1">return</span> f.<span class="me1">apply</span><span class="br0">&#40;</span>newThis, leftArgs.<span class="me1">concat</span><span class="br0">&#40;</span>rightArgs<span class="br0">&#41;</span><span class="br0">&#41;</span>;
+     <span class="br0">&#125;</span>;
+     result.<span class="me1">call</span> = <span class="kw2">function</span><span class="br0">&#40;</span>newThis, var_args<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       <span class="kw2">var</span> rightArgs = <span class="br0">&#91;</span><span class="br0">&#93;</span>.<span class="me1">slice</span>.<span class="me1">call</span><span class="br0">&#40;</span>arguments, <span class="nu0">1</span><span class="br0">&#41;</span>;
+       <span class="kw1">return</span> f.<span class="me1">apply</span><span class="br0">&#40;</span>newThis, leftArgs.<span class="me1">concat</span><span class="br0">&#40;</span>rightArgs<span class="br0">&#41;</span><span class="br0">&#41;</span>;
+     <span class="br0">&#125;</span>;
+     result.<span class="me1">bind</span> = <span class="kw2">function</span><span class="br0">&#40;</span>newThis, var_args<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       <span class="kw2">var</span> rightArgs = <span class="br0">&#91;</span><span class="br0">&#93;</span>.<span class="me1">slice</span>.<span class="me1">call</span><span class="br0">&#40;</span>arguments<span class="br0">&#41;</span>;
+       <span class="kw1">return</span> f.<span class="me1">bind</span>.<span class="me1">apply</span><span class="br0">&#40;</span>f, <span class="br0">&#91;</span>newThis<span class="br0">&#93;</span>.<span class="me1">concat</span><span class="br0">&#40;</span>leftArgs.<span class="me1">concat</span><span class="br0">&#40;</span>rightArgs<span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>;
+     <span class="br0">&#125;</span>;
+     result.<span class="me1">softBind</span> = <span class="kw2">function</span><span class="br0">&#40;</span>newThis, var_args<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       <span class="kw2">var</span> rightArgs = <span class="br0">&#91;</span><span class="br0">&#93;</span>.<span class="me1">slice</span>.<span class="me1">call</span><span class="br0">&#40;</span>arguments<span class="br0">&#41;</span>;
+       <span class="kw1">return</span> f.<span class="me1">softBind</span>.<span class="me1">apply</span><span class="br0">&#40;</span>f, <span class="br0">&#91;</span>newThis<span class="br0">&#93;</span>.<span class="me1">concat</span><span class="br0">&#40;</span>leftArgs.<span class="me1">concat</span><span class="br0">&#40;</span>rightArgs<span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>;
+     <span class="br0">&#125;</span>;
+     <span class="kw1">return</span> result;
+   <span class="br0">&#125;</span>;
+ <span class="br0">&#125;</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;</pre>
+</div>
+<!-- SECTION [1-3187] -->
+<a name="open_issues"></a><h2>Open Issues</h2>
+<div class="level2">
+
+<p>
+ What happens when a soft-bound function is called with <code>new</code>? The code above provides an answer accidentally, in the sense that I did not think about that case when writing this code. Nevertheless, the implied answer seems reasonable &ndash; that the soft-bound-<code>this</code> is ignored and the <code>this</code> binding created by <code>new</code> is used instead. Just like normal <code>bind</code>.
+</p>
+
+</div>
+<!-- SECTION [3188-3581] -->
+<a name="possible_tie-ins_to_other_strawmen"></a><h2>Possible tie-ins to other strawmen</h2>
+<div class="level2">
+
+<p>
+ This strawman as presented above is concerned only with semantics. Other strawmen may well provide syntactic conveniences to make soft-binding more pleasant to use, or even the default path of least resistance for code using certain new constructs.
+</p>
+
+<p>
+<a href="doku.php%3Fid=strawman:classes_with_trait_composition.html" class="wikilink1" title="strawman:classes_with_trait_composition" onclick="return svchk()" onkeypress="return svchk()">classes_with_trait_composition</a> may make methods soft bound by default.
+</p>
+
+<p>
+<a href="doku.php%3Fid=strawman:shorter_function_syntax.html" class="wikilink1" title="strawman:shorter_function_syntax" onclick="return svchk()" onkeypress="return svchk()">shorter_function_syntax</a> may make <code>#</code>-function soft bound by default.
+</p>
+
+</div>
+<!-- SECTION [3582-4049] -->
+<a name="see"></a><h1>See</h1>
+<div class="level1">
+
+<p>
+ TODO link to earlier intermediate-strength <code>this</code>-binding proposals.
+</p>
+
+</div>
+<!-- SECTION [4050-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/e/e02a6a43b2e9bb8a93b008a9425d431c.xhtml used -->
+</body>
+</html>

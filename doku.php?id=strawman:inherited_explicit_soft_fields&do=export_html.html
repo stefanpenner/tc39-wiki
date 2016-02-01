@@ -1,0 +1,227 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:inherited_explicit_soft_fields&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:inherited_explicit_soft_fields&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:inherited_explicit_soft_fields&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:inherited_explicit_soft_fields&amp;do=export_html.html#explicit_inherited_soft_fields" class="toc">Explicit Inherited Soft Fields</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:inherited_explicit_soft_fields&amp;do=export_html.html#a_transposed_representation" class="toc">A transposed representation</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:inherited_explicit_soft_fields&amp;do=export_html.html#should_we_tolerate_primitive_keys" class="toc">Should we tolerate primitive keys?</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:inherited_explicit_soft_fields&amp;do=export_html.html#can_we_subsume_private_names" class="toc">Can we subsume Private Names?</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:inherited_explicit_soft_fields&amp;do=export_html.html#see" class="toc">See</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="explicit_inherited_soft_fields"></a><h1>Explicit Inherited Soft Fields</h1>
+<div class="level1">
+
+<p>
+ The following derived abstraction combines the explicitness of <a href="doku.php%3Fid=harmony:weak_maps.html#explicit_soft_own_fields" class="wikilink1" title="harmony:weak_maps" onclick="return svchk()" onkeypress="return svchk()">explicit soft own fields</a> with the visibility across inheritance chains of <a href="doku.php%3Fid=harmony:weak_maps.html#inherited_soft_fields" class="wikilink1" title="harmony:weak_maps" onclick="return svchk()" onkeypress="return svchk()">inherited soft fields</a>. Below is an executable specification as a wrapper around <a href="doku.php%3Fid=harmony:weak_maps.html" class="wikilink1" title="harmony:weak_maps" onclick="return svchk()" onkeypress="return svchk()">weak maps</a>. This strawman page suggests standardizing this derived abstraction because a primitive implementation is likely to be more efficient that the code below.
+</p>
+
+<p>
+As with our previous &ldquo;<code>EphemeronTable</code>&ldquo;, the name &ldquo;<code>SoftField</code>&rdquo; is only a placeholder until someone suggests an acceptable name.
+</p>
+<pre class="code javascript">  <span class="kw2">class</span> SoftField <span class="br0">&#123;</span>
+    <span class="kw2">private</span> weakMap, mascot;
+    constructor<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw2">private</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>.<span class="me1">weakMap</span> = WeakMap<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+      <span class="kw2">private</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>.<span class="me1">mascot</span> = <span class="br0">&#123;</span><span class="br0">&#125;</span>;
+    <span class="br0">&#125;</span>
+    get<span class="br0">&#40;</span>base<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">while</span> <span class="br0">&#40;</span>base !== <span class="kw2">null</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw2">const</span> result = <span class="kw2">private</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>.<span class="me1">weakMap</span>.<span class="me1">get</span><span class="br0">&#40;</span>base<span class="br0">&#41;</span>;
+        <span class="kw1">if</span> <span class="br0">&#40;</span>result !== undefined<span class="br0">&#41;</span> <span class="br0">&#123;</span> 
+          <span class="kw1">return</span> result === <span class="kw2">private</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>.<span class="me1">mascot</span> ? undefined : result; 
+        <span class="br0">&#125;</span>
+        base = Object.<span class="me1">getPrototypeOf</span><span class="br0">&#40;</span>base<span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span>
+      <span class="kw1">return</span> undefined;
+    <span class="br0">&#125;</span>
+    set<span class="br0">&#40;</span>key, val<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw2">private</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>.<span class="me1">weakMap</span>.<span class="me1">set</span><span class="br0">&#40;</span>key, val === undefined ? <span class="kw2">private</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>.<span class="me1">mascot</span> : val<span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span>
+    has<span class="br0">&#40;</span>key<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">return</span> <span class="kw2">private</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>.<span class="me1">weakMap</span>.<span class="me1">get</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span> !== undefined;
+    <span class="br0">&#125;</span>
+    <span class="kw1">delete</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw2">private</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>.<span class="me1">weakMap</span>.<span class="me1">set</span><span class="br0">&#40;</span>key, undefined<span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [1-1368] -->
+<a name="a_transposed_representation"></a><h2>A transposed representation</h2>
+<div class="level2">
+
+<p>
+ The following is an alternative explanation that implements the same semantics but more closely reflects expected implementation. This is no longer quite an executable specification in that it builds on a new internal property, here spelled <code>SoftFields___</code>. The safety of the following spec depends on the <code>SoftFields___</code> property not being used by any other spec beyond the following.
+</p>
+<pre class="code javascript">  <span class="kw2">function</span> init___<span class="br0">&#40;</span>obj<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">if</span> <span class="br0">&#40;</span>obj !== Object<span class="br0">&#40;</span>obj<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">throw</span> <span class="kw2">new</span> TypeError<span class="br0">&#40;</span>...<span class="br0">&#41;</span> <span class="br0">&#125;</span>
+    <span class="kw1">if</span> <span class="br0">&#40;</span>!obj.<span class="me1">SoftFields___</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      obj.<span class="me1">SoftFields___</span> = WeakMap<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span>
+&nbsp;
+  <span class="kw2">function</span> SoftField<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">const</span> mascot = <span class="br0">&#123;</span><span class="br0">&#125;</span>;
+    <span class="kw2">function</span> get<span class="br0">&#40;</span>base<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      init___<span class="br0">&#40;</span>base<span class="br0">&#41;</span>
+      <span class="kw1">while</span> <span class="br0">&#40;</span>base !== <span class="kw2">null</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw2">const</span> result = base.<span class="me1">SoftFields___</span>.<span class="me1">get</span><span class="br0">&#40;</span>get<span class="br0">&#41;</span>;
+        <span class="kw1">if</span> <span class="br0">&#40;</span>result !== undefined<span class="br0">&#41;</span> <span class="br0">&#123;</span> 
+          <span class="kw1">return</span> result === mascot ? undefined : result; 
+        <span class="br0">&#125;</span>
+        base = Object.<span class="me1">getPrototypeOf</span><span class="br0">&#40;</span>base<span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span>
+      <span class="kw1">return</span> undefined;
+    <span class="br0">&#125;</span>
+    <span class="kw1">return</span> Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+      get: get,
+      set: <span class="kw2">function</span><span class="br0">&#40;</span>key, val<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        init___<span class="br0">&#40;</span>key<span class="br0">&#41;</span>;
+        key.<span class="me1">SoftFields___</span>.<span class="me1">set</span><span class="br0">&#40;</span>get, val === undefined ? mascot : val<span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span>,
+      has: <span class="kw2">function</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        init___<span class="br0">&#40;</span>key<span class="br0">&#41;</span>;
+        <span class="kw1">return</span> key.<span class="me1">SoftFields___</span>.<span class="me1">get</span><span class="br0">&#40;</span>get<span class="br0">&#41;</span> !== undefined;
+      <span class="br0">&#125;</span>,
+      <span class="kw1">delete</span>: <span class="kw2">function</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        init___<span class="br0">&#40;</span>key<span class="br0">&#41;</span>
+        key.<span class="me1">SoftFields___</span>.<span class="me1">set</span><span class="br0">&#40;</span>get, undefined<span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span></pre>
+<p>
+The overall logic is very similar, except that the underlying weak maps are now stored on the SoftField&rsquo;s key objects, while each SoftField itself only holds on to the fixed state of the key used to look up values in those weak maps. Even though the above algorithm still manually encodes walking the prototype chain, because this walk is now consulting a map stored within each object, two transparent performance benefits may follow:
+</p>
+<ul>
+<li class="level1"><div class="li"> The optimizations already in place for normal property lookup may be more readily adapted to soft field lookup. </div>
+</li>
+<li class="level1"><div class="li"> The conventional portion of a GC algorithm that does not take account of weak maps will nevertheless collect that soft state that is only reachable from non-reachable objects, even in the presence of cycles between that soft state and those objects. For soft fields, the weak map portion of a GC algorithm is only needed to collect those soft fields that can no longer be &ldquo;named&rdquo; but are still present on objects that are reachable.</div>
+</li>
+</ul>
+
+<p>
+ This representation parallels the implementation techniques and resulting performance benefits expected for <a href="doku.php%3Fid=strawman:private_names.html" class="wikilink1" title="strawman:private_names" onclick="return svchk()" onkeypress="return svchk()">private names</a> but without the semantic problems (leaking via proxy traps and inability to associate soft state with frozen objects).
+</p>
+
+<p>
+Regarding the GC point, when soft fields are used in patterns such as <a href="doku.php%3Fid=strawman:classes_with_trait_composition.html#adding_class-private_instance_variables" class="wikilink1" title="strawman:classes_with_trait_composition" onclick="return svchk()" onkeypress="return svchk()">class-private instance variables</a>, a soft field adds soft state to a set of objects, each of whom also points at that soft field itself. In that case, the soft field has a lifetime at least as long as any of the objects it indexes. Thus, the conventional portion of GC algorithms is adequate to pick up all the resulting collectable soft state.
+</p>
+
+</div>
+<!-- SECTION [1369-4516] -->
+<a name="should_we_tolerate_primitive_keys"></a><h2>Should we tolerate primitive keys?</h2>
+<div class="level2">
+
+<p>
+ Since soft fields &ndash; unlike weak maps &ndash; look up the key&rsquo;s inheritance chain until it find a match, it makes sense to allow primitive data types (numbers, strings, and booleans, but still not null or undefined) to serve as keys. When used as a key, the operations above would first convert it to an object using the internal [[ToObject]] function. (Unlike <code>Object</code>, [[ToObject]] on a null or undefined throws a TypeError.) For strings, numbers, and booleans, this results in a fresh wrapper, which therefore has no soft own state. Lookup would therefore always proceed to the respective prototypes, so that, e.g., a primitive string would seem to inherit soft state from <code>String.prototype</code>, much as it currently seems to inherit properties from <code>String.prototype</code>. 
+</p>
+
+</div>
+<!-- SECTION [4517-5354] -->
+<a name="can_we_subsume_private_names"></a><h2>Can we subsume Private Names?</h2>
+<div class="level2">
+
+<p>
+ Two use cases shown at <a href="doku.php%3Fid=strawman:private_names.html" class="wikilink1" title="strawman:private_names" onclick="return svchk()" onkeypress="return svchk()">private names</a> that simple soft fields cannot provide are a certain form of <a href="doku.php%3Fid=strawman:private_names.html#accessing_private_names_as_values" class="wikilink1" title="strawman:private_names" onclick="return svchk()" onkeypress="return svchk()">polymorphism between names and strings</a>, and so-called &ldquo;<a href="doku.php%3Fid=strawman:private_names.html#private_name_properties_support_only_weak_encapsulation" class="wikilink1" title="strawman:private_names" onclick="return svchk()" onkeypress="return svchk()">weak encapsulation</a>&ldquo;. (MarkM here suspends value judgements about whether we should seek to support so-called &ldquo;weak encapsulation&rdquo;, and addresses here only how to do so, were we to agree on its desirability.) If <a href="doku.php%3Fid=strawman:value_proxies.html" class="wikilink1" title="strawman:value_proxies" onclick="return svchk()" onkeypress="return svchk()">value proxies</a> are accepted for Harmony, then Soft fields can grow to support both these use cases without further expansion of kernel semantics, by defining a soft field as equivalent to a value proxy that overloads [], to whit:
+</p>
+<pre class="code javascript">  <span class="kw2">const</span> softFieldOpHandler = Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+    <span class="co1">// overload larg[proxy]</span>
+    rgeti: <span class="kw2">function</span><span class="br0">&#40;</span>larg<span class="br0">&#41;</span>        <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="kw1">this</span>.<span class="me1">get</span><span class="br0">&#40;</span>larg<span class="br0">&#41;</span>; <span class="br0">&#125;</span>,
+    <span class="co1">// overload larg[proxy] = val;</span>
+    rseti: <span class="kw2">function</span><span class="br0">&#40;</span>larg, val<span class="br0">&#41;</span>   <span class="br0">&#123;</span>        <span class="kw1">this</span>.<span class="me1">set</span><span class="br0">&#40;</span>larg, val<span class="br0">&#41;</span>; <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="co1">// Move the SoftField code into softFieldProto</span>
+  <span class="kw2">const</span> softFieldProto = Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+    get:    ..., <span class="co1">//as above, but with &quot;this.weakMap&quot; instead of &quot;weakMap&quot;</span>
+    set:    ..., <span class="co1">//as above</span>
+    has:    ..., <span class="co1">//as above</span>
+    <span class="kw1">delete</span>: ...  <span class="co1">//as above</span>
+  <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="kw2">const</span> softFieldValueType = Proxy.<span class="me1">createValueType</span><span class="br0">&#40;</span>
+      softFieldOpHandler, softFieldProto,
+      <span class="st0">"string"</span>, <span class="co1">// bad idea, but suspending judgement</span>
+      <span class="br0">&#123;</span> weakMap: object <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="kw2">function</span> SoftFieldValue<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> Proxy.<span class="me1">createValue</span><span class="br0">&#40;</span>softFieldValueType, <span class="kw2">new</span> WeakMap<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span>
+  <span class="kw2">const</span> softFieldValue = SoftFieldValue<span class="br0">&#40;</span><span class="br0">&#41;</span>;</pre>
+<p>
+(Detail: The above code doesn&rsquo;t quite work as is, because there&rsquo;s no where safe to put the mascot. By delegating to an encapsulated <a href="doku.php%3Fid=harmony:weak_maps.html#explicit_soft_own_fields" class="wikilink1" title="harmony:weak_maps" onclick="return svchk()" onkeypress="return svchk()">explicit soft own fields</a> instead of a <code>WeakMap</code>, we can encapsulate the mascot in this extra layer. This is a detail because it effects only the apparent cost of this executable specification, not the actual cost of an implementation.)
+</p>
+
+<p>
+A &ldquo;weakly encapsulating&rdquo; soft field, or <em>wesf</em>, can then be coded as:
+</p>
+<pre class="code javascript">  <span class="co1">// Move the SoftField code into softFieldProto</span>
+  <span class="kw2">const</span> wesfProto = Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+    toString: <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span>         <span class="br0">&#123;</span> <span class="kw1">return</span> improbableName; <span class="br0">&#125;</span>,
+    get:      <span class="kw2">function</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span>      <span class="br0">&#123;</span> <span class="kw1">return</span> key<span class="br0">&#91;</span>improbableName<span class="br0">&#93;</span> <span class="br0">&#125;</span>,
+    set:      <span class="kw2">function</span><span class="br0">&#40;</span>key, val<span class="br0">&#41;</span> <span class="br0">&#123;</span>        key<span class="br0">&#91;</span>improbableName<span class="br0">&#93;</span> = val; <span class="br0">&#125;</span>,
+    has:      <span class="kw2">function</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span>      <span class="br0">&#123;</span> <span class="kw1">return</span> improbableName <span class="kw1">in</span> key; <span class="br0">&#125;</span>,
+    <span class="kw1">delete</span>:   <span class="kw2">function</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span>      <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="kw1">delete</span> key<span class="br0">&#91;</span>improbableName<span class="br0">&#93;</span>; <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="kw2">const</span> wesfValueType = Proxy.<span class="me1">createValueType</span><span class="br0">&#40;</span>
+      softFieldOpHandler, wesfProto,
+      <span class="st0">"string"</span>, <span class="co1">// bad idea, but suspending judgement</span>
+      <span class="br0">&#123;</span> improbableName: string <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="kw2">function</span> WesfValue<span class="br0">&#40;</span>opt_name<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">const</span> <span class="kw3">name</span> = String<span class="br0">&#40;</span>opt_name<span class="br0">&#41;</span> || Math.<span class="me1">random</span><span class="br0">&#40;</span><span class="br0">&#41;</span> + <span class="st0">'___'</span>;
+    <span class="kw1">return</span> Proxy.<span class="me1">createValue</span><span class="br0">&#40;</span>wesfValueType, <span class="kw3">name</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span>
+  <span class="kw2">const</span> wesfValue = WesfValue<span class="br0">&#40;</span><span class="br0">&#41;</span>;</pre>
+<p>
+Then polymorphic code such as
+</p>
+<pre class="code javascript">  <span class="kw2">function</span> foo<span class="br0">&#40;</span>n<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> base<span class="br0">&#91;</span>n<span class="br0">&#93;</span>;
+  <span class="br0">&#125;</span></pre>
+<p>
+can be called with a softFieldValue, a wesfValue, or a string, where each provides the degree of encapsulation and collision avoidance it claims. This supports the ability to modularly refactor code between encapsulating, &ldquo;weakly&rdquo; encapsulating, and obviously non-encapsulating fields.
+</p>
+
+</div>
+<!-- SECTION [5355-8665] -->
+<a name="see"></a><h1>See</h1>
+<div class="level1">
+
+<p>
+ The thread beginning at <a href="https://mail.mozilla.org/pipermail/es-discuss/2010-August/011654.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2010-August/011654.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow"> WeakMap API questions?</a>
+</p>
+
+<p>
+<a href="doku.php%3Fid=strawman:inherited_explicit_soft_fields&amp;rev=1290377489.html#a_less_aggressive_gc_contract" class="urlextern" target="_blank" title="http://wiki.ecmascript.org/doku.php?id=strawman:inherited_explicit_soft_fields&amp;rev=1290377489#a_less_aggressive_gc_contract" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Older GC discussion</a> now obsolete but still potentially interesting.
+</p>
+
+</div>
+<!-- SECTION [8666-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/e/eedf61d018d624eed5763fb26d6226b5.xhtml used -->
+</body>
+</html>

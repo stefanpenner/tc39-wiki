@@ -1,0 +1,377 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:class_operator&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:class_operator&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:class_operator&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:class_operator&amp;do=export_html.html#the_class_operatora_bridge_between_object_and_function_exemplers" class="toc">The class operator: A Bridge between object and function exemplers</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:class_operator&amp;do=export_html.html#introduction" class="toc">Introduction</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:class_operator&amp;do=export_html.html#the_class_operator" class="toc">The class Operator</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:class_operator&amp;do=export_html.html#using_the_class_operator" class="toc">Using the class Operator</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:class_operator&amp;do=export_html.html#a_binding_declaration_form" class="toc">A Binding Declaration Form</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:class_operator&amp;do=export_html.html#missing_constructors" class="toc">Missing Constructors</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:class_operator&amp;do=export_html.html#the_problem" class="toc">The Problem</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:class_operator&amp;do=export_html.html#the_solution" class="toc">The Solution</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:class_operator&amp;do=export_html.html#relationship_between_the_class_and_instanceof_operators" class="toc">Relationship between the class and instanceof operators</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:class_operator&amp;do=export_html.html#discussion" class="toc">Discussion</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="the_class_operatora_bridge_between_object_and_function_exemplers"></a><h1>The class operator: A Bridge between object and function exemplers</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [1-81] -->
+<a name="introduction"></a><h2>Introduction</h2>
+<div class="level2">
+
+<p>
+For ES.next we all want to provide better ways for ES programers to define named abstractions over objects.  One way to do this that we have discussed is &ldquo;<a href="doku.php%3Fid=strawman:object_exemplars.html" class="wikilink2" title="strawman:object_exemplars" onclick="return svchk()" onkeypress="return svchk()">Object exemplars</a>&rdquo; (<a href="http://www.mail-archive.com/es-discuss@mozilla.org/msg10365.html" class="urlextern" target="_blank" title="http://www.mail-archive.com/es-discuss@mozilla.org/msg10365.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://www.mail-archive.com/es-discuss@mozilla.org/msg10365.html</a> )
+</p>
+
+<p>
+Object exemplars essentially implement the self language style of object abstraction where prototype objects are given names and used as the named abstraction that represents a family of related objects.  Object exemplars typically are instantiated by applying the new operator to a specific named instance of the abstraction.  Object exemplars also typically define an initialization method that is called when a new instance is created.  For the ES implementation of object exemplars, this initialization method is named &ldquo;constructor&rdquo;.  For example:
+</p>
+<pre class="code javascript">let Point = <span class="br0">&#123;</span>
+     x:<span class="nu0">0</span>,
+     y:<span class="nu0">0</span>,
+     constructor<span class="br0">&#40;</span>x,y<span class="br0">&#125;</span> <span class="br0">&#123;</span>
+         <span class="kw1">this</span>.<span class="me1">x</span>=x;
+         <span class="kw1">this</span>.<span class="me1">y</span>=y;
+     <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;
+&nbsp;
+let p = <span class="kw2">new</span> Point<span class="br0">&#40;</span><span class="nu0">1</span>,<span class="nu0">2</span><span class="br0">&#41;</span>;</pre>
+<p>
+Using object exemplars, the named abstraction is itself an instance of the abstraction. Some people seem to be perfect happy to only have and use this form of object abstraction.  However, others prefer to think in a more &ldquo;classical&rdquo; style where the named object representing an abstraction is a distinct kind of object that is not itself an instance of the abstraction. In practice, these two views of object abstraction are very closely related. For example, a very simple addition to the above definition essentially turns Point into a &ldquo;function exemplar&rdquo;.  Function exemplars can also be thought of as &ldquo;class exemplars&rdquo;:
+</p>
+<pre class="code javascript">let Point = <span class="br0">&#123;</span>
+     x:<span class="nu0">0</span>,
+     y:<span class="nu0">0</span>,
+     constructor<span class="br0">&#40;</span>x,y<span class="br0">&#125;</span> <span class="br0">&#123;</span>
+         <span class="kw1">this</span>.<span class="me1">x</span>=x;
+         <span class="kw1">this</span>.<span class="me1">y</span>=y;
+     <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>.<span class="me1">constructor</span>;   <span class="co1">//&lt;----------- note added property reference</span>
+&nbsp;
+let p = <span class="kw2">new</span> Point<span class="br0">&#40;</span><span class="nu0">1</span>,<span class="nu0">2</span><span class="br0">&#41;</span>;  <span class="co1">//new operator applied to a constructible function </span></pre>
+<p>
+However, people that prefer the &ldquo;classical&rdquo; style will reasonably point out that it is both easy to forget the trailing property accessor in this definition and that even if it is there a reader is likely to not notice it.
+</p>
+
+<p>
+This proposal provides a solution to these  and other related issues that allow object exemplars and class/function exemplars to have equivalent status and to be  built upon the same underlying syntax and semantic mechanisms.
+</p>
+
+</div>
+<!-- SECTION [82-2417] -->
+<a name="the_class_operator"></a><h2>The class Operator</h2>
+<div class="level2">
+
+<p>
+The class operator is used in a new variant of UnaryExpresson:
+</p>
+
+<p>
+<em>UnaryExpression</em> : <br/>
+  <strong>class</strong> <em>UnaryExpression</em> <br/>
+  ...
+</p>
+
+<p>
+ Its basic semantics are:
+</p>
+<ol>
+<li class="level1"><div class="li"> if <em>UnaryExpression</em> is <strong>undefined</strong> or <strong>null</strong>, return the value of <em>UnaryExpression</em>.</div>
+</li>
+<li class="level1"><div class="li"> Let <em>obj</em> be ToObject(<em>UnaryExpression</em>)</div>
+</li>
+<li class="level1"><div class="li"> Return the result of calling the [[Get]] internal method of <em>obj</em> with argument &lsquo;constructor&rsquo;</div>
+</li>
+</ol>
+
+<p>
+ However, as explained below, we actually will need to use a elaboration of these semantics.
+</p>
+
+</div>
+<!-- SECTION [2418-2950] -->
+<a name="using_the_class_operator"></a><h2>Using the class Operator</h2>
+<div class="level2">
+
+<p>
+ Prefixing an object exemplar with the class operator turns it into a class exemplar:
+</p>
+<pre class="code javascript">let Point = <span class="kw2">class</span> <span class="br0">&#123;</span>
+     x:<span class="nu0">0</span>,
+     y:<span class="nu0">0</span>,
+     constructor<span class="br0">&#40;</span>x,y<span class="br0">&#125;</span> <span class="br0">&#123;</span>
+         <span class="kw1">this</span>.<span class="me1">x</span>=x;
+         <span class="kw1">this</span>.<span class="me1">y</span>=y;
+     <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;</pre>
+<p>
+The precedence of the class operator and the semantics of &lt;| means that it also works as expected with object exemplars that specify an inheritance relationship:
+</p>
+<pre class="code javascript">let Point = <span class="kw2">class</span> AbstractPoint &lt;| <span class="br0">&#123;</span>
+     x:<span class="nu0">0</span>,
+     y:<span class="nu0">0</span>,
+     constructor<span class="br0">&#40;</span>x,y<span class="br0">&#125;</span> <span class="br0">&#123;</span>
+         <span class="kw1">this</span>.<span class="me1">x</span>=x;
+         <span class="kw1">this</span>.<span class="me1">y</span>=y;
+     <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;</pre>
+<p>
+In the above example  Point inherits from AbstractPoint.  If AbstractPoint is a function then this means that the [[Prototype]] of Point is AbstractPoint and that the [[Prototype]] of Point.prototype is AbstractPoint.prototype. If AbstractionPoint is an object exemplar it means that the [[Prototype]] of Point is AbstractPoint.constructor and that the [[Prototype]] of Point.prototype is AbstractPoint.
+</p>
+
+<p>
+ The class operator  can prefix any UnaryExpression, not just object literals.  That means that the class operator can be used to classify objects:
+</p>
+<pre class="code javascript"><span class="kw1">if</span> <span class="br0">&#40;</span><span class="kw2">class</span> p === Point<span class="br0">&#41;</span> ...</pre>
+<p>
+Note that many object-oriented abstraction designers consider this form of class testing to be an anti-pattern. 
+</p>
+
+<p>
+It also works with instances of the standard ES built-in constructors:
+</p>
+<pre class="code javascript"><span class="kw1">if</span> <span class="br0">&#40;</span><span class="kw2">class</span> <span class="kw2">new</span> Array<span class="br0">&#40;</span><span class="nu0">1</span>,<span class="nu0">2</span>,<span class="nu0">3</span>,<span class="nu0">4</span><span class="br0">&#41;</span> === Array<span class="br0">&#41;</span> ... <span class="co1">//this will be true</span></pre>
+<p>
+so are these:
+</p>
+<pre class="code javascript"><span class="kw1">if</span> <span class="br0">&#40;</span><span class="kw2">class</span> <span class="br0">&#91;</span><span class="nu0">1</span>,<span class="nu0">2</span>,<span class="nu0">3</span>,<span class="nu0">4</span><span class="br0">&#93;</span> === Array<span class="br0">&#41;</span> ...
+<span class="kw1">if</span> <span class="br0">&#40;</span><span class="kw2">class</span> <span class="br0">&#91;</span><span class="br0">&#93;</span>.<span class="me1">pop</span> === <span class="kw2">Function</span><span class="br0">&#41;</span> ...</pre>
+<p>
+It also works with primitive value types:
+</p>
+<pre class="code javascript"><span class="kw1">if</span> <span class="br0">&#40;</span><span class="kw2">class</span> <span class="nu0">1234</span> === Number &amp;&amp; <span class="kw2">class</span> <span class="kw2">false</span> === Boolean &amp;&amp; <span class="kw2">class</span> <span class="st0">"Hi"</span> === String<span class="br0">&#41;</span> ... <span class="co1">//all true</span></pre>
+<p>
+and note that
+</p>
+<pre class="code javascript"><span class="kw1">if</span> <span class="br0">&#40;</span><span class="kw2">class</span> <span class="kw2">null</span> === Object<span class="br0">&#41;</span> ...</pre>
+<p>
+is <strong>false</strong>.
+</p>
+
+<p>
+You can use the class operator to determine if two objects are instances of the same exemplar:
+</p>
+<pre class="code javascript"><span class="kw1">if</span> <span class="br0">&#40;</span><span class="kw2">class</span> p === <span class="kw2">class</span> q<span class="br0">&#41;</span> ...</pre>
+<p>
+Note that this works for instances of both class and object exemplars.  However, if you want to test if an object is an instance of a specific named object exemplar then you need to remember that  such exemplars are prototype instances rather than constructor functions.  Of course, if you prefer object exemplars you are probably used to thinking in that prototypal style. You would express this as:
+</p>
+<pre class="code javascript"><span class="kw1">if</span> <span class="br0">&#40;</span><span class="kw2">class</span> p === <span class="kw2">class</span> Point<span class="br0">&#41;</span> ...  <span class="co1">//for this example, assume the very first definition of Point</span></pre>
+<p>
+Finally, you might use class to create a new instance of the same exemplar as some other known object:
+</p>
+<pre class="code javascript">let mine = <span class="kw2">new</span> <span class="kw2">class</span> theirs;</pre>
+<p>
+This works the same regardless of whether the value of &ldquo;theirs&rdquo; is an object or class exemplar.
+</p>
+
+</div>
+<!-- SECTION [2951-5732] -->
+<a name="a_binding_declaration_form"></a><h2>A Binding Declaration Form</h2>
+<div class="level2">
+
+<p>
+The  declarations: 
+</p>
+<pre class="code javascript">let AbstractPoint = <span class="kw2">class</span> <span class="br0">&#123;</span>
+   constructor<span class="br0">&#40;</span>x,y<span class="br0">&#125;</span> <span class="br0">&#123;</span>
+      <span class="kw1">throw</span> Error<span class="br0">&#40;</span><span class="st0">"Tried to instantiate an abstract class"</span>;
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;
+&nbsp;
+let PolarPoint = <span class="kw2">class</span> AbstractClass &lt;|<span class="br0">&#123;</span>
+   rho: <span class="nu0">0</span>,
+   theta: <span class="nu0">0</span>,
+   constructor<span class="br0">&#40;</span>x,y<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">this</span>.<span class="me1">rho</span> = Math.<span class="me1">sqrt</span><span class="br0">&#40;</span>x*x+y*y<span class="br0">&#41;</span>;
+      <span class="kw1">this</span>.<span class="me1">theta</span> = Math.<span class="me1">atan2</span><span class="br0">&#40;</span>y,x<span class="br0">&#41;</span>;
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+define two class exemplars and binds their values to the identifiers <code>AbstractPoint</code> and <code>PolarPoint</code>.  However some programmers may prefer to use a dedicated  binding form for creating class exemplars.  This is similar to the situation for functions definitions that have both expression and binding forms.  To support this usage preference the following desugaring is defined:
+</p>
+
+<p>
+ <em>ClassDeclaration</em> : <br/>
+  <strong>class</strong> <em>Identifier</em> <em>UnaryExpression</em> <strong>;</strong><br/>
+
+</p>
+
+<p>
+is processed as if it was:
+</p>
+
+<p>
+<strong>let</strong> <em>Identifier</em> <strong>= class</strong> <em>UnaryExpression</em> <strong>;</strong><br/>
+
+</p>
+
+<p>
+This allows the above example to be restated as:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> AbstractPoint  <span class="br0">&#123;</span>
+   constructor<span class="br0">&#40;</span>x,y<span class="br0">&#125;</span> <span class="br0">&#123;</span>
+      <span class="kw1">throw</span> Error<span class="br0">&#40;</span><span class="st0">"Tried to instantiate an abstract class"</span>;
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>      <span class="co1">//&lt;-----note automatic semicolon insertion</span>
+&nbsp;
+<span class="kw2">class</span> PolarPoint  AbstractPoint &lt;|<span class="br0">&#123;</span>
+   rho: <span class="nu0">0</span>,
+   theta: <span class="nu0">0</span>,
+   constructor<span class="br0">&#40;</span>x,y<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">this</span>.<span class="me1">rho</span> = Math.<span class="me1">sqrt</span><span class="br0">&#40;</span>x*x+y*y<span class="br0">&#41;</span>;
+      <span class="kw1">this</span>.<span class="me1">theta</span> = Math.<span class="me1">atan2</span><span class="br0">&#40;</span>y,x<span class="br0">&#41;</span>;
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;</pre>
+<p>
+Because this is a pure desugaring any <em>UnaryExpression</em> is allowed after the <em>Identifier</em>.  For example:
+</p>
+<pre class="code javascript"><span class="co1">//a frozen class</span>
+<span class="kw2">class</span> AbstractPoint  Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+   constructor<span class="br0">&#40;</span>x,y<span class="br0">&#125;</span> <span class="br0">&#123;</span>
+      <span class="kw1">throw</span> Error<span class="br0">&#40;</span><span class="st0">"Tried to instantiate an abstract class"</span>;
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span><span class="br0">&#41;</span>;     
+&nbsp;
+<span class="co1">//using a class extension framework</span>
+<span class="kw2">class</span> PolarPoint  Mixin<span class="br0">&#40;</span>AbstractPoint,debugFlag?DebugMethods:<span class="kw2">null</span><span class="br0">&#41;</span>  &lt;| <span class="br0">&#123;</span>
+   rho: <span class="nu0">0</span>,
+   theta: <span class="nu0">0</span>,
+   constructor<span class="br0">&#40;</span>x,y<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">this</span>.<span class="me1">rho</span> = Math.<span class="me1">sqrt</span><span class="br0">&#40;</span>x*x+y*y<span class="br0">&#41;</span>;
+      <span class="kw1">this</span>.<span class="me1">theta</span> = Math.<span class="me1">atan2</span><span class="br0">&#40;</span>y,x<span class="br0">&#41;</span>;
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;</pre>
+</div>
+<!-- SECTION [5733-7590] -->
+<a name="missing_constructors"></a><h2>Missing Constructors</h2>
+<div class="level2">
+
+</div>
+<!-- SECTION [7591-7627] -->
+<a name="the_problem"></a><h3>The Problem</h3>
+<div class="level3">
+
+<p>
+ There is one major problem with the class operator, as explained up to this point.  In some cases unexpected results will occur when the class operator is applied to an object that doesn&rsquo;t has a &ldquo;constructor&rdquo; own property. Consider the following example:
+</p>
+<pre class="code javascript">let Point = <span class="kw2">class</span> <span class="br0">&#123;</span>
+     x:<span class="nu0">0</span>,
+     y:<span class="nu0">0</span>
+<span class="br0">&#125;</span>;
+&nbsp;
+let p = <span class="kw2">new</span> Point<span class="br0">&#40;</span><span class="nu0">1</span>,<span class="nu0">2</span><span class="br0">&#41;</span>;</pre>
+<p>
+After evaluating this code, what would be the value of <code>p</code>?  Surprisingly, it is a <code>Number</code> wrapper object that wraps the number 1.  The reason is that the above definition of <code>Point</code>, as defined so far, is exactly equivalent to:
+</p>
+<pre class="code javascript">let Point = <span class="br0">&#123;</span>
+     x:<span class="nu0">0</span>,
+     y:<span class="nu0">0</span>
+     <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>.<span class="me1">constructor</span>;   <span class="co1">//&lt;----------- note constructor property reference</span></pre>
+<p>
+However, the object literal used to define the prototypical point doesn&rsquo;t explicitly define a  <code>constructor</code> property.  The reference to <code>constructor</code> that is used to obtain the value of <code>Point</code> is going to access an inherited  property.  By default, the object literal inherits from <code>Object.prototype</code> which does have a <code>constructor</code> property.  Its normal value is the <code>Object</code> constructor.  So the value of <code>Point</code> is going to be the same as <code>Object</code>.  The expresson <code>new Point(1,2)</code> will produce the exact same results as <code>new Object(1,2)</code>.  The specification of the <code>Object</code> constructor says that this result will be <code>new Number(1)</code>.  Hence the value of <code>p</code> is a <code>Number</code> object rather than a new instance of the <code>Point</code> class as the programmer intended. Unfortunately, it is not useful for new object abstractions to inherit the <code>Object</code> constructor.  
+</p>
+
+</div>
+<!-- SECTION [7628-9266] -->
+<a name="the_solution"></a><h3>The Solution</h3>
+<div class="level3">
+
+<p>
+Given the normal usage patterns for the <strong>class</strong> operator, a programmer who writes: 
+</p>
+<pre class="code javascript">let Point = <span class="kw2">class</span> <span class="br0">&#123;</span>x:<span class="nu0">0</span>, y:<span class="nu0">0</span><span class="br0">&#41;</span>;</pre>
+<p>
+ clearly intends the value of <code>Point</code> to be a new constructor function that produces instances that inherit from the object that is the value of the object literal.  The programmer just forgot to explicitly code the necessary constructor function definition in the object literal. This might easily occur as the constructor function really doesn&rsquo;t do anything, so a programmer doesn&rsquo;t have any real reason to think about it.
+</p>
+
+<p>
+An obvious solution to this problem would be to automatically create a default constructor property when one does not explicitly occur in an object literal. However, this would create a backwards compatibility problem.  While explicit access to the <code>constructor</code> property is fairly rare, it does exit is existing code. Automatically creating an own <code>constructor</code> property for every object literal would undoubtedly break some of that code. So to maintain backs compatibility we must use a subtler approach.
+</p>
+
+<p>
+We start by specifying that every object created using an object literal  that does not define an own property named <code>constructor</code> has a new internal property named <code>[[ctor]]</code>.  The value of this internal property is a new function object defined as if by <code>function(){}</code>.  The function has a <code>prototype</code> property whose value is the object created by the object literal.
+</p>
+
+<p>
+<strong>Optimization Opportunity</strong>: The <code>[[ctor]]</code> function value could be lazily created and hence need not actually exist for object literals that are not used with the <strong>class</strong> operator.
+</p>
+
+<p>
+We then need to redefine the semantics of the class operator to take the existence of <code>[[ctor]]</code> into account:
+</p>
+<ol>
+<li class="level1"><div class="li"> if <em>UnaryExpression</em> is <strong>undefined</strong> or <strong>null</strong>, return the value of <em>UnaryExpression</em>.</div>
+</li>
+<li class="level1"><div class="li"> Let <em>obj</em> be ToObject(<em>UnaryExpression</em>)</div>
+</li>
+<li class="level1"><div class="li"> If <em>obj</em> has an own property named <code>constructor</code>, return the result of calling the [[Get]] internal method of <em>obj</em> with <code>&ldquo;constructor&rdquo;</code> as the argument.</div>
+</li>
+<li class="level1"><div class="li"> If <em>obj</em> has an [[ctor]] internal property, return the value of that internal property.</div>
+</li>
+<li class="level1"><div class="li"> Let <em>proto</em> be the value of the [[Prototype]] internal property of <em>obj</em>.</div>
+</li>
+<li class="level1"><div class="li"> Return the result of evaluating this algorithm using the value of <em>proto</em> as the value of <em>UnaryExpression</em></div>
+</li>
+</ol>
+
+<p>
+ This fixes the &ldquo;Missing Constructor Problem&rdquo;.
+</p>
+
+</div>
+<!-- SECTION [9267-11726] -->
+<a name="relationship_between_the_class_and_instanceof_operators"></a><h2>Relationship between the class and instanceof operators</h2>
+<div class="level2">
+
+<p>
+There isn&rsquo;t one. They are different operators. <code>class</code> is simply a shorthand for accessing an object&rsquo;s constructor property. <code>instanceof</code> tests a specific inheritance relationship. 
+</p>
+
+</div>
+<!-- SECTION [11727-11983] -->
+<a name="discussion"></a><h2>Discussion</h2>
+<div class="level2">
+
+<p>
+ For now, lots on <a href="https://mail.mozilla.org/pipermail/es-discuss/2011-November/018393.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2011-November/018393.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">es-discuss</a>...
+</p>
+
+</div>
+<!-- SECTION [11984-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/6/6134e842c9d46dcf3dda7ee0bbbc3e0a.xhtml used -->
+</body>
+</html>

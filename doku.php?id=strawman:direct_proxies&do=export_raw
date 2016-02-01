@@ -1,0 +1,348 @@
+====== Direct Proxies ======
+
+Most parts of this strawman are now accepted as the new [[harmony:direct proxies]] API.
+The ''Proxy.stopTrapping'' part has been [[strawman:stopTrapping|deferred]].
+The ''Proxy.startTrapping'' (aka ''Proxy.attach'') part remains a separate [[strawman:attach|strawman]].
+
+===== Motivation =====
+
+Direct Proxies resolve a number of outstanding open issues with current proxies:
+  * They enable proxies to emulate non-configurable properties
+  * They enable proxies to emulate non-extensible, sealed and frozen objects
+  * They do so without enabling proxies to violate ES5.1 spec invariants that relate to non-configurability and non-extensibility.
+  * They enable proxies with a custom %%[[Class]]%%, and enable sensible transparent wrapping of host objects.
+  * They unify object and function proxies.
+
+In addition to this, we expect direct proxies to be more efficient than current proxies for the typical use case where a proxy is used to wrap an existing object.
+
+
+
+
+===== In a Nutshell =====
+
+The biggest difference between direct proxies and non-direct proxies is that a direct proxy always wraps an existing Javascript object (which we shall name the //target// of the proxy). The Proxy.create and Proxy.createFunction functions are replaced by a single Proxy.for function:
+
+<code javascript>
+var proxy = Proxy.for(target, handler);
+</code>
+
+Here,
+  * ''target'' is the object which the direct proxy wraps,
+  * ''handler'' is a handler object, as in the original proposal
+A function proxy becomes a direct proxy that wraps a function (see details below).
+
+As in the original proxy proposal, operations applied to the direct proxy are trapped by the handler, except for ''typeof'', ''instanceof'', ''===''. A direct proxy is ''!=='' to its target.
+
+All traps defined in ''handler'' are optional: if missing, the direct proxy defaults to forwarding the trapped operation to ''target''.
+
+Unlike in the original proxy proposal, any non-configurable properties reported by the handler of a direct proxy are also stored on the target object. In doing so, the proxy ensures that the target object always "matches" the proxy as far as non-configurability of properties is concerned. For a full list of enforced invariants, see below.
+
+When a direct proxy is made non-extensible, so is its target. Once a direct proxy is non-extensible, all properties reported by the handler are stored on the target, regardless of their configurability. This ensures that the handler cannot report any "new" properties, since the target object will now reject any attempt to add new properties.
+
+{{ strawman:directproxies_transparent.png?600 |Direct proxies}}
+
+===== Acquisition of Internal Properties =====
+
+A direct proxy may acquire some of its internal properties from its target object.
+This includes the %%[[Class]]%% and %%[[Prototype]]%% internal properties:
+  * calling ''Object.prototype.toString.call(aProxy)'' on ''aProxy'' uses the ''target'''s %%[[Class]]%%
+  * calling ''Object.getPrototypeOf(aProxy)'' queries ''aProxy'' for its %%[[Prototype]]%%, which is the %%[[Prototype]]%% of its target when the proxy was created.
+  * ''typeof aProxy'' is equal to ''typeof target''.
+
+Example:
+
+<code javascript>
+var d = new Date();
+var p = Proxy.for(d, {});
+Object.prototype.toString.call(p) // "[object Date]"
+Object.getPrototypeOf(p) // Date.prototype
+typeof p // "object"
+p === d // false
+</code>
+
+We could even allow for direct proxies to acquire non-standard internal properties from their target object. This could be a useful principle when wrapping host objects.
+
+===== API Changes =====
+
+For Direct Proxies, rather than adopting the [[strawman:handler_access_to_proxy]] strawman that adds the ''proxy'' itself as an additional argument to all traps, we propose to instead add the ''target'' as an additional, last, argument to all traps. That allows the handler to interact with the target that it implicitly wraps.
+
+Providing access to the target rather than the proxy itself is also safer, as it prevents runaway recursion hazards. Only in the ''get'' and ''set'' traps do we provide access to _both_ proxy and target, since a forwarding proxy may either want to bind ''this'' in a forwarded method or accessor to the proxy itself, or to the target directly, depending on whether it wants to intercept self-sends.
+
+==== Fixing Direct Proxies ====
+
+In the original proxy proposal, a proxy was born in a "trapping" state and could become "fixed" by calling any of ''Object.{freeze, seal, preventExtensions}''. In other words, non-extensibility and trapping were mutually exclusive. This was viewed as a serious drawback of proxies.
+
+With direct proxies, "fixing" the proxy (i.e. stopping the handler from trapping) is entirely decoupled from "protecting" the proxy and its target, by calling ''Object.{freeze,seal,preventExtensions}''.
+
+The old ''fix'' trap is replaced by two new traps:
+
+<code javascript>
+protect: function(operation, target) -> boolean
+stopTrapping: function(target) -> boolean
+</code>
+
+
+=== Protect ===
+
+The ''protect'' trap is called on ''Object.{freeze,seal,preventExtensions}(aProxy)''. The ''operation'' argument is a string identifying the corresponding operation (''"freeze"'', ''"seal"'', ''"preventExtensions"''). This makes it easy for a handler to forward this operation, by e.g. performing ''Object[operation](obj)''.
+
+Recall that ''fix()'' returned either a property descriptor map or undefined. If it returned undefined, the operation would fail, if it returned a pdmap, the proxy would "become" an object with those properties. With direct proxies, protecting the proxy does not stop the proxy from trapping, so the proxy will not "become" another object, it just keeps on wrapping the target. Since ''target'' is passed as an argument to the ''protect'' trap, the trap is free to (re)define any properties on the target before it's made non-extensible, sealed or frozen. The ''protect'' trap no longer needs to return a property descriptor map or undefined, just a boolean: if it returns true, the operation is applied to the target. If it returns false, the operation fails with a TypeError.
+
+=== Proxy.stopTrapping() ===
+
+Since trapping is now entirely decoupled from "protecting" a proxy, we propose the introduction of a separate operation, named ''Proxy.stopTrapping''. The call ''Proxy.stopTrapping(aProxy)'' triggers the proxy's ''stopTrapping()'' trap. This gives the handler a chance to either accept or reject the request:
+  * If the ''stopTrapping'' trap returns true, the handler will be relinquished and the proxy henceforth becomes nothing but an empty forwarder to its target. In some sense, it has "become" its target (and indeed, smart engines may even implement it that way).
+  * If the ''stopTrapping'' trap returns false, the request to stop trapping is ignored.
+
+Unlike a failed protection operation, a failed ''Proxy.stopTrapping'' operation fails silently. If it were to fail by throwing an exception, this would expose that the object is a proxy and break transparent virtualization. ''Proxy.stopTrapping(obj)'' on a regular non-proxy object ''obj'' is a no-op.
+
+Now that protecting an object no longer requires fixing the proxy, ''Proxy.stopTrapping'' is an operation with a relatively narrow set of use cases. We expect it to only be used in special cases where the original creator of a proxy knows precisely when the proxy is no longer needed, and can be "switched off" for performance reasons. In most cases, we envision that a proxy will be trapping for its full lifetime and ''stopTrapping'' by default returns false.
+
+{{ strawman:stoptrapping.png?600 |stopTrapping operation: before and after}}
+
+
+==== Merging Object and Function proxies ====
+
+Because a direct proxy inherits internal properties from its target, the old distinction between object and function proxies almost disappears. In fact, calling ''Proxy.for(aFunction, handler)'' almost effectively creates a function proxy, in that:
+  * ''Object.prototype.toString'' returns ''"[object Function]"''
+  * ''Function.prototype.toString'' returns the function representation of ''aFunction''
+  * ''Object.getPrototypeOf'' returns the prototype of ''aFunction'' (which by default is ''Function.prototype'')
+
+However, this leaves the proxy without a %%[[Call]]%% and %%[[Construct]]%% behavior, which still require a separate call and construct trap.
+Rather than introducing two proxy-creating functions as in the original proposal, we propose to introduce a ''call'' and a ''new'' trap on the handler:
+
+<code javascript>
+var p = Proxy.for(aFunction, handler);
+p(...args); // calls handler.call(undefined, args, aFunction, p);
+new p(...args); // calls handler.new(args, aFunction, p);
+
+Function.prototype.call(p, rcvr, 1, 2, 3); // calls handler.call(rcvr,[1,2,3],aFunction,p)
+</code>
+
+Both the ''call'' and ''new'' trap are optional and default to forwarding the operation to the wrapped target function.
+
+The %%[[Call]]%% and %%[[Construct]]%% behavior of a direct proxy is governed by the following rule:
+  * If ''typeof target === "function"'', then so is ''typeof p'' and calling/constructing the proxy always traps the ''call/new'' trap.
+  * If ''typeof target !== "function"'', then so is ''typeof p'' and any attempt to call/construct ''p'' raises a ''TypeError'' as usual, stating that ''p'' is not a function. The ''call'' or ''new'' traps are never invoked.
+
+This upholds the constraints that:
+  * The result of ''typeof'' is stable: it depends only on ''typeof target'', not on the presence or absence of the ''call'' or ''new'' traps.
+  * An object is callable iff ''typeof obj === "function"''
+
+The second restriction could be revisited if there exist host objects that are not ''typeof "function"'' but that are callable/constructable.
+
+====== Proxy.startTrapping() (a.k.a. Proxy.attach) ======
+
+Given that direct proxies are not in a position to violate any of the non-configurability or non-extensibility constraints of their wrapped target, it should be safe to replace an existing normal object by a direct proxy wrapping that object. This would enable interception of operations on //existing// objects.
+
+We can think of ''Proxy.stopTrapping'' as taking a proxy and turning it into its target. By analogy, we propose to rename "Proxy.attach" to ''Proxy.startTrapping'', since it takes a normal object and turns it into a proxy.
+
+Since being able to intercept all operations applied to an object is a powerful capability, an object that is actively trying to defend itself should not be replaceable by a proxy. Therefore, calling ''Proxy.startTrapping(obj)'' on an already non-extensible object ''obj'' should fail.
+
+{{ strawman:starttrapping.png?600 |The startTrapping operation: before and after}}
+
+====== Non-wrapping direct proxies? ======
+
+What about fully virtual proxies that are not backed by a wrapped existing object? It's still as easy to create such "virtual" proxies: just pass a fresh empty object (or perhaps even ''null''?) as the target to Proxy.for and implement all the handler traps so that none of them defaults to forwarding. As long as the virtual proxy doesn't expose non-configurable properties or becomes non-extensible, the target object is fully ignored (except to acquire internal properties such as %%[[Prototype]]%% and %%[[Class]]%%)
+
+As a matter of fact, the existing Proxy.create and Proxy.createFunction functions can easily be defined in terms of Proxy.for:
+
+<code>
+  Proxy.create = function(handler, proto) {
+    return Proxy.for(Object.create(proto), handler);
+  };
+  Proxy.createFunction = function(handler, call, opt_construct) {
+    var extHandler = Object.create(handler);
+    extHandler.call = call;
+    extHandler.new = opt_construct;
+    return Proxy.for(call, extHandler);
+  };
+</code>
+
+Note: the above emulation of ''Proxy.create{Function}'' in terms of Proxy.for is transparent only if 'handler' implements all required traps. Proxy.for will treat missing traps in the handler as forwarding traps, whereas missing traps in Proxy.create{Function} would cause a TypeError. Also, the ability to automatically define derived traps in terms of fundamental traps is lost.
+
+
+
+====== Default Forwarding Handler ======
+
+Even though the [[harmony:proxy_defaulthandler|default forwarding handler]] is now "baked into" direct proxies, we still propose to standardize it, since it allows traps to //generically// forward an operation to another object, without needing to consider the fine details of a faithful forwarding operation. By standardizing it, we ensure that the forwarding handler remains "in sync" with the proxy implementation, should new traps be added later.
+
+Since the ''target'' of a direct proxy is passed as an additional argument to all traps, the default forwarding handler can be a singleton object. There is no need for it to explicitly store its ''target'' in an instance variable:
+
+<code javascript>
+Proxy.forward = {
+  getOwnPropertyDescriptor(name, target) {
+    return Object.getOwnPropertyDescriptor(target, name);
+  },
+  ...
+}
+</code>
+
+We propose to bind the singleton forwarding handler to ''Proxy.forward''. This makes for an easy way to forward operations, for instance:
+
+<code javascript>
+funtion makeChangeLogger(target) {
+  return Proxy.for(target, {
+    set: function(name, value, target, proxy) {
+      log('property '+name+' on '+target+' set to '+value);
+      return Proxy.forward.set(name, value, target, proxy);
+    }
+  });
+}
+</code>
+
+This relieves the ''makeChangeLogger'' abstraction from accurately mimicking the semantics of forwarding ''set''.
+
+An explicit default forwarding handler is also still required to implement the [[harmony:proxies#transparent_chains_of_no-op_proxies|double lifting]] pattern:
+
+<code javascript>
+var metaHandler = Proxy.for(target, {
+  get: function(trapName, target, proxy) {
+    return function(...args) {
+      // code here is run before every operation triggered on proxy
+      return Proxy.forward[trapName](...args);
+    }
+  });
+var proxy = Proxy.for(target, metaHandler);
+</code>
+
+Some of the default forwarding operations enable programmers to express operations that were previously hard to accomplish:
+  * ''Proxy.forward.set(name, value, target)'' can be used to set a property and test (via the return value) whether the set succeeded.
+  * ''Proxy.forward.new(args, target)'' can be used to generically forward ''new target(...args)''.
+
+====== Advantages w.r.t. existing proxies ======
+
+  * Enables emulation of non-configurable properties.
+  * Enables emulation of non-extensible, sealed and frozen objects.
+  * "Fixing" a proxy (i.e. stopping the handler from trapping), becomes decoupled from "protecting" a proxy (making it non-extensible, sealed or frozen).
+  * No need to distinguish between object and function proxies. Proxy.create and Proxy.createFunction are replaced by a single uniform Proxy.for function.
+  * All traps become optional, they default to forwarding to the target. No distinction between fundamental and derived traps is needed.
+  * Wrapping an existing object using a direct proxy can be made much more efficient than wrapping an existing object using non-direct proxies. The default forwarding handler now becomes part of the internal proxy implementation. There is no intermediate ForwardingHandler. The proxy points to the target directly.
+  * When wrapping a target object, the prototype of the proxy automatically is the prototype of the target.
+  * Proxy acquires built-in properties of target. Enables faithful wrapping of Host objects, Arrays, etc.
+  * Direct proxies cannot break ES5 spec invariants.
+    * This in turn enables safe transformation of regular objects into proxies (Proxy.startTrapping, a.k.a. Proxy.attach)
+  * The default forwarding handler becomes a stateless singleton object.
+
+
+====== Invariant enforcement ======
+
+A direct proxy tries to keep its handler and target "in sync". That is: the direct proxy inspects the return values from the handler traps, and updates the target accordingly. If the handler and the target are always consistent, then this synchronization is effectively a no-op.
+
+  * If the handler reports deleted/missing properties, these properties are deleted on the target.
+  * If the handler reports or successfully updates an existing target property, the property is updated on the target.
+  * If handler reports a new non-configurable property, this property is also added to the target.
+
+Failure to update the target indicates an invariant violation and will cause a TypeError to be thrown.
+
+Below is a list of invariants for Objects based on the ES5 spec.
+
+Definitions:
+  * A //sealed property// is a non-configurable own property of the target.
+  * A //frozen property// is a non-configurable non-writable own property of the target.
+  * A //new property// is a property that does not exist on a non-extensible target.
+
+**get{Own}PropertyDescriptor**
+
+  * Non-configurability invariant: cannot return incompatible descriptors for sealed properties 
+  * Non-extensibility invariant (only for getOwnPropertyDescriptor): must return undefined for new properties
+  * Synchronization actions:
+    * if trap returns undefined, delete the property from target
+    *  if property exists on target, update target's property based on returned descriptor
+    * if returned descriptor is non-configurable, (re)define the property on the target
+
+**defineProperty**
+
+  * Non-configurability invariant: cannot succeed (return true) for incompatible changes to sealed properties 
+  * Non-extensibility invariant: must reject (return false) for new properties
+  * Synchronization actions:
+    * on success, if property exists on target, update property on target
+    * on success, if argument descriptor is non-configurable, (re)define property on target
+
+**get{Own}PropertyNames**
+
+  * Non-configurability invariant: must report all sealed properties
+  * Non-extensibility invariant (only for getOwnPropertyNames): must not list new property names 
+  * Synchronization actions:
+    * delete all own properties of the target that are not listed in the trap result
+
+**delete**
+
+  * Non-configurability invariant: cannot succeed (return true) for sealed properties
+  * Synchronization actions:
+    * on success, delete the property from target
+
+**has{Own}**
+
+  * Non-configurability invariant: cannot return false for sealed properties
+  * Non-extensibility invariant (only for hasOwn): must return false for new properties 
+  * Synchronization actions:
+    * if false is returned, delete the property from target
+
+**get**
+
+  * Non-configurability invariant: cannot return inconsistent values for frozen data properties, and must return undefined for sealed accessors with an undefined getter 
+  * Synchronization actions:
+    * if property exists on target as a data property, updates the target's property with the returned value
+
+**set**
+
+  * Non-configurability invariant: cannot succeed (return true) for frozen data properties or sealed accessors with an undefined setter 
+  * Synchronization actions:
+    * on success, if property exists on target as a data property, updates the target's property with the returned value
+
+**keys**
+
+  * Non-configurability invariant: must report all enumerable sealed properties
+  * Non-extensibility invariant: must not list new property names
+  * Synchronization actions:
+    * delete all own enumerable properties of the target that are not listed in the trap result
+
+**enumerate**
+
+  * Non-configurability invariant: must report all enumerable sealed properties
+  * Synchronization actions:
+    * delete all own enumerable properties of the target that are not listed in the trap result
+
+More information about these invariants can be found in the header documentation of the [[http://code.google.com/p/es-lab/source/browse/trunk/src/proxies/DirectProxies.js#92|prototype implementation]].
+
+====== Open issues ======
+
+  * The [[strawman:refactoring_put]] proposal defines a saner semantics for (direct) proxies and prototype inheritance. If this strawman were accepted, the ''get'' and ''set'' traps would regain their lost ''receiver'' argument, which would make the additional ''proxy'' argument unnecessary: the ''receiver'' is typically (in the absence of inheritance) equal to the ''proxy''.
+  * Proxy.for could be renamed to Proxy.create. We used a new name to avoid confusion with the existing Proxy.create function.
+  * Making all traps optional a) makes the API much more lightweight, b) is more future-proof. It does lose the distinction between fundamental vs derived traps. However, it would be easy for a library to reintroduce this distinction, such that a handler could specify only fundamental traps, and have the other traps be derived from these automatically.
+
+====== Feedback and Discussion ======
+
+This strawman was presented and extensively discussed at the November 2011 TC39 meeting, with two major differences from what is recorded here:
+  * Instead of a ''Proxy.forward'' default forwarding handler, we proposed the introduction of a separate ''Reflect'' module.
+  * The synchronization actions to keep a proxy and its target automatically "in sync" were dropped. Instead, it was proposed that a proxy only checks the invariants. If it cannot reliably ensure that the invariant continues to hold, it throws a ''TypeError''. The proxy never implicitly side-effects its target.
+
+What follows is a list of issues that came up during this meeting, recorded by Tom:
+
+  * Allen: forwarding of internal properties. Not clear yet what spec implications are.
+  * MarkM: Type(target) should be Object, throw TypeError otherwise. More future-proof than calling ToObject.
+  * Clarification: %%[[Class]]%% of target not only used for toString, but also as nominal type. We want Array.isArray to return true for array-wrapping proxies.
+  * default %%[[Construct]]%% behavior: forward or make it a derived trap? Forward, to be consistent with other missing traps.
+  * Waldemar: derived traps were good for future-proofing. Conclusion: add a language-provided handler to the API that defines all derived traps in terms of all fundamental traps.
+  * Put the ''target'' parameter first for all traps.
+  * Put the ''receiver'' parameter last for get/set traps (makes it optional for reflective use)
+  * rename ''call'' trap to ''apply'' (because it takes an array of args, not a variable list of parameters)
+  * protect trap: split them out into freeze/seal/preventExtensions again. Make freeze/seal derived traps.
+  * freeze/seal/pE: handler should perform the operation, proxy should check the state of the target if trap returns true.
+  * Waldemar: get/set don't uphold invariants involving inheritance. MarkM: too costly to uphold.
+  * Should we allow a ''null'' target? No, avoid this irregularity. Instead provide a "non-committal" singleton object as the target (i.e. an object that rejects non-configurable properties and rejects preventExtensions).
+  * mutable %%__proto__%% and proxies: no problem, proxies can intercept %%__proto__%% via get/set trap. If target's %%[[Prototype]]%% changes, will be reflected via ''Object.getPrototypeOf(proxy)''.
+  * ''getPropertyDescriptor'' / ''getPropertyNames'': don't remove the built-ins, do remove the traps. Built-ins for convenience. They will walk proto chain and call getOwnPropertyDescriptor/getOwnPropertyNames.
+  * Proxy.for: ''for'' is a bad name when using modules: import ''for'' from Proxy? Dave: suggest to use Proxy as a function, i.e. ''Proxy(target, handler)''.
+  * Do we need a ''defaultValue'' trap? Use a private name instead.
+  * drop ''stopTrapping''
+  * Discussion on startTrapping/attach:
+    * non-extensible is not the right flag to check for: configurable props of a non-extensible obj can be overridden anyway. Too constraining. Instead, non-configurability seems more important: under current proposal, can still attach to an extensible object whose props are all non-configurable.
+    * disallow intercepting non-configurable props? Problem: array ''length'' is non-configurable. MarkM: we can special-case Array if need be.
+    * Sam: being able to intercept ''apply''/''new'' on functions: violates even ES3 invariant that when ''A'' passes a function to ''B'' and ''C'', ''B'' and ''C'' shouldn't be able to see each other's arguments passed into that function.
+    * To get consensus on Proxy.attach, we need to weaken the power of attachable proxies (e.g. only intercept delete,defineProperty,set; do not intercept apply,new) and/or restrict the type of objects/properties to which proxies can be attached. What is a sensible subset of the Proxy API for data-binding purposes?
+
+====== References ======
+
+  * [[http://code.google.com/p/es-lab/source/browse/trunk/src/proxies/DirectProxies.js|Prototype implementation]] based on Firefox 7 proxies: after loading this file, the page effectively uses direct proxies as specified here.

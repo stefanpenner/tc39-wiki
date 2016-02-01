@@ -1,0 +1,49 @@
+====== Unicode Normalization ======
+
+This proposal removes assumptions about Unicode normalization that aren't valid for current implementations from the ECMAScript Language Specification, and adds a simple normalization method.
+
+===== Remove Invalid Assumptions =====
+
+The ECMAScript Language Specification 5.1 contains assumptions about the normalization of source text in several sections:
+
+  * [[http://ecma-international.org/ecma-262/5.1/#sec-6|Section 6]], states: "ECMAScript source text … is expected to have been normalised to Unicode Normalization Form C (canonical composition), as described in Unicode Technical Report #15. Conforming ECMAScript implementations are not required to perform any normalisation of text, or behave as though they were performing normalisation of text, themselves."
+
+  * [[http://ecma-international.org/ecma-262/5.1/#sec-7.6|Section 7.6]] states in a normative paragraph describing identifier equality: "The intent is that the incoming source text has been converted to normalised form C before it reaches the compiler."
+
+  * [[http://ecma-international.org/ecma-262/5.1/#sec-8.4|Section 8.4]] states: "All operations on Strings … do not ensure the resulting String is in normalised form". The section also contains a non-normative note providing rationale that assumes that text is normalized on the way into the execution environment.
+
+  * [[http://ecma-international.org/ecma-262/5.1/#sec-11.8.5|Section 11.8.5]] and [[http://ecma-international.org/ecma-262/5.1/#sec-11.9.3|section 11.9.3]] state in non-normative notes about string comparison: "In effect this algorithm assumes that both Strings are already in normalised form."
+
+As [[http://icu-project.org/docs/papers/internationalization_support_for_javascript.html#h8|Rich Gillam]] reports from the TC 39 discussions: "The expectation is that there's a separate layer of some kind around the environment of a running ECMAScript program that ensures text coming in from outside is normalized." and "Applications that get text from the Internet can depend on the source to follow the W3C rules." The W3C rules referred to here are presumably the ones about early normalization in the Character Model for the World Wide Web ([[http://www.w3.org/TR/1999/WD-charmod-19990225#Normalization|1999 draft]], [[http://www.w3.org/TR/2012/WD-charmod-norm-20120501|2012 draft]]).
+
+In reality, unnormalized source text is not normalized anywhere on the way into the ECMAScript runtimes of any of the top 5 browsers or in Node.js. It is also not normalized when a string is passed to eval(). ([[http://norbertlindenberg.com/ecmascript/ESTest.html|Tested]] with: Safari 5.1.7 Mac, iOS 5.1.1; Firefox 12.0 Mac, Win; Chrome 19.0.1084.52 Mac, 19.0.1084.46 Win; Opera 11.64 Mac, Win; IE 9.0.8112.16421 Win; Node.js 0.6.18 Mac). On the web, early normalization hasn't become the norm either; the latest draft of the Character Model indicates "the Internationalization Core Working Group's intention to substantially alter or replace the recommendations found here with very different recommendations in the near future."
+
+Implementing normalization of source text in ECMAScript implementations now would create the risk of breaking existing code that relies on identifiers or strings being different that would be equal after normalization.
+
+I propose that instead the invalid assumptions are removed from the specification:
+
+  * Remove the sentence "The text is expected to have been normalised to Unicode Normalization Form C (canonical composition), as described in Unicode Technical Report #15." from [[http://ecma-international.org/ecma-262/5.1/#sec-6|section 6]]. Change the following sentence to: "Conforming ECMAScript implementations must not perform any normalisation of source text, or behave as though they were performing normalisation of source text."
+
+  * Remove the sentence ""The intent is that the incoming source text has been converted to normalised form C before it reaches the compiler." from [[http://ecma-international.org/ecma-262/5.1/#sec-7.6|section 7.6]].
+
+  * Remove the note from [[http://ecma-international.org/ecma-262/5.1/#sec-8.4|section 8.4]].
+
+  * Remove the notes "In effect this algorithm assumes that both Strings are already in normalised form." from [[http://ecma-international.org/ecma-262/5.1/#sec-11.8.5|section 11.8.5]] and [[http://ecma-international.org/ecma-262/5.1/#sec-11.9.3|section 11.9.3]].
+
+===== Add normalize Method =====
+
+Text comparison operations generally are easier to implement and produce better results if they can operate on normalized text. Implementations of the Intl.Collator object in the ECMAScript Internationalization API will typically apply normalization where needed, e.g., for Arabic and Vietnamese, where unnormalized text is common. For other operations, such as the simple string comparison used by the operators <, ==, etc. as well as regular expressions, applications should be able to normalize strings beforehand.
+
+I propose adding the following function:
+
+**String.prototype.normalize(form)**
+
+  - Call CheckObjectCoercible passing the this value as its argument.
+  - Let S be the result of calling ToString, giving it the this value as its argument.
+  - If form is undefined or not provided, let form be "NFC".
+  - Let f be ToString(form).
+  - If f is not one of "NFC", "NFD", "NFKC", or "NFKD", throw a RangeError exception.
+  - Let n be the string that is the result of normalizing S into the normalization form named by f as specified in [[http://www.unicode.org/reports/tr15/tr15-29.html|UTR 15, Unicode Normalization Forms]].
+  - Return n.
+
+NOTE	The normalize function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.

@@ -1,0 +1,134 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:iterator_conveniences&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:iterator_conveniences&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:iterator_conveniences&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="iterator_conveniences"></a><h1>Iterator conveniences</h1>
+<div class="level1">
+
+<p>
+ This proposal complements the <a href="doku.php%3Fid=strawman:iterators.html" class="wikilink1" title="strawman:iterators" onclick="return svchk()" onkeypress="return svchk()">iterators</a> strawman with an <acronym title="Application Programming Interface">API</acronym> of conveniences for constructing iterators.
+</p>
+
+</div>
+<!-- SECTION [1-147] -->
+<a name="library"></a><h1>Library</h1>
+<div class="level1">
+<pre class="code javascript">Iterator.<span class="me1">create</span>: <span class="kw2">function</span><span class="br0">&#40;</span>trap: <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> -&gt; iterator<span class="br0">&#41;</span> -&gt; iterator
+Iterator.<span class="kw1">for</span>:    <span class="kw2">function</span><span class="br0">&#40;</span>x: Object, trap: <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> -&gt; iterator<span class="br0">&#41;</span> -&gt; iterator
+keys:            <span class="kw2">function</span><span class="br0">&#40;</span>x: Object, own: boolean = <span class="kw2">false</span><span class="br0">&#41;</span> -&gt; iterator
+values:          <span class="kw2">function</span><span class="br0">&#40;</span>x: Object, own: boolean = <span class="kw2">false</span><span class="br0">&#41;</span> -&gt; iterator
+items:           <span class="kw2">function</span><span class="br0">&#40;</span>x: Object, own: boolean = <span class="kw2">false</span><span class="br0">&#41;</span> -&gt; iterator</pre><ul>
+<li class="level1"><div class="li"> <code>Iterator.create</code>: Creates a new iterator proxy using the given trap.</div>
+</li>
+<li class="level1"><div class="li"> <code>Iterator.for</code>: Creates a new iterator proxy using the given trap for the <code>iterate</code> trap and otherwise behaving as a forwarding proxy.</div>
+</li>
+<li class="level1"><div class="li"> <code>keys</code>: Creates a new iterator proxy that iterates over the property names of the object <code>x</code>. If <code>own</code> is provided and is a truthy value, then the iterator only produces the names of the object&rsquo;s own properties.</div>
+</li>
+<li class="level1"><div class="li"> <code>values</code>: Creates a new iterator proxy that iterates over the property values of the object <code>x</code>. If <code>own</code> is provided and is a truthy value, then the iterator only produces the values of the object&rsquo;s own properties.</div>
+</li>
+<li class="level1"><div class="li"> <code>items</code>: Creates a new iterator proxy that iterates over the properties of the object <code>x</code>, providing at each iteration a two-element array with the property name at index 0 and the property value at index 1. If <code>own</code> is provided and is a truthy value, then the iterator only produces the object&rsquo;s own properties.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [148-1549] -->
+<a name="sample_implementation"></a><h1>Sample implementation</h1>
+<div class="level1">
+
+<p>
+ This code works in the Firefox 4 betas, using the script type <code>&ldquo;application/javascript;version=1.8&rdquo;</code>.
+</p>
+<pre class="code javascript"><span class="co1">// The module pattern; this ought to be a standard module.</span>
+<span class="kw2">var</span> Iteration = <span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+&nbsp;
+Iterator = <span class="br0">&#123;</span>
+    create: <span class="kw2">function</span><span class="br0">&#40;</span>trap<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="co1">// Proxy.forwardingHandler is given an implementation on the harmony:proxies page.</span>
+        <span class="kw2">var</span> handler = Object.<span class="me1">create</span><span class="br0">&#40;</span>Proxy.<span class="me1">forwardingHandler</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+                                        toString: <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="st0">"[object Iterator]"</span> <span class="br0">&#125;</span>
+                                    <span class="br0">&#125;</span><span class="br0">&#41;</span>,
+                                    <span class="br0">&#123;</span> iterate: <span class="br0">&#123;</span> value: trap <span class="br0">&#125;</span> <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+        <span class="kw1">return</span> Proxy.<span class="me1">create</span><span class="br0">&#40;</span>handler<span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span>,
+    <span class="kw1">for</span>: <span class="kw2">function</span><span class="br0">&#40;</span>obj, trap<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw2">function</span> g<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+            <span class="kw1">for</span> <span class="br0">&#40;</span><span class="kw2">var</span> x <span class="kw1">in</span> obj<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+                yield x;
+            <span class="br0">&#125;</span>
+        <span class="br0">&#125;</span>
+        <span class="co1">// Proxy.forwardingHandler is given an implementation on the harmony:proxies page.</span>
+        <span class="kw2">var</span> handler = Object.<span class="me1">create</span><span class="br0">&#40;</span>Proxy.<span class="me1">forwardingHandler</span><span class="br0">&#40;</span>obj<span class="br0">&#41;</span>,
+                                    <span class="br0">&#123;</span> iterate: <span class="br0">&#123;</span> value: <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+                                          <span class="kw1">return</span> g<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+                                      <span class="br0">&#125;</span> <span class="br0">&#125;</span> <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+        <span class="kw1">return</span> Proxy.<span class="me1">create</span><span class="br0">&#40;</span>handler<span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;
+&nbsp;
+<span class="kw2">function</span> values<span class="br0">&#40;</span>obj<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">function</span> makeIterator<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">for</span> <span class="br0">&#40;</span>x <span class="kw1">in</span> obj<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+            yield obj<span class="br0">&#91;</span>x<span class="br0">&#93;</span>;
+        <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span>
+    <span class="kw1">return</span> Iterator.<span class="me1">create</span><span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">return</span> makeIterator<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">function</span> keys<span class="br0">&#40;</span>obj<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">function</span> makeIterator<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">for</span> <span class="br0">&#40;</span>x <span class="kw1">in</span> obj<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+            yield x;
+        <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span>
+    <span class="kw1">return</span> Iterator.<span class="me1">create</span><span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">return</span> makeIterator<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">function</span> items<span class="br0">&#40;</span>obj<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">function</span> makeIterator<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">for</span> <span class="br0">&#40;</span>x <span class="kw1">in</span> obj<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+            yield <span class="br0">&#91;</span>x, obj<span class="br0">&#91;</span>x<span class="br0">&#93;</span><span class="br0">&#93;</span>;
+        <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span>
+    <span class="kw1">return</span> Iterator.<span class="me1">create</span><span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">return</span> makeIterator<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw1">return</span> <span class="br0">&#123;</span>
+    Iterator: Iterator,
+    values: values,
+    keys: keys,
+    items: items
+<span class="br0">&#125;</span>;
+&nbsp;
+<span class="br0">&#125;</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;</pre>
+</div>
+<!-- SECTION [1550-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/e/e7a63b3640aef2afd37fa5d1d45ce7d7.xhtml used -->
+</body>
+</html>

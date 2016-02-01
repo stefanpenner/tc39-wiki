@@ -1,0 +1,247 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:shallow_continuations&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:shallow_continuations&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:shallow_continuations&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:shallow_continuations&amp;do=export_html.html#shallow_continuations" class="toc">Shallow continuations</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:shallow_continuations&amp;do=export_html.html#syntax" class="toc">Syntax</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:shallow_continuations&amp;do=export_html.html#semantics" class="toc">Semantics</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:shallow_continuations&amp;do=export_html.html#continuation_objects" class="toc">Continuation objects</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:shallow_continuations&amp;do=export_html.html#statefulness" class="toc">Statefulness</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:shallow_continuations&amp;do=export_html.html#examples" class="toc">Examples</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:shallow_continuations&amp;do=export_html.html#enhancements" class="toc">Enhancements</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:shallow_continuations&amp;do=export_html.html#generators" class="toc">Generators</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:shallow_continuations&amp;do=export_html.html#syntax" class="toc">Syntax</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:shallow_continuations&amp;do=export_html.html#semantics" class="toc">Semantics</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="shallow_continuations"></a><h1>Shallow continuations</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [1-37] -->
+<a name="syntax"></a><h2>Syntax</h2>
+<div class="level2">
+<pre class="code">
+UnaryExpression ::= ... | &quot;shift&quot; UnaryExpression
+</pre>
+
+</div>
+<!-- SECTION [38-124] -->
+<a name="semantics"></a><h2>Semantics</h2>
+<div class="level2">
+
+<p>
+ Every function containing the <code>shift</code> operator in its body (not contained in any nested functions) implicitly creates a <em>continuation object</em> every time it is called. The continuation object encapsulates the function call&rsquo;s activation object.
+</p>
+
+<p>
+Let the current stack consist of <em>S</em> followed by activation object <em>A</em>. Let <em>k</em> be the continuation object of <em>A</em>. Let <em>o</em> be the binding of <code>this</code> in <em>A</em>. 
+</p>
+<ol>
+<li class="level1"><div class="li"> Evaluate the argument expression to get a value <em>v</em>.</div>
+</li>
+<li class="level1"><div class="li"> Capture the activation object <em>A</em> and set the internal <code>[[Value]]</code> property of <code>k</code> to <em>A</em>.</div>
+</li>
+<li class="level1"><div class="li"> Remove <em>A</em> from the stack, leaving <em>S</em> as the current stack.</div>
+</li>
+<li class="level1"><div class="li"> Call <em>v</em> with <em>k</em> as its single argument, with <code>this</code> bound to <em>o</em>.</div>
+</li>
+</ol>
+
+</div>
+<!-- SECTION [125-883] -->
+<a name="continuation_objects"></a><h2>Continuation objects</h2>
+<div class="level2">
+
+<p>
+ A continuation object <em>k</em> has the following methods: 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>send(x)</code>:</div>
+<ol>
+<li class="level2"><div class="li"> Let <em>A</em> be the activation object in <em>k</em>&lsquo;s <code>[[Value]]</code> property.</div>
+</li>
+<li class="level2"><div class="li"> Push <em>A</em> onto the current stack.</div>
+</li>
+<li class="level2"><div class="li"> Use the value of <code>x</code> as the result of the suspended <code>shift</code> expression and continue evaluating the function activation.</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> <code>throw(x)</code>:</div>
+<ol>
+<li class="level2"><div class="li"> Let <em>A</em> be the activation object in <em>k</em>&lsquo;s <code>[[Value]]</code> property.</div>
+</li>
+<li class="level2"><div class="li"> Push <em>A</em> onto the current stack.</div>
+</li>
+<li class="level2"><div class="li"> Use the value of <code>x</code> as an exception value to throw in place of the suspended <code>shift</code> expression and continue evaluating the function activation.</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> <code>close()</code>:</div>
+<ol>
+<li class="level2"><div class="li"> Let <em>A</em> be the activation object in <em>k</em>&lsquo;s <code>[[Value]]</code> property.</div>
+</li>
+<li class="level2"><div class="li"> Push <em>A</em> onto the current stack.</div>
+</li>
+<li class="level2"><div class="li"> Replace the suspended <code>shift</code> expression with <code>let () { return }</code>.</div>
+</li>
+</ol>
+</li>
+</ul>
+
+<p>
+ Note that suspending the same activation object multiple times leads to the same (in the sense of <code>===</code>) continuation object.
+</p>
+
+</div>
+<!-- SECTION [884-1881] -->
+<a name="statefulness"></a><h2>Statefulness</h2>
+<div class="level2">
+
+<p>
+ Note that every subsequent evaluation of <code>shift</code> for the same activation <em>A</em> produces the same continuation object <em>k</em>. This means that as execution of <em>A</em> proceeds, the continuation object <em>k</em> reflects the changing state of the computation.
+</p>
+
+</div>
+<!-- SECTION [1882-2161] -->
+<a name="examples"></a><h2>Examples</h2>
+<div class="level2">
+<pre class="code javascript"><span class="kw2">function</span> f<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">try</span> <span class="br0">&#123;</span>
+        <span class="kw1">for</span> <span class="br0">&#40;</span>let i = <span class="nu0">0</span>; i &lt; K; i++<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+            farble<span class="br0">&#40;</span>i<span class="br0">&#41;</span>;
+&nbsp;
+            <span class="co1">// suspend and return the activation</span>
+            let received = shift <span class="kw2">function</span><span class="br0">&#40;</span>k<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> k <span class="br0">&#125;</span>;
+&nbsp;
+            <span class="kw3">print</span><span class="br0">&#40;</span>received<span class="br0">&#41;</span>; <span class="co1">// this will be 42</span>
+        <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span>
+    <span class="kw1">catch</span> <span class="br0">&#40;</span>e<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* ... */</span> <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+let k = f<span class="br0">&#40;</span><span class="br0">&#41;</span>; <span class="co1">// starts running and return the suspended activation</span>
+<span class="co1">// ...</span>
+k.<span class="me1">send</span><span class="br0">&#40;</span><span class="nu0">42</span><span class="br0">&#41;</span>; <span class="co1">// resume suspended activation</span></pre>
+</div>
+<!-- SECTION [2162-2618] -->
+<a name="enhancements"></a><h2>Enhancements</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> allow the argument to be optional, defaulting to <code>function (k) { return k }</code></div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [2619-2729] -->
+<a name="generators"></a><h1>Generators</h1>
+<div class="level1">
+
+<p>
+ Generators are a convenience form for creating custom <a href="doku.php%3Fid=strawman:iterators.html" class="wikilink1" title="strawman:iterators" onclick="return svchk()" onkeypress="return svchk()">iterators</a>.
+</p>
+
+</div>
+<!-- SECTION [2730-2834] -->
+<a name="syntax"></a><h2>Syntax</h2>
+<div class="level2">
+<pre class="code">
+PrimaryExpression ::= ... | &quot;generator&quot; Identifier? FunctionArguments FunctionBody
+
+GeneratorDeclaration ::= ... | &quot;generator&quot; Identifier FunctionArguments FunctionBody
+</pre>
+
+<p>
+Within a generator body, it is a syntax error for <code>return</code> to take an argument expression.
+</p>
+
+</div>
+<!-- SECTION [2835-3136] -->
+<a name="semantics"></a><h2>Semantics</h2>
+<div class="level2">
+
+<p>
+ The expression <code>generator(x1,...,xn) { body ... }</code> is equivalent to:
+</p>
+<pre class="code javascript"><span class="kw2">function</span><span class="br0">&#40;</span>x1,...,xn<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    shift <span class="kw2">function</span><span class="br0">&#40;</span>k<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">return</span> Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+            send:  <span class="kw2">function</span><span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> k.<span class="me1">send</span><span class="br0">&#40;</span>x<span class="br0">&#41;</span>; <span class="br0">&#125;</span>,
+            next:  <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span>  <span class="br0">&#123;</span> <span class="kw1">return</span> k.<span class="me1">send</span><span class="br0">&#40;</span><span class="kw1">void</span> <span class="nu0">0</span><span class="br0">&#41;</span>; <span class="br0">&#125;</span>,
+            <span class="kw1">throw</span>: <span class="kw2">function</span><span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> k.<span class="kw1">throw</span><span class="br0">&#40;</span>x<span class="br0">&#41;</span>; <span class="br0">&#125;</span>,
+            <span class="kw3">close</span>: <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span>  <span class="br0">&#123;</span> k.<span class="kw3">close</span><span class="br0">&#40;</span><span class="br0">&#41;</span>; <span class="br0">&#125;</span>
+        <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span>;
+    body ...
+    <span class="kw1">throw</span> StopIteration;
+<span class="br0">&#125;</span></pre>
+<p>
+for the original definitions of <code>StopIteration</code> and <code>Object.freeze</code>.
+</p>
+
+<p>
+Inside a function body, a <code>return</code> statement (which may not have an argument) is equivalent to:
+</p>
+<pre class="code javascript"><span class="kw1">throw</span> StopIteration;</pre>
+<p>
+for the original definition of <code>StopIteration</code>.
+</p>
+
+<p>
+The expression <code>yield e</code> is equivalent to:
+</p>
+<pre class="code javascript">let <span class="br0">&#40;</span>result = e<span class="br0">&#41;</span> <span class="br0">&#123;</span> =&gt; <span class="br0">&#40;</span>shift <span class="kw2">function</span><span class="br0">&#40;</span>k<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> result; <span class="br0">&#125;</span><span class="br0">&#41;</span> <span class="br0">&#125;</span></pre><hr noshade="noshade" size="1" />
+
+<p>
+ A couple of quick notes before the TC39 meeting: 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>yield</code> is a low-precedence operator, at the same precedence as assignment in Python and JS1.7+. This means in an argument list or comma expression, you must parenthesize on the outside: <code>foo(a, (yield b), c)</code>. Python requires parenthesization even if there&rsquo;s only one argument: <code>foo<a href="doku.php%3Fid=strawman:shallow_continuations&amp;do=export_html.html#fn1" name="fnt1" class="fn_top" onmouseover="fnt('1', this, event);">1)</a></code>, but JS1.7+ do not.</div>
+</li>
+<li class="level1"><div class="li"> <code>generator</code> instead of <code>function</code> (in JS1.7+, after Python which reuses its <code>def</code> function-declaring keyword) has benefit in terms of explicitness (you don&rsquo;t have to look for <code>yield</code> usage in the body to know it&rsquo;s a generator, not a function), but breaks the ability to use <code>const</code> instead of <code>function</code> (see <a href="doku.php%3Fid=strawman:const_functions.html" class="wikilink1" title="strawman:const_functions" onclick="return svchk()" onkeypress="return svchk()">const functions</a>). <code>const generator</code> is a bit much, and not parallel (no <code>const function</code>).</div>
+</li>
+</ul>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2010/05/24 04:47</em> 
+</p>
+
+</div>
+<!-- SECTION [3137-] --><div class="footnotes">
+<div class="fn"><a href="doku.php%3Fid=strawman:shallow_continuations&amp;do=export_html.html#fnt1" id="fn1" name="fn1" class="fn_bot">1)</a> 
+yield bar</div>
+</div>
+
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/d/d91e3295aab7e21badcc589902e5df21.xhtml used -->
+</body>
+</html>

@@ -1,0 +1,107 @@
+====== Type hierarchies for builtins ======
+
+===== Available options, and why one is better =====
+
+One topic that I've been pondering is the class hierarchy for ES4 where we have String/string, Boolean/boolean, Number/int/decimal/double/uint/...   
+
+Recall that the Capitalized ones are dynamic and nonfinal and nullable; the others are opposite.  The capitalized ones are the container classes from ES3, the others model the primitive ones (but avoid conversions to the containers on method calls among other things).
+
+There are two options for how the containers relate to the primitives.
+
+(1) Through subclassing:
+
+  boolean <: Boolean
+  string <: String
+  int <: Number
+  uint <: Number
+  double <: Number
+  decimal <: Number
+
+There are two notable problems with subclassing.  One problem is that signatures in the base class overly constrain signatures in the subclass, eg, if String's intrinsic::indexOf takes a String, so must string's intrinsic::indexOf -- it can't take a "string".  This may or may not be a big deal; I don't much like it, though, it's not future-proof.  The other problem is that if we think of subtype as subset ("more constrained") then it's nuts that decimal is a subset of Number, since the latter represents a double, and it would be even worse if we add "complex" and "bignum" later.  Again, not very future-proof even if we make it hang together now.
+
+The main benefits of subclassing are that "Number" becomes a catch-all type name for anything numeric; "Boolean" for anything boolean, and so on, and that Number.prototype is visible through eg int.prototype, so that mutating Number.prototype we introduce methods also for int.
+
+(2) Through union typing:
+
+  type Booleans = (boolean,Boolean!)
+  type Strings = (string,String!)
+  type Numbers = (int,uint,double,decimal,Number!)
+
+This solution fixes the two problems above but introduces new type names, ie, somebody who just wants basic type checking but wants to allow for container classes can't annotate with "String" any more, he has to use "Strings", which is a little alien (but not wrong).  If you look in builtins/String.es, you'll see that the signature on intrinsic::indexOf uses "Strings".
+
+The benefit of solution (2) apart from fixing the other problems is that it highlights that string and String are not related: the latter holds an instance of the former, but that's it.  "String" a mutable container class, no more.
+
+For solution (2) there are some added points:
+
+  * Prototypes: we must have string.prototype === String.prototype, int.prototype === Number.prototype, and so on, and the prototype methods are ES3-compatible: no type annotations in the signature.  This sharing is not expressible in the language but is required for backwards compatibility with ES3, people who do Number.prototype.foo=... will want foo to show up on int.prototype too (so that (3).foo works).
+
+  * Conversions: the objects in a union type should normally be interconvertible, so if you pass a Number to something requiring eg int this will work (for better or worse).  This too is not expressible in the language, after we agreed to get rid of the "meta convert" method.  But we do want "String" to convert to "string", for example.
+
+  * Utility: Unsurprisingly, there are many uses for "Numbers" (previously called "Numeric"), eg in the Math class, but there are actual uses also for the types "Strings" and "Booleans": they are used as "this" constraints on some prototype methods, eg in Boolean.prototype,
+
+  prototype function toString(this: Booleans) ...
+
+The magic here is that it needs to be "Booleans" not "Boolean" because the prototype is shared by the two classes and we don't want to code the constraint by hand.
+
+In the specs for the builtins I've been assuming solution (2).
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/09/18 12:40//
+
+
+===== Older clarification pertaining to numbers =====
+
+The January 26 draft spec states that ''Number'', ''int'', and ''uint'' all are subtypes of ''Object''.  This has come as a surprise to several, who expected there to be a subtype relationship.
+
+  * ''Number'' values are IEEE double precision values
+  * ''int'' values are integers in the range -(2^31) .. (2^31)-1
+  * ''uint'' values are integers in the range 0 .. (2^32)-1
+
+We have also said that there should be conversions among these types.
+
+The spec does not say whether these types are subclassable.  I am guessing that ''Number'' can be subclassed but ''int'' and ''uint'' cannot.
+
+(The only justification for ''int'' and ''uint'' types is that they admit efficient processing and representation; ie, though they must fit into some general Object representation scheme (except in fully strict-mode implementations), they do not have to have the same representation as ''Number''.)
+
+In addition we have discussed adding a new type ''Decimal'' for base-10 floating point numbers; the set of values for this type is a superset of the values for ''Number''.  For this type too we have said that there should be convertibility to the other numeric types.
+
+On top of that we have added enough operator overloading machinery to the language that we can expect some users to wish to add new numeric data types (''Complex'').
+
+So what should the type hierarchy be for numeric types?
+
+==== Flat solution ====
+
+In the "flat solution" the world remains as it is today: every one of these types is a direct subtype of ''Object'', and interconvertibility is handled with the equivalent of ''to'' operators on the types.  We need only define conversion rules from one type to the other.
+
+User-defined numeric types define operators and ''to'' operators to allow this to work more or less seamlessly.
+
+==== Hierarchical solution ====
+
+In the "hierarchical solution" we place the number types in a hierarchy where more general types are closer to the top.
+
+It is natural that ''Number'' is a base type for ''int'' and ''uint'', given both their value sets and their names.  
+
+However, neither ''int'' nor ''uint'' can be a base type of the other; they must(?) instead be interconvertible.  So both are sibling subtypes of ''Number'' and there must be special-case conversion rules among them.
+
+Nor can ''Decimal'' be a subtype of ''Number'', since it contains a superset of values held by ''Number''.  It's really the other way around: ''Number'' must be a subtype of ''Decimal''.  Yet the name ''Number'' suggests a most general type for numbers, and it's pretty peculiar to suggest that the other number types are subtypes of "decimal" numbers.
+
+Some of the confusion comes from poor choices for the type names: ''Number'' when we mean ''double''; ''Decimal'' when we mean ''Base-10 floating point''.  Some choices can't be helped for historical reasons.  But it makes it hard to construct a reasonable hierarchy here.
+
+The subclass relationship would also introduce assumptions about eg preserving object identity and dynamic properties.  Suppose I have an ''int'' object that I store in a ''Number'' variable.  If ''int'' is represented as an efficient machine type then this really is a type of conversion.  This may be visible.  Consider:
+
+<code>
+  var a:int=10; 
+  var b:Number=a, c:Number=a; 
+  a === b;
+</code>
+
+Here I would expect ''true'', and since ''Number'' is a dynamic class I would expect that if I add properties to ''b'' then they would become visible through ''c''.  I think this is reasonable; it follows from the general object model of the language.
+
+==== Parameterized types ====
+
+Parameterized types do not figure into this.  ''Array.<int>'' is not a subtype of ''Array.<Number>'' even if ''int'' is a subtype of ''Number'', and there is no way to use the parameterized type system to express operations that will take "some numeric type" as an argument by relying on a type hierarchy below ''Number''.  It is possible to instantiate a class with a concrete type, of course, but that ability does not depend on one structure or the other for numbers.
+
+==== Conclusion ====
+
+A flat model seems most natural for ECMAScript, with ad-hoc conversions among the types.  
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/23 05:06//

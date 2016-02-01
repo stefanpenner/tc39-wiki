@@ -1,0 +1,32 @@
+====== Make non-standard properties configurable ======
+
+Chapter 16 allows implementations to add non-standard properties to built-in native objects. Like standard native properties, it is desirable for non-standard properties to start out configurable, so that initialization scripts can replace or remove them.
+
+ES5.1 Chapter 15 states
+
+  Every other property described in this clause has the attributes 
+  { [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true } 
+  unless otherwise specified. 
+
+where "other" means other than the 'length' property of functions.
+
+ES5.1 Chapter 16 states
+
+  An implementation may provide additional types, values, objects, 
+  properties, and functions beyond those described in this specification.
+
+By omission, the Chapter 16 text allows these non-standard additional properties to be non-configurable. But consistency with Chapter 15 as well as general flexibility suggests such non-standard properties should generally respect the Chapter 15 precedent. Such default configurability gives initialization scripts great latitude in modifying their context, for example by replacing or deleting various properties, before other scripts are loaded into that context. With the introduction of ''Object.getOwnPropertyNames'' and ''Object.getPrototypeOf'', it is now possible for an initialization script to dynamically detect the existence of properties that it had no static knowledge of and remove them -- but only if they are configurable.
+
+
+
+===== Those nasty caller and arguments properties =====
+
+Particulary troublesome are the ''caller'' and ''arguments'' properties on built-in native functions. Since these functions are neither strict nor non-strict, the ES5.1 spec is silent on whether these properties exist on those functions; and if they exist, on whether they are poisoned and/or configurable. If they are absent or poisoned, no encapsulation hazard is created. If they are not poisoned but are configurable, then an initialization script can repair the hazard by either removing or poisoning them. However, if they are not poisoned, have the non-standard legacy encapsulation-breaking behavior, and are not configurable, then an initialization script is unable to repair the problem. 
+
+So even though these are non-standard, if an implementation poisons them it need not make them configurable. Either safe option is fine.
+
+====== See ======
+
+[[https://bugzilla.mozilla.org/show_bug.cgi?id=591846|Non-std ocap-breaking properties on built-ins can't be neutered.]]
+
+

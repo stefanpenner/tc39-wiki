@@ -1,0 +1,278 @@
+**This proposal has progressed to the Draft ECMAScript 6 Specification, which is available for review here: [[harmony:specification_drafts]]. Any new issues relating to them should be filed as bugs at [[http://bugs.ecmascript.org]]. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.**
+
+
+====== Overview ======
+
+This proposal is based on an [[https://mail.mozilla.org/pipermail/es-discuss/2012-March/021430.html|es-discuss proposal]] by Russell Leggett.  It is essentially a simplification of Dave Herman's  [[strawman:minimal classes]] proposal. It focuses on providing an absolutely minimal class declaration syntax that all interested parties may be able to easily agree upon.
+
+The text of this proposal was prepared by AllenWB and is derived from Dave Herman's proposal
+
+{{strawman:maxminclasssemantics.pdf|Max-min class semantics}} summarizes decision made at the July 26, TC-39 meeting.
+
+===== Goals =====
+
+Russell started this by saying:
+
+Is it possible that we can come up with a class syntax that we can all agree is better than nothing, and importantly, leaves possibilities open for future enhancement?
+
+I would propose that the absolute minimal requirements would be:
+
+  * has a declaration form that uses the class keyword and an identifier to create the class
+  * has a body that can include both the constructor function, as well as any instance (prototype) methods – including getter and setter properties
+  * can declare the class as a subclass of a another class (probably with the extends keyword)
+  * super is available from any of the methods or constructor function
+
+
+====== Examples ======
+
+The following are the same examples used in [[strawman:minimal classes]] with slight modifications to conform to this proposal. The [[https://github.com/mrdoob/three.js/|three.js]] ''SkinnedMesh'' example cited in [[harmony:classes]].
+
+<code javascript>
+class SkinnedMesh extends THREE.Mesh {
+  constructor(geometry, materials) {
+    super(geometry, materials);
+ 
+    this.identityMatrix = new THREE.Matrix4();
+    this.bones = [];
+    this.boneMatrices = [];
+    ...
+  }
+ 
+  update(camera) {
+    ...
+    super.update();
+  }
+}
+</code>
+
+The ''Monster'' example from [[harmony:classes]]. Classes do not provide any kind of special private record; private is simply achieved via [[harmony:private name objects]].
+
+<code javascript>
+// a private name used by the Monster class
+const pHealth = Name.create();
+
+class Monster {
+  // A method named "constructor" defines the class’s constructor function.
+  constructor(name, health) {
+    this.name = name;
+    this[pHealth] = health;
+  }
+ 
+  // An identifier followed by an argument list and body defines a
+  // method. A “method” here is simply a function property on some
+  // object.
+  attack(target) {
+    log('The monster attacks ' + target);
+  }
+ 
+  // The contextual keyword "get" followed by an identifier and
+  // a curly body defines a getter in the same way that "get"
+  // defines one in an object literal.
+  get isAlive() {
+    return this[pHealth] > 0;
+  }
+ 
+  // Likewise, "set" can be used to define setters.
+  set health(value) {
+    if (value < 0) {
+      throw new Error('Health must be non-negative.')
+    }
+    this[pHealth] = value
+  }
+}
+
+// The only way to create prototype data properties is by
+// modifying the prototype outside of the declaration.
+Monster.prototype.numAttacks = 0;
+
+// Immutable properties can be added with defineProperty.
+Object.defineProperty(Monster.prototype, "attackMessage", { value: 'The monster hits you!' });
+</code>
+
+If class  properties, including methods, are needed they must also be added outside of the class declaration:
+
+<code javascript>
+  Monster.allMonsters = [];
+  
+  Object.defineMethod(Monster,"numMonsters", function() { return this.allMonsters.length; }
+</code>
+
+====== Syntax ======
+
+
+===== Class declarations and expressions =====
+
+<code ebnf>
+Declaration :
+    ClassDeclaration
+    ...
+
+ClassDeclaration :
+    class Identifier ClassHeritage? { ClassBody }
+
+MemberExpression :
+    ClassExpression
+    ...
+
+ClassExpression :
+    class Identifier? ClassHeritage? { ClassBody }
+
+ClassHeritage :
+    extends AssignmentExpression
+
+ExpressionStatement :
+    [lookahead ∉ { "{", "function", "class" }] Expression ;
+
+// "..." means existing members defined elsewhere
+</code>
+
+
+
+
+
+
+
+===== Class bodies =====
+
+<code ebnf>
+CodeBody :
+    ClassElement*
+
+ClassElement :
+    PrototypePropertyDefinition
+    ;           //semicolons are allowed but have no significance 
+
+PrototypePropertyDefinition :
+    PropertyName     ( FormalParameterList? ) { FunctionBody } // method
+    *PropertyName    ( FormalParameterList? ) { FunctionBody } // generator method
+    get PropertyName ( )                      { FunctionBody } // getter
+    set PropertyName ( PropertySetParameterList ) { FunctionBody } // setter
+
+</code>
+
+Per the May 4 [[harmony:specification_drafts|specification draft]], the ''{ ''//FunctionBody//'' }'' sequences above should be replaced by //ConciseBody//.
+
+The '';'' empty-element alternative is slightly wrong in my view. With //ConciseBody// allowing an //AssignmentExpression// with lookahead restriction, the need for '';'' is stronger, but only for that case, not for the ''{ ''//FunctionBody//'' }'' alternative.
+
+Specifically, because of the ''*''//PropertyName// generator method form, a '';'' is required after a preceding //ConciseBody// that is a restricted //AssignmentExpression//. The alternative is a //LineTerminator// sensitivity //a la// ASI.
+
+I suggest we pin down the exact grammar and require '';'' only after the //AssignmentExpression// variant of //ConciseBody//. This problem will arise in //ObjectLiteral// too.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2012/05/22 21:58//
+
+
+====== Semantics ======
+See {{strawman:maxminclasssemantics.pdf|semantic decisions (PDF)}} made at July 26, 2012 TC39 meeting 
+
+The semantics of minimal classes is described here via desugaring. I'll use special variables of the form ''%x'' for fresh variables not exposed to user code. But desugarings of the contents of a class body can refer to these names bound by their containing class's desugaring.
+
+===== Classes =====
+A class expression:
+
+<code javascript>
+(class  C {
+    CE ...  // where no CE has the PropertyName "constructor"
+})
+</code>
+
+is equivalent to:
+
+<code javascript>
+(do {
+    let %d = function C () { };
+    for each CE, process it as if it was a PropertyAssignment in an object literal and insert that property into %d.prototype;
+    %d
+})
+</code>
+A class expression:
+
+<code javascript>
+(class  C {
+    CE ...
+    constructor(cargs) { cbody }
+    CE ...
+})
+</code>
+
+is equivalent to:
+
+<code javascript>
+(do {
+    let %d = function C (cargs) { cbody };
+    for each CE, process it as if it was a PropertyAssignment in an object literal and insert that property into %d.prototype;
+    %d
+})
+</code>
+
+A class expression:
+<code javascript>
+(class  C extends D {
+    CE ...
+    constructor(cargs) { cbody }
+    CE ...
+})
+</code>
+
+is equivalent to:
+
+<code javascript>
+(do {
+    let %d = D <| function C (cargs) { cbody };
+    for each CE, process it as if it was a PropertyAssignment in an object literal and insert that property into %d.prototype;
+    %d
+})
+</code>
+
+A class declaration:
+<code javascript>
+class  C extends D {
+    CE ...
+    constructor(cargs) { cbody }
+    CE ...
+})
+</code>
+
+is equivalent to:
+
+<code javascript>
+const C = class  C extends D {
+    CE ...
+    constructor(cargs) { cbody }
+    CE ...
+})
+</code>
+
+
+
+====== Terminology ======
+  * //class definition//: A //ClassDeclaration// or //ClassExpression//.
+  * //class name//: The declared name bound by a //ClassDeclaration//.
+  * //class//:  The set of objects consisting of a constructor function and prototype object that is referenced by the function's "prototype" property.
+  * //class object//:  The constructor function component of a class.
+  * //class prototype//: The prototype object component of a class.
+  * //instance property//: A property of a class prototype.
+  * //class property//: A property of a class object.
+  * //direct class instance//: An object whose %%[[%%Prototype]] internal property is a class prototype.
+  * //per instance property//: A property of a direct class instance.
+
+
+
+====== Summary of Key Points ======
+
+  * Class declarations/expressions create a constructor function/prototype pair exactly as for function declarations.
+  * The class element whose PropertyName is "constructor" provides the FormalParameterList and FunctionBody of the constructor function. 
+  * All other CE's define properties of the prototype object using the same semantics as if they were elements of an object literal.
+  * If an **extends** clause is present and %S is the value of the //AssignmentExpression// then the constructor function is created as if by ''%S <| function(cargs) {cbody}''
+  * ''(class extends foo () {})'' is equivalent to ''(foo <| function () {})''
+  * The bond name in a class declaration is bound as if it was a declared in a **const** declaration initialized by a class expression
+  * There is (intentionally) no direct declarative way to define either prototype data properties (other than methods) class properties, or instance property
+  * Instance property an be created within the constructor body.
+  * Class properties and prototype data properties need be created outside the declaration.
+  * Definition of private named properties is done exactly as with object literals.
+  * Properties specified in a class definition are assigned the same attributes as if they appeared in an object literal. 
+  * The bond name in a class declaration is bound as if it was a declared in a **const** declaration initialized by a class expression.
+  * If a constructor function needs to perform superclass initialization, it must do so by explicitly calling ''super(/*arguments*/)'' at some point within the constructor body.
+   
+//**The is intended as a closed-ended proposal and is not open for major feature additions.**//
+
+Future editions of ECMAScript may and probably will extend the proposed class definitions.  However, the intent for  "ES6" is to only include the features described in this proposal. Attempting to extend this proposal is likely to result in dead-lock that would result in the inclusion of no class definition support in "ES6".

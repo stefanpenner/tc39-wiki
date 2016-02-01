@@ -1,0 +1,465 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:nullability&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:nullability&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#motivation" class="toc">Motivation</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#constraints" class="toc">Constraints</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#proposal" class="toc">Proposal</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#notation" class="toc">Notation</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#defaults" class="toc">Defaults</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#type_constructors_for_nullability" class="toc">Type constructors for nullability</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#redundant_annotations" class="toc">Redundant annotations</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#subtyping" class="toc">Subtyping</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#initial_values" class="toc">Initial values</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#initial_values_for_built-in_non-nullables" class="toc">Initial values for built-in non-nullables</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#initial_values_for_compound_types" class="toc">Initial values for compound types</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#non-nullable_properties" class="toc">Non-nullable properties</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#property_initializers" class="toc">Property initializers</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#property_settings_in_constructor_headers" class="toc">Property settings in constructor headers</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#restriction_on_property_initializers" class="toc">Restriction on property initializers</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#restriction_on_property_settings" class="toc">Restriction on property settings</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#restriction_on_super" class="toc">Restriction on super</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#initialization_protocol" class="toc">Initialization protocol</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#rationale" class="toc">Rationale</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#errors" class="toc">Errors</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#uninitialized_properties" class="toc">Uninitialized properties</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#non-nullable_locals" class="toc">Non-nullable locals</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#non-nullable_class_statics" class="toc">Non-nullable class statics</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#non-nullable_globals" class="toc">Non-nullable globals</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#additional_static_errors" class="toc">Additional static errors</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:nullability&amp;do=export_html.html#safety_of_optimizations" class="toc">Safety of optimizations</a></span></li>
+</ul>
+</div>
+</div>
+
+<p>
+ (Also see the <a href="doku.php%3Fid=discussion:nullability.html" class="wikilink1" title="discussion:nullability" onclick="return svchk()" onkeypress="return svchk()">discussion page</a> for this proposal.)
+</p>
+
+<a name="motivation"></a><h1>Motivation</h1>
+<div class="level1">
+
+<p>
+ To prevent the dreaded <a href="http://en.wikibooks.org/wiki/Java_Programming/Preventing_NullPointerException" class="urlextern" target="_blank" title="http://en.wikibooks.org/wiki/Java_Programming/Preventing_NullPointerException" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">NullPointerException</a>!
+</p>
+
+<p>
+As <a href="http://www.cis.upenn.edu/~bcpierce/tapl/" class="urlextern" target="_blank" title="http://www.cis.upenn.edu/~bcpierce/tapl/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">many</a> have pointed out, types in languages like Java that always allow the <code>null</code> value are really a sort of option type.
+</p>
+
+<p>
+We would like to be able to allow programmers to use the type system to guarantee that certain expressions can never evaluate to <code>null</code>, i.e., to express that some types are <em>not</em> option types.
+</p>
+
+</div>
+<!-- SECTION [82-606] -->
+<a name="constraints"></a><h1>Constraints</h1>
+<div class="level1">
+<ul>
+<li class="level1"><div class="li"> historically, <code>null</code> is allowed by default for many types</div>
+</li>
+<li class="level1"><div class="li"> but <code>null</code> has not historically been allowed for datatypes that traditionally (e.g., in C or Java) were &ldquo;atomic&rdquo;, such as <code>int</code>, <code>float</code>, <code>boolean</code></div>
+</li>
+<li class="level1"><div class="li"> we&rsquo;d like to keep the rules as simple and uniform as possible &ndash; too many special cases are too hard to understand</div>
+</li>
+<li class="level1"><div class="li"> ActionScript has precedent for non-nullable numeric and boolean types</div>
+</li>
+<li class="level1"><div class="li"> must be compatible with subtyping</div>
+</li>
+<li class="level1"><div class="li"> no soundness holes (uninitialized non-nullable entities)</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [607-1150] -->
+<a name="proposal"></a><h1>Proposal</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [1151-1174] -->
+<a name="notation"></a><h2>Notation</h2>
+<div class="level2">
+
+<p>
+ Built-in, specific numeric types are not capitalized: 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>int</code></div>
+</li>
+<li class="level1"><div class="li"> <code>uint</code></div>
+</li>
+<li class="level1"><div class="li"> <code>decimal</code></div>
+</li>
+<li class="level1"><div class="li"> <code>double</code></div>
+</li>
+</ul>
+
+<p>
+ All other types are capitalized: 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>Object</code></div>
+</li>
+<li class="level1"><div class="li"> <code>String</code></div>
+</li>
+<li class="level1"><div class="li"> <code>Number</code></div>
+</li>
+<li class="level1"><div class="li"> <code>Boolean</code></div>
+</li>
+<li class="level1"><div class="li"> <code>Numeric</code> (see <a href="doku.php%3Fid=proposals:numbers.html" class="wikilink1" title="proposals:numbers" onclick="return svchk()" onkeypress="return svchk()">numbers</a>)</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1175-1438] -->
+<a name="defaults"></a><h2>Defaults</h2>
+<div class="level2">
+
+<p>
+ Almost all types are nullable by default. The only types that are non-nullable by default are: 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>Boolean</code></div>
+</li>
+<li class="level1"><div class="li"> all numeric types (see <a href="doku.php%3Fid=proposals:numbers.html" class="wikilink1" title="proposals:numbers" onclick="return svchk()" onkeypress="return svchk()">numbers</a>)</div>
+</li>
+</ul>
+
+<p>
+ This convention is consistent with historical precedent for boolean and numeric types. These are the only special cases; in all other cases, types are nullable by default.
+</p>
+
+<p>
+Classes can be defined to be non-nullable by default via a special declaration syntax:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> C! <span class="br0">&#123;</span> ... <span class="br0">&#125;</span></pre>
+<p>
+This annotation does not imply anything about subclasses of C; they are still nullable by default unless declared non-nullable.
+</p>
+
+</div>
+<!-- SECTION [1439-2048] -->
+<a name="type_constructors_for_nullability"></a><h2>Type constructors for nullability</h2>
+<div class="level2">
+
+<p>
+ For any type expression <code>T</code>, the expression <code>T?</code> means the nullable version of <code>T</code>, and <code>T!</code> means the non-nullable version of <code>T</code>.
+</p>
+
+</div>
+<!-- SECTION [2049-2238] -->
+<a name="redundant_annotations"></a><h2>Redundant annotations</h2>
+<div class="level2">
+
+<p>
+ For any non-nullable type <code>T</code>, <code>T!</code> is allowed and is identical in meaning to <code>T</code>.
+</p>
+
+<p>
+For any nullable type <code>T</code>, <code>T?</code> is allowed and is identical in meaning to <code>T</code>.
+</p>
+
+</div>
+<!-- SECTION [2239-2449] -->
+<a name="subtyping"></a><h2>Subtyping</h2>
+<div class="level2">
+
+<p>
+ For any type <code>T</code>, <code>T! &lt;: T?</code>. That is, a non-nullable type <code>T</code> may always be used in a context that expects the nullable version of <code>T</code>. The reverse requires a coercion and may cause a runtime error.
+</p>
+
+</div>
+<!-- SECTION [2450-2681] -->
+<a name="initial_values"></a><h1>Initial values</h1>
+<div class="level1">
+
+<p>
+ Entities that have non-nullable types must have reasonable initial values. The syntax of the language is constrained to require that all such entities (variables and properties) are given well-typed initial values.
+</p>
+
+</div>
+<!-- SECTION [2682-2927] -->
+<a name="initial_values_for_built-in_non-nullables"></a><h2>Initial values for built-in non-nullables</h2>
+<div class="level2">
+
+<p>
+ The built-in types that are non-nullable by default do not require explicit initial values and are given reasonable default initial values. These types and their default values are: 
+</p>
+<table class="inline">
+	<tr>
+		<th class="leftalign">Built-in type  </th><th>Default value </th>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>Boolean</code>   </td><td class="leftalign"><code>false</code>    </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>Numeric</code>   </td><td class="leftalign"><code>0</code>        </td>
+	</tr>
+</table>
+<br />
+
+</div>
+<!-- SECTION [2928-3265] -->
+<a name="initial_values_for_compound_types"></a><h2>Initial values for compound types</h2>
+<div class="level2">
+
+<p>
+ A compound type that contains a variant with a default value (such as <code>Boolean</code>) may use that default value as its initial value and does not require an explicit initial value. A compound type that contains multiple variants with default values, e.g.:
+</p>
+<pre class="code javascript">type T = <span class="br0">&#40;</span>Boolean, int<span class="br0">&#41;</span></pre>
+<p>
+may automatically receive any of the available initial values (in this example, <code>false</code> or <code>0</code>). It is up to the implementation to decide which of these values to provide.
+</p>
+
+</div>
+<!-- SECTION [3266-3795] -->
+<a name="non-nullable_properties"></a><h2>Non-nullable properties</h2>
+<div class="level2">
+
+</div>
+<!-- SECTION [3796-3832] -->
+<a name="property_initializers"></a><h3>Property initializers</h3>
+<div class="level3">
+
+<p>
+ Property initializer expressions occur on the right-hand side of property declarations. Example:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> C <span class="br0">&#123;</span>
+    <span class="kw2">var</span> x = <span class="nu0">10</span>
+    ...
+<span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [3833-4026] -->
+<a name="property_settings_in_constructor_headers"></a><h3>Property settings in constructor headers</h3>
+<div class="level3">
+
+<p>
+ Class constructors have a special syntax for setting properties somewhat similar to that of C++. These property settings are guaranteed to evaluate after formal parameters are bound (possibly via <a href="doku.php%3Fid=proposals:destructuring_assignment.html" class="wikilink1" title="proposals:destructuring_assignment" onclick="return svchk()" onkeypress="return svchk()">destructuring assignment</a>) but before the constructor body so that all property references are safe to make within the constructor body. 
+</p>
+<pre class="code javascript"><span class="kw2">class</span> C <span class="br0">&#123;</span>
+    <span class="kw2">var</span> x : Object!
+    <span class="kw2">var</span> y : int
+&nbsp;
+    <span class="kw2">function</span> C<span class="br0">&#40;</span>initialX : Object!, initialY : int<span class="br0">&#41;</span>
+      : x = initialX, y = initialY
+    <span class="br0">&#123;</span>
+        ...
+    <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+Note that because class constructors are not permitted to return a value, they do not have a type annotation, so this syntax does not create an ambiguity with return type annotations.
+</p>
+
+<p>
+Note also that settings evaluate in the scope of the constructor activation, followed by class scope. Only when the control flow enters the class body is the <code>this</code> object inserted in the scope chain between the class scope and the activation at the head of the scope chain.
+</p>
+
+</div>
+<!-- SECTION [4027-5065] -->
+<a name="restriction_on_property_initializers"></a><h3>Restriction on property initializers</h3>
+<div class="level3">
+
+<p>
+ Property initializer expressions have class scope, meaning they may not refer to <code>this</code> or instance methods or properties.
+</p>
+
+</div>
+<!-- SECTION [5066-5239] -->
+<a name="restriction_on_property_settings"></a><h3>Restriction on property settings</h3>
+<div class="level3">
+
+<p>
+ Property settings in constructor headers have no access to <code>this</code> in any way. They may only call external functions or static methods, may not refer explicitly to <code>this</code>, and do not have any of the object&rsquo;s methods or properties in scope.
+</p>
+
+</div>
+<!-- SECTION [5240-5527] -->
+<a name="restriction_on_super"></a><h3>Restriction on super</h3>
+<div class="level3">
+
+<p>
+ The call to <code>super(...)</code> (if there is one) must be the last expression in the constructor header&rsquo;s property settings. Its arguments have the same restriction as property settings: they may not refer to <code>this</code> and they have none of the methods or properties of the object in scope.
+</p>
+
+</div>
+<!-- SECTION [5528-5845] -->
+<a name="initialization_protocol"></a><h3>Initialization protocol</h3>
+<div class="level3">
+
+<p>
+ Initialization of an object proceeds in the following order: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Property initializers (i.e., the right-hand sides of property declarations) are evaluated and assigned to their respective properties.</div>
+</li>
+<li class="level1"><div class="li"> Property settings (i.e., assignments in the constructor header) are evaluated and assigned to their respective properties.</div>
+</li>
+<li class="level1"><div class="li"> The <code>super(...)</code> call (whether explicit or implicit) is evaluated, recursively performing the initialization for the superclass.</div>
+</li>
+<li class="level1"><div class="li"> The constructor body is evaluated.</div>
+</li>
+</ol>
+
+<p>
+ Effectively this means that, first, initializers and settings are evaluated from bottom to top in the class hierarchy, and then constructor bodies are evaluated from top to bottom.
+</p>
+
+</div>
+<!-- SECTION [5846-6565] -->
+<a name="rationale"></a><h3>Rationale</h3>
+<div class="level3">
+
+<p>
+ First of all, a deterministic evaluation order is important to prevent subtle differences in behavior between different implementations of ECMAScript.
+</p>
+
+<p>
+The reason why initializers and settings are performed before any constructor bodies run is to preserve the invariant that all non-nullable fields must already have been initialized before any code may refer to them. The reason why <strong>all</strong> initializers and settings are performed before running <strong>any</strong> constructor bodies is that even if all superclass fields have been initialized, a constructor may call an overridden method which might refer to a subclass&rsquo;s fields.
+</p>
+
+<p>
+We considered having initializers run top-down just like constructor bodies, but decided against it since it&rsquo;s unclear what the meaning of the <code>super</code> call would then be (is it a setting? is it a part of the constructor body? what exactly does it do/mean?). In the proposal as it stands, the <code>super(...)</code> call means &ldquo;recursively invoke the initialization protocol of the superclass&rdquo;.
+</p>
+
+</div>
+<!-- SECTION [6566-7597] -->
+<a name="errors"></a><h2>Errors</h2>
+<div class="level2">
+
+</div>
+<!-- SECTION [7598-7617] -->
+<a name="uninitialized_properties"></a><h3>Uninitialized properties</h3>
+<div class="level3">
+
+<p>
+ It is an error not to initialize any non-nullable property either with a property initializer expression, e.g.:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> x : Object! = <span class="nu0">42</span></pre>
+<p>
+or a constructor field settings using the special syntax.
+</p>
+
+<p>
+In strict mode, this is a static error caught by the verifier.
+</p>
+
+<p>
+At runtime, this results in an <code>UninitializedError</code> being thrown on entry to the <strong>top-most</strong> constructor body; the evaluator must check, before entering the body of the top-most constructor, that all non-nullable properties declared in any of the classes of the object have been initialized.
+</p>
+
+<p>
+If all of the classes of the object were compiled in strict mode, it may be safe to optimize away that check. <strong>TODO:</strong> Dave and Cormac should think about this carefully, as well as cases where some of the classes were <strong>not</strong> compiled in strict mode.
+</p>
+
+</div>
+<!-- SECTION [7618-8486] -->
+<a name="non-nullable_locals"></a><h3>Non-nullable locals</h3>
+<div class="level3">
+
+<p>
+ Local variables declared with non-nullable types that have no default values and are not given a value when they are declared will have &ldquo;no value&rdquo; until they are given a value.  Accessing a variable that has no value will result in a run-time error (<code>UninitializedError</code>) being signalled.
+</p>
+<pre class="code javascript"><span class="br0">&#123;</span>
+    <span class="kw3">print</span><span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="co1">// dynamic error: use before definition</span>
+    let x : Object! = <span class="nu0">42</span>;
+<span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [8487-8919] -->
+<a name="non-nullable_class_statics"></a><h3>Non-nullable class statics</h3>
+<div class="level3">
+
+<p>
+ Class static variables declared with non-nullable types that have no default values and are not given a value when they are declared will have &ldquo;no value&rdquo; until they are given a value.  Accessing a class static variable that has no value will result in a run-time error (<code>UninitializedError</code>) being signalled.
+</p>
+<pre class="code javascript"><span class="kw2">class</span> C<span class="br0">&#123;</span>
+    static <span class="kw2">var</span> x : Object!;
+    static <span class="kw2">function</span> init<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        x = <span class="kw2">new</span> Object;
+    <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+<span class="kw3">print</span><span class="br0">&#40;</span>C.<span class="me1">x</span><span class="br0">&#41;</span>; <span class="co1">// dynamic error because C.init() was not yet called</span></pre>
+</div>
+<!-- SECTION [8920-9459] -->
+<a name="non-nullable_globals"></a><h3>Non-nullable globals</h3>
+<div class="level3">
+
+<p>
+ Global variables (defined with <code>var</code> and <code>const</code> in the global scope) cannot be declared as non-nullable; the nullability constraint will be silently dropped.
+</p>
+
+<p>
+The implementation is however allowed to provide non-nullable globals in its initial environment, and to flag errors if null values are assigned to these. 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+<em>Rationale</em>: There is an efficiency / soundness concern underlying the access to global variables.  Global names are defined incrementally, so an implementation would always have to check dynamically not just whether a variable has &ldquo;no value&rdquo; but also whether it is non-nullable.
+</p>
+
+<p>
+The reason the nullability constraint is dropped rather than seen as an error is that you want to be able to say <code>var v : Complex</code> at the global level even if <code>Complex</code> is non-nullable by default.  The type annotation is silently turned into <code>Complex?</code>.  We could see this another way: every annotation <code>T</code> on a global variable is compiled as <code>T?</code>.  
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/05/27 09:09</em>
+</p>
+
+</div>
+<!-- SECTION [9460-10521] -->
+<a name="additional_static_errors"></a><h3>Additional static errors</h3>
+<div class="level3">
+
+<p>
+ Some implementers may choose to perform stronger static analyses that provide more information, in addition to the required strict mode checks, to find references to uninitialized locals/globals. These are not required by the spec, but are allowed.
+</p>
+
+</div>
+<!-- SECTION [10522-10807] -->
+<a name="safety_of_optimizations"></a><h1>Safety of optimizations</h1>
+<div class="level1">
+
+<p>
+ We are getting closer to understanding what optimizations are safe with code that has been compiled in strict mode. However there are still a few remaining questions. In particular, what about class hierarchies compiled with mixed strict/standard modes?
+</p>
+
+<p>
+Without at least informal proofs about the safety of optimizations, we should assume that leaving out the runtime checks for strict-mode code is unsafe and warn implementers against making them.
+</p>
+
+</div>
+<!-- SECTION [10808-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/d/dba210d07f1dabe0d7a70aa6b504f502.xhtml used -->
+</body>
+</html>

@@ -1,0 +1,119 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:catch_guards&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:catch_guards&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:catch_guards&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="rationale"></a><h1>Rationale</h1>
+<div class="level1">
+
+<p>
+ Programs often need to catch exceptions conditionally. In portable ES, they have to write it like so: 
+</p>
+<pre class="code javascript"><span class="kw1">try</span> <span class="br0">&#123;</span>
+    ...
+<span class="br0">&#125;</span> <span class="kw1">catch</span> <span class="br0">&#40;</span>e<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">if</span> <span class="br0">&#40;</span>p<span class="br0">&#40;</span>e<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        ...
+    <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="br0">&#123;</span>
+        <span class="kw1">throw</span> e;
+    <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+ where <code>p(e)</code> is any predicate.
+</p>
+
+<p>
+SpiderMonkey supports a simple syntax for <em>catch guards</em>, which abstract over this pattern. With catch guards the above could be rewritten: 
+</p>
+<pre class="code javascript"><span class="kw1">try</span> <span class="br0">&#123;</span>
+    ...
+<span class="br0">&#125;</span> <span class="kw1">catch</span> <span class="br0">&#40;</span>e <span class="kw1">if</span> p<span class="br0">&#40;</span>e<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    ...
+<span class="br0">&#125;</span></pre>
+<p>
+ This is simpler, more readable, and less error-prone (no forgetting to rethrow). It also means that if implementations choose to attach meta-data at <code>throw</code> points, there&rsquo;s no danger in overwriting this metadata by explicit rethrows.
+</p>
+
+<p>
+This strawman exploits the <a href="doku.php%3Fid=strawman:pattern_matching.html" class="wikilink1" title="strawman:pattern_matching" onclick="return svchk()" onkeypress="return svchk()">pattern matching</a> extensions to generalize catch blocks even further to use <em>refutable pattern matching</em>. Each catch clause takes a pattern and attempts to match it; if the match fails, the catch clause is not chosen and exception propagates, either to the next clause or, if there aren&rsquo;t any more, to continue throwing.
+</p>
+
+</div>
+<!-- SECTION [1-1097] -->
+<a name="syntax"></a><h1>Syntax</h1>
+<div class="level1">
+
+<p>
+ The syntax of <code>try</code>-<code>catch</code>[-<code>finally</code>] statements changes to:
+</p>
+<pre class="code javascript">TryStatement ::= <span class="st0">"try"</span> Block <span class="kw1">Finally</span>
+              |  <span class="st0">"try"</span> Block <span class="kw1">Catch</span>+ <span class="kw1">Finally</span>?
+&nbsp;
+<span class="kw1">Catch</span>        ::= <span class="st0">"catch"</span> <span class="st0">"("</span> Pattern<span class="br0">&#40;</span><span class="kw2">true</span><span class="br0">&#41;</span> <span class="st0">")"</span> Block
+<span class="kw1">Finally</span>      ::= <span class="st0">"finally"</span> Block</pre>
+</div>
+<!-- SECTION [1098-1386] -->
+<a name="restrictions"></a><h1>Restrictions</h1>
+<div class="level1">
+
+<p>
+ A pattern is treated as a <em>catchall</em> if it is of the form <code>&ldquo;*&rdquo;</code> or <code>Identifier</code>. It is a compile-time error for a catch clause with a catchall pattern to be followed by more clauses.
+</p>
+
+</div>
+<!-- SECTION [1387-1605] -->
+<a name="translation"></a><h1>Translation</h1>
+<div class="level1">
+
+<p>
+ The translations in this section assume an invisible identifier <code>$tmp</code> that is not visible even to direct <code>eval</code>.
+</p>
+
+<p>
+A statement of the form: 
+</p>
+<pre class="code javascript"><span class="kw1">try</span> B0
+<span class="kw1">catch</span> <span class="br0">&#40;</span>P1<span class="br0">&#41;</span> B1
+...
+<span class="kw1">catch</span> <span class="br0">&#40;</span>Pn<span class="br0">&#41;</span> Bn
+<span class="br0">&#91;</span><span class="kw1">finally</span> BB<span class="br0">&#93;</span></pre>
+<p>
+ translates to: 
+</p>
+<pre class="code javascript"><span class="kw1">try</span> B0
+<span class="kw1">catch</span> <span class="br0">&#40;</span>$tmp<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">case</span> P1 B1
+    ...
+    <span class="kw1">case</span> Pn Bn
+    <span class="kw2">default</span> <span class="br0">&#123;</span> <span class="kw1">throw</span> $tmp; <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+<span class="br0">&#91;</span><span class="kw1">finally</span> BB<span class="br0">&#93;</span></pre>
+<p>
+where, of course, the resulting <code>catch</code> is ES5 <code>catch</code> (i.e., the translation doesn&rsquo;t recur!). 
+</p>
+
+</div>
+<!-- SECTION [1606-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/2/2bd191748a93d128746ada1672bb0a1f.xhtml used -->
+</body>
+</html>

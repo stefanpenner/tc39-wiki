@@ -1,0 +1,572 @@
+====== Private Names: Unique Unforgable Property Names ======
+
+Updated  --- //[[Allen@Wirfs-Brock.com|Allen Wirfs-Brock]] 2011/03/10 00:39//
+//2010/12/08 15:16// \\ 
+//Revised proposal by Allen Wirfs-Brock\\
+Original proposal by Dave Herman and Sam Tobin-Hochstadt is [[strawman:names|here]].//
+
+In existing ECMAScript, property names are just strings. It is not possible to create unique, unforgable property names that are only known to a limited or controlled set of property accessors. It is possible to create non-enumerable properties, but they can still be discovered by guessing their string-valued property name. The [[http://wiki.ecmascript.org/doku.php?id=proposals:proposals|proposed es4]] facility for addressing this shortcoming was namespaces, which were complex and suffered from ambiguity and efficiency problems.
+
+This strawman proposes three related changes to support unique, unforgable property names.
+
+  - a new, ECMAScript language type (or possibly object ''[Class]'') //Private Name//
+  - generalizing the ES5 //property name// concept to include either a string (as in ES5) or a //Private Name// value
+  - a ''private'' keyword for automatic use of //Private Name// values instead of strings in syntactic contexts in a lexically scoped fashion.
+
+In addition to supporting various information hiding scenarios, this also allows properties to be added to existing objects without the possibility of interference with the existing properties, or with other uncoordinated additions by any other code.
+
+
+
+
+
+
+
+
+
+
+====== Private Name values ======
+
+''Private Name'' is a new ECMAScript language type that will be defined in section 8 of the specification. The ''Private Name'' type is an open set of  distinct ''Private Name'' values that can be used as the names of object properties.  ''Private Name'' values do not have any corresponding literal representation within ECMAScript code. Distinct ''Private Name'' values are created by the ''CreatePrivateName'' abstract operation. Each call to ''CreatePrivateName'' returns a new distinct ''Private Name'' value. If ''x'' and ''y'' are ''Private Name'' values then the abstract operation ''SameValue(x,y)'' returns true if and only ''x'' and ''y'' are the same ''Private Name'' value created by a single specific call to ''CreatePrivateName''.
+
+A ''Private Name'' value can be used as the value of the ''P'' argument to any of the object internal methods defined in section 8.12 of the ECMAScript specification.
+
+
+| <sup>:!:</sup>If a new ECMAScript type is added then the ''typeof'' operator will also need to be extended to return a new string value that identifies values of that type. Concerns have been expressed that extending ''typeof'' in this manner could break existing code that expects to deal with a fixed set of ''typeof'' values. We need to make a global decision about adding new non-object types and the impact upon ''typeof''.|
+|<sup>:!:</sup>Object values could be used as an alternative to defining a new ECMAScript type to represent ''Private Name'' values. Each ''Private Name'' would simply be a distinct object.  ''Private Name'' objects would have a distinct ''[Class]'' value. To avoid such objects being used for back-channel communication or property garbage dumps they should be created frozen.  Conceivably they could all have ''null'' as their prototype.  This may have some benefit if such names are passed between global contexts as it would prevent use of their prototype value as means of identifying their origin context. Throughout the rest of this spec. "private name value" should be read as meaning whichever form is ultimately used. | 
+
+
+
+
+
+
+====== The private declaration ======
+
+The ''private'' declaration creates a new ''Private Name'' value by calling ''CreatePrivateName'' and binds that value to a program identifier that may be used in specific syntactic contexts within the lexical scope of the declaration. An identifier that appears in a ''private'' declaration is call a ''private identifier''.
+
+<code javascript>
+private unique;  //create a new ''Private Name'' that is bound to the private identifier ''unique''.
+private _x,_y;   //create two ''Private Name'' values bound to two private identifiers
+</code>
+
+
+
+| <sup>:?:</sup> Can the names defined in a ''private'' declaration be any //IdentifierName// or should they be restricted to being an //Identifier// (ie, not a reserved name)? ES5 allows any //IdentifierName// to be used after a dot or as a property name in an object literal so it may be reasonable to allow any //IdetnifierName//. However that will permit strange look formulations such as: ''private private;''|
+
+
+
+
+
+
+====== Using Private Identifiers ======
+
+When a private identifier appears as the //IdentifierName// of a //CallExpression// : //CallExpression// . //IdentifierName// production or of a //CallExpression// : //CallExpression// . //IdentifierName// production, the ''Private Name'' value that is bound to the private identifier is used as the value of the //IdentifierName//. If the identifier in one of these productions is not a private identifier then the identifier name string is used as the value of //IdentifierName//, just as in ECMAScript 5.
+
+This permits object properties to be created whose names are ''Private Name'' values. It also allows  for the values of such properties to be accessed.
+
+<code javascript>
+function makeObj() {
+   private unique;
+   var obj = {};
+   obj.unique = 42;  //obj has a single property whose name is a Private Name value
+   print(obj.unique);//42 -- the private identifier can be used in scope to access the property's value
+   print(obj["unique"]); //undefined -- the name of the property is not the string "unique"
+   return obj;
+}
+var obj=makeObj();
+print(obj["unique"]); //undefined -- the name of the property is still not the string "unique"
+print(obj.unique);    //undefined -- this statement is not in the scope of the private declaration so the
+                      //string value "unique" is used to look up the property.  It does not match the Private Name value
+</code>
+
+This technique can be used to define "instances-only" visibility for properties.  Each instance uses a unique property name and only code that is associated with the instance knows the unique name:
+
+<code javascript>
+function Thing() {
+    private key;   // each invocation will use a new unique private key value
+    this.key = "instance private value";
+    this.hasKey = function(x) {
+        return x.key === this.key;  //x.key should be undefined if x!==this
+    };
+    this.getThingKey = function(x) {
+        return x.key;
+    };
+}
+
+var thing1 = new Thing;
+var thing2 = new Thing;
+
+print("key" in thing1);       // false
+print(thing2.key);            //undefined
+print(thing1.hasKey(thing1)); // true
+print(thing1.hasKey(thing2)); // false
+</code>
+
+By changing the scope of the private declaration a similar technique can be used to define "class-only" visibility properties.  Each instance uses the same unique property key and knowledge of the key is shared by the all the instances so they can mutually access each others private named properties:
+
+<code javascript>
+private key;  //the same private name value is used by every invocation of Thing
+function Thing() {
+    this.key = "class private value";
+    this.hasKey = function(x) {
+        return x.key === this.key;
+    };
+    this.getThingKey = function(x) {
+        return x.key;
+    };
+}
+
+var thing1 = new Thing;
+var thing2 = new Thing;
+
+print("key" in thing1);       // false
+print(thing1.hasKey(thing1)); // true
+print(thing1.hasKey(thing2)); // true
+</code>
+
+Friend visibility similar to that provided by c++ can be obtained by using private declarations that are visible to several related object literals, object constructors or factory functions enclosed in an outer function and returned from it (directly, or stored as effects in objects).
+
+
+====== Private Identifiers in Object Literals ======
+
+A private identifier may also appear as the //IdentifierName// of a //PropertyName// production in an //ObjectLiteral//. If the identifier in such a productions is not a private identifier then the identifier name string is used as the value of //IdentifierName//, just as in ECMAScript 5.
+
+With this feature, object literals can be used as an alternative expression of the previous three examples: 
+
+<code javascript>
+function makeObj() {
+   private unique;
+   var obj = {unique: 42};
+   print(obj.unique);//42 -- the private identifier can be used in scope to access the property's value
+   print(obj["unique"]); //undefined -- the name of the property is not the string "unique"
+   return obj;
+}
+</code>
+
+<code javascript>
+function Thing() {
+    private key;
+    return {
+       key : "instance private value",
+       hasKey : function(x) {
+          return x.key === this.key;  //x.key should be undefined if x!==this
+       },
+       getThingKey : function(x) {
+          return x.key;
+       }
+    };
+}
+</code>
+
+<code javascript>
+private key;
+function Thing() {
+    return {
+       key : "class private value",
+       hasKey : function(x) {
+          return x.key === this.key;  //x.key should be undefined if x!==this
+       },
+       getThingKey : function(x) {
+          return x.key;
+       }
+    };
+}
+</code>
+
+
+
+
+
+====== Private Declaration Scoping ======
+
+''private'' declarations are lexically scoped, like all declarations in Harmony. Inner ''private'' declarations shadow access to like-named ''private'' declarations in outer scopes.  Within a block, the scoping rules for ''private'' declarations are the same as for ''const'' declarations.
+
+<code javascript>
+function outer(obj) {
+   private name;
+   function inner(obj) {
+      private name;
+      obj.name = "inner name";
+      print(obj.name);   //"inner name" because outer name declaration is shadowed
+   }
+   obj.name = "outer name";
+   inner(obj)
+   print(obj.name);      //"outer name"
+}
+var obj = {};
+obj.name = "public name";
+outer(obj);
+print(obj.name);            //"public name"
+</code>
+
+After executing the above code, the object that was created will have three own properties:
+^Property Name ^ Property Value ^
+|"name" |"public name" |
+|private name<sub>outer</sub> |"outer name" |
+|private name<sub>inner</sub> |"inner name" |
+
+However, the above is not a very realistic example. After execution of the above code, the two private named properties could not be directly accessed because the private identifier bindings that contain their property names are no longer accessible.  More typically a private identifier binding will be shared by several functions (methods) that need to have shared access to a private named property.
+
+
+
+
+
+
+
+
+
+
+
+====== Private Declarations Exist in a Separate "Name Space" Parallel to the Variable Binding Environment======
+
+Consider the following very common idiom used in a constructor declaration: 
+
+<code javascript>
+function Point(x,y) {
+   this.x = x;
+   this.y = y;
+   //... methods that use x and y properties
+}
+var pt = new Point(1,2);
+</code>
+
+The identifiers ''x'' and ''y'' each have two distinct bindings within the scope of function ''Point''.  On the right-hand side of the two assignment operators, ''x'' and ''y'' are identifier references (ES5 11.1.2) that bind to the formal parameter declarations for ''Point''.  Accessing them produces the values ''1'' and ''2''.  However, on the right-hand side of ''.'' within the left-hand sides of those assignment expressions, ''x'' and ''y'' are used as //IdentifierNames// in Property Accessors (ES5 11.2.1) and bind to the constant string values ''"x"'' and ''"y"''.
+
+One way to view this is that there are two distinct naming environments in ES5 programs: one used to resolve identifiers as //PrimaryExpressions// and the other used to resolve identifiers as //PropertyAccessors//.  The environemnt of expressions has nested scoping contours corresponding to the local declaration of nested functions.  However, in ES5 the environment for resolving //PropertyAccessor// identifiers is not particularly interesting because it is just a single  global contour that implicitly binds all identifiers to the string value that is the //IdentifierName// of the identifier. 
+
+When a private declaration is added to the above example, we need to preserve the same basic semantics that we have in ES5.
+
+<code javascript>
+function Point(x,y) {
+   private x, y;
+   this.x = x;
+   this.y = y;
+   //... methods that use private x and y properties
+}
+var pt = new Point(1,2);
+</code>
+
+On the right-hand side of the assignments ''x'' and ''y'' still need to refer to the formal parameter bindings, even though there is a local declaration for private names ''x'' and ''y''.  Similarly, on the left-hand side //PropertyAccessors//, ''x'' and ''y'' should bind to the private names introduced by the ''private'' declaration and not bind to the formal parameters.
+
+As with ES5 this can be explained by using distinct naming environments for //PrimaryExpressions// vs. //PropertyAccessors//.  However, the property name environment is no longer a flat set of identifier bindings.  Instead it is a lexically scoped hierarchy of bindings that map from identifiers either to string values or to private name values. The hierarchical structure exactly parallels the //PrimaryExpression// environment hierarchy.
+
+Another way to view this is that each EnvironmentRecord (ES5 10.2.1) has a second set of bindings that are used to map identifiers to property names. ''private'' declarations create such bindings in the current environment.  Syntactic contexts such as //PropertyAccess// and Object Literal //PropertyName// look up identifiers using a new abstract operations GetPrivateName that is exactly like GetIdentiferReference except that it uses the property name bindings.  At the top level is an the set of identifier bindings that map all identifiers to the string values of their identifier names.  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+====== Accessing Private Names as Values ======
+
+The ''private'' declaration normally both creates a new private name value and introduces a name binding that can be used only in "property name" syntactic contexts to access the new private name value by the lexically bound name.
+
+However, in some circumstances it is necessary to access the actual private name value as an expression value, not as a property name on the right of ''.'' or the left of '':'' in an object initialiser. This requires a special form than can be used in an expression to access the private name value binding of a private identifier.  The syntactic form is ''**#.**'' //IdentifierName//.  This may be used as a //PrimaryExpression// and yields the property name value of the //IdentifierName//.  This may be either a private name value or a string value, depending upon whether the expression is within the scope of a ''private'' declaration for that //IdentifierName//;
+
+<code javascript>
+function addPrivateProperty(obj, init) {
+   private pname;     //create a new private name
+   obj.pname = init;  //add initialize a property with that private name
+   return #.pname;    //return the private name value to the requestor
+}
+
+var myObj = {};
+var answerKey = addPrivateProperty(myObj, 42);
+print(myObj[answerKey]);   //42,  note that answerKey is a regular variable so [ ] must be used to access the property
+//myObj can now be made globally available but answerKey can be selectively passed to privileged code
+</code>
+
+Note that simply assigning a private name value to a variable does not make that variable a private identifier. For example, in the above example, the print statement could not validly be replaced with:
+<code javascript>
+print(myObj.answerKey);
+</code>
+This would produce ''"undefined"'' because it would access the non-existent property whose string valued property name would be ''"answerKey"''.  Only identifiers that have been explicitly declared using ''private'' are private identifiers.
+
+Enabling the use of [ ] with private name values requires a minor change to the ES5 specification.  In 11.2.1, step 6 must be changed to call ToPropertyName rather than ToString.  ''ToPropertyName(name)'' is defined as follows:
+  - If name is a private name value, return name.
+  - Return the result of ToString(name).
+
+This will not change the semantics of any existing JavaScript code because such code will not contain any use of private name values.
+
+The only operators that can be successfully be applied to a private name value are == and === both of which return true when both operands is the same private name value.
+
+Private name values can be converted to strings using the internal ''ToString'' abstract operation.  However, the string value does not have any correspondence to the identifier in the ''private'' declaration that created the private name value.  The string value produced by such a string conversion is simply ''"Private Name"''.
+
+<sup>:?:</sup>It may be useful to allow ''"Private Name"'' to be followed by additional implementation dependent text.  This might be used to provide additional identifying information such as a source text line number or a unique serial number that would be useful for debugging.
+
+
+If ''**#.**'' is not within the scope of a ''private'' declaration for its //IdentifierName// then the value produced is the string value of the //IdentifierName//.  In other words, ''**#.**'' //IdentiferName// always produces the same value as would be used as the property name in a //PropertyAccess// using that same //IdentifierName//.
+
+As an expressive convenience, ''private'' declarations can be used to associate a private identifier with an already existing private name value.  This is done by using a ''private'' declaration of the form:
+
+ **''private''** //Identifier// **''=''** //Initialiser// **'';''** \\ 
+
+
+If //Initialiser// does not evaluate to a private name value, a TypeError exception is thrown. (<sup>:?:</sup>  //for uniformity, should string values be allowed?  In that case, local private name bindings could be string valued.//)
+
+<code javascript>
+private name1;   //value is a new private name
+private name2 = #.name1  //name2 can be used to access the same property name as name1
+</code>
+
+
+
+
+====== Conflict-Free Object Extension Using Private Names ======
+
+Some JavaScript frameworks and libraries extend built-in objects by adding new properties to built-in prototype objects.  For example, a framework might choose to add a ''clone'' method to ''Object.prototype'' that may be used to make a copy of any object.  Problems occur when two or more frameworks both try to add a method named ''clone''.  Private names can be used to avoid such conflicts.  If each framework uses a private name rather than than a string property name than each can install a ''clone'' method on ''Object.prototype'' without interfering with the other.
+
+For example, someone might create library that does recursive deep copying of object structures that was organized something like this: 
+
+<code javascript>
+function installCloneLibrary() {
+   private clone;   // the private name for clone methods
+
+   // Install clone methods in key built-in prototypes:
+   Object.prototype.clone = function () { ... };
+   Array.prototype.clone = function () {
+       ...
+       target[i] = this[i].clone();  // recur on clone method
+       ...
+   }
+   String.prototype.clone = function () {...}
+   ...
+   return #.clone
+}
+
+// Example usage of CloneLibrary:
+private clone = installCloneLibrary();
+installAnotherLibrary();
+var twin = [{a:0}, {b:1}].clone();
+</code>
+
+The above client of the ''CloneLibrary'' will work even if the other library also defines a method named ''clone'' on ''Object.prototype''.  The second library would not have visibility of the private name used for ''clone'' so it would either use a string property name or a different private name for the method.  In either case there would be no conflict with the method defined by ''CloneLibrary''. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+====== Enumeration and Reflection ======
+
+Properties whose property names are private name values have all the same attributes as a property whose property name is a string value and the same defaults attribute are generally used. However, in most cases it is likely that properties defined using private names should not show up in for-in enumerations. For this reason, the semantics of the standard internal ''%%[[Put]]%%'' method are modified for cases where a property is created by ''%%[[Put]]%%'' using a Private Name value as the property name.  In this case the ''%%[[Enumerable]]%%'' attribute of the newly created property is initially set to **false**.  This change in made ES5 8.12.5, step 6.a. 
+
+For example:
+<code javascript>
+private b;
+var obj = {};
+obj.a = 1;
+obj.b = 2;
+obj.c = 3;
+
+var names = [];
+for (var p in obj) names.push(obj[p]);
+print(names.toString());    // "1,3" -- private name "b" was not enumerated
+</code>
+
+Properties with private names that are created using object literals also are created with their ''%%[[Enumerable]]%%'' attribute **false**.  So ''obj'' could have been created to produce the same result by saying:
+
+<code javascript>
+private b;
+var obj = {
+   a: 1,
+   b: 2,
+   c: 3
+}
+</code>
+
+Because object literal properties are specified using ''%%[[DefineOwnProperty]]%%'' rather than ''%%[[Put]]%%'' all property descriptors used in ES5 11.1.5 will be updated to set ''%%[[Enumerable]]%%'' to **false** whenever a //PropertyName// is a private name value.
+
+| <sup>:!:</sup> Need to check all other uses of ''%%[[DefineOwnProperty]]%%'' and determine whether any of them should have special treatment of private name values. |
+
+Creating a private named property that is enumerable requires use of ''Object.defineProperty'' and the ''**#.**'' prefix. For example:
+
+<code javascript>
+private b;
+var obj = {};
+obj.a = 1;
+obj.b = 2;
+Object.defineProperty(obj, #.b, {enumerable: true});
+obj.c = 3;
+
+var names = [];
+for (var p in obj) names.push(obj[p]);
+print(names.toString());    // "1,2,3" -- private name "b" is now enumerated
+</code>
+
+''Object.prototype.hasOwnProperty'' (ES5 15.2.4.5), ''Object.prototype.PropertyIsEnumerable'' (ES5 15.2.4.7) and the ''in'' operator (ES5 11.8.7) are all extended to accept private name values in addition to string values as property names.  Where they currently call ToString on property names they will instead call ToPropertyName. The ''JSON.stringify'' algorithm (ES5 15.12.3) will be modified such that it does not process enumerable properties that have private name values as their property names.
+
+All the Object reflection functions defined in ES5 section 15.2.3 that accept property names as arguments or return property names are extended to accept or produce private name values in addition to string values as property names. A private name value may appear as a property name in the collection of property descriptors passed to ''Object.create'' and ''Object.defineProperties''.  If an object has private named properties then their private name values will appear in the arrays returned by ''Object.getOwnPropertyNames'' and ''Object.keys'' (if the corresponding properties are enumerable).
+
+| <sup>:!:</sup> In ES5 ''Object.defineProperties'' and ''Object.create'' are specified to look only at the enumerable own properties of the object that is passed containing property descriptors.  Usually this object is specified using an object literal.  However, we have already specified above that private named properties in object literals are always created as non-enumerable properties.  This would generally preclude the use of private name values in the object literals passed to these methods.  It may be necessary to modify the specification of ''Object.defineProperty'' and ''Object.create'' to process also as property definitions any non-enumerable private named own properties that appear in such objects. <code javascript>
+// Object.defineProperty probably needs to accept descriptors such as:
+private a, b; 
+Object.defineProperties(obj, {
+   a: {configurable: true}, // ES5 ignores non-enumerable properties 
+   b: {writable: true}      // that appear in such descriptors
+});
+</code> |
+
+An important use case for reflection using private name values is algorithms that need to perform meta-level processing of all properties of any object.  For example, a "universal" object copy function might be coded as:
+
+<code javascript>
+function copyObject(obj) {
+   // This doesn't deal with other special [[Class]] objects:
+   var copy = Object.isArray(obj) ? [] : Object.create(Object.getPrototypeOf(obj));
+   var props = Object.getOwnPropertyNames(obj);
+   var pname;
+   for (var i = 0; i < props.length; i++) {
+      pname = props[i];
+      Object.defineProperty(copy, pname, Object.getOwnPropertyDescriptor(obj,pname));
+   }
+   return obj;
+}
+</code>
+
+This function will duplicate all properties, including any that have private name values as their property names. It does not need to have any specific declarations for or knowledge of such private names.
+
+Some reflection function could potentially be used to discover private name values used for an object's properties that would not have otherwise been known to the caller to the reflection function. Some environment, particularly sandboxes may wish to precluded such discovery. This can be done by replace the built-in reflection functions with wrapper that filter access to private name keyed properties.  This is similar in concept to the wrapping that some environments do to secure functions such as eval or the Function constructor.
+
+
+
+====== Private Name Properties Provide a Weak But Usful Form of Information Hiding ======
+
+Private names are a simple and pragmatic way to support information hiding within ECMAScript objects without requiring programmers to change their fundamental conceptualization of JavaScript objects. They make available unforgable unique values that can be used to name properties. While private names are unforagable, there are no mechanisms that guarantee that a private name can never leak to an unintended agent within a program.
+
+Private named properties do not provide and are not intended to provide strong impenetrable encapsulation of object state. For example, various reflection operations can be used to access an object's properties that have private names. Private names are instead intended as a simple extensions of the classic JavaScript object model that enables straight-forward encapsulation in non-hostile environments. The design preserves the ability to manipulate all properties of an objects at a meta level using reflection and the ability to perform "monkey patching" when it is necessary. Encapsulation via closure capture should continue to be used for situations where strong encapsulation that can not be penetrated by a hostile attacker is actually needed.
+
+Sand-boxing environments that already need to restrict the use of certain reflection operations can use similar technique to limit access to private named properties.  For example, a sandbox implementation might replace ''Object.getOwnPropertyNames'' with a version that filters out any private name values.
+
+For situation where strong information hiding is required private names can be used in conjunction with [[Instance Variables]] to secure data from all forms of reflective discovery and access.
+
+====== Interactions with other Harmony Proposals ======
+
+There are potential feature interactions and opportunities for feature integration involving private names and several other Harmony proposals. As features are accepted into Harmony and their details are filled in these interactions need to be resolved.
+
+
+
+
+
+==== Enhanced Object Literals ====
+
+The [[Object Initialiser Extensions]] include a [[Private Names in Object Initialisers]] proposal that integrates private name declarations with extended object literals.
+
+
+
+
+
+
+==== Proxies ====
+All uses of string valued property names in proxy handlers would need to be extended to accept/produce private name values in addition to string values.
+
+As covered above, ECMAScript reflection capabilities provides a means to break the encapsulation of an object's private named properties. Where this is a concern, it can be mitigated by replacing the reflection functions with versions that filter access to private name values. The Proxy proposal provides an additional means to break such encapsulation.  If an attacker suspects that some object has private named properties it might sniff out those values by creating a proxy for the object whose handler consisted of traps that monitored all calls looking for private name argument values before delegating the operation to the original object.
+
+One possible mitigation for this attach would be the same as for the other reflection functions. The Proxy object could be replaced with an alternative implementation that added an additional handler layer that would wrapper all private name values passed through its traps.  The wrappers would be opaque encapsulations of each private name value and provide a method that could be used to test whether the encapsulated private name was === to an argument value.  This would permit handlers to process known private name values but would prevent exposing arbitrary private name values to the handlers. 
+
+If there is sufficient concern about proxies exposing private name values in this manner, such wrapping of private names could be built into the primitive trap invocation mechanism.
+
+
+
+
+
+
+
+
+==== Modules ====
+
+It is reasonable to expect that modules will want to define and export private name values. For example, a module might want to add methods to a built-in prototype object using private names and then make those method names available to other modules.  Within the present definition of the simple module system that might be done as follows:
+
+<code javascript>
+<script type="harmony">
+module ExtendedObject {
+   import Builtins.Object;       // however access to Object is obtained.
+   private clone;                // the private name for clone methods
+   export const clone = #.clone; // export a constant with the private name value;
+
+   Object.prototype.clone = function () { ... };
+}
+</script>
+</code>
+A consumer of this module might look like:
+<code javascript>
+<script type="harmony">
+import ExtendedObject.clone;
+private clone = clone;
+var anotherObj = someObj.clone();
+</script>
+</code>
+The above formulation would work without any additional extensions to the simple module proposal. However, it would be even more convenient if the module system was extended to understand private declarations and the parallel property name environment.  In that case this example might be written as:
+<code javascript>
+<script type="harmony">
+module ExtendedObject {
+   import Builtins.Object;     // however access to Object is obtained.
+   export private clone;       // export private name for clone methods
+
+   Object.prototype.clone = function () { ... };
+}
+</script>
+</code>
+
+<code javascript>
+<script type="harmony">
+import private ExtendedObject.clone;
+var anotherObj = someObj.clone();
+</script>
+</code>
+In these example the use of ''import'' and ''export'' prefixing ''private'' declarations forces use of the property name environment of the named module.  For dynamic access to the exported property name environment of first-class module instances another mechnism would perhaps be needed:
+
+<code javascript>
+<script type="harmony">
+module private ExtendedObject_names = ExtendedObject;
+
+private cloneEX = ExtendedObject_names.clone;  //get private name value bound to ''clone'' in reified module ''ExtendedObject''
+var yetAnotherObj = someObj.cloneEX();
+</script>
+</code>
+
+
+
+====== References ======
+
+Private name values are akin to what is returned by ''gensym'' of Lisp and Scheme, and analogous to a capability in object-capability languages.
+
+The inspiration for ''private'' is Racket's [[http://docs.racket-lang.org/reference/createclass.html?q=define-local-member-name#%28form._%28%28lib._racket/private/class-internal..rkt%29._define-local-member-name%29%29|define-local-member-name]] and "selector namespaces" for [[http://www.smalltalksystems.com/publications/subsys.pdf|Smalltalk]] and [[http://www.sapphire-lang.org/wiki/1/Selector_namespaces|Ruby]] . 
+
+
+
+====== Discussion ======
+    * [[strawman:names vs soft fields]] (markm) -- compares names to [[strawman:inherited explicit soft fields]].
+
+    * At the March meeting, there was a suggestion that the ability to create a private name be exposed as a library function which could be used by 'text/javascript' code.  Exposing an 'Object.createPrivateName(name)' function would appear to be all that's needed beyond the above proposal.  This could be used in 'text/javascript' and could be feature-detected with a reasonable fallback.  An example included below.     --- //[[lukeh@microsoft.com|Luke Hoban]] 2011/05/18 01:42//
+
+<code>
+function Point(x,y) {
+   var _x = Object.createPrivateName("x");
+   var _y = Object.createPrivateName("y");
+   this[_x] = x;
+   this[_y] = y;
+   //... methods that use private x and y properties
+}
+var pt = new Point(1,2);
+</code>
+
+====== Scratch Pad ======
+[[Unique String Values]]

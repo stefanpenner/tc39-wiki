@@ -1,0 +1,145 @@
+====== Promises ======
+
+====== PromiseResolver Objects ======
+
+PromiseResolver objects are made only by the Promise constructor below. They are always paired with a fresh pending promise and control how that promise resolves.
+
+===== Properties of PromiseResolver Instances =====
+
+==== fulfill(value) ====
+
+If the promise to be resolved by this PromiseResolver instance has already been resolved, then this call is ignored (or throws?). Otherwise...
+
+The promise to be resolved becomes fulfilled with ''value''. The ''value'' can be any JavaScript value including another promise.
+
+==== resolve(value) ====
+
+If the promise to be resolved by this PromiseResolver instance has already been resolved, then this call is ignored (or throws?). Otherwise...
+
+If value is a promise, then the promise to be resolved becomes resolved to follow value. Else the promise to be resolved becomes fulfilled with ''value''.
+
+==== reject(reason) ====
+
+If the promise to be resolved by this PromiseResolver instance has already been resolved, then this call is ignored (or throws?). Otherwise...
+
+The promise to be resolved becomes rejected with ''reason''. The ''reason'' will typically be an Error instance but may be any JavaScript value.
+
+====== Promise Objects ======
+
+===== The Promise Constructor called as a Function =====
+
+==== Promise(callback) ====
+
+Calling the Promise constructor as a function with ''this'' bound to undefined has the same behavior as calling it as a constructor. In other words, ''Promise(callback)'' behaves the same as ''new Promise(callback)''. 
+
+TODO: Behavior when called via ''super'' from a subclass, and perhaps in general when called with its ''this'' bound to something.
+
+===== The Promise Constructor =====
+
+==== new Promise(callback) ====
+
+The Promise constructor calls the callback with a ''this'' binding of undefined and a PromiseResolver instance as argument, and returns a promise whose resolution is controlled by that PromiseResolver instance.
+
+If the callback throws prior to calling any resolving method on the PromiseResolver, then the PromiseConstructor returns a rejected promise, rejected by the thrown value as the reason.
+
+===== Properties of the Promise Constructor =====
+
+==== Promise.prototype ====
+
+Promise.prototype is itself an object, not a promise. (In old terminology, its %%[[Class]]%% is "Object"). It inherits directly from Object.prototype.
+
+==== Promise.of(value) ====
+
+Uses its ''this'' binding as a constructor. If called with a ''this'' binding of undefined, uses the ''Promise'' constructor itself as the constructor.
+
+Creates and returns a new promise-like instance fulfilled with ''value''. The ''value'' can be any JavaScript value, including another Promise. (This is the unconditional lift operation previously known as Promise.fulfill or Future.accept.) The behavior is equivalent to
+
+<code javascript>
+  function of(value) {
+    return new this(({fulfill}) => {fulfill(value);});
+  }
+</code>
+
+==== Promise.from(value) ====
+
+Coerces ''value'' to a promise. If ''value'' is a promise, then ''Promise.from(value)'' returns value. Otherwise, it returns a new promise fulfilled with ''value''.
+
+==== Promise.reject(reason) ====
+
+Uses its ''this'' binding as a constructor. If called with a ''this'' binding of undefined, uses the ''Promise'' constructor itself as the constructor.
+
+Returns a new promise-like rejected by ''reason''. Equivalent to
+
+<code javascript>
+  function of(value) {
+    return new this(({reject}) => {reject(value);});
+  }
+</code>
+
+
+==== Promise.race(...values) ====
+
+Registers ''.then'' callbacks on each of the values as coerced to promise-likes (using its ''this'' binding). Returns whichever value is first noticed to have responded.
+
+==== Promise.every(...values) ====
+
+Registers ''.then'' callbacks on each of the values as coerced to promise-likes (using its ''this'' binding). Returns either when all of these are fulfilled or any are rejected. If all are fulfilled, returns an array of these fulfilled value. If any are rejected, returns whichever it notices to have been rejected first.
+
+==== Promise.isPromise(value) ====
+
+==== Promise.isThenable(value) ====
+
+==== Promise.async(generatorFunc) ====
+
+==== Promise.join(p1, p2) ====
+
+
+===== Properties of the Promise Prototype Object =====
+
+
+==== Promise.prototype.chain(onFulfill, onReject) ====
+
+==== Promise.prototype.then(onFulfill, onReject) ====
+
+==== Promise.prototype.spread(onFulfill, onReject) ====
+
+==== Promise.prototype.done(onFulfill, onReject) ====
+
+==== Promise.prototype.catch(onReject) ====
+
+==== Promise.prototype.finally(onSettle) ====
+
+==== Promise.prototype.get(name) ====
+
+==== Promise.prototype.set(name, value) ====
+
+==== Promise.prototype.delete(name) ====
+
+==== Promise.prototype.send(name, ...args) ====
+
+==== Promise.prototype.fcall(...args) ====
+
+
+===== Properties of Promise Instances =====
+
+
+
+====== See ======
+
+[[strawman:concurrency]] 
+
+[[strawman:async_functions]] 
+
+[[https://github.com/promises-aplus/promises-spec|Promises/A+]]
+
+[[https://github.com/kriskowal/q/wiki/API-Reference|Q]]
+
+[[https://github.com/slightlyoff/Futures/blob/master/Promise.idl|Promise.idl]]
+
+[[http://dherman.github.io/taskjs/|Task.js]]
+
+{{strawman:promisesvsmonads2.pdf|Promises vs. Monads}} Slide Deck
+
+[[http://erights.org/talks/promises/paper/tgc05.pdf|Concurrency Among Strangers]]
+
+[[http://static.googleusercontent.com/external_content/untrusted_dlcp/research.google.com/en/us/pubs/archive/40673.pdf|Distributed Electronic Rights in JavaScript]]

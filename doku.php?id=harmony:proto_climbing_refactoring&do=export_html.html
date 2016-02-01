@@ -1,0 +1,495 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=harmony:proto_climbing_refactoring&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="http://wiki.ecmascript.org/feed.php?mode=list&amp;ns=harmony" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=harmony:proto_climbing_refactoring&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=harmony:proto_climbing_refactoring&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:proto_climbing_refactoring&amp;do=export_html.html#refactoring_proto_chain_walking_in_the_spec" class="toc">Refactoring proto chain walking in the spec</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:proto_climbing_refactoring&amp;do=export_html.html#the_problem" class="toc">The Problem</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:proto_climbing_refactoring&amp;do=export_html.html#refactoring_get" class="toc">Refactoring [[Get]]</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:proto_climbing_refactoring&amp;do=export_html.html#refactoring_put" class="toc">Refactoring [[Put]]</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:proto_climbing_refactoring&amp;do=export_html.html#refactoring_hasproperty" class="toc">Refactoring [[HasProperty]]</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:proto_climbing_refactoring&amp;do=export_html.html#reflect._get_set" class="toc">Reflect.{get|set}</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:proto_climbing_refactoring&amp;do=export_html.html#javascript_implementation" class="toc">Javascript implementation</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:proto_climbing_refactoring&amp;do=export_html.html#prototype_implementation" class="toc">Prototype implementation</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:proto_climbing_refactoring&amp;do=export_html.html#open_issues" class="toc">Open issues</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:proto_climbing_refactoring&amp;do=export_html.html#references" class="toc">References</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="refactoring_proto_chain_walking_in_the_spec"></a><h1>Refactoring proto chain walking in the spec</h1>
+<div class="level1">
+
+<p>
+ <strong>This proposal has progressed to the Draft ECMAScript 6 Specification, which is available for review here: <a href="doku.php%3Fid=harmony:specification_drafts.html" class="wikilink1" title="harmony:specification_drafts" onclick="return svchk()" onkeypress="return svchk()">specification_drafts</a>. Any new issues relating to them should be filed as bugs at <a href="http://bugs.ecmascript.org" class="urlextern" target="_blank" title="http://bugs.ecmascript.org" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://bugs.ecmascript.org</a>. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.</strong>
+</p>
+
+<p>
+Goal: in the internal [[Get]], [[Put]] and [[HasProperty]] methods for Objects, remove the dependency on [[GetProperty]] for walking the prototype chain.
+</p>
+
+<p>
+Motivation: mainly because this dependency is made visible by proxies, and the interaction is obscure and not intuitive. This strawman proposes a refactoring of [[Get]], [[Put]] and [[HasProperty]] that enables much more sensible behavior for proxies used as prototypes.
+</p>
+
+<p>
+The refactoring proposed by this strawman entails the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Get rid of the <code>getPropertyDescriptor</code> and <code>getPropertyNames</code> traps on proxies</div>
+</li>
+<li class="level1"><div class="li"> Replace the ES5 [[Put]], [[Get]] and [[HasProperty]] built-ins with the alternative implementations proposed below.</div>
+</li>
+<li class="level1"><div class="li"> Enable the <code>get</code> and <code>set</code> traps on proxies to work for inherited property access (i.e. when the proxy is used as a prototype).</div>
+</li>
+<li class="level1"><div class="li"> Add new <code>Reflect.get</code> and <code>Reflect.set</code> built-ins to enable computed property get/set that is faithful to the spec algorithm. These built-ins are required for a proxy to faithfully &ldquo;continue&rdquo; an intercepted [[Get]] or [[Put]] on the prototype chain of the object it wraps.</div>
+</li>
+</ul>
+
+<p>
+ Note: the term &ldquo;refactoring&rdquo; is not used lightly here: we do intend that <em>for regular objects and in the absence of proxies on the prototype chain</em>, the below proposed algorithms are semantically equivalent to the ES5 algorithms.
+</p>
+
+</div>
+<!-- SECTION [1-1824] -->
+<a name="the_problem"></a><h2>The Problem</h2>
+<div class="level2">
+
+<p>
+ When performing property access (<code>obj[name]</code>), assignment (<code>obj[name]=val</code>) or lookup (<code>name in obj</code>) on an object <code>obj</code> that inherits from a proxy, the <code>get</code>, <code>set</code> and <code>has</code> traps of that proxy were previously not triggered. Instead, the built-in algorithms would climb the prototype chain of <code>obj</code> by calling [[GetProperty]] (triggering the <code>getPropertyDescriptor</code> trap of the proxy-as-prototype). Based on the returned descriptor, each algorithm then further decided what to do. This behavior was counter-intuitive and in order to really understand what was going on as a Proxy author, you needed detailed knowledge of the spec algorithms.
+</p>
+
+<p>
+The ES5 spec was written before the advent of proxies, and thus many of the design decisions used to construct the built-in algorithms were not observable to user code. Proxies make some choices observable, requiring us to revisit the particulars of the spec algorithms, especially for values of type <code>Object</code>.
+</p>
+
+<p>
+This proposal refactors [[Get]], [[Put]] and [[HasProperty]] such that these algorithms themselves climb the prototype chain, rather than delegating this to [[GetProperty]]. This simplifies the Proxy <acronym title="Application Programming Interface">API</acronym> because it: 
+</p>
+<ul>
+<li class="level1"><div class="li"> removes the need for <code>getPropertyDescriptor</code> and <code>getPropertyNames</code> traps (2 less traps!)</div>
+</li>
+<li class="level1"><div class="li"> triggers the <code>get</code>, <code>set</code> and <code>has</code> traps both for own and inherited properties, which is more intuitive.</div>
+</li>
+</ul>
+
+<p>
+ In addition, it simplifies reasoning about inheritance, since once a proxy&rsquo;s <code>get</code>, <code>set</code> or <code>has</code> trap is triggered, the proxy now has full control over the outcome of the operation, unlike in the current <acronym title="Application Programming Interface">API</acronym>, where a) the handler has no clue on behalf of what operation its <code>getPropertyDescriptor</code> trap is triggered and b) the outcome of the operation only indirectly depends on the returned property descriptor.
+</p>
+
+<p>
+Finally, the new semantics ought to be more efficient, since we avoid the need to allocate a property descriptor every time [[GetProperty]] is called on a proxy. Instead each of the <code>get</code>, <code>set</code> and <code>has</code> traps immediately return the appropriate value.
+</p>
+
+</div>
+<!-- SECTION [1825-3966] -->
+<a name="refactoring_get"></a><h2>Refactoring [[Get]]</h2>
+<div class="level2">
+
+<p>
+ <strong>Proposed alternative for 8.12.3 [[Get]] (P)</strong>
+</p>
+
+<p>
+When the [[Get]] internal method of O is called with property name P, the following steps are taken:
+</p>
+<ol>
+<li class="level1"><div class="li"> Return the result of calling the [[GetP]] internal method of O providing O as the first argument and P as the second argument.</div>
+</li>
+</ol>
+
+<p>
+ <strong>[[GetP]] (Receiver, P)</strong>
+</p>
+
+<p>
+When the [[GetP]] internal method of O is called with initial receiver Receiver and property name P, the following steps are taken: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let desc be the result of calling the [[GetOwnProperty]] internal method of O with property name P.</div>
+</li>
+<li class="level1"><div class="li"> If desc is undefined,</div>
+<ul>
+<li class="level2"><div class="li"> a. Let proto be the value of the [[Prototype]] internal property of O</div>
+</li>
+<li class="level2"><div class="li"> b. If proto is null, return undefined</div>
+</li>
+<li class="level2"><div class="li"> c. Return the result of calling the [[GetP]] internal method of proto with arguments Receiver and P.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> If IsDataDescriptor(desc) is true, return desc.[[Value]].</div>
+</li>
+<li class="level1"><div class="li"> Otherwise, IsAccessorDescriptor(desc) must be true so, let getter be desc.[[Get]].</div>
+</li>
+<li class="level1"><div class="li"> If getter is undefined, return undefined.</div>
+</li>
+<li class="level1"><div class="li"> Return the result calling the [[Call]] internal method of getter providing Receiver as the this value and providing no arguments.</div>
+</li>
+</ol>
+
+<p>
+ Note: [[GetP]] traverses the prototype chain until it either encounters a proxy or null. If it encounters a proxy, it is left to the proxy handler whether the operation continues on the prototype chain of its target.
+</p>
+
+<p>
+On a proxy, [[Get]] is defined to be the same as for regular objects. [[GetP]] triggers the handler&rsquo;s <code>get</code> trap, passing as arguments the property name, the receiver (that is: the object to which the initial property access was applied), the proxy target (for direct proxies) and the proxy itself:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> handler = <span class="br0">&#123;</span>
+  get: <span class="kw2">function</span><span class="br0">&#40;</span>target, <span class="kw3">name</span>, receiver<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="co1">// no-op forwarding. Note: can't do &quot;return target[name]&quot;</span>
+    <span class="co1">// since that will set |this| to target instead of to receiver.</span>
+    <span class="co1">// that's why we need this new primitive (discussed later):</span>
+    <span class="kw1">return</span> Reflect.<span class="me1">get</span><span class="br0">&#40;</span>target, <span class="kw3">name</span>, receiver<span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;
+<span class="kw2">var</span> p = Proxy<span class="br0">&#40;</span>target, handler<span class="br0">&#41;</span>;
+p<span class="br0">&#91;</span><span class="kw3">name</span><span class="br0">&#93;</span> <span class="co1">// triggers handler.get(target, name, p)</span>
+<span class="kw2">var</span> child = Object.<span class="me1">create</span><span class="br0">&#40;</span>p<span class="br0">&#41;</span>;
+child<span class="br0">&#91;</span><span class="kw3">name</span><span class="br0">&#93;</span> <span class="co1">// triggers handler.get(target, name, child)</span></pre>
+</div>
+<!-- SECTION [3967-6210] -->
+<a name="refactoring_put"></a><h2>Refactoring [[Put]]</h2>
+<div class="level2">
+
+<p>
+ The ES5 [[Put]] algorithm first calls the [[CanPut]] algorithm to determine whether the property can be assigned to. [[CanPut]] walks the proto chain once, by calling [[GetProperty]]. Then, if the property is indeed assignable, [[GetProperty]] is called _again_ to perform the actual assignment. This lead to an <a href="doku.php%3Fid=strawman:proxy_set_trap.html" class="wikilink1" title="strawman:proxy_set_trap" onclick="return svchk()" onkeypress="return svchk()">observable redundant trap invocation</a>.
+</p>
+
+<p>
+In the proposed alternative, [[Put]] calls an auxiliary [[SetP]] method that climbs the prototype chain, at each level determining whether the property is assignable. When [[SetP]] reaches the top of the chain, it can conclude that the property is assignable and performs the assignment on the initial receiver of [[Put]].
+</p>
+
+<p>
+Note: in the absence of proxies, testing whether a property is assignable and setting the property could be done atomically. Proxies could make observable changes in their <code>getPropertyDescriptor</code> trap, such that this atomicity was lost. Andreas Rossberg commented about this lost invariant on es-discuss. The below refactoring avoids this hazard: once a proxy on the proto chain is reached, the built-in algorithm transfers full control to the proxy. It does not try to assign the property later, based on possibly false answers returned by the proxy&rsquo;s <code>getPropertyDescriptor</code> trap.
+</p>
+
+<p>
+<strong>Proposed alternative for 8.12.5 [[Put]] (P, V, Throw)</strong>
+</p>
+
+<p>
+When the [[Put]] internal method of O is called with property P, value V, and Boolean flag Throw, the following steps are taken:
+</p>
+<ol>
+<li class="level1"><div class="li"> Let success be the result of calling the [[SetP]] internal method of proto, passing O as the first argument, P as the second argument and V as the third argument.</div>
+</li>
+<li class="level1"><div class="li"> If success is false and Throw is true, then throw a TypeError exception.</div>
+</li>
+<li class="level1"><div class="li"> Return.</div>
+</li>
+</ol>
+
+<p>
+ <strong> [[SetP]] (Receiver, P, V) </strong>
+</p>
+
+<p>
+When the [[SetP]] internal method of O is called with initial receiver Receiver, property name P and value V, the following steps are taken: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let ownDesc be the result of calling the [[GetOwnProperty]] internal method of O with argument P.</div>
+</li>
+<li class="level1"><div class="li"> If ownDesc is not undefined, then</div>
+<ul>
+<li class="level2"><div class="li"> a. If IsAccessorDescriptor(ownDesc) is true, then</div>
+<ul>
+<li class="level3"><div class="li"> i. Let setter be ownDesc.[[Set]]</div>
+</li>
+<li class="level3"><div class="li"> ii. If setter is undefined, return false.</div>
+</li>
+<li class="level3"><div class="li"> iii. Call the [[Call]] internal method of setter providing Receiver as the this value and providing V as the sole argument.</div>
+</li>
+<li class="level3"><div class="li"> iv. Return true.</div>
+</li>
+</ul>
+</li>
+<li class="level2"><div class="li"> b. Otherwise IsDataDescriptor(ownDesc) must be true.</div>
+<ul>
+<li class="level3"><div class="li"> i. If ownDesc.[[Writable]] is false, return false.</div>
+</li>
+<li class="level3"><div class="li"> ii. Let existingDesc be the result of calling Receiver.[[GetOwnProperty]](P)</div>
+</li>
+<li class="level3"><div class="li"> iii. If existingDesc is not undefined, then</div>
+<ul>
+<li class="level4"><div class="li"> 1. Let updateDesc be the Property Descriptor {[[Value]]: V}.</div>
+</li>
+<li class="level4"><div class="li"> 2. Return the result of calling the [[DefineOwnProperty]] internal method of Receiver passing P, updateDesc, and false as arguments <em>(which should return true in the absence of proxies)</em></div>
+</li>
+</ul>
+</li>
+<li class="level3"><div class="li"> iv. Else</div>
+<ul>
+<li class="level4"><div class="li"> 1. If the [[Extensible]] internal property of Receiver is false, return false.</div>
+</li>
+<li class="level4"><div class="li"> 2. Let newDesc be the Property Descriptor {[[Value]]: V, [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: true}.</div>
+</li>
+<li class="level4"><div class="li"> 3. Return the result of calling the [[DefineOwnProperty]] internal method of Receiver passing P, newDesc, and false as arguments <em>(which should return true in the absence of proxies)</em></div>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Let proto be the value of the [[Prototype]] internal property of O</div>
+</li>
+<li class="level1"><div class="li"> If proto is null, we have not found a non-writable data property in the prototype chain, add the property to the Receiver as follows:</div>
+<ul>
+<li class="level2"><div class="li"> a. If the [[Extensible]] internal property of Receiver is false, return false.</div>
+</li>
+<li class="level2"><div class="li"> b. Let newDesc be the Property Descriptor {[[Value]]: V, [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: true}.</div>
+</li>
+<li class="level2"><div class="li"> c. Return the result of calling the [[DefineOwnProperty]] internal method of Receiver passing P, newDesc, and false as arguments <em>(which should return true in the absence of proxies)</em></div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Return the result of calling the [[SetP]] internal method of proto with arguments Receiver, P and V.</div>
+</li>
+</ol>
+
+<p>
+ Note: [[SetP]] traverses the prototype chain until it either encounters a proxy or null. If it encounters a proxy, it is left to the proxy handler whether the operation continues on the prototype chain of its target.
+</p>
+
+<p>
+On a proxy, [[Put]] is defined to be the same as for regular objects. [[SetP]] triggers the handler&rsquo;s <code>set</code> trap, passing as arguments the direct proxy&rsquo;s target, the assigned property name and value and the receiver (that is: the object to which the initial property assignment was applied):
+</p>
+<pre class="code javascript"><span class="kw2">var</span> handler = <span class="br0">&#123;</span>
+  set: <span class="kw2">function</span><span class="br0">&#40;</span>target, <span class="kw3">name</span>, value, receiver<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="co1">// no-op forwarding. Note: can't do &quot;target[name] = value;&quot;</span>
+    <span class="co1">// since that will set |this| to target instead of to receiver</span>
+    <span class="co1">// if target[name] is an accessor.</span>
+    <span class="co1">// That's why we need this new primitive (discussed later):</span>
+    <span class="kw1">return</span> Reflect.<span class="me1">set</span><span class="br0">&#40;</span>target, <span class="kw3">name</span>, value, receiver<span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;
+<span class="kw2">var</span> p = Proxy<span class="br0">&#40;</span>target, handler<span class="br0">&#41;</span>;
+p<span class="br0">&#91;</span><span class="kw3">name</span><span class="br0">&#93;</span> = val <span class="co1">// triggers handler.set(target, name, val, p)</span>
+<span class="kw2">var</span> child = Object.<span class="me1">create</span><span class="br0">&#40;</span>p<span class="br0">&#41;</span>;
+child<span class="br0">&#91;</span><span class="kw3">name</span><span class="br0">&#93;</span> = val <span class="co1">// triggers handler.set(target, name, val, child)</span></pre>
+</div>
+<!-- SECTION [6211-11525] -->
+<a name="refactoring_hasproperty"></a><h2>Refactoring [[HasProperty]]</h2>
+<div class="level2">
+
+<p>
+ <strong>Proposed alternative for 8.12.6 [[HasProperty]] (P) </strong> 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let hasOwn be the result of calling the [[HasOwnProperty]] internal method of O with property name P.</div>
+</li>
+<li class="level1"><div class="li"> If hasOwn is true return true.</div>
+</li>
+<li class="level1"><div class="li"> Let proto be the [[Prototype]] internal property of O.</div>
+</li>
+<li class="level1"><div class="li"> If proto is null, return false</div>
+</li>
+<li class="level1"><div class="li"> Return the result of calling the [[HasProperty]] internal method of proto with argument P.</div>
+</li>
+</ol>
+<pre class="code javascript"><span class="kw2">var</span> handler = <span class="br0">&#123;</span>
+  has: <span class="kw2">function</span><span class="br0">&#40;</span>target, <span class="kw3">name</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="co1">// no-op forwarding:</span>
+    <span class="co1">// no new built-in required to faithfully forward &quot;in&quot;</span>
+    <span class="kw1">return</span> <span class="kw3">name</span> <span class="kw1">in</span> target;
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;
+<span class="kw2">var</span> p = Proxy<span class="br0">&#40;</span>target, handler<span class="br0">&#41;</span>;
+<span class="kw3">name</span> <span class="kw1">in</span> p <span class="co1">// triggers handler.has(target, name)</span>
+<span class="kw2">var</span> child = Object.<span class="me1">create</span><span class="br0">&#40;</span>p<span class="br0">&#41;</span>;
+<span class="kw3">name</span> <span class="kw1">in</span> child <span class="co1">// triggers handler.has(target, name)</span></pre>
+</div>
+<!-- SECTION [11526-12326] -->
+<a name="reflect._get_set"></a><h2>Reflect.{get|set}</h2>
+<div class="level2">
+
+<p>
+ (Note: these built-ins were previously referred to as <code>Object.getProperty</code> and <code>Object.setProperty</code>)
+</p>
+
+<p>
+As noted in the code snippets above, in order to faithfully forward an intercepted [[Get]] or [[Put]] operation, a proxy needs new built-ins that allow it to trigger the [[GetP]] and [[SetP]] operations of its target, passing along the original receiver. This is crucial in order to faithfully emulate inherited accessor properties.
+</p>
+
+<p>
+The following built-ins are added to the <a href="doku.php%3Fid=harmony:reflect_api.html" class="wikilink1" title="harmony:reflect_api" onclick="return svchk()" onkeypress="return svchk()">reflect api</a>:
+</p>
+<pre class="code javascript">Reflect.<span class="me1">get</span> = <span class="kw2">function</span><span class="br0">&#40;</span>target, <span class="kw3">name</span>, receiver?<span class="br0">&#41;</span> -&gt; any
+Reflect.<span class="me1">set</span> = <span class="kw2">function</span><span class="br0">&#40;</span>target, <span class="kw3">name</span>, value, receiver?<span class="br0">&#41;</span> -&gt; boolean</pre>
+<p>
+The trailing <code>receiver</code> parameter is optional and defaults to <code>target</code>. If specified, when an accessor is encountered on the prototype chain, the accessor&rsquo;s <code>this</code>-binding will be set to the given <code>receiver</code> parameter. Note the following equivalences in the absence of accessors:
+</p>
+<pre class="code javascript">Reflect.<span class="me1">get</span><span class="br0">&#40;</span>obj, <span class="kw3">name</span><span class="br0">&#41;</span> ~ obj<span class="br0">&#91;</span><span class="kw3">name</span><span class="br0">&#93;</span>
+Reflect.<span class="me1">set</span><span class="br0">&#40;</span>obj, <span class="kw3">name</span>, val<span class="br0">&#41;</span> ~ obj<span class="br0">&#91;</span><span class="kw3">name</span><span class="br0">&#93;</span> = val <span class="co1">// except for return values</span></pre>
+<p>
+The built-ins are specified as follows:
+</p>
+
+<p>
+<strong> Reflect.get ( O, P, Receiver) </strong> 
+</p>
+<ol>
+<li class="level1"><div class="li"> If Type(O) is not Object, throw a TypeError</div>
+</li>
+<li class="level1"><div class="li"> If Receiver is undefined or missing, set Receiver to O</div>
+</li>
+<li class="level1"><div class="li"> If Type(Receiver) is not Object, throw a TypeError</div>
+</li>
+<li class="level1"><div class="li"> Let name be ToString(P)</div>
+</li>
+<li class="level1"><div class="li"> Return the result of calling the [[GetP]] internal method of O, passing Receiver and name as arguments.</div>
+</li>
+</ol>
+
+<p>
+ <strong> Reflect.set ( O, P, V, Receiver) </strong> 
+</p>
+<ol>
+<li class="level1"><div class="li"> If Type(O) is not Object, throw a TypeError</div>
+</li>
+<li class="level1"><div class="li"> If Receiver is undefined or missing, set Receiver to O</div>
+</li>
+<li class="level1"><div class="li"> If Type(Receiver) is not Object, throw a TypeError</div>
+</li>
+<li class="level1"><div class="li"> Let name be ToString(P)</div>
+</li>
+<li class="level1"><div class="li"> Return the result of calling the [[SetP]] internal method of O, passing Receiver, name and V as arguments.</div>
+</li>
+</ol>
+
+</div>
+<!-- SECTION [12327-14184] -->
+<a name="javascript_implementation"></a><h3>Javascript implementation</h3>
+<div class="level3">
+
+<p>
+ The above built-ins can be expressed in Javascript itself, with the limitation that if the <code>target</code> is a proxy, it will fail to trigger the proxy&rsquo;s <code>get</code> or <code>set</code> trap. Hence, the following implementation is non-normative and for illustrative purposes only:
+</p>
+<pre class="code javascript">Reflect.<span class="me1">get</span> = <span class="kw2">function</span><span class="br0">&#40;</span>target, <span class="kw3">name</span>, receiver<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  receiver = receiver || target;
+  <span class="kw2">var</span> desc = Object.<span class="me1">getOwnPropertyDescriptor</span><span class="br0">&#40;</span>target, <span class="kw3">name</span><span class="br0">&#41;</span>;
+  <span class="kw1">if</span> <span class="br0">&#40;</span>desc === undefined<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">var</span> proto = Object.<span class="me1">getPrototypeOf</span><span class="br0">&#40;</span>target<span class="br0">&#41;</span>;
+    <span class="kw1">if</span> <span class="br0">&#40;</span>proto === <span class="kw2">null</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">return</span> undefined;
+    <span class="br0">&#125;</span>
+    <span class="kw1">return</span> Reflect.<span class="me1">get</span><span class="br0">&#40;</span>proto, <span class="kw3">name</span>, receiver<span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span>
+  <span class="kw1">if</span> <span class="br0">&#40;</span>isDataDescriptor<span class="br0">&#40;</span>desc<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> desc.<span class="me1">value</span>;
+  <span class="br0">&#125;</span>
+  <span class="kw2">var</span> getter = desc.<span class="me1">get</span>;
+  <span class="kw1">if</span> <span class="br0">&#40;</span>getter === undefined<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> undefined;
+  <span class="br0">&#125;</span>
+  <span class="kw1">return</span> desc.<span class="me1">get</span>.<span class="me1">call</span><span class="br0">&#40;</span>receiver<span class="br0">&#41;</span>;
+<span class="br0">&#125;</span>;
+&nbsp;
+Reflect.<span class="me1">set</span> = <span class="kw2">function</span><span class="br0">&#40;</span>target, <span class="kw3">name</span>, value, receiver<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  receiver = receiver || target;
+    
+  <span class="kw2">var</span> ownDesc = Object.<span class="me1">getOwnPropertyDescriptor</span><span class="br0">&#40;</span>target, <span class="kw3">name</span><span class="br0">&#41;</span>;
+  <span class="kw1">if</span> <span class="br0">&#40;</span>ownDesc !== undefined<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">if</span> <span class="br0">&#40;</span>isAccessorDescriptor<span class="br0">&#40;</span>ownDesc<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw2">var</span> setter = ownDesc.<span class="me1">set</span>;
+      <span class="kw1">if</span> <span class="br0">&#40;</span>setter === undefined<span class="br0">&#41;</span> <span class="kw1">return</span> <span class="kw2">false</span>;
+      setter.<span class="me1">call</span><span class="br0">&#40;</span>receiver, value<span class="br0">&#41;</span>; <span class="co1">// assumes Function.prototype.call</span>
+      <span class="kw1">return</span> <span class="kw2">true</span>;
+    <span class="br0">&#125;</span>
+    <span class="co1">// otherwise, isDataDescriptor(ownDesc) must be true</span>
+    <span class="kw1">if</span> <span class="br0">&#40;</span>ownDesc.<span class="me1">writable</span> === <span class="kw2">false</span><span class="br0">&#41;</span> <span class="kw1">return</span> <span class="kw2">false</span>;
+    <span class="kw1">if</span> <span class="br0">&#40;</span>receiver === target<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw2">var</span> updateDesc = <span class="br0">&#123;</span>value: value<span class="br0">&#125;</span>;
+      Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>receiver, <span class="kw3">name</span>, updateDesc<span class="br0">&#41;</span>;
+      <span class="kw1">return</span> <span class="kw2">true</span>;
+    <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="br0">&#123;</span>
+      <span class="kw1">if</span> <span class="br0">&#40;</span>!Object.<span class="me1">isExtensible</span><span class="br0">&#40;</span>receiver<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="kw1">return</span> <span class="kw2">false</span>;
+      <span class="kw2">var</span> newDesc =
+        <span class="br0">&#123;</span> value: value,
+          writable: <span class="kw2">true</span>,
+          enumerable: <span class="kw2">true</span>,
+          configurable: <span class="kw2">true</span> <span class="br0">&#125;</span>;
+      Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>receiver, <span class="kw3">name</span>, newDesc<span class="br0">&#41;</span>;
+      <span class="kw1">return</span> <span class="kw2">true</span>;
+    <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span>
+  
+  <span class="kw2">var</span> proto = Object.<span class="me1">getPrototypeOf</span><span class="br0">&#40;</span>target<span class="br0">&#41;</span>;
+  <span class="kw1">if</span> <span class="br0">&#40;</span>proto === <span class="kw2">null</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">if</span> <span class="br0">&#40;</span>!Object.<span class="me1">isExtensible</span><span class="br0">&#40;</span>receiver<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="kw1">return</span> <span class="kw2">false</span>;
+    <span class="kw2">var</span> newDesc =
+      <span class="br0">&#123;</span> value: value,
+        writable: <span class="kw2">true</span>,
+        enumerable: <span class="kw2">true</span>,
+        configurable: <span class="kw2">true</span> <span class="br0">&#125;</span>;
+    Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>receiver, <span class="kw3">name</span>, newDesc<span class="br0">&#41;</span>;
+    <span class="kw1">return</span> <span class="kw2">true</span>;
+  <span class="br0">&#125;</span>
+  <span class="kw1">return</span> Reflect.<span class="me1">set</span><span class="br0">&#40;</span>proto, <span class="kw3">name</span>, value, receiver<span class="br0">&#41;</span>;
+<span class="br0">&#125;</span>;</pre>
+</div>
+<!-- SECTION [14185-16327] -->
+<a name="prototype_implementation"></a><h2>Prototype implementation</h2>
+<div class="level2">
+
+<p>
+ The following <a href="http://code.google.com/p/es-lab/source/browse/trunk/src/es5adapt/setProperty.js" class="urlextern" target="_blank" title="http://code.google.com/p/es-lab/source/browse/trunk/src/es5adapt/setProperty.js" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">source code</a> implements <code>Object.setProperty</code> both using the current ES5 semantics and using the proposed alternative semantics. It then sets up various tests to check whether their behavior is equivalent on normal objects (not considering proxies), and also whether these implementations are equivalent to built-in property assignment triggered by <code>obj[name]=value;</code>. You can run this script in your browser <a href="http://es-lab.googlecode.com/svn/trunk/src/es5adapt/testSetProperty.html" class="urlextern" target="_blank" title="http://es-lab.googlecode.com/svn/trunk/src/es5adapt/testSetProperty.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">here</a>.
+</p>
+
+</div>
+<!-- SECTION [16328-16959] -->
+<a name="open_issues"></a><h2>Open issues</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> [[GetProperty]] is still used in some other places in the spec. If [[GetProperty]] is no longer needed for the above operations on plain Objects, we may consider refactoring the spec to get rid of [[GetProperty]] entirely, and do all prototype-climbing explicitly.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [16960-17265] -->
+<a name="references"></a><h2>References</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Replaced the SameValue test in [[SetP]] step 2.b.iii as it interfered with proxies. See the thread on <a href="https://mail.mozilla.org/pipermail/es-discuss/2012-December/027246.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2012-December/027246.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">es-discuss</a>.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Suggested improvement to [[SetP]] by Jeff Walden on <a href="https://mail.mozilla.org/pipermail/es-discuss/2012-April/022561.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2012-April/022561.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">es-discuss</a> (changes already reflected on this page).</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://mail.mozilla.org/pipermail/es-discuss/2012-September/024997.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2012-September/024997.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Suggestion</a> to refactor [[HasProperty]] to call [[HasOwnProperty]] rather than [[GetOwnProperty]] (changes already reflected on this page).</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [17266-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/4/4ce696861aa81e22c9d64420457fc802.xhtml used -->
+</body>
+</html>

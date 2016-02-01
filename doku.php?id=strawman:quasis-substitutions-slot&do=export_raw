@@ -1,0 +1,39 @@
+===== Slot Substitution Body =====
+This defines the substitution body of a [[harmony:quasis|quasi]] using the //PrimaryExpression// syntactic production and turns the resulting expression into a slot that is settable or readable so that quasi handlers can conditionally & multiple evaluate substitution bodies, and destructure content into lvalues.
+Determining where a substitution ends requires, in the general case, the ability to parse an EcmaScript expression.
+
+
+==== //SusbstitutionBody// :: ====
+  * //PrimaryExpression//
+
+==== //SubstitutionModifier// :: ====
+  * ε
+  * ''=''
+
+
+
+
+
+
+
+
+==== SVE ====
+^ Production ^ Result ^
+| //QuasiLiteral// :: //QuasiTag// ''`'' //LiteralPortion//  //QuasiLiteralTail// | SVE(//QuasiLiteralTail//) |
+| //QuasiLiteralTail// :: //Substitution//  //LiteralPortion//  //QuasiLiteralTail// | array-concat(single-element-array(SVE(//Substitution//)), SVE(//QuasiLiteralTail//)) |
+| //QuasiLiteralTail// :: ''`'' | an empty array |
+| //Substitution// :: ''$'' //Identifier// | slot(//PrimaryExpression// : //Identifier//, false) |
+| //Substitution// :: ''${'' //SubstitutionModifier//  //SubstitutionBody// ''}'' | slot(//SubstitutionBody// : //PrimaryExpression//, WRITABLE(//SubstitutionModifier//)) |
+| //SubstitutionBody// :: //PrimaryExpression// | //PrimaryExpression// |
+
+where WRITABLE(''='') is true and WRITABLE(ε) is false.
+
+The slot operator takes an //Expression// production and a boolean.  If the boolean is false, it behaves exactly like the thunk operator, but if it is true, slot returns a function that evaluates that expression when called with zero arguments, or assigns to that expression the zero-th argument if passed any.
+E.g. ''slot( (x), false )'' 
+
+The SVE is an expression that evaluates the specified expression in the scope in which the quasi appears.
+The SVE of the quasi literal is the array of the SVE for each substitution body.
+
+E.g. the SVE of ''quasitag`literalPortion0 $x literalPortion1 ${y + z} literalPortion2`'' is ''[#{ x }, #{ y + z }]''.
+
+It is an error for ''arguments'' to be free in the //PrimaryExpression//.

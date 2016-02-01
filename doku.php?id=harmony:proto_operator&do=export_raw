@@ -1,0 +1,235 @@
+====== Set Literal [[Prototype]] operator ======
+
+The ''<|'' operator (pronounced "prototype for") is used in conjunction with a literal to create a new object whose %%[[%%Prototype%%]]%% is set to an explicitly specified value.  It can be used to address several distinct use cases for which separate solutions have been proposed.  Use cases include:
+  *  Specifying an explicit %%[[%%Prototype%%]]%% for object literals
+  *  Specifying an explicit %%[[%%Prototype%%]]%% for array literals
+  *  "Subclassing" arrays
+  *  Setting the prototype of a function to something other than Function.prototype
+  *  Implementing class-like parallel constructor and instance prototype inheritance chains.
+  *  Setting the prototype of RegExp and other built-in objects.
+  *  Replace the most common uses of the mutable %%__%%proto%%__%% extension
+ 
+
+
+
+===== Overview =====
+
+The ''<|'' operator may appears within a //MemberExpression//.  Its basic syntax is:
+
+//MemberExpression// : ...\\
+ //MemberExpression// ''**<|**'' //ProtoLiteral//
+
+//ProtoLiteral// : \\
+//LiteralObject//  \\
+//LiteralValue// \\
+\\
+//LiteralObject// : \\
+//RegularExpressionLiteral// \\
+//ArrayLiteral// \\
+//ObjectLiteral// \\
+//FunctionExpression// \\
+\\
+//LiteralValue// : \\
+//NumberLiteral// \\
+//StringLiteral// \\
+//BooleanLiteral// \\
+
+This basic semantics is to create a new object exactly as would normally be created by the //ProtoLiteral// except for the value of the object's %%[[%%Prototype%%]]%% internal property.  If the //ProtoLiteral// is a //LiteralValue// the new Object is created as if by ToObject except for the value of for the value of the object's %%[[%%Prototype%%]]%% internal property.
+
+The %%[[%%Prototype%%]]%% internal property of the new object is set to the value of the //MemberExpression//.  The value of the //MemberExpression// must be ''**typeof**'' "object". The value may be **null**.  A ''TypeError'' exception is thrown if ''**typeof**'' the //MemberExpression// is not "object".
+
+If the LHS operand has a property named ''prototype'' and the RHS operand is a function expression
+then the %%[[%%Prototype%%]]%% of the function object is set to the  LHS object and the ''prototype'' property
+of the new function is set to a new object whose %%[[%%Prototype%%]]%% is the value of the LHS's ''prototype''
+property. Here's a picture of what happens in this case: {{harmony:triangleupdate.pdf| function "subclassing" UML diagram}}
+
+
+
+===== Usage Examples =====
+
+  *  Specifying an explicit %%[[%%Prototype%%]]%% for object literals
+<code javascript>
+  MyObject.prototype <| {a:1,b:2}
+</code>
+  *  Specifying an explicit %%[[%%Prototype%%]]%% for array literals
+<code javascript>
+  appBehavior <| [0,1,2,3,4,5]
+</code>
+  *  "Subclassing" arrays
+<code javascript>
+  Array.create=function(proto,props) {return Object.defineProperties(proto <| [ ], props)};
+</code>
+  *  Setting the prototype of a function to something other than Function.prototype
+<code javascript>
+  let f = EnhancedFunctionPrototype <| function () {}
+</code>
+  *  Parrallel constructor/instance prototype chains
+<code javascript>
+  let superclass = function () {};
+  //define a constructor method
+  superclass.new = function () {return (new this()).initialize()};
+  //define a instance method
+  superclass.prototype.initialize = function () {return this};
+
+  let subclass = superclass <| function () {};
+  let instance = subclass.new();
+    //subclass.new executes a method inherited from superclass which invokes
+    //initialize on a new subclass instance.  The initialize method is 
+    //inherited from superclass.prototype
+
+</code>
+  *  Setting the prototype of RegExp and other built-in objects.
+<code javascript>
+  var p = newRegExpMethods <| /[a-m][3-7]/
+</code>
+  *  Replace the most common uses of the mutable %%__proto__%% extension 
+
+Replace: 
+<code javascript>
+  var  o = {
+       __proto__ : myProto,
+       a:0,
+       b: function () {}
+  }
+</code>
+ With: 
+<code javascript>
+  var  o = myProto <| {
+       a:0,
+       b: function () {}
+  }
+</code>
+
+
+
+===== ES5 Compatability =====
+We may still want to define Array.create, RegExp.create, and Function.create so they can be used in non-Harmony implementations and contexts.  In that case they should be defined in terms of the semantics of the ''**<|**'' operator.
+
+
+===== Relationship to Other Proposals =====
+This proposal is an alternative to the [[strawman:array_subtypes]] and [[strawman:array_create]] proposals.
+
+It is also an alternative to the %%[[%%Prototye%%]]%% functionality of the [[strawman:obj_initialiser_meta|Object Initialiser Meta Properties]] proposal.
+
+
+The function proposed in [[strawman:array_subtypes]] can be implemented in terms of ''<|'' as:
+<code javascript>
+Array.createConstructor = function () {
+    let constructor = function c(...args) {
+        if (args.length!==1 || typeof args[0] !== 'number') 
+            return c.prototype <| [...args];
+        let len = args[0];
+        if (len !== len>>>0) throw new RangeError;
+        let a = c.prototype <|[];
+        a.length = len;
+        return a;
+     }
+    constructor.prototype.constructor = constructor;
+    return constructor;
+}
+</code>
+
+The function in the original [[strawman:array_create]] proposals can be implemented as:
+<code javascript>
+   Array.create = function(proto, args ) {
+      if (args!==undefined) return proto <| [...args];
+      return proto <| [ ];
+   }
+</code>
+
+
+
+
+===== Commentary and rationales =====
+  * The right hand side could potentially be extended to be any object value if we were define a generalized object clone operator. In that case, we would be setting the %%[[%%Prototype%%]]%% on a clone of the RHS.  This would maintain the immutability of %%[[%%Prototype%%]]%%.
+
+
+  * The contextual keyword  ''**proto**'' was originally proposed as this operator symbol.  Experimentation suggested that a keyword operator was harder to read and might commonly result in awkward code phrasing such as:
+
+<code javaScript>
+function (proto) {
+   return proto proto {a:1, b:2}
+}
+</code>
+
+  * The prototype value is placed on the left of the operator because object literals, array literals, and function expressions often span multiple source lines.  Placing the prototype value to the right operator would mean that it would occur at the end of such multi-line sequences where it is likely to go unnoticed. The explicitly setting the prototype of a literal object is significant enough that it should be expressed in a manner that is likely to be noticed by code readers. Compare:
+
+
+<code javascript>
+var obj = someProto <| {
+  prop1: expr,
+  get prop2 () {
+    return computeSomeValue();
+  },
+  method: function (a,b,c) {
+     return this.prop2+a+b+c;
+  }
+};
+</code>
+
+and 
+
+<code javascript>
+var obj = {
+  prop1: expr,
+  get prop2 () {
+    return computeSomeValue();
+  },
+  method: function (a,b,c) {
+     return this.prop2+a+b+c;
+  }
+} |> someProto;
+</code>
+
+  * There are many other possible special character alternates to **''%%<|%%''**.  For example, **''<:''**, **'':>''**, **''|>''**, **''^^''**, **''*>''**, **''&>''**, **''^|''**, **''%%<|-%%''**, etc. It isn't clear that any of these is more meaningful or mnemonic than **''%%<|%%''**.
+  * The **''%%<|%%''** symbol is somewhat suggestive of the [[http://edn.embarcadero.com/article/31863#classdiagrams | UML Generalization arrow]] which is the way inheritance is represented in UML class diagrams. 
+  * //BooleanLiterals// are included for completeness.  Specifying the prototype of a Boolean wrapper object is unlikely to be of little practical value. 
+  * Earlier proposals proposed used [[strawman:obj_initialiser_meta|Object Initialiser Meta Properties]] within object and array literals to specify a %%[[Prototype]]%% value.  That approach did not extend to other literal forms such as //FunctionExpressions// and //RegularExpressionLiterals//.
+  * <| doesn't allow for "subclasses" built-ins such as Date that don't have literal forms but are specified to have special internal state.  The solution is to respecify those methods so they use private names for their internal state.  Then such built-ins can be extended using forms such as:
+<code javascript>
+var ExtendedDate = Date <| function (...args) {
+   super.constructor(...args);
+ExtendedDate.prototype.extendedMethod = function () {...}
+}
+
+</code>
+
+
+
+==== Suggestion to replace <| with -> ====
+
+<| has been a controversial choice as the symbol for the prototype-of operator.  Some people like it and other don't.  Some people feel the it "points" in the wrong direction.  Some people don't like the visual appearance of of how the < and | align, particularly in certain fonts.
+
+An alternative that wasn't previously seriously considered is to use %%->%% as the prototype-of operator symbol.  This usage had not been considered because %%->%% was a candidate  function expression shorthand symbol.  More recently it appears that the function usage is an unlikely outcome given other alternatives and mounting interest in block lambda expressions.  In that case, %%->%% becomes available as an reasonable alternative  for <|
+
+For visual comparison purposes, the following shows many of the above examples, re-expressed using %%->%%
+
+<code javascript>
+  MyObject.prototype -> {a:1,b:2}
+
+  appBehavior -> [0,1,2,3,4,5]
+
+  Array.create=function(proto,props) {return Object.defineProperties(proto -> [ ], props)};
+
+  let f = EnhancedFunctionPrototype -> function () {}
+
+  let superclass = function () {};
+  //define a constructor method
+  superclass.new = function () {return (new this()).initialize()};
+  //define a instance method
+  superclass.prototype.initialize = function () {return this};
+  let subclass = superclass -> function () {};
+  let instance = subclass.new();
+    //subclass.new executes a method inherited from superclass which invokes
+    //initialize on a new subclass instance.  The initialize method is 
+    //inherited from superclass.prototype
+
+  var p = newRegExpMethods -> /[a-m][3-7]/
+
+  var  o = myProto -> {
+       a:0,
+       b: function () {}
+  }
+</code>
+
+ 

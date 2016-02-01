@@ -1,0 +1,157 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=discussion:multiple_compilation_units&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=discussion" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=discussion:multiple_compilation_units&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=discussion:multiple_compilation_units&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="older_discussion"></a><h1>Older discussion</h1>
+<div class="level1">
+
+<p>
+ Both the 3rd Edition and the 4th Edition Draft define only the meaning of a single Program executing in a single global environment (where &ldquo;Program&rdquo; is the initial nonterminal in the language grammar).  However, all major implementations of the language will likely need to consider interpretation of &ldquo;complete programs&rdquo; consisting of multiple, separately compiled such Programs, often interacting in multiple global environments.  If the spec does not address these complexities then it is left up to each implementation to define the meaning of such &ldquo;complete programs&rdquo;.
+</p>
+
+<p>
+At a minimum we need to define what it means to load and execute a program consisting of set of multiple Program units in a single global environment.  We should also address any complexities that arise with multiple global environments.
+</p>
+
+<p>
+We should do this both for 3rd Edition code and (obviously) for 4th Edition code.
+</p>
+
+</div>
+<!-- SECTION [1-928] -->
+<a name="common_behavior"></a><h2>Common behavior</h2>
+<div class="level2">
+
+<p>
+ The following is true for both editions.
+</p>
+
+<p>
+A <em>complete program</em> consists of a potentially unbounded totally ordered set of program fragments, each of which is a <code>Program</code> as per section 14 of the 3rd Edition / section 17.7 of the 4th Edition January Draft.  This set is evaluated in an on-line fashion in the context of a global environment that is freshly created before the evaluation of the first Program.  Each Program is evaluated fully before the next Program&rsquo;s evaluation begins.  <em>[That last bit is actually a little iffy in the context of a web browser, since it is possible for an event handler to interrupt an already running event handlers.]</em>
+</p>
+
+<p>
+If the evaluation of a Program throws an exception that is not caught by the Program or by any other mechanism, then the Program&rsquo;s evaluation is aborted.  If one Program&rsquo;s evaluation is aborted, the implementation may choose whether it will abort the evaluation of the complete program.
+</p>
+
+<p>
+Functions are statically scoped with respect to their global environment.  <em>[The 3rd Edition spec implies this somewhere, but I am too lazy to look right now.]</em>  This is true for built-in functions as well as user-defined functions.
+</p>
+
+<p>
+Two complete programs can interact by manipulating data and functions in each others&rsquo; global environments, each of which can be considered simply an Object.  Apart from constraints in the implementation, there are no restrictions on accesses from one global environment to another.
+</p>
+
+<p>
+It is implementation-defined whether an object of a standard type created in one global environment is an instance of the constructor for that type taken from another global environment.  <em>[I&rsquo;d like to say that <code>instanceof</code> should return <code>true</code> here, but I don&rsquo;t know if I can get away with that.  Certainly it&rsquo;s not true in Opera.]</em>
+</p>
+
+<p>
+Observe that the sequential evaluation of two Programs P1 and P2 does not necessarily yield the same result as evaluating their concatentation P1P2.  An implementation that compiles (a prefix of) the complete program ahead-of-time must preserve the semantics of evaluating all the Programs sequentially as described above.
+</p>
+
+</div>
+<!-- SECTION [929-3090] -->
+<a name="3rd_edition"></a><h2>3rd Edition</h2>
+<div class="level2">
+
+<p>
+ The 3rd Edition language is nicely dynamic and fairly simple, so there aren&rsquo;t too many surprises.
+</p>
+
+<p>
+Observe that the evaluation of any Program requires no knowledge of any previous Program, and apart from sorting all functions before all statements, the top-level forms of a Program can be evaluated in complete isolation from each other.
+</p>
+
+</div>
+<!-- SECTION [3091-3455] -->
+<a name="4th_edition"></a><h2>4th Edition</h2>
+<div class="level2">
+
+<p>
+ The 4th Edition language has a substantial static (compile-time) context.  Some aspects of this context are unknown at this time.  The following is a preliminary proposal, not yet vetted vis-a-vis the spec.
+</p>
+
+<p>
+Consider two Programs P1 and P2, considered in that order.  (For &ldquo;variable&rdquo; read &ldquo;var or const&rdquo;.) 
+</p>
+<ul>
+<li class="level1"><div class="li"> If P1 defines a top-level package, class, interface, namespace, or variable then that item is visible statically in P2 just as it is in P1</div>
+</li>
+<li class="level1"><div class="li"> P2 may add definitions to a package P defined in P1 by also defining P.  All classes, interfaces, namespaces, and variables defined in P in P1 are visible when P is compiled in P2, and conflicts are resolved as if all the definitions came from the same Program.</div>
+</li>
+<li class="level1"><div class="li"> P2 may not redefine (at top level) any classes, interfaces, or namespaces defined in P1</div>
+</li>
+<li class="level1"><div class="li"> P2 may redefine (at top level) a variable defined in P1 provided it is type-compatible, and if it is a <code>const</code> only if it does not have an initializer in P2</div>
+</li>
+<li class="level1"><div class="li"> If P1 defines a <code>const</code> then it must contain code that definitely leaves that constant initialized when P1&rsquo;s evaluatation terminates (though see Open Issues below)</div>
+</li>
+<li class="level1"><div class="li"> P1 may not contain references to packages, classes, namespaces or interfaces defined in P2, and in the static language it may also not reference variables defined in P2</div>
+</li>
+<li class="level1"><div class="li"> A namespace or package opened in P1 will not be automatically opened in P2</div>
+</li>
+</ul>
+
+<p>
+ Open issues: 
+</p>
+<ul>
+<li class="level1"><div class="li"> It&rsquo;s unclear whether &ldquo;default xml namespace&rdquo; is scoped inside a Program, since that&rsquo;s really some sort of assignment statement</div>
+</li>
+<li class="level1"><div class="li"> The rules about <code>const</code> break down if the implementation allows one Program to be terminated by an error and the next program to be evaluated anyway.  <em>[Anyhow <code>const</code> already has some initialization issues with regard to non-nullable types.]</em></div>
+</li>
+<li class="level1"><div class="li"> If we accept enum types they&rsquo;ll be like classes</div>
+</li>
+</ul>
+<hr noshade="noshade" size="1" />
+
+<p>
+ Notes on CLR Appdomains
+</p>
+
+<p>
+ApplicationDomains (AppDomains) on the CLR in a way help achieve scalability.
+</p>
+
+<p>
+If you take a normal process, it takes a while to create and kill a process, and when you want really high performance you want that one process to be used for many things - this is what transaction processing systems typically do. We wanted to get the same kind of idea with an easier programming model. So we created this thing called an AppDomain and the idea is that you can have as many AppDomains as you like inside of a single operating system process, and a combination of our security system and the design of the instruction set (i.e. CIL) guarantees that programs running in one AppDomain cannot read or write the memory being used by another AppDomain. That means they can run in the same operating system process together without hurting each other&rsquo;s memory. So that lets you scale tremendously; we can have hundreds of appdomains in a single process, hundreds of processes on a single machine, and so on. The other point to note is that processes are separated from each other with assistance from the hardware. No hardware assistance is required to deploy AppDomains. The isolation between appdomains within a process is imposed and policed by software (CLR).
+</p>
+
+<p>
+Assemblies (the unit of deployment on the CLR) are always loaded within the context of an AppDomain, and the types that result are scoped by their AppDomain. For e.g. static variables defined in an assembly are allocated and stored within the AppDomain. If the same assembly is loaded into three different domains, three different copies of the type’s data for that assembly are allocated.
+</p>
+
+<p>
+When loading a type by name, typeName can be a simple type name, a type name that includes a namespace, or a complex name that includes an assembly name specification. If typeName includes only the name of the Type, we look up first in the calling object&rsquo;s assembly, then in the system assembly. If typeName is fully qualified with the partial or complete assembly name, we lookup in the specified assembly.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x70%3B%26%23x72%3B%26%23x61%3B%26%23x74%3B%26%23x61%3B%26%23x70%3B%26%23x6c%3B%26%23x40%3B%26%23x6d%3B%26%23x69%3B%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x73%3B%26%23x6f%3B%26%23x66%3B%26%23x74%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x70;&#x72;&#x61;&#x74;&#x61;&#x70;&#x6c;&#x40;&#x6d;&#x69;&#x63;&#x72;&#x6f;&#x73;&#x6f;&#x66;&#x74;&#x2e;&#x63;&#x6f;&#x6d;">Pratap Lakshman</a> 2006/05/17 10:24</em> 
+</p>
+
+</div>
+<!-- SECTION [3456-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/4/43e3044f01b25bb85a82eb5b88ea2e47.xhtml used -->
+</body>
+</html>

@@ -1,0 +1,185 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:date_and_time&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:date_and_time&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:date_and_time&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:date_and_time&amp;do=export_html.html#date_and_time_improvements" class="toc">Date and time improvements</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:date_and_time&amp;do=export_html.html#property_access" class="toc">Property access</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:date_and_time&amp;do=export_html.html#current_and_elapsed_times" class="toc">Current and elapsed times</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:date_and_time&amp;do=export_html.html#iso_date_strings" class="toc">ISO Date strings</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:date_and_time&amp;do=export_html.html#time_zones" class="toc">Time zones</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="date_and_time_improvements"></a><h1>Date and time improvements</h1>
+<div class="level1">
+
+<p>
+ (Also see the <a href="doku.php%3Fid=discussion:date_and_time.html" class="wikilink1" title="discussion:date_and_time" onclick="return svchk()" onkeypress="return svchk()">the discussion page</a> for this proposal)
+</p>
+
+<p>
+Note that all new properties and methods below are to be added to the builtin dynamic class <code>Date</code>, not to <code>Date.prototype</code>. Future code should be able to early-bind accesses to the new properties and methods.
+</p>
+
+</div>
+<!-- SECTION [1-344] -->
+<a name="property_access"></a><h2>Property access</h2>
+<div class="level2">
+
+<p>
+ The <code>Date</code> class shall be extended with the following properties: 
+</p>
+<pre class="code">time
+fullYear
+month
+date
+day
+hours
+minutes
+seconds
+milliseconds
+UTCFullYear
+UTCMonth
+UTCDate
+UTCDay
+UTCHours
+UTCMinutes
+UTCSeconds
+UTCMilliseconds
+timezoneOffset</pre>
+
+<p>
+ Except for timezoneOffset these are all read-write.
+</p>
+
+<p>
+Reading property <em>foo</em> is equivalent to calling <code>intrinsic::get<em>Foo</em></code>.  Writing property <em>foo</em> is equivalent to calling <code>intrinsic::set<em>Foo</em></code> with one argument.
+</p>
+
+</div>
+<!-- SECTION [345-869] -->
+<a name="current_and_elapsed_times"></a><h2>Current and elapsed times</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> A new static function <code>Date.now():double</code> shall be added to the <code>Date</code> class. This function shall return the current number of milliseconds since the epoch time <code>1970-01-01T00:00:00.0Z</code>.</div>
+</li>
+<li class="level1"><div class="li"> A new method <code>Date.prototype.nanoAge():double</code> shall be added to the <code>Date</code> class. This function shall return an approximation of the number of <em>nanoseconds</em> of real time that have elapsed since its object was constructed. The approximation is of unspecified quality, and may vary in both accuracy and precision from platform to platform. The approximation will necessarily lose precision as its object ages, since it is expressed as a <code>double</code>: after approximately 104 days of real time, its object will have been alive for over 2^53 nanoseconds, so the result of this call will carry more than 2 nanoseconds rounding error after 104 days, and more than 4 nanoseconds rounding error after 208 days. Code wishing to measure greater periods of real time may either construct fresh Date objects after 104 days, or accept the gradual loss of precision.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [870-1977] -->
+<a name="iso_date_strings"></a><h2>ISO Date strings</h2>
+<div class="level2">
+
+<p>
+ Support for printing and parsing a subset of <acronym title="International Organization for Standardization">ISO</acronym>-8601 date strings shall be added. 
+</p>
+<ul>
+<li class="level1"><div class="li"> A new method <code>Date.toISOString():String</code> shall be added to the <code>Date</code> class. </div>
+<ul>
+<li class="level2"><div class="li"> The method shall return an <acronym title="International Organization for Standardization">ISO</acronym>-format string (defined below) denoting the date represented in its underlying <code>Date</code> object. </div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> The static function <code>Date.parse(s:String):double</code> shall be extended in the following fashion:</div>
+<ul>
+<li class="level2"><div class="li"> The function shall accept an <acronym title="International Organization for Standardization">ISO</acronym>-format string as its first argument.</div>
+</li>
+<li class="level2"><div class="li"> If the first argument is a valid <acronym title="International Organization for Standardization">ISO</acronym>-format string then it must be interpreted as an <acronym title="International Organization for Standardization">ISO</acronym>-format string. </div>
+</li>
+<li class="level2"><div class="li"> The function shall accept an optional second argument, which shall be convertible to <code>double</code>.  If it is not convertible the function shall throw a <code>TypeError</code>.  The second argument denotes the <em>default time</em> for omitted fields during parsing. For example, the result of <code>Date.now()</code> may be used to provide default field values from the current time.</div>
+</li>
+<li class="level2"><div class="li"> If no second argument is provided, parsing will assume a default time of <code>1970-01-01T00:00:00.0</code>.</div>
+</li>
+<li class="level2"><div class="li"> The function shall return a <code>double</code> value representing the date denoted by its arguments.  </div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+The subset of <acronym title="International Organization for Standardization">ISO</acronym>-8601 supported follows: 
+</p>
+<pre class="code">  timestamp ::= date? &quot;T&quot; time? tz?
+  year     ::= (&quot;-&quot; dig+ | dig{4} dig*)
+  date     ::= year ( &quot;-&quot; dig{2} ( &quot;-&quot; dig{2} )? )?
+  time     ::= dig{2} ( &quot;:&quot; dig{2} ( &quot;:&quot; dig{2} ( &quot;.&quot; dig+ )? )? )?
+  tz       ::= (&quot;+&quot; | &quot;-&quot;) dig{2} ( &quot;:&quot; dig{2} )?
+             | &quot;Z&quot;
+  dig      ::= &quot;0&quot; ... &quot;9&quot;</pre>
+
+<p>
+ For example 
+</p>
+<pre class="code">  2006-04-17T
+  2006-04-17T12:37:00.005+03:30
+  T12:37+03
+  10000T
+  -1T00</pre>
+
+<p>
+ Spaces are not allowed anywhere in the grammar. 
+</p>
+
+<p>
+The &ldquo;-&rdquo; prefix permits denoting years before 0CE. 
+</p>
+
+<p>
+The maximum and minimum representable dates remain those set out in the ECMA-262-3 document.
+</p>
+
+<p>
+The meaning of an integer <code>f</code> represented by a string of n digits after the period in the <code>time</code> part is the fractional second value <code>f/10^n</code>.
+</p>
+
+<p>
+The method <code>Date.prototype.toISOString</code> shall generate strings of this format with all fields present and the shortest possible nonempty string of digits following the period in the <code>time</code> part.  It always produces a UTC time with a suffix <code>Z</code>.
+</p>
+
+</div>
+<!-- SECTION [1978-4218] -->
+<a name="time_zones"></a><h2>Time zones</h2>
+<div class="level2">
+
+<p>
+ The committee agreed on 2007-07-19 to change the definition of <code>DaylightSavingsTA(t)</code> to something along the lines of &ldquo;It should return a best effort value for the daylight savings adjustment for the UTC timestamp <code>t</code> at the location of the computer running the code, using historical data when relevant and possible.  Most modern operating systems provide interfaces that supply these data.&rdquo;
+</p>
+
+<p>
+The language could be better than that, though <img src="lib/images/smileys/icon_smile.gif" align="middle" alt=":-)" />
+</p>
+
+</div>
+<!-- SECTION [4219-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/d/d169ec6e869dd3216400c60e77ba8713.xhtml used -->
+</body>
+</html>

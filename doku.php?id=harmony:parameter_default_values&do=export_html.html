@@ -1,0 +1,190 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=harmony:parameter_default_values&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="http://wiki.ecmascript.org/feed.php?mode=list&amp;ns=harmony" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=harmony:parameter_default_values&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=harmony:parameter_default_values&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:parameter_default_values&amp;do=export_html.html#background" class="toc">Background</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:parameter_default_values&amp;do=export_html.html#goals" class="toc">Goals</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:parameter_default_values&amp;do=export_html.html#syntax" class="toc">Syntax</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:parameter_default_values&amp;do=export_html.html#semantics" class="toc">Semantics</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:parameter_default_values&amp;do=export_html.html#issues" class="toc">Issues</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<p>
+<strong>This proposal has progressed to the Draft ECMAScript 6 Specification, which is available for review here: <a href="doku.php%3Fid=harmony:specification_drafts.html" class="wikilink1" title="harmony:specification_drafts" onclick="return svchk()" onkeypress="return svchk()">specification_drafts</a>. Any new issues relating to them should be filed as bugs at <a href="http://bugs.ecmascript.org" class="urlextern" target="_blank" title="http://bugs.ecmascript.org" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://bugs.ecmascript.org</a>. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.</strong> 
+</p>
+
+<a name="background"></a><h2>Background</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> AKA &ldquo;optional parameters&rdquo; and &ldquo;optional arguments&rdquo;, but without arity checking, all trailing arguments are optional in a real sense</div>
+</li>
+<li class="level1"><div class="li"> Waldemar&rsquo;s <a href="http://www.mozilla.org/js/language/js20-2002-04/core/functions.html#parameters" class="urlextern" target="_blank" title="http://www.mozilla.org/js/language/js20-2002-04/core/functions.html#parameters" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">original JS2 optional parameters</a></div>
+</li>
+<li class="level1"><div class="li"> ES4 default parameters, gleaned from the <a href="doku.php%3Fid=proposals:normative_grammar.html" class="wikilink1" title="proposals:normative_grammar" onclick="return svchk()" onkeypress="return svchk()">normative grammar</a> and the <a href="http://hg.ecmascript.org/es4" class="urlextern" target="_blank" title="http://hg.ecmascript.org/es4" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">reference implementation</a></div>
+</li>
+<li class="level1"><div class="li"> <code>var foo = arg || defaultFoo</code> idiom for a function taking an optional parameter <code>arg</code> motivates one or both of</div>
+<ul>
+<li class="level2"><div class="li"> <code>||=</code>, or perhaps <code>??=</code> (a more precise operator inspired by C#)</div>
+</li>
+<li class="level2"><div class="li"> default parameter values (these may abate the need for <code>||=</code>)</div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [366-1064] -->
+<a name="goals"></a><h2>Goals</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Allow trailing formal parameters to receive default values if no corresponding actual parameters are passed</div>
+</li>
+<li class="level1"><div class="li"> The default values should be computed in the scope of the callee, thus enabling use of</div>
+<ul>
+<li class="level2"><div class="li"> any parameters to the left of the one being given its default value, and of</div>
+</li>
+<li class="level2"><div class="li"> any lexical and free (global) variables in enclosing functions and the top level</div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1065-1459] -->
+<a name="syntax"></a><h2>Syntax</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> The ES5 <em>FormalParameterList</em> production changes from:</div>
+</li>
+</ul>
+<pre class="code ebnf">  FormalParameterList ::=
+    Identifier
+  | FormalParameterList , Identifier
+</pre><ul>
+<li class="level1"><div class="li"> to this pair of productions:</div>
+</li>
+</ul>
+<pre class="code ebnf">  FormalParameterList ::=
+    FormalParameter
+  | FormalParameterList , FormalParameter
+
+  FormalParameter ::=
+    Identifier Initialiser?
+  | Pattern Initialiser?
+</pre><ul>
+<li class="level1"><div class="li"> Added restriction not expressed by this grammar: only trailing formal parameters may have default values specified by <code>= </code><em>AssignmentExpression</em></div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1460-2009] -->
+<a name="semantics"></a><h2>Semantics</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> When binding actual to formal parameters (see ES5 10.6 steps under 3(d)), for each formal parameter <em>P</em> from left to right:</div>
+<ul>
+<li class="level2"><div class="li"> If no actual parameter was passed for <em>P</em>, <strong>and</strong></div>
+</li>
+<li class="level2"><div class="li"> <code>= </code><em>AssignmentExpression</em> was given to supply <em>P</em> with a default value, then:</div>
+<ul>
+<li class="level3"><div class="li"> Evaluate that <em>AssignmentExpression</em> in the scope of the fresh activation (<em>localEnv</em> in ES5 10.4.3) for the current function</div>
+</li>
+<li class="level3"><div class="li"> Assign the result of evaluating the <em>AssignmentExpression</em> to <em>P</em></div>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [2010-2533] -->
+<a name="issues"></a><h2>Issues</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> It&rsquo;s easy enough to elaborate the grammar to require that only trailing formal parameters may be given default values. Worth doing?</div>
+</li>
+<li class="level1"><div class="li"> Clearly ES5&rsquo;s 10.6 steps under 3(d) could be adapted, but I&rsquo;m both (a) lazy and (b) hopeful that we&rsquo;ll switch from pseudocode to a testable spec</div>
+</li>
+</ul>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2009/05/05 06:06</em>
+</p>
+
+<p>
+The length property of a function should be updated to not include optional parameters.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x61%3B%26%23x72%3B%26%23x76%3B%26%23x40%3B%26%23x67%3B%26%23x6f%3B%26%23x6f%3B%26%23x67%3B%26%23x6c%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x61;&#x72;&#x76;&#x40;&#x67;&#x6f;&#x6f;&#x67;&#x6c;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Erik Arvidsson</a> 2010/11/05 22:37</em>
+</p>
+
+<p>
+Right now this works as if <code>arguments.length</code> is checked. However, sometimes when chaining functions with optional parameters this will lead to problems since the optional parameter will be passed as <code>undefined</code>. Would it make sense to also allow <code>undefined</code> in the tail of the parameter list?
+</p>
+
+<p>
+This example is pretty contrived and it can easily be fixed but I think it points out the issue clearly:
+</p>
+<pre class="code javascript"><span class="kw2">function</span> add<span class="br0">&#40;</span>x = <span class="nu0">0</span>, y = <span class="nu0">0</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw1">return</span> x + y;
+<span class="br0">&#125;</span>
+<span class="kw2">function</span> inc<span class="br0">&#40;</span>opt_x<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw1">return</span> add<span class="br0">&#40;</span><span class="nu0">1</span>, opt_x<span class="br0">&#41;</span>;
+<span class="br0">&#125;</span>
+assert<span class="br0">&#40;</span><span class="nu0">1</span>, inc<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>;</pre>
+<p>
+ &mdash; <em><a href="mailto:%26%23x61%3B%26%23x72%3B%26%23x76%3B%26%23x40%3B%26%23x67%3B%26%23x6f%3B%26%23x6f%3B%26%23x67%3B%26%23x6c%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x61;&#x72;&#x76;&#x40;&#x67;&#x6f;&#x6f;&#x67;&#x6c;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Erik Arvidsson</a> 2011/05/03 16:52</em>
+</p>
+
+<p>
+We could treat trailing <code>undefined</code> as missing. CoffeeScript (after <code>apply</code> and <code>call</code> in their first parameter handling, and after <code>==</code>) equate <code>null</code> and <code>undefined</code> in this way. You can&rsquo;t therefore pass an explicit <code>null</code> or <code>undefined</code>, and I expect that will be a sticking point.
+</p>
+
+<p>
+The scenario you describe above could be handled by passing a &ldquo;magic <code>undefined</code>&rdquo; to <code>inc</code> when it is called via <code>inc()</code>, and propagating that through to <code>add</code> to trigger defaulting.
+</p>
+
+<p>
+This is doable but a hassle for implementors (not terrible from where I sit, but other implementors should weigh in; JavaScriptCore already lets objects and/or strings masquerade as <code>undefined</code>, <acronym title="If I remember correctly">IIRC</acronym>).
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2011/05/03 18:34</em> 
+</p>
+
+</div>
+<!-- SECTION [2534-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/8/89a1511210e2ce1f0bf36e311a7ecff0.xhtml used -->
+</body>
+</html>

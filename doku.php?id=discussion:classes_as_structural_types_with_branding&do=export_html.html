@@ -1,0 +1,184 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=discussion:classes_as_structural_types_with_branding&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=discussion" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=discussion:classes_as_structural_types_with_branding&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=discussion:classes_as_structural_types_with_branding&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="modeling_classes_as_structural_types_with_brands"></a><h1>Modeling classes as structural types with brands</h1>
+<div class="level1">
+<ul>
+<li class="level1"><div class="li"> I think the notion of modeling classes as &ldquo;structural types with brands&rdquo; is a very good idea. The mapping is as follows: </div>
+<ul>
+<li class="level2"><div class="li"> Structural type rules (equality and subtyping) are the default.</div>
+</li>
+<li class="level2"><div class="li"> We introduce a namespace <code>brandname</code>, reserved by the system.</div>
+</li>
+<li class="level2"><div class="li"> The type introduced by <code>class NS::C</code> is a record type with a slot <code>const brandname::&rdquo;NS::C&rdquo; : void</code>.</div>
+</li>
+<li class="level2"><div class="li"> The type introduced by <code>interface NS::I</code> is a record type with a slot <code>const brandname::&rdquo;NS::I&rdquo; : void</code>.</div>
+</li>
+<li class="level2"><div class="li"> Inheritence is modeled as &ldquo;setwise union of parent brands&rdquo;. For example: </div>
+</li>
+</ul>
+</li>
+</ul>
+<pre class="code javascript">interface I <span class="br0">&#123;</span><span class="br0">&#125;</span>;              <span class="co1">// contains const brandname::I : void</span>
+interface J <span class="br0">&#123;</span><span class="br0">&#125;</span>;              <span class="co1">// contains const brandname::J : void</span>
+&nbsp;
+<span class="kw2">class</span> C implements I <span class="br0">&#123;</span><span class="br0">&#125;</span>;     <span class="co1">// contains const brandname::C : void, const brandname::I : void</span>
+&nbsp;
+<span class="kw2">class</span> D implements J         <span class="co1">// contains const brandname::C : void, const brandname::I : void</span>
+        <span class="kw2">extends</span> C <span class="br0">&#123;</span><span class="br0">&#125;</span>;        <span class="co1">//          const brandname::D : void, const brandname::J : void</span></pre><ul>
+<li class="level1"><div class="li"> We may wish to support an automatically-defined constructor for structural record and array types which take a structurally compatible input object of type &lsquo;Object&rsquo;. For example:</div>
+</li>
+</ul>
+<pre class="code javascript">  type T = <span class="br0">&#123;</span>f:int<span class="br0">&#125;</span>;
+  <span class="kw2">var</span> x:Object = <span class="br0">&#123;</span>f:int<span class="br0">&#125;</span>;
+  <span class="kw2">var</span> y:T = x;             <span class="co1">// I believe we agreed to treat this as an error.</span>
+  <span class="kw2">var</span> z:T = <span class="kw2">new</span> T<span class="br0">&#40;</span>x<span class="br0">&#41;</span>;      <span class="co1">// Maybe we should permit this, which makes a copy.</span></pre><ul>
+<li class="level1"><div class="li"> We may wish to support parametric names in structural types as we do in classes. For example:</div>
+</li>
+</ul>
+<pre class="code javascript">  type Pair<span class="br0">&#91;</span>|T|<span class="br0">&#93;</span> = <span class="br0">&#91;</span>T,T<span class="br0">&#93;</span>;</pre><ul>
+<li class="level1"><div class="li"> We should make a <em>careful and clear</em> note about variance in structural subtyping. For example, in the following code:</div>
+<ul>
+<li class="level2"><div class="li"> <code>Duck &lt;: Bird</code> holds, because the <code>quack</code> function is just record extension.</div>
+</li>
+<li class="level2"><div class="li"> <code>LayingDuck &lt;: LayingBird</code> holds, since the <code>layEgg</code> method can be return-covariant.</div>
+</li>
+<li class="level2"><div class="li"> <code>MatingDuck &lt;: MatingBird</code> does <em>not</em> hold, since the <code>mate</code> field is writable, cannot be covariant.</div>
+</li>
+</ul>
+</li>
+</ul>
+<pre class="code javascript">  type Bird = <span class="br0">&#123;</span>beak:Beak<span class="br0">&#125;</span>
+  type LayingBird = <span class="br0">&#123;</span>beak:Beak, layEgg:<span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span>:Bird<span class="br0">&#125;</span>
+  type MatingBird = <span class="br0">&#123;</span>beak:Beak, mate:Bird<span class="br0">&#125;</span> 
+&nbsp;
+  type Duck = <span class="br0">&#123;</span>beak:Beak, quack:<span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span>:*<span class="br0">&#125;</span>
+  type LayingDuck = <span class="br0">&#123;</span>beak:Beak, layEgg:<span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span>:Duck, quack:<span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span>:*<span class="br0">&#125;</span>
+  type MatingDuck = <span class="br0">&#123;</span>beak:Beak, mate:Duck, quack:<span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span>:*<span class="br0">&#125;</span></pre>
+<p>
+Although this is perhaps not the best example since it uses recursive types and possibly <code>this</code> types. 
+</p>
+
+<p>
+In the July meeting, we decided on covariant subtyping,  so <code>MatingDuck &lt;: MatingBird</code> does indeed hold. 
+</p>
+<ul>
+<li class="level1"><div class="li"> Our proposed structural array types, with their &ldquo;tail end type&rdquo;, are somewhat like a simple version of <a href="http://xduce.sf.net" class="urlextern" target="_blank" title="http://xduce.sf.net" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">XDuce</a> / <a href="http://cduce.org" class="urlextern" target="_blank" title="http://cduce.org" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">CDuce</a> / <a href="http://relaxng.org" class="urlextern" target="_blank" title="http://relaxng.org" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">RelaxNG</a> regular types; I can imagine that providing useful types for E4X might be possible if we went the full way.</div>
+</li>
+</ul>
+
+<p>
+ (A further reading reference: the <a href="http://www.hpl.hp.com/techreports/Compaq-DEC/SRC-RR-52.pdf" class="urlextern" target="_blank" title="http://www.hpl.hp.com/techreports/Compaq-DEC/SRC-RR-52.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Modula 3 report</a>)
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x67%3B%26%23x72%3B%26%23x61%3B%26%23x79%3B%26%23x64%3B%26%23x6f%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x67;&#x72;&#x61;&#x79;&#x64;&#x6f;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">graydon</a> 2006/04/22 12:43</em>
+</p>
+
+<p>
+I just want to note the following:
+</p>
+
+<p>
+I know I brought up the idea of expressing named types as structural types with branding, but after skimming <a href="http://www.cis.upenn.edu/~bcpierce/tapl/index.html" class="urlextern" target="_blank" title="http://www.cis.upenn.edu/~bcpierce/tapl/index.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Pierce's book</a> just a little, I&rsquo;m not so sure.  Nominal types are easily understood and handled; recursive structural types less so.
+</p>
+
+<p>
+I need to read more.  Cormac and Dave presumably already know this and should really comment here.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/04/26 03:43</em>
+</p>
+
+<p>
+<strong>Branding</strong>
+</p>
+
+<p>
+I don&rsquo;t think this is a good idea, for several reasons. Primarily: it&rsquo;s modeling the class system at the wrong level of abstraction. There are basic properties of the class system that are direct consequences of the structure of the class table (e.g., classes are singly inherited, or the parent class of C is D) that get &ldquo;compiled away&rdquo; in the translation to structural types, now hidden in the layout of the structural types. Those invariants now require extra theorems in order to prove that they hold.
+</p>
+
+<p>
+It&rsquo;s like modeling the entire object system in terms of the pure lambda calculus, just because we can and it simplifies the number of definitions in the language. It may reduce the number of core forms, but it trades simplicity of definition for complexity of theorems. A semantics is about modeling at the level of specification, not about clever representations.
+</p>
+
+<p>
+There are concrete technical issues as well. For example, there are places in the semantics where we <em>need</em> to distinguish nominal types from structural types: for example, how do you express the fact that a class can&rsquo;t extend a structural type? Also, it forces our hand in the decision of whether to allow recursive types.
+</p>
+
+<p>
+<strong>Recursive structural types</strong>
+</p>
+
+<p>
+I believe this may be possible, but it&rsquo;s significantly more complicated. The algorithms for recursive subtyping are intricate and not terribly efficient. The original algorithm of <a href="http://research.microsoft.com/Users/luca/Papers/SRT.pdf" class="urlextern" target="_blank" title="http://research.microsoft.com/Users/luca/Papers/SRT.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Amadio and Cardelli</a> is exponential, but <a href="http://www.cs.ucla.edu/~palsberg/paper/mscs95-kps.pdf" class="urlextern" target="_blank" title="http://www.cs.ucla.edu/~palsberg/paper/mscs95-kps.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Kozen, Palsberg, and Schwartzbach</a> give an O(n<sup>2</sup>) algorithm. I&rsquo;m not as concerned about efficiency, though, as complexness. These are not easy algorithms.
+</p>
+
+<p>
+There are a number of issues to consider when it comes to recursive structural types. I think I have solutions to most of the issues I&rsquo;ve come up with so far. 
+</p>
+<ul>
+<li class="level1"><div class="li"> We must restrict the language of types not to allow types without unique least fixed points such as <code>type T = T</code>. (solution: syntactic restriction on the &ldquo;type tree&rdquo;)</div>
+</li>
+<li class="level1"><div class="li"> We must have a decidable implementation of <code>is</code> that terminates even for cyclic data (solution: Amadio and Cardelli or Kozen, Palsberg and Schwarzbach)</div>
+</li>
+<li class="level1"><div class="li"> We probably need a reasonable runtime representation of recursive types for reflective operations such as <code>type(x)</code></div>
+<ul>
+<li class="level2"><div class="li"> higher-order abstract syntax (non-solution. too opaque; can&rsquo;t be compared for equality or subtyping)</div>
+</li>
+<li class="level2"><div class="li"> mu-types with explicit parameter names (non-solution. no practical or efficient notion of equivalence up to bound type parameter names)</div>
+</li>
+<li class="level2"><div class="li"> graphs (probably best solution, but may depend on subtyping algorithm)</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ I&rsquo;m not sure if there are issues related to generics as well &ndash; I still need to think about that.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x64%3B%26%23x68%3B%26%23x65%3B%26%23x72%3B%26%23x6d%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x63%3B%26%23x63%3B%26%23x73%3B%26%23x2e%3B%26%23x6e%3B%26%23x65%3B%26%23x75%3B%26%23x2e%3B%26%23x65%3B%26%23x64%3B%26%23x75%3B" class="mail" title="&#x64;&#x68;&#x65;&#x72;&#x6d;&#x61;&#x6e;&#x40;&#x63;&#x63;&#x73;&#x2e;&#x6e;&#x65;&#x75;&#x2e;&#x65;&#x64;&#x75;">Dave Herman</a> 2006/05/01 22:13</em>
+</p>
+
+<p>
+Your concrete objections to modelling nominal types as structural types with brands are convincing enough to me; consider my suggestion of it retracted. 
+</p>
+
+<p>
+I&rsquo;m glad you&rsquo;re giving thought to recursive structural types, or at least how best to phrase a prohibition of them.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x67%3B%26%23x72%3B%26%23x61%3B%26%23x79%3B%26%23x64%3B%26%23x6f%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x67;&#x72;&#x61;&#x79;&#x64;&#x6f;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">graydon</a> 2006/05/02 08:53</em>
+</p>
+
+</div>
+
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/c/c09be1c8f53b134ec0e3adcf5c5e189b.xhtml used -->
+</body>
+</html>

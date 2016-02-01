@@ -1,0 +1,75 @@
+====== OBSOLETE ======
+
+This proposal is superseded by [[syntax for type expressions]].
+
+====== Syntax for function types ======
+
+I have created this node because we need function type syntax and we should have a place to discuss it.  Please comment as appropriate.  --lars
+
+
+===== Type expression =====
+
+The syntax for the expression that names the type of a function is the same as the syntax for an anonymous function expression, //sans// body:
+
+    function-type ::= "function" "(" formals? ")" return-type?
+    formals ::= formal ("," formal)* ("," rest)? | rest
+    formal ::= ident (":" type)?
+    rest ::= "..." ident
+    return-type ::= ":" type
+
+The first formal parameter may use the keyword ''this'' in place of the identifier, in order to constrain the ''this'' type of the function.
+
+If a parameter, ''this'', or return type is declared without a type, its type is taken to be the top type ''*''.
+
+As Brendan(?) noted elsewhere, it may be necessary to parenthesize a function type in some contexts to disambiguate it syntactically.
+
+----
+
+Note: This syntax requires that every argument type have an associated "ident", even though that "ident" is redundant.
+
+ --- //[[cormac@soe.ucsc.edu|Cormac Flanagan]] 2006/04/18 14:30//
+
+It does, and that is not very nice.  I did it this way only because there's precedent set by the syntax for method definitions in interfaces, but perhaps that's false economy.  The names of methods in interfaces actually carry some meaning for the reader; the names in types might too, but rather less. 
+
+There are some minor parsing issues here, but I don't think they should be unmanageable, so I'm happy to clean up the proposal to make "ident :" optional (I think prohibiting them would be to go too far).
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/20 09:37//
+
+===== Mapping to the function type =====
+
+The mapping rules are unsurprising:
+
+  * A ''this'' parameter in the syntax does not show up in the list of argument types, but as the ''this'' type called ''tt'' in the type system notes.
+  * All other formals show up in the list of argument types.
+  * The return type in the syntax shows up in the type as the return type ''tr''.
+  * If a rest parameter is present in the syntax, then the ''a?'' flag in the type is set, and the last type in the argument list is ''Array''.
+
+The names of the arguments are not saved in the function type, technically they are not needed in the syntax either.
+
+===== Named types =====
+
+It is useful to name a function type.  The syntax for defining a type name that names a function type is the same as the syntax for a named function expression, //sans// body:
+
+    function-type-def ::= "function" ident "(" formals? ")" return-type?
+
+This syntax conflicts with the syntax for method definitions in interfaces.  However, since interface definitions only allow for method definitions, no other constructs, then the conflict is easily resolved in that the syntax continues to mean method definition inside interfaces.
+
+===== Parameterized types =====
+
+Parameterized types are not (yet) values, so it's not clear that any type syntax is needed for parameterized function types.
+
+===== Uses =====
+
+Function types can be used to annotate variables, constants, and the formal parameters and return value of functions.
+
+Bound methods have function types.
+
+===== Semantic issues =====
+
+//Equality//: Two function types are the same if they are elementwise (structurally) the same.
+
+//Subtyping//: A function type F is a subtype of another function type G provided they take the same number of arguments, each argument of G is a subtype of the corresponding argument of F, and F's return type is a subtype of G's return type.
+
+//Restrictions//: My academic credentials extend far enough to remember that there is some dodgy business with functions accepting or returning values with the same type as themselves, but not far enough to remember exactly what those problems might be in practice.  Certainly it will be the case that a function f of type t takes an argument of type t then the type lattice will no longer be a lattice, as it will have a cycle.
+
+Comments from type theoreticians would be especially welcome on this issue.

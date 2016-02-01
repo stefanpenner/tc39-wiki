@@ -1,0 +1,9 @@
+If we're adding [[proposals:meta objects]] to represent AST nodes, a useful extension (which makes writing the compiler tools vastly simpler) is to permit quoting literal AST nodes. For example, the ability to write ''quote(a+b)'', to denote the AST node you might get from a hypothetical set of AST-node constructors such as ''BinaryOp("+", Var("a"), Var("b"))''. 
+
+This has some overlap with [[proposals:macros]]: macro arguments are generally quotations.
+
+There are a few interesting variations on this theme:
+
+  * One is to permit user-defined quotation expanders, providing an escape hatch for alternative syntaxes .For example, the pantheon of ES3 literal types (XML, Regexps) could arguably be insulated from causing so much difficulty in the rest of the language if isolated inside "user level" quotation-expanders.
+  * Another is to statically type the contents of the quotation, such that a quotation is not simply an AST node (such as ''expr'') but may be an ''expr'' //of a type//, such as ''expr[int]''. This is common in camlp4, but requires [[proposals:type parameters]].
+  * Another is to permit antiquoting: substituting expressions from the quotation's environment into marked "holes" in the quotation, such as: ''var x = quote(a+b); var y = quote(foo(p, q, $expr:int{x} ))''

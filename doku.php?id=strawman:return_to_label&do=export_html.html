@@ -1,0 +1,164 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:return_to_label&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:return_to_label&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:return_to_label&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<p>
+<strong>Why:</strong> 
+</p>
+<ul>
+<li class="level1"><div class="li"> If <a href="doku.php%3Fid=strawman:lambdas.html" class="wikilink1" title="strawman:lambdas" onclick="return svchk()" onkeypress="return svchk()">lambda expressions</a> use the completion value but do not have a built-in <code>return</code>, then programmers will still need some way of aborting a computation with an early result.</div>
+</li>
+<li class="level1"><div class="li"> More generally, aborting a computation with an early result is useful anyway.</div>
+</li>
+<li class="level1"><div class="li"> And the idea of aborting a computation underlies several other features of the language, including <code>return</code>, <code>throw</code>, <code>break</code>, and <code>continue</code>. This might make it possible to define some of these features by desugaring into this one.</div>
+</li>
+<li class="level1"><div class="li"> Labeled statements and <code>return</code> already exist in the language, so syntactically this requires very little addition to the language.</div>
+</li>
+</ul>
+
+<p>
+ <strong>How:</strong> 
+</p>
+<ul>
+<li class="level1"><div class="li"> Add one more production to the grammar:</div>
+</li>
+</ul>
+<pre class="code ebnf">Statement ::= ... | return : Identifier (Expression)? ';'?
+</pre><ul>
+<li class="level1"><div class="li"> The label being returned to must be in scope (i.e., immediately preceding a statement in which the <code>return</code> statement is nested). Otherwise it is a static error.</div>
+</li>
+<li class="level1"><div class="li"> The dynamic return point associated with the label must still be live when the <code>return</code> statement is invoked; otherwise it is a dynamic error, i.e., an exception is raised.</div>
+</li>
+</ul>
+
+<p>
+ <strong>What:</strong> 
+</p>
+<ul>
+<li class="level1"><div class="li"> The evaluation of a labeled statement corresponds to marking a return point in the execution context.</div>
+</li>
+<li class="level1"><div class="li"> A return to the label attempts to unwind the execution context to the return point (if that point is still live), using the value of the return argument as the completion value of the labeled statement.</div>
+</li>
+<li class="level1"><div class="li"> If that point is not live, it does not unwind the context, but rather raises an exception.</div>
+</li>
+<li class="level1"><div class="li"> Unwinding the execution context may pass through finally blocks, which execute and may perform their own control effects, effectively canceling the unwinding.</div>
+</li>
+</ul>
+
+<p>
+ <strong>Examples:</strong>
+</p>
+
+<p>
+These two examples demonstrate that you can only return to a label that surrounds your current statement.
+</p>
+<pre class="code javascript">L: f<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+g<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+<span class="kw1">return</span> : L; <span class="co1">// error: invalid label</span></pre><pre class="code javascript"><span class="kw1">return</span> : L; <span class="co1">// error: invalid label</span>
+f<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+L: g<span class="br0">&#40;</span><span class="br0">&#41;</span>;</pre>
+<p>
+This example uses the completion value to produce a result.
+</p>
+<pre class="code javascript">exit: <span class="br0">&#123;</span>
+    let product = <span class="nu0">1</span>;
+    <span class="kw1">for</span> <span class="br0">&#40;</span>let i = <span class="nu0">0</span>; i &lt; a.<span class="me1">length</span>; i++<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">if</span> <span class="br0">&#40;</span>a<span class="br0">&#91;</span>i<span class="br0">&#93;</span> === <span class="nu0">0</span><span class="br0">&#41;</span>
+            <span class="kw1">return</span> : exit <span class="nu0">0</span>;
+        product *= a<span class="br0">&#91;</span>i<span class="br0">&#93;</span>;
+    <span class="br0">&#125;</span>
+    product
+<span class="br0">&#125;</span></pre>
+<p>
+This example cancels a computation without needing a result value.
+</p>
+<pre class="code javascript">cancel: <span class="br0">&#123;</span>
+    let x <span class="co1">// = ...</span>
+    <span class="kw1">for</span> <span class="br0">&#40;</span>let i = <span class="nu0">0</span>; i &lt; a.<span class="me1">length</span>; i++<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">if</span> <span class="br0">&#40;</span>a<span class="br0">&#91;</span>i<span class="br0">&#93;</span> === <span class="st0">'cancel'</span><span class="br0">&#41;</span>
+            <span class="kw1">return</span> : cancel;
+        x = munge<span class="br0">&#40;</span>a<span class="br0">&#91;</span>i<span class="br0">&#93;</span><span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span>
+    frobnicate<span class="br0">&#40;</span>x<span class="br0">&#41;</span>;
+    <span class="co1">// etc.</span>
+<span class="br0">&#125;</span>
+<span class="co1">// etc.</span></pre>
+<p>
+The following example raises an exception since the inner function attempts to return to a label that is no longer live:
+</p>
+<pre class="code javascript"><span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    L: <span class="br0">&#123;</span>
+        <span class="kw1">return</span> <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+            <span class="kw1">return</span> : L;
+        <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span>
+<span class="br0">&#125;</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="br0">&#41;</span></pre>
+<p>
+This example shows that even though labels are second-class (i.e., they aren&rsquo;t values), they can in fact be turned into first-class function values (i.e., <em>escape continuations</em>):
+</p>
+<pre class="code javascript"><span class="kw2">function</span> f<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    L: <span class="br0">&#123;</span>
+        let label = lambda<span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> : L x <span class="br0">&#125;</span>
+        <span class="co1">// etc.</span>
+    <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+The following is a naive and incorrect desugaring of <code>try body catch(e) handler</code>:
+</p>
+<pre class="code javascript">let $result = <span class="br0">&#40;</span>lambda<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> $THROW: body<span class="br0">&#91;</span><span class="kw1">throw</span> e |==&gt; <span class="kw1">return</span> : $THROW<span class="br0">&#40;</span><span class="kw2">new</span> Exception<span class="br0">&#40;</span>e<span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#93;</span> <span class="br0">&#125;</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+<span class="kw1">if</span> <span class="br0">&#40;</span>$result <span class="kw1">instanceof</span> Exception<span class="br0">&#41;</span>
+    <span class="br0">&#40;</span>lambda<span class="br0">&#40;</span>e<span class="br0">&#41;</span> handler<span class="br0">&#41;</span><span class="br0">&#40;</span>$result.<span class="me1">value</span><span class="br0">&#41;</span>
+<span class="kw1">else</span>
+    $result</pre>
+<p>
+The problem with this is that <code>throw</code> throws its exception to a <em>lexically</em> bound exception handler, rather than a <em>dynamically</em> bound exception handler.
+</p>
+
+<p>
+So to get a proper desugaring, we need to create a protocol that simulates dynamically binding the current exception handler:
+</p>
+<pre class="code javascript">let $result = <span class="br0">&#40;</span>lambda<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> $THROW: withHandler<span class="br0">&#40;</span>lambda<span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> : $THROW x <span class="br0">&#125;</span>, lambda<span class="br0">&#40;</span><span class="br0">&#41;</span> body<span class="br0">&#41;</span> <span class="br0">&#125;</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+<span class="kw1">if</span> <span class="br0">&#40;</span>$result <span class="kw1">instanceof</span> Exception<span class="br0">&#41;</span>
+    <span class="br0">&#40;</span>lambda<span class="br0">&#40;</span>e<span class="br0">&#41;</span> handler<span class="br0">&#41;</span><span class="br0">&#40;</span>$result.<span class="me1">value</span><span class="br0">&#41;</span>
+<span class="kw1">else</span>
+    $result</pre>
+<p>
+where <code>throw e</code> desugars to <code>raise(e)</code> and the <code>withHandler</code> and <code>raise</code> functions are defined as:
+</p>
+<pre class="code javascript">let <span class="br0">&#91;</span>withHandler, raise<span class="br0">&#93;</span> = <span class="br0">&#40;</span>lambda<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    let handler = lambda<span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="br0">&#123;</span> die<span class="br0">&#40;</span><span class="st0">'uncaught exception: '</span> + x<span class="br0">&#41;</span> <span class="br0">&#125;</span>;
+    lambda withHandler<span class="br0">&#40;</span>newHandler, body<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        let oldHandler = handler;
+        handler = newHandler;
+        let result = body<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+        handler = oldHandler;
+        result
+    <span class="br0">&#125;</span>
+    lambda raise<span class="br0">&#40;</span>x<span class="br0">&#41;</span>
+        handler<span class="br0">&#40;</span><span class="kw2">new</span> Exception<span class="br0">&#40;</span>x<span class="br0">&#41;</span><span class="br0">&#41;</span>
+    <span class="br0">&#91;</span>withHandler, raise<span class="br0">&#93;</span>
+<span class="br0">&#125;</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;</pre>
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/d/d7763ecaf0ed1e9065ffde836afc1477.xhtml used -->
+</body>
+</html>

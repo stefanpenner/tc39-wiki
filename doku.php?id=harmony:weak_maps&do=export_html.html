@@ -1,0 +1,600 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=harmony:weak_maps&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="http://wiki.ecmascript.org/feed.php?mode=list&amp;ns=harmony" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=harmony:weak_maps&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=harmony:weak_maps&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:weak_maps&amp;do=export_html.html#controversies" class="toc">Controversies</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:weak_maps&amp;do=export_html.html#weakmap" class="toc">WeakMap</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:weak_maps&amp;do=export_html.html#implementation_considerations" class="toc">Implementation Considerations</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:weak_maps&amp;do=export_html.html#abstract_gc_algorithm" class="toc">Abstract GC Algorithm</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:weak_maps&amp;do=export_html.html#discussion" class="toc">Discussion</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:weak_maps&amp;do=export_html.html#alternate_spec_based_on_ff6.0a1" class="toc">Alternate Spec based on FF6.0a1</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:weak_maps&amp;do=export_html.html#weakmap_patterns" class="toc">WeakMap Patterns</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:weak_maps&amp;do=export_html.html#soft_own_fields" class="toc">Soft Own Fields</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:weak_maps&amp;do=export_html.html#explicit_soft_own_fields" class="toc">Explicit Soft Own Fields</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:weak_maps&amp;do=export_html.html#inherited_soft_fields" class="toc">Inherited Soft Fields</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:weak_maps&amp;do=export_html.html#trademarking" class="toc">Trademarking</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:weak_maps&amp;do=export_html.html#unique_labeler" class="toc">Unique Labeler</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:weak_maps&amp;do=export_html.html#sealer_unsealer_pairs" class="toc">Sealer / Unsealer Pairs</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:weak_maps&amp;do=export_html.html#cycle-tolerant_graph_walking" class="toc">Cycle-tolerant graph walking</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:weak_maps&amp;do=export_html.html#accessing_handler_from_proxy" class="toc">Accessing handler from proxy</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:weak_maps&amp;do=export_html.html#see_also" class="toc">See Also</a></span></li>
+</ul>
+</div>
+</div>
+
+<p>
+<strong>This proposal has progressed to the Draft ECMAScript 6 Specification, which is available for review here: <a href="doku.php%3Fid=harmony:specification_drafts.html" class="wikilink1" title="harmony:specification_drafts" onclick="return svchk()" onkeypress="return svchk()">specification_drafts</a>. Any new issues relating to them should be filed as bugs at <a href="http://bugs.ecmascript.org" class="urlextern" target="_blank" title="http://bugs.ecmascript.org" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://bugs.ecmascript.org</a>. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.</strong>
+</p>
+
+<p>
+This proposal is inspired by ideas from Bosworth et.al.&rsquo;s <em><a href="http://doi.acm.org/10.1145/263698.263733" class="urlextern" target="_blank" title="http://doi.acm.org/10.1145/263698.263733" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Ephemerons</a></em>, in order to fix a memory leak present in many uses of weak-key tables. One of the more common uses for <a href="doku.php%3Fid=strawman:weak_references.html" class="wikilink1" title="strawman:weak_references" onclick="return svchk()" onkeypress="return svchk()">weak references</a> is non-enumerable weak-key tables, used to build <em>soft fields</em> as explained below. However, any weak-key table built only from weak references and finalization, when used for soft fields, results in a memory leak. From Ephemerons we get a better form of weak-key table that avoids this memory leak. (See also <a href="http://www.jucs.org/jucs_14_21/eliminating_cycles_in_weak/jucs_14_21_3481_3497_barros.pdf" class="urlextern" target="_blank" title="http://www.jucs.org/jucs_14_21/eliminating_cycles_in_weak/jucs_14_21_3481_3497_barros.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Eliminating Cycles in Weak Tables</a> which is similar to this proposal.)
+</p>
+
+<p>
+We specify the proposed <acronym title="Application Programming Interface">API</acronym> in terms of a new function: <code>WeakMap</code>. Pending an accepted <a href="doku.php%3Fid=strawman:modules.html" class="wikilink1" title="strawman:modules" onclick="return svchk()" onkeypress="return svchk()">modules</a> proposal, we do not yet specify in what namespace this function is found. With WeakMaps alone, garbage collection remains as unobservable as before &ndash; that is, unobservable until a program fails from memory exhaustion. Since <code>WeakMap</code> does not introduce any new source of non-determinism into the language, it may be made generally accessible without weakening the <em>confidentiality</em> issues of our <a href="doku.php%3Fid=strawman:gc_semantics.html" class="wikilink1" title="strawman:gc_semantics" onclick="return svchk()" onkeypress="return svchk()">gc_semantics</a>. The non-enumerability of our WeakMaps also enables aggressive collection to be <em>safe</em> without need for further specification. Regarding the <em>liveness</em> issues needed to calculate asymptotic space complexity, we present a pseudo-code GC algorithm <span class="curid"><a href="doku.php%3Fid=harmony:weak_maps.html#abstract_gc_algorithm" class="wikilink1" title="harmony:weak_maps" onclick="return svchk()" onkeypress="return svchk()">below</a></span>. Note that this algorithm is intended only to help specify space complexity. It has poor time complexity which actual implementations should avoid. 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+I think this would benefit from an overview of the key aspects of the design, e.g.: 
+</p>
+<ul>
+<li class="level1"><div class="li"> weak maps are unordered tables mapping objects to values</div>
+</li>
+<li class="level1"><div class="li"> neither keys nor values in a weak map are held strongly</div>
+</li>
+<li class="level1"><div class="li"> i.e., the presence of a mapping k &rArr; v in a reachable weak map m does not by itself make k or v reachable</div>
+</li>
+<li class="level1"><div class="li"> for each mapping k &rArr; v in a reachable weak map m, if k is reachable then v is reachable</div>
+</li>
+</ul>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x64%3B%26%23x68%3B%26%23x65%3B%26%23x72%3B%26%23x6d%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x63%3B%26%23x63%3B%26%23x73%3B%26%23x2e%3B%26%23x6e%3B%26%23x65%3B%26%23x75%3B%26%23x2e%3B%26%23x65%3B%26%23x64%3B%26%23x75%3B" class="mail" title="&#x64;&#x68;&#x65;&#x72;&#x6d;&#x61;&#x6e;&#x40;&#x63;&#x63;&#x73;&#x2e;&#x6e;&#x65;&#x75;&#x2e;&#x65;&#x64;&#x75;">Dave Herman</a> 2010/09/04 03:37</em>
+</p>
+
+<a name="controversies"></a><h2>Controversies</h2>
+<div class="level2">
+
+<p>
+ See <a href="doku.php%3Fid=strawman:allen_wirfs-brock_s_comments_on_ephemeron_table_proposal.html" class="wikilink1" title="strawman:allen_wirfs-brock_s_comments_on_ephemeron_table_proposal" onclick="return svchk()" onkeypress="return svchk()">Allen Wirfs-Brock's comments on Ephemeron Table Proposal</a> for comments on <a href="doku.php%3Fdo=revisions&amp;id=strawman:ephemeron_tables.html" class="urlextern" target="_blank" title="http://wiki.ecmascript.org/doku.php?do=revisions&amp;id=strawman:ephemeron_tables" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">revisions of the strawman</a> preceding May 2010. This proposal addresses Allen&rsquo;s comments.
+</p>
+
+<p>
+The <acronym title="Application Programming Interface">API</acronym> below achieves simplicity at the price of making a mapping to undefined indistinguishable from an absent association. As such, it provides an imperfect realization of soft fields. Alternatively, in addition to <code>get(key)</code> and <code>set(key, value)</code> we could provide <code>has(key)</code> and <code>delete(key)</code>. We have not yet decided which of these alternatives to adopt. The <a href="doku.php%3Fid=harmony:weak_maps&amp;do=export_html.html#explicit_soft_own_fields" title="harmony:weak_maps &crarr;" class="wikilink1">explicit_soft_own_fields</a> example below shows how to build the more complex <acronym title="Application Programming Interface">API</acronym> on the simpler one.
+</p>
+
+</div>
+<!-- SECTION [2563-3327] -->
+<a name="weakmap"></a><h1>WeakMap</h1>
+<div class="level1">
+
+<p>
+ This <acronym title="Application Programming Interface">API</acronym> breaks some crucial JavaScript behaviors. See discussion below for alternative <acronym title="Application Programming Interface">API</acronym> (still in progress).
+</p>
+<pre class="code javascript">  <span class="kw2">const</span> WeakMap<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="co1">// Leaky O(N) executable spec for what is hopefully a non-leaky O(1) implementation.</span>
+    <span class="kw2">const</span> keys = <span class="br0">&#91;</span><span class="br0">&#93;</span>;
+    <span class="kw2">const</span> values = <span class="br0">&#91;</span><span class="br0">&#93;</span>;
+    <span class="kw1">return</span> Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+      <span class="coMULTI">/** put the key,value association into the table */</span>
+      set: <span class="kw2">const</span><span class="br0">&#40;</span>key, value<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">if</span> <span class="br0">&#40;</span>key !== Object<span class="br0">&#40;</span>key<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> 
+          <span class="kw1">throw</span> <span class="kw2">new</span> TypeError<span class="br0">&#40;</span>...<span class="br0">&#41;</span>; <span class="co1">// key must not be a value type</span>
+        <span class="br0">&#125;</span>
+        let i = keys.<span class="me1">indexOf</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span>;
+        <span class="kw1">if</span> <span class="br0">&#40;</span>i &lt; <span class="nu0">0</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> i = keys.<span class="me1">length</span>; <span class="br0">&#125;</span>
+        keys<span class="br0">&#91;</span>i<span class="br0">&#93;</span> = key;
+        values<span class="br0">&#91;</span>i<span class="br0">&#93;</span> = value;
+      <span class="br0">&#125;</span>,
+      <span class="coMULTI">/** return whatever value was most recently associated with key, or undefined if absent. */</span>
+      get: <span class="kw2">const</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="co1">// since keys only contains non-value types, this works even if key is NaN or -0.</span>
+        <span class="kw2">const</span> i = keys.<span class="me1">indexOf</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span>;
+        <span class="kw1">return</span> i &lt; <span class="nu0">0</span> ? undefined : values<span class="br0">&#91;</span>i<span class="br0">&#93;</span>;
+      <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span></pre>
+<p>
+Notice that the weak map made by the above function is a non-enumerable map. Since it only accepts <code>key</code>s which are not value types, if a given <code>key</code> is not otherwise accessible, the <code>value</code> associated with that <code>key</code> is also not not reachable from the table.
+</p>
+
+<p>
+The code above depends on the <a href="doku.php%3Fid=strawman:const_functions.html" class="wikilink1" title="strawman:const_functions" onclick="return svchk()" onkeypress="return svchk()">const functions</a> strawman. Should this strawman not be accepted, then the above usage can be replaced by the expansion shown on that page.
+</p>
+
+</div>
+<!-- SECTION [3328-4775] -->
+<a name="implementation_considerations"></a><h1>Implementation Considerations</h1>
+<div class="level1">
+
+<p>
+ Since <code>get</code> returns <code>undefined</code> to indicate absence, one cannot distinguish between absence and a mapping to <code>undefined</code>. Therefore implementations should implement <code>table.set(k, undefined)</code> by removing the association for <code>k</code>.
+</p>
+
+<p>
+A weak map should
+</p>
+<ul>
+<li class="level1"><div class="li"> Work both within and between frames.</div>
+</li>
+<li class="level1"><div class="li"> Have O(1) time complexity measure with high probability.</div>
+</li>
+<li class="level1"><div class="li"> GC aside, a table should not have more than O(numberOfStoredKeys) space complexity.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [4776-5271] -->
+<a name="abstract_gc_algorithm"></a><h2>Abstract GC Algorithm</h2>
+<div class="level2">
+
+<p>
+ This abstract GC algorithm is needed only in order to specify reachability for purposes of <em>liveness</em> in our <a href="doku.php%3Fid=strawman:gc_semantics.html" class="wikilink1" title="strawman:gc_semantics" onclick="return svchk()" onkeypress="return svchk()">gc semantics</a>. For purposes of safety or confidentiality, it may be ignored.
+</p>
+
+<p>
+Since I can never remember the black/white polarity of traditional GC descriptions, I will use <em>retained</em> for black, <em>fringe</em> for gray, and <em>untraced</em> for white.
+</p>
+
+<p>
+At some arbitrary time &ndash; perhaps never, but prior to failing from storage exhaustion &ndash; initiate an <em>atomic</em> garbage collection. For each atomic garbage collection, suspend computation at a safe point. Color all roots fringe. Color all other objects untraced.
+</p>
+<pre class="code">
+ While any objects are fringe {
+  While any objects are fringe, pick a fringe object x {
+   If (x is the get() function of a weak map) {
+    Note this weak map.
+   } else {
+    For all y's directly reachable from x {
+      if y is untraced, color it fringe.
+    }
+   }
+   Color x retained.
+  }
+
+  For each noted weak map wm {
+   For each k,v pair in wm {
+    If k is retained and v is untraced, color v fringe
+   }
+  }
+ }
+</pre>
+
+<p>
+All untraced objects SHOULD eventually be collected, if needed to prevent failure from storage exhaustion. Our asymptotic space complexity is measured in terms of the storage occupied by the retained objects.
+</p>
+
+<p>
+See <a href="doku.php%3Fid=strawman:weak_references.html#abstract_gc_algorithm" class="wikilink1" title="strawman:weak_references" onclick="return svchk()" onkeypress="return svchk()">weak references abstract GC algorithm</a> for an elaboration of the above algorithm to account for the co-existence of weak references and weak maps. 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+A more declarative way of describing the semantics is just to describe the reachability relation, without giving an algorithm for computing it. For example, you might write:
+</p>
+<pre class="code">
+roots ⊢ reachable(x)    weak-map(x)   (k,v) in x   roots ⊢ reachable(k)
+-------------------------------------------------------------------------
+                      roots ⊢ reachable(v)
+</pre>
+
+<p>
+This is just the reachability rule for weak maps, and leaves out the definition of reachability for the rest of the language (as does the algorithm above). The spec doesn&rsquo;t need to go into great detail giving a full memory model for the language. I suspect we can leave the spec for weak maps pretty informal, but rather than giving a GC algorithm, I think it&rsquo;s sufficient and even clearer to say something like:
+</p>
+
+<p>
+<em>Weak maps do not contain strong references to their keys and values. Instead, weak maps extend the notion of reachability for garbage collection with the following rule: for each key-value pair (k,v) in a reachable weak map, if k is reachable then v is reachable.</em>
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x64%3B%26%23x68%3B%26%23x65%3B%26%23x72%3B%26%23x6d%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x63%3B%26%23x63%3B%26%23x73%3B%26%23x2e%3B%26%23x6e%3B%26%23x65%3B%26%23x75%3B%26%23x2e%3B%26%23x65%3B%26%23x64%3B%26%23x75%3B" class="mail" title="&#x64;&#x68;&#x65;&#x72;&#x6d;&#x61;&#x6e;&#x40;&#x63;&#x63;&#x73;&#x2e;&#x6e;&#x65;&#x75;&#x2e;&#x65;&#x64;&#x75;">Dave Herman</a> 2010/09/03 21:41</em>
+</p>
+
+</div>
+<!-- SECTION [5272-7930] -->
+<a name="discussion"></a><h1>Discussion</h1>
+<div class="level1">
+
+<p>
+ The current proposal breaks the following JavaScript idioms:
+</p>
+<pre class="code javascript">let m = <span class="kw2">new</span> WeakMap;
+assertTrue<span class="br0">&#40;</span>m <span class="kw1">instanceof</span> WeakMap<span class="br0">&#41;</span>;
+assertTrue<span class="br0">&#40;</span>WeakMap.<span class="me1">prototype</span>.<span class="me1">set</span> <span class="kw1">instanceof</span> <span class="kw2">Function</span><span class="br0">&#41;</span>
+assertTrue<span class="br0">&#40;</span>WeakMap.<span class="me1">prototype</span>.<span class="me1">get</span> <span class="kw1">instanceof</span> <span class="kw2">Function</span><span class="br0">&#41;</span></pre>
+<p>
+The following proposal is supposed to correct these issues without breaking any of the other properties of weak maps. It relies on <a href="doku.php%3Fid=strawman:names.html" class="wikilink1" title="strawman:names" onclick="return svchk()" onkeypress="return svchk()">names</a> for describing the semantics but that is just an implementation detail.
+</p>
+<pre class="code javascript"><span class="kw2">const</span> WeakMap = <span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="co1">// Leaky O(N) executable spec for what is hopefully a non-leaky O(1) implementation.</span>
+&nbsp;
+  <span class="kw2">const</span> keys = <span class="kw2">new</span> <span class="kw3">Name</span>;
+  <span class="kw2">const</span> values = <span class="kw2">new</span> <span class="kw3">Name</span>;
+&nbsp;
+  <span class="kw2">const</span> ensureKeysAndValues<span class="br0">&#40;</span>object<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">if</span> <span class="br0">&#40;</span>!object<span class="br0">&#91;</span>keys<span class="br0">&#93;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      object<span class="br0">&#91;</span>keys<span class="br0">&#93;</span> = <span class="br0">&#91;</span><span class="br0">&#93;</span>;
+      object<span class="br0">&#91;</span>values<span class="br0">&#93;</span> = <span class="br0">&#91;</span><span class="br0">&#93;</span>;
+    <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span>
+&nbsp;
+  <span class="kw2">const</span> WeakMap = <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="co1">// A real implementation would just make [[Call]] call [[Construct]]</span>
+    <span class="kw1">if</span> <span class="br0">&#40;</span>!<span class="br0">&#40;</span><span class="kw1">this</span> <span class="kw1">instanceof</span> WeakMap<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="kw2">new</span> WeakMap; <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span>;
+&nbsp;
+  <span class="kw2">const</span> proto = Object.<span class="me1">create</span><span class="br0">&#40;</span>Object.<span class="me1">prototype</span>, <span class="br0">&#123;</span>
+    <span class="coMULTI">/** put the key,value association into the table */</span>
+    set: <span class="br0">&#123;</span>
+      value: <span class="kw2">function</span><span class="br0">&#40;</span>key, value<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">if</span> <span class="br0">&#40;</span>key !== Object<span class="br0">&#40;</span>key<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+          <span class="kw1">throw</span> <span class="kw2">new</span> TypeError<span class="br0">&#40;</span>...<span class="br0">&#41;</span>; <span class="co1">// key must not be a value type</span>
+        <span class="br0">&#125;</span>
+        ensureKeysAndValues<span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>;
+        <span class="co1">// since keys only contains non-value types, this works even if key is NaN or -0.</span>
+        let i = <span class="kw1">this</span><span class="br0">&#91;</span>keys<span class="br0">&#93;</span>.<span class="me1">indexOf</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span>;
+        <span class="kw1">if</span> <span class="br0">&#40;</span>i &lt; <span class="nu0">0</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> i = <span class="kw1">this</span><span class="br0">&#91;</span>keys<span class="br0">&#93;</span>.<span class="me1">length</span>; <span class="br0">&#125;</span>
+          <span class="kw1">this</span><span class="br0">&#91;</span>keys<span class="br0">&#93;</span><span class="br0">&#91;</span>i<span class="br0">&#93;</span> = key;
+          <span class="kw1">this</span><span class="br0">&#91;</span>values<span class="br0">&#93;</span><span class="br0">&#91;</span>i<span class="br0">&#93;</span> = value;
+        <span class="br0">&#125;</span>
+      <span class="br0">&#125;</span>,
+      configurable: <span class="kw2">true</span>,
+      enumerable: <span class="kw2">false</span>,
+      writable: <span class="kw2">true</span>
+    <span class="br0">&#125;</span>,
+&nbsp;
+    <span class="coMULTI">/** return whatever value was most recently associated with key, or undefined if absent. */</span>
+    get: <span class="br0">&#123;</span>
+      value: <span class="kw2">function</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">if</span> <span class="br0">&#40;</span>!<span class="kw1">this</span><span class="br0">&#91;</span>keys<span class="br0">&#93;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> undefined; <span class="br0">&#125;</span>
+        <span class="kw2">const</span> i = <span class="kw1">this</span><span class="br0">&#91;</span>keys<span class="br0">&#93;</span>.<span class="me1">indexOf</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span>;
+        <span class="kw1">return</span> i &lt; <span class="nu0">0</span> ? undefined : <span class="kw1">this</span><span class="br0">&#91;</span>values<span class="br0">&#93;</span><span class="br0">&#91;</span>i<span class="br0">&#93;</span>;
+      <span class="br0">&#125;</span>,
+      configurable: <span class="kw2">true</span>,
+      enumerable: <span class="kw2">false</span>,
+      writable: <span class="kw2">true</span>
+    <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span>;
+&nbsp;
+  Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>WeakMap, <span class="st0">'prototype'</span>, <span class="br0">&#123;</span>
+    value: proto,
+    configurable: <span class="kw2">false</span>,
+    enumerable: <span class="kw2">false</span>,
+    writable: <span class="kw2">false</span>
+  <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+&nbsp;
+  <span class="kw1">return</span> WeakMap;
+<span class="br0">&#125;</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;</pre>
+</div>
+<!-- SECTION [7931-10105] -->
+<a name="alternate_spec_based_on_ff6.0a1"></a><h2>Alternate Spec based on FF6.0a1</h2>
+<div class="level2">
+
+<p>
+ The Firefox 6.0a1 (Nightly) alpha has a WeakMap implementation that merges Arv&rsquo;s suggestion above &ndash; to move the WeakMap methods onto WeakMap.prototype &ndash; with the explicit soft own field pattern below, which adds <code>has</code> and <code>delete</code> methods to the <code>get</code> and <code>set</code> defined above. As an experiment, here we use the notation from <a href="doku.php%3Fid=strawman:classes_with_trait_composition.html" class="wikilink1" title="strawman:classes_with_trait_composition" onclick="return svchk()" onkeypress="return svchk()">classes_with_trait_composition</a> as a specification tool. This allows us to explain the internal properties we would really spec by using the class-private instance variables supported by this classes strawman.
+</p>
+
+<p>
+Two further differences, matching the Firefox implementation: <code>get</code> takes an optional defaultValue as second argument, and <code>delete</code> returns a boolean saying whether it deleted anything. Note that this is different from the boolean returned by the <code>delete</code> operator, which returns true if there was nothing to delete.
+</p>
+<pre class="code javascript">  <span class="kw2">const</span> <span class="kw2">class</span> WeakMap <span class="br0">&#123;</span>
+    <span class="kw2">private</span> keys;
+    <span class="kw2">private</span> vals;
+    <span class="kw2">new</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw2">private</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>.<span class="me1">keys</span> = <span class="br0">&#91;</span><span class="br0">&#93;</span>;
+      <span class="kw2">private</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>.<span class="me1">vals</span> = <span class="br0">&#91;</span><span class="br0">&#93;</span>;
+    <span class="br0">&#125;</span>
+    get<span class="br0">&#40;</span>key, defaultValue = undefined<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">if</span> <span class="br0">&#40;</span>key !== Object<span class="br0">&#40;</span>key<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">throw</span> <span class="kw2">new</span> TypeError<span class="br0">&#40;</span>...<span class="br0">&#41;</span>; <span class="co1">// key must be an object</span>
+      <span class="br0">&#125;</span>
+      <span class="kw2">const</span> i = <span class="kw2">private</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>.<span class="me1">keys</span>.<span class="me1">indexOf</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span>;
+      <span class="kw1">return</span> i &lt; <span class="nu0">0</span> ? defaultValue : <span class="kw2">private</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>.<span class="me1">values</span><span class="br0">&#91;</span>i<span class="br0">&#93;</span>;
+    <span class="br0">&#125;</span>
+    has<span class="br0">&#40;</span>key<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">if</span> <span class="br0">&#40;</span>key !== Object<span class="br0">&#40;</span>key<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">throw</span> <span class="kw2">new</span> TypeError<span class="br0">&#40;</span>...<span class="br0">&#41;</span>; <span class="co1">// key must be an object</span>
+      <span class="br0">&#125;</span>
+      <span class="kw1">return</span> <span class="kw2">private</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>.<span class="me1">keys</span>.<span class="me1">indexOf</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span> &gt;= <span class="nu0">0</span>;
+    <span class="br0">&#125;</span>
+    set<span class="br0">&#40;</span>key, val<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">if</span> <span class="br0">&#40;</span>key !== Object<span class="br0">&#40;</span>key<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">throw</span> <span class="kw2">new</span> TypeError<span class="br0">&#40;</span>...<span class="br0">&#41;</span>; <span class="co1">// key must be an object</span>
+      <span class="br0">&#125;</span>
+      <span class="kw2">const</span> keys = <span class="kw2">private</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>.<span class="me1">keys</span>;
+      <span class="kw2">const</span> vals = <span class="kw2">private</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>.<span class="me1">vals</span>;
+      let i = keys.<span class="me1">indexOf</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span>;
+      <span class="kw1">if</span> <span class="br0">&#40;</span>i &lt; <span class="nu0">0</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> i = keys.<span class="me1">length</span>; <span class="br0">&#125;</span>
+      keys<span class="br0">&#91;</span>i<span class="br0">&#93;</span> = key;
+      vals<span class="br0">&#91;</span>i<span class="br0">&#93;</span> = val;
+    <span class="br0">&#125;</span>
+    <span class="kw1">delete</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">if</span> <span class="br0">&#40;</span>key !== Object<span class="br0">&#40;</span>key<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">throw</span> <span class="kw2">new</span> TypeError<span class="br0">&#40;</span>...<span class="br0">&#41;</span>; <span class="co1">// key must be an object</span>
+      <span class="br0">&#125;</span>
+      <span class="kw2">const</span> keys = <span class="kw2">private</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>.<span class="me1">keys</span>;
+      <span class="kw2">const</span> vals = <span class="kw2">private</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>.<span class="me1">vals</span>;
+      <span class="kw2">const</span> i = keys.<span class="me1">indexOf</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span>;
+      <span class="kw1">if</span> <span class="br0">&#40;</span>i &lt; <span class="nu0">0</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="kw2">false</span>; <span class="br0">&#125;</span>
+      keys.<span class="me1">splice</span><span class="br0">&#40;</span>i, <span class="nu0">1</span><span class="br0">&#41;</span>;
+      vals.<span class="me1">splice</span><span class="br0">&#40;</span>i, <span class="nu0">1</span><span class="br0">&#41;</span>;
+      <span class="kw1">return</span> <span class="kw2">true</span>;          
+    <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [10106-12303] -->
+<a name="weakmap_patterns"></a><h1>WeakMap Patterns</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [12304-12338] -->
+<a name="soft_own_fields"></a><h2>Soft Own Fields</h2>
+<div class="level2">
+<pre class="code javascript">  <span class="kw2">const</span> field = WeakMap<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+  <span class="co1">//...</span>
+  field.<span class="me1">set</span><span class="br0">&#40;</span>k, v<span class="br0">&#41;</span>; <span class="co1">// like k[field] = v;</span>
+  <span class="co1">//...</span>
+  ...<span class="me1">field</span>.<span class="me1">get</span><span class="br0">&#40;</span>k<span class="br0">&#41;</span>...; <span class="co1">// like ...k[field]...</span></pre>
+<p>
+In other words, for objects which are not value types, soft own fields have similarities to own expando properties, where the property &ldquo;name&rdquo; is anonymous, unforgeable, and not obtainable from the &ldquo;expanded&rdquo; object. Unlike expandos, soft own fields can virtually expand frozen objects, since they rely only on the object in question having a unique identity.
+</p>
+
+</div>
+<!-- SECTION [12339-12883] -->
+<a name="explicit_soft_own_fields"></a><h2>Explicit Soft Own Fields</h2>
+<div class="level2">
+
+<p>
+ The emulation of soft field above is missing one feature compared to own properties &ndash; the ability to distinguish undefined from absence. The following shows how to build this more explicit form of soft field from weak maps.
+</p>
+<pre class="code javascript">  <span class="kw2">const</span> ExplicitSoftOwnField<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">const</span> et = WeakMap<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+    <span class="kw2">const</span> mascot = <span class="br0">&#123;</span><span class="br0">&#125;</span>; <span class="co1">// fresh and encapsulated, so differs from any possible provided value.</span>
+    <span class="kw1">return</span> Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+      get: <span class="kw2">const</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw2">const</span> result = et.<span class="me1">get</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span>;
+        <span class="kw1">return</span> result === mascot ? undefined : result;
+      <span class="br0">&#125;</span>,
+      set: <span class="kw2">const</span><span class="br0">&#40;</span>key, val<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        et.<span class="me1">set</span><span class="br0">&#40;</span>key, val === undefined ? mascot : val<span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span>,
+      has: <span class="kw2">const</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">return</span> et.<span class="me1">get</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span> !== undefined;
+      <span class="br0">&#125;</span>,
+      <span class="kw1">delete</span>: <span class="kw2">const</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        et.<span class="me1">set</span><span class="br0">&#40;</span>key, undefined<span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;</pre>
+</div>
+<!-- SECTION [12884-13723] -->
+<a name="inherited_soft_fields"></a><h2>Inherited Soft Fields</h2>
+<div class="level2">
+
+<p>
+ The previous pattern is labeled &ldquo;Soft Own Fields&rdquo; because, unlike true expandos, such soft fields are not inherited. This is readily repaired:
+</p>
+<pre class="code javascript">  <span class="kw2">const</span> InheritedSoftField<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">const</span> et = WeakMap<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+    <span class="kw1">return</span> Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+      get: <span class="kw2">const</span><span class="br0">&#40;</span>base<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">while</span> <span class="br0">&#40;</span>base !== <span class="kw2">null</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+          <span class="kw2">const</span> result = et.<span class="me1">get</span><span class="br0">&#40;</span>base<span class="br0">&#41;</span>;
+          <span class="kw1">if</span> <span class="br0">&#40;</span>result !== undefined<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> result; <span class="br0">&#125;</span>
+          base = Object.<span class="me1">getPrototypeOf</span><span class="br0">&#40;</span>base<span class="br0">&#41;</span>;
+        <span class="br0">&#125;</span>
+        <span class="kw1">return</span> undefined;
+      <span class="br0">&#125;</span>,
+      set: et.<span class="me1">set</span>
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span></pre>
+<p>
+Clearly, since implementations have already optimized inherited property lookup, a built-in implementation of <code>SoftField</code> might reuse that work in order to benefit from those optimizations. Such soft field might then perform as well as actual expandos.
+</p>
+
+<p>
+The <a href="doku.php%3Fid=strawman:inherited_explicit_soft_fields.html" class="wikilink1" title="strawman:inherited_explicit_soft_fields" onclick="return svchk()" onkeypress="return svchk()">inherited explicit soft fields</a> strawman combines explicitness and inheritance.
+</p>
+
+</div>
+<!-- SECTION [13724-14638] -->
+<a name="trademarking"></a><h2>Trademarking</h2>
+<div class="level2">
+
+<p>
+ Trademarks are generative nominal types, where the right to brand an object with a given trademark is distinct from the right to check whether an object is branded by that trademark.
+</p>
+<pre class="code javascript">  <span class="kw2">const</span> Trademark<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">const</span> et = WeakMap<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+    <span class="kw1">return</span> Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+      stamp: <span class="kw2">const</span><span class="br0">&#40;</span>obj<span class="br0">&#41;</span> <span class="br0">&#123;</span> et.<span class="me1">set</span><span class="br0">&#40;</span>obj, <span class="kw2">true</span><span class="br0">&#41;</span>; <span class="br0">&#125;</span>,
+      has: <span class="kw2">const</span><span class="br0">&#40;</span>obj<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> !!et.<span class="me1">get</span><span class="br0">&#40;</span>obj<span class="br0">&#41;</span>; <span class="br0">&#125;</span>,
+      guard: <span class="kw2">const</span><span class="br0">&#40;</span>obj<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">if</span> <span class="br0">&#40;</span>!et.<span class="me1">get</span><span class="br0">&#40;</span>obj<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">throw</span> <span class="kw2">new</span> TypeError<span class="br0">&#40;</span>..<span class="br0">&#41;</span>; <span class="br0">&#125;</span>
+      <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span></pre>
+<p>
+Trademarks are useful in the absence of classes. However, as a simple demonstration of their utility, we show here how they could enhance the <a href="doku.php%3Fid=strawman:classes.html" class="wikilink1" title="strawman:classes" onclick="return svchk()" onkeypress="return svchk()">classes</a> proposal.
+</p>
+
+<p>
+Given the above <code>Trademark</code> function, classes could unforgeably trademark their instances. We would likewise enhance the <a href="doku.php%3Fid=strawman:types.html" class="wikilink1" title="strawman:types" onclick="return svchk()" onkeypress="return svchk()">types</a> proposal to check these trademarks. For example
+</p>
+<pre class="code javascript">  <span class="kw2">class</span> Point<span class="br0">&#40;</span>x, y<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">public</span> getX<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> x; <span class="br0">&#125;</span>
+    <span class="kw2">public</span> getY<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> y; <span class="br0">&#125;</span>
+    <span class="kw2">public</span> add<span class="br0">&#40;</span>other :Point<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">return</span> Point<span class="br0">&#40;</span>x + other.<span class="me1">getX</span><span class="br0">&#40;</span><span class="br0">&#41;</span>,
+                   y + other.<span class="me1">getY</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span></pre>
+<p>
+could expand to
+</p>
+<pre class="code javascript">  <span class="kw2">const</span> Point = <span class="br0">&#40;</span><span class="kw2">const</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span>
+    <span class="kw2">const</span> PointTrademark = Trademark<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+    <span class="kw2">function</span> Point<span class="br0">&#40;</span>x, y<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw2">const</span> getX<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> x; <span class="br0">&#125;</span>
+      <span class="kw2">const</span> getY<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> y; <span class="br0">&#125;</span>
+      <span class="kw2">const</span> add<span class="br0">&#40;</span>other<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        Point.<span class="me1">guard</span><span class="br0">&#40;</span>other<span class="br0">&#41;</span>; <span class="co1">//non-exceptional exit implies success</span>
+        <span class="kw1">return</span> Point<span class="br0">&#40;</span>x + other.<span class="me1">getX</span><span class="br0">&#40;</span><span class="br0">&#41;</span>,
+                     y + other.<span class="me1">getY</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span>
+      <span class="kw2">const</span> result = Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span>getX, getY, add<span class="br0">&#125;</span><span class="br0">&#41;</span>;
+      PointTrademark.<span class="me1">stamp</span><span class="br0">&#40;</span>result<span class="br0">&#41;</span>;
+      <span class="kw1">return</span> result;
+    <span class="br0">&#125;</span>
+    Point.<span class="me1">has</span> = PointTrademark.<span class="me1">has</span>;
+    Point.<span class="me1">guard</span> = PointTrademark.<span class="me1">guard</span>;
+    Object.<span class="me1">freeze</span><span class="br0">&#40;</span>Point.<span class="me1">prototype</span><span class="br0">&#41;</span>;
+    <span class="kw1">return</span> Object.<span class="me1">freeze</span><span class="br0">&#40;</span>Point<span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;</pre>
+</div>
+<!-- SECTION [14639-16396] -->
+<a name="unique_labeler"></a><h2>Unique Labeler</h2>
+<div class="level2">
+<pre class="code javascript">  <span class="kw2">const</span> Labeler<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">const</span> et = WeakMap<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+    let count = <span class="nu0">0</span>;
+    <span class="kw1">return</span> Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+      label: <span class="kw2">const</span><span class="br0">&#40;</span>obj<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw2">const</span> result = et.<span class="me1">get</span><span class="br0">&#40;</span>obj<span class="br0">&#41;</span>;
+        <span class="kw1">if</span> <span class="br0">&#40;</span>result<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> result; <span class="br0">&#125;</span>
+        et.<span class="me1">set</span><span class="br0">&#40;</span>obj, ++count<span class="br0">&#41;</span>;
+        <span class="kw1">return</span> count;
+      <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span></pre>
+<p>
+Each labeler instance labels objects in the order in which it is first asked to label them. For example, a labeler might assign labels for purposes of serializing an object graph while maintaining relative uniqueness.
+</p>
+
+</div>
+<!-- SECTION [16397-16937] -->
+<a name="sealer_unsealer_pairs"></a><h2>Sealer / Unsealer Pairs</h2>
+<div class="level2">
+<pre class="code javascript">  <span class="kw2">const</span> SealerUnsealerPair<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">const</span> et = WeakMap<span class="br0">&#40;</span><span class="kw2">true</span><span class="br0">&#41;</span>;
+    <span class="kw1">return</span> Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+      seal: <span class="kw2">const</span><span class="br0">&#40;</span>cargo<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw2">const</span> box = Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;
+        et.<span class="me1">set</span><span class="br0">&#40;</span>box, cargo<span class="br0">&#41;</span>;
+        <span class="kw1">return</span> box;
+      <span class="br0">&#125;</span>,
+      unseal: et.<span class="me1">get</span>
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span></pre>
+<p>
+Such sealer/unsealer pairs are a basic rights amplification primitive with a logic similar to public key encryption; though <a href="http://www.erights.org/history/morris73.pdf" class="urlextern" target="_blank" title="http://www.erights.org/history/morris73.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">invented in 1973</a>.
+</p>
+<pre class="code javascript">  <span class="kw2">const</span> <span class="br0">&#123;</span>seal, unseal<span class="br0">&#125;</span> = SealerUnsealerPair<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+  ...
+  <span class="kw2">const</span> can = seal<span class="br0">&#40;</span><span class="st0">'Tuna'</span><span class="br0">&#41;</span>;
+  ...
+  <span class="kw2">const</span> cargo = unseal<span class="br0">&#40;</span>can<span class="br0">&#41;</span>; <span class="co1">// 'Tuna'</span></pre>
+</div>
+<!-- SECTION [16938-17591] -->
+<a name="cycle-tolerant_graph_walking"></a><h2>Cycle-tolerant graph walking</h2>
+<div class="level2">
+
+<p>
+ Say we wanted to walk all objects reachable from the global (window) object by property traversal and accumulate a list of all property names we encounter. In ES5 itself, we have a problem: How do we keep track of which objects we&rsquo;ve already visited? We can&rsquo;t store a &ldquo;visited&rdquo; property on the visited objects, as some of them may be frozen. Our only choice is to keep the visited ones in an array and check (using <code>===</code> or <code>indexOf</code>) whether an object we&rsquo;re visiting is already present. Unfortunately, this turns an operation that should be O(1) into O(N). It turns our graph walking algorithm from approx O(N) to approx O(N**2). For this use, weak maps aren&rsquo;t necessary. Any object-identity-keyed table will do, including weak maps. For other graph walking algorithms, where the traversal is spread out in time and interleaved with graph mutations, then weak maps may be necessary.
+</p>
+<pre class="code javascript">  <span class="kw2">const</span> allPropNames<span class="br0">&#40;</span>root<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">const</span> props = Object.<span class="me1">create</span><span class="br0">&#40;</span><span class="kw2">null</span><span class="br0">&#41;</span>;
+    <span class="kw2">const</span> seen = WeakMap<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+    <span class="kw2">const</span> recur<span class="br0">&#40;</span>node<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">if</span> <span class="br0">&#40;</span>node !== Object<span class="br0">&#40;</span>node<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span>; <span class="br0">&#125;</span>
+      <span class="kw1">if</span> <span class="br0">&#40;</span>seen.<span class="me1">get</span><span class="br0">&#40;</span>node<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span>; <span class="br0">&#125;</span>
+      seen.<span class="me1">set</span><span class="br0">&#40;</span>node, <span class="kw2">true</span><span class="br0">&#41;</span>;
+      recur<span class="br0">&#40;</span>Object.<span class="me1">getPrototypeOf</span><span class="br0">&#40;</span>node<span class="br0">&#41;</span><span class="br0">&#41;</span>;
+      Object.<span class="me1">getOwnPropertyNames</span><span class="br0">&#40;</span>node<span class="br0">&#41;</span>.<span class="me1">forEach</span><span class="br0">&#40;</span><span class="kw2">const</span><span class="br0">&#40;</span><span class="kw3">name</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        props<span class="br0">&#91;</span><span class="kw3">name</span><span class="br0">&#93;</span> = <span class="kw2">true</span>;
+        recur<span class="br0">&#40;</span>node<span class="br0">&#91;</span><span class="kw3">name</span><span class="br0">&#93;</span><span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span>
+    recur<span class="br0">&#40;</span>root<span class="br0">&#41;</span>;
+    <span class="kw1">return</span> Object.<span class="me1">keys</span><span class="br0">&#40;</span>props<span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [17592-19007] -->
+<a name="accessing_handler_from_proxy"></a><h2>Accessing handler from proxy</h2>
+<div class="level2">
+
+<p>
+ The example at <a href="doku.php%3Fid=harmony:proxies.html#accessing_handler_from_proxy" class="wikilink1" title="harmony:proxies" onclick="return svchk()" onkeypress="return svchk()">accessing_handler_from_proxy</a> uses weak maps together with catchall proxies.
+</p>
+
+</div>
+<!-- SECTION [19008-19162] -->
+<a name="see_also"></a><h1>See Also</h1>
+<div class="level1">
+
+<p>
+ The original <a href="http://portal.acm.org/citation.cfm?id=263698.263733" class="urlextern" target="_blank" title="http://portal.acm.org/citation.cfm?id=263698.263733" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Ephemerons: A new finalization mechanism</a> by Barry Hayes.
+</p>
+
+<p>
+<a href="http://www.jucs.org/jucs_14_21/eliminating_cycles_in_weak/jucs_14_21_3481_3497_barros.pdf" class="urlextern" target="_blank" title="http://www.jucs.org/jucs_14_21/eliminating_cycles_in_weak/jucs_14_21_3481_3497_barros.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Eliminating Cycles in Weak Tables</a> in Lua, by Barros &amp; Ierusalimschy.
+</p>
+
+<p>
+<a href="http://www.haskell.org/~simonmar/papers/weak.pdf" class="urlextern" target="_blank" title="http://www.haskell.org/~simonmar/papers/weak.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow"> Stretching the Storage Manager: Weak Pointers and Stable Names in Haskell</a> by Simon Peyton Jones, Simon Marlow, and Conal Elliott.
+</p>
+
+<p>
+<a href="http://cs-people.bu.edu/jhallett/papers/ismm08-hallett.pdf" class="urlextern" target="_blank" title="http://cs-people.bu.edu/jhallett/papers/ismm08-hallett.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Formal Semantics of Weak References</a> by Donnelly, Hallett, and Kfoury.
+</p>
+
+<p>
+<a href="http://code.google.com/p/es-lab/downloads/detail?name=et.pdf" class="urlextern" target="_blank" title="http://code.google.com/p/es-lab/downloads/detail?name=et.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Slides</a> for presentation on ephemeron tables (aka weak maps) to the EcmaScript committee, May 2010.
+</p>
+
+<p>
+<a href="doku.php%3Fid=strawman:inherited_explicit_soft_fields.html" class="wikilink1" title="strawman:inherited_explicit_soft_fields" onclick="return svchk()" onkeypress="return svchk()">inherited explicit soft fields</a>
+</p>
+
+<p>
+Felix Lee&rsquo;s <a href="https://mail.mozilla.org/pipermail/es-discuss/2011-March/013241.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2011-March/013241.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">linear-time weak-map gc</a> algorithm 
+</p>
+
+</div>
+<!-- SECTION [19163-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/c/cf358db2a539208e5b00d10f480a6c37.xhtml used -->
+</body>
+</html>

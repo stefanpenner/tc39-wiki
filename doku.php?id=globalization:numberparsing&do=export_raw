@@ -1,0 +1,58 @@
+====== Intl.NumberFormat Parse method ======
+
+===== Introduction =====
+
+The existing parseInt function works well for integers, but it fails to recognize proper decimal digit delimiters or thousand separators for a given locale. It also doesn't recognize non-latin digits, like 'arab'.
+
+===== Goals =====
+
+Provide a function that is locale sensitive and can deal with decimal points and separators, and different numbering systems.
+
+==== Non-goals ====
+
+   * Expect only digits and negative/positive signs (no alpha, like currency code) 
+   * If there are grouping separators they have to be in proper positions or completely missing 
+   * We are not planing support for currency and percent parsing
+
+===== Design =====
+
+We would add a new method to the Intl.NumberFormat object, that would accept a string and try to parse it given the rules of the formatter.
+
+<code javascript>
+/**
+ * strNum {string} - required parameter, string to parse, base 10
+ * returns {number} - returns a Number if string could be parsed, or undefined otherwise
+ */
+Intl.NumberFormat.prototype.parse(strNum)
+</code>
+
+Examples:
+<code javascript>
+var nf = Intl.NumberFormat('de');
+
+// thousand separator and decimal comma.
+// Grouping separators are valid and in proper place.
+var result1 = nf.parse('123.345,34');   // result1 = 123345.34
+
+// thousand separator is ignored in decimal part
+var result2 = nf.parse('123,345.34');   // result2 = 123.34534
+
+// no thousand separator
+var result3 = nf.parse('123345,34');    // result3 = 123345.34
+
+// trailing non-digits are not ignored
+var result4 = nf.parse('123,34 euro');  // result4 = undefined
+
+// preceeding non-digits are not ignored
+var result5 = nf.parse('EUR123,34');    // result5 = undefined
+
+// negative numbers are supported
+var result7 = nf.parse('-123.34');      // result7 = -123.34
+</code>
+
+Parsing numbers from non-latin digit set:
+<code javascript>
+var nf = Intl.NumberFormat('ar');
+
+var result = nf.parse('٢١٣٫٣٢-');  // result = -213.32
+</code>

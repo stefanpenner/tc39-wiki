@@ -1,0 +1,72 @@
+====== Introduction ======
+
+From time to time, the ECMA TC39 committee or some other standards body introduces a standard object that a compliant ECMAScript implementation must provide. An example is the [[strawman:weak_references]] proposal, whereby the provided object(s) allow the code using them to sense information (in this case, about the garbage collector). Other use cases might involve new bindings for objects in Web browsers providing new forms of network access.
+
+Introducing these objects into the topmost lexical scope is problematic because, every time this is done, some existing code may be affected. Furthermore, there is no agreed-upon namespacing convention for these objects.
+
+====== Goals ======
+
+__Minimal intrusion into topmost scope.__ Ideally, this proposal would be the last additional item introduced by TC39 or any like-minded organization into the topmost scope of ECMAScript programs.
+
+__Subsetting.__ The objects to be managed by this proposal carry nontrivial powers. It should be trivially possible to create a subset of these powers by selecting, for some new piece of code, a subset of the provided objects.
+
+__No name collision.__ The names used as keys in this proposal must reasonably be expected to not collide with one another. Since the entire starting state is under the control of a single implementation, this goal basically says that the organizations defining bindings per the proposed mechanism must have a way to cooperatively agree on the names they use.
+
+====== Non-goals ======
+
+__Provide a general registry for arbitrary components.__ The object discussed here is not intended to be modified by client code (though it should be trivially subsettable). This object is only intended to provide system-level access to the first program that runs in an ECMAScript interpreter.
+
+====== Proposal ======
+
+A new top-level ECMAScript object is defined called:
+
+<code javascript>System</code>
+
+This object will contain all the ECMAScript primordials as top-level properties:
+
+<code javascript>System.Array
+System.Object
+System.Function
+...</code>
+
+Future objects will also be top-level properties:
+
+<code javascript>System.WeakPtr
+System.WeakMap
+...</code>
+
+Objects defined by other organizations will follow a dotted reverse domain name scheme reflecting the organization which defined it. For example:
+
+<code javascript>System.org.w3c.document
+System.org.w3c.window
+...</code>
+
+A program can trivially construct a subset of the ''System'' object as follows:
+
+<code javascript>var mySystem = {
+  Array: System.Array,
+  Object: System.Object,
+  org: {
+    w3c: {
+      document: System.org.w3c.document
+    }
+  }
+};</code>
+
+====== Variants ======
+
+Instead of a hierarchy of objects, an alternative would provide flat names with arbitrary (perhaps hierarchical) structure, like:
+
+<code javascript>System['org/w3c/document']
+System['org/w3c/window']
+...</code>
+
+The advantage of this scheme would be that it could be more easily traversed and subsetted. The disadvantage is that it would require two distinct usages: string literals in square brackets for the "long" cases, while the "short" names could still be accessed as ''System.Array'' and ''System.Object''.
+
+====== Open issues ======
+
+  * The exact grammar and candidate ECMA-262 text is not yet specified.
+
+====== References ======
+
+  * [[http://www.knopflerfish.org/osgi_service_tutorial.html]] -- The OSGi service model.

@@ -1,0 +1,190 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:syntax_for_function_types&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:syntax_for_function_types&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:syntax_for_function_types&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:syntax_for_function_types&amp;do=export_html.html#obsolete" class="toc">OBSOLETE</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:syntax_for_function_types&amp;do=export_html.html#syntax_for_function_types" class="toc">Syntax for function types</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:syntax_for_function_types&amp;do=export_html.html#type_expression" class="toc">Type expression</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:syntax_for_function_types&amp;do=export_html.html#mapping_to_the_function_type" class="toc">Mapping to the function type</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:syntax_for_function_types&amp;do=export_html.html#named_types" class="toc">Named types</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:syntax_for_function_types&amp;do=export_html.html#parameterized_types" class="toc">Parameterized types</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:syntax_for_function_types&amp;do=export_html.html#uses" class="toc">Uses</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:syntax_for_function_types&amp;do=export_html.html#semantic_issues" class="toc">Semantic issues</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="obsolete"></a><h1>OBSOLETE</h1>
+<div class="level1">
+
+<p>
+ This proposal is superseded by <a href="doku.php%3Fid=proposals:syntax_for_type_expressions.html" class="wikilink1" title="proposals:syntax_for_type_expressions" onclick="return svchk()" onkeypress="return svchk()">syntax for type expressions</a>.
+</p>
+
+</div>
+<!-- SECTION [1-89] -->
+<a name="syntax_for_function_types"></a><h1>Syntax for function types</h1>
+<div class="level1">
+
+<p>
+ I have created this node because we need function type syntax and we should have a place to discuss it.  Please comment as appropriate.  &ndash;lars
+</p>
+
+</div>
+<!-- SECTION [90-276] -->
+<a name="type_expression"></a><h2>Type expression</h2>
+<div class="level2">
+
+<p>
+ The syntax for the expression that names the type of a function is the same as the syntax for an anonymous function expression, <em>sans</em> body: 
+</p>
+<pre class="code">  function-type ::= &quot;function&quot; &quot;(&quot; formals? &quot;)&quot; return-type?
+  formals ::= formal (&quot;,&quot; formal)* (&quot;,&quot; rest)? | rest
+  formal ::= ident (&quot;:&quot; type)?
+  rest ::= &quot;...&quot; ident
+  return-type ::= &quot;:&quot; type</pre>
+
+<p>
+ The first formal parameter may use the keyword <code>this</code> in place of the identifier, in order to constrain the <code>this</code> type of the function.
+</p>
+
+<p>
+If a parameter, <code>this</code>, or return type is declared without a type, its type is taken to be the top type <code>*</code>.
+</p>
+
+<p>
+As Brendan(?) noted elsewhere, it may be necessary to parenthesize a function type in some contexts to disambiguate it syntactically. 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+Note: This syntax requires that every argument type have an associated &ldquo;ident&rdquo;, even though that &ldquo;ident&rdquo; is redundant.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x63%3B%26%23x6f%3B%26%23x72%3B%26%23x6d%3B%26%23x61%3B%26%23x63%3B%26%23x40%3B%26%23x73%3B%26%23x6f%3B%26%23x65%3B%26%23x2e%3B%26%23x75%3B%26%23x63%3B%26%23x73%3B%26%23x63%3B%26%23x2e%3B%26%23x65%3B%26%23x64%3B%26%23x75%3B" class="mail" title="&#x63;&#x6f;&#x72;&#x6d;&#x61;&#x63;&#x40;&#x73;&#x6f;&#x65;&#x2e;&#x75;&#x63;&#x73;&#x63;&#x2e;&#x65;&#x64;&#x75;">Cormac Flanagan</a> 2006/04/18 14:30</em>
+</p>
+
+<p>
+It does, and that is not very nice.  I did it this way only because there&rsquo;s precedent set by the syntax for method definitions in interfaces, but perhaps that&rsquo;s false economy.  The names of methods in interfaces actually carry some meaning for the reader; the names in types might too, but rather less. 
+</p>
+
+<p>
+There are some minor parsing issues here, but I don&rsquo;t think they should be unmanageable, so I&rsquo;m happy to clean up the proposal to make &ldquo;ident :&rdquo; optional (I think prohibiting them would be to go too far).
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/04/20 09:37</em>
+</p>
+
+</div>
+<!-- SECTION [277-1810] -->
+<a name="mapping_to_the_function_type"></a><h2>Mapping to the function type</h2>
+<div class="level2">
+
+<p>
+ The mapping rules are unsurprising: 
+</p>
+<ul>
+<li class="level1"><div class="li"> A <code>this</code> parameter in the syntax does not show up in the list of argument types, but as the <code>this</code> type called <code>tt</code> in the type system notes.</div>
+</li>
+<li class="level1"><div class="li"> All other formals show up in the list of argument types.</div>
+</li>
+<li class="level1"><div class="li"> The return type in the syntax shows up in the type as the return type <code>tr</code>.</div>
+</li>
+<li class="level1"><div class="li"> If a rest parameter is present in the syntax, then the <code>a?</code> flag in the type is set, and the last type in the argument list is <code>Array</code>.</div>
+</li>
+</ul>
+
+<p>
+ The names of the arguments are not saved in the function type, technically they are not needed in the syntax either.
+</p>
+
+</div>
+<!-- SECTION [1811-2447] -->
+<a name="named_types"></a><h2>Named types</h2>
+<div class="level2">
+
+<p>
+ It is useful to name a function type.  The syntax for defining a type name that names a function type is the same as the syntax for a named function expression, <em>sans</em> body: 
+</p>
+<pre class="code">  function-type-def ::= &quot;function&quot; ident &quot;(&quot; formals? &quot;)&quot; return-type?</pre>
+
+<p>
+ This syntax conflicts with the syntax for method definitions in interfaces.  However, since interface definitions only allow for method definitions, no other constructs, then the conflict is easily resolved in that the syntax continues to mean method definition inside interfaces.
+</p>
+
+</div>
+<!-- SECTION [2448-3005] -->
+<a name="parameterized_types"></a><h2>Parameterized types</h2>
+<div class="level2">
+
+<p>
+ Parameterized types are not (yet) values, so it&rsquo;s not clear that any type syntax is needed for parameterized function types.
+</p>
+
+</div>
+<!-- SECTION [3006-3164] -->
+<a name="uses"></a><h2>Uses</h2>
+<div class="level2">
+
+<p>
+ Function types can be used to annotate variables, constants, and the formal parameters and return value of functions.
+</p>
+
+<p>
+Bound methods have function types.
+</p>
+
+</div>
+<!-- SECTION [3165-3337] -->
+<a name="semantic_issues"></a><h2>Semantic issues</h2>
+<div class="level2">
+
+<p>
+ <em>Equality</em>: Two function types are the same if they are elementwise (structurally) the same.
+</p>
+
+<p>
+<em>Subtyping</em>: A function type F is a subtype of another function type G provided they take the same number of arguments, each argument of G is a subtype of the corresponding argument of F, and F&rsquo;s return type is a subtype of G&rsquo;s return type.
+</p>
+
+<p>
+<em>Restrictions</em>: My academic credentials extend far enough to remember that there is some dodgy business with functions accepting or returning values with the same type as themselves, but not far enough to remember exactly what those problems might be in practice.  Certainly it will be the case that a function f of type t takes an argument of type t then the type lattice will no longer be a lattice, as it will have a cycle.
+</p>
+
+<p>
+Comments from type theoreticians would be especially welcome on this issue. 
+</p>
+
+</div>
+<!-- SECTION [3338-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/3/3abc43ae26043aa3bd400bec8f8cef50.xhtml used -->
+</body>
+</html>

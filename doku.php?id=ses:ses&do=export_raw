@@ -1,0 +1,69 @@
+====== Secure ECMAScript ======
+
+See [[SES Proposal Working Draft]], a proposal to TC39-TG1 for a secure ECMAScript dialect based on the "MountainView" version of the ECMAScript 3.1 Specification.
+----
+
+*  [[ses:kona|The Kona Suggestions]]
+
+The design of the ECMAScript Programming Language got a lot of things right. It combined functions and prototypes with a familiar syntax that is surprisingly expressive. ECMAScript displaced Java as the language of the web browser. Its popularity is now propelling it into other venues, such as widget systems and scriptable applications.
+
+Unfortunately, ECMAScript's design did not anticipate the security requirements of an open networked platform. ECMAScript's design is the root cause of a class of exploits that are collectively known as XSS that can subject casual web users to identity theft and other maladies. ECMAScript's design is the biggest obstacle to mashups, a powerful program construction and reuse pattern that is likely to be the next leap forward in software technology. Mashups are the key to the next generation of web applications.
+
+ECMAScript's security weaknesses are not the result of bugs, although many bugs are present in the language's design, specification, and implementations. The root of the weaknesses lies in the Global Object. The existence of the Global Object gives all scripts, regardless of their origin or intentions, the same capabilities. 
+
+All of the major web sites, and many of the minor web sites, are feeling the pain. They have always been at risk due to security mishaps. But now important new initiatives are being frustrated because of the inherent dangers. 
+
+The current work within TC39 to define a fourth edition of ECMAScript does not address these critical security issues. The goals of that project were set before the mashup security issues were widely recognized within the ECMAScript community. As a result, the proposed design is not responsive to the urgent needs of the community.
+
+===== Current Work =====
+
+There are several efforts currently going on to produce safe ECMAScript dialects. Three that have been made public are ADsafe, Google's Caja, and Facebook's FBJS. All three take the approach of defining a subset of ECMAScript that is considered safe and that can also be executed in current ECMAScript engines. Caja and FBJS are transformers. They modify programs by renaming variables and properties, and by inserting runtime checks to prevent direct access to the Global Object or other dangerous capabilities. The transformers will reject programs that cannot be transformed into safe ones. ADsafe does not do transformations. Instead it performs a mechanical check on a program, assuring that it can be run safely. ADsafe defines a smaller subset than Caja or FBJS, but has the advantage that the programs it accepts run unaltered.
+
+The assumption behind all three is that there is a safe language inside of ECMAScript that can be obtained by removing the language's worst features. None of these efforts promise to pass all current programs. Programs must be written to the new rules. These rules begin to impose a capability discipline on the language. Such discipline is not possible when programs have direct access to the Global Object.
+
+These austere subsets all amplify the pain of programming, but they do show a reasonable starting point. We should start with a secure core language, and then carefully add conveniences without introducing insecurity, complexity, or confusion.
+
+
+===== Capabilities =====
+
+The Object-Capability Model comes down to the management of object references. A function is only capable of interacting with objects for which it has references. References can be found in the function's //context//. New references can be obtained by //introduction//, either passed as parameters or returned from other functions, or obtained from shared objects. A reference to a new object is obtained by //creating// a new object. There must be no other way to obtain references. References cannot be obtained from global variables. References cannot be taken by force from a function.
+
+The first step in securing ECMAScript is to remove all features that could be used to obtained references except by context, introduction, or construction. Capability leakage cannot be tolerated. The design should also prevent collusion, which would allow two programs that have not been given the capability to communication a means of exchanging references. The mutability of function objects is a problem here.
+
+Compilation units must be completely isolated from each other. Each unit, when initialized, should return an object that describes its role and contains capabilities to its public methods. A system holds these sets of capabilities, and performs introductions, linking the units together.
+
+Compilation units must be able to cooperate after they are introduced, but introduction must not lead to compromise.
+
+===== Expression =====
+
+The next step is to cautiously add features that make capabilities easier to manage or make programming more expressive. Examples include support for object immutability, so that untrusted programs can be given references to objects as well as functions, and support for arrays so that collections can be handled as easily as single objects.
+
+===== Design Process =====
+
+Minimalism is a critical aspect of a secure language. Minimalism is not something that committees do well.
+
+So I think the best way to proceed is with a competition, similar to the competition that produced Ada. TC39 should produce a requirements document that bounds the design. It will require a solution to the Mashup Problem, allowing two programs from two sources, cooperating in the same web page, each holding its own secrets, without having to trust each other. If a program is constructed with capability discipline, it should not be possible for another mashup component to misappropriate its data or references, or confuse it into acting against its own interest. The language must not be subject to any form of XSS attack.
+
+The competition would happen in a number of phases. After each phase, the competitors may refine their designs, influenced by the other designs. This might result in convergence, but it might not.
+
+In the last phase, implementations will be tested. Any design that is subject to capability leakage will be eliminated.
+
+The surviving designs are then subject to a beauty pageant. Candidates will be judged by TC39 on beauty, expressiveness, and minimalness. The winner is adopted as Secure ECMAScript (name subject to change). TC39 would produce the final specification.
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2008/01/09 18:19//
+
+
+
+===== SES (Secure ECMAScript) Design Experiment =====
+
+Design an Object Capability Programming Language by removing or repairing features in ES5/Strict.
+
+It should be possible to write useful programs that produce the same result running as ES5/Strict and SES.
+
+It is not required that all ES5/Strict programs can run as SES.
+
+New features should be considered for SES only if they are likely to be included in ES-Harmony.
+
+There should be a straight-forward translation from SES to ES5/Strict.
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2009/05/29 17:11//

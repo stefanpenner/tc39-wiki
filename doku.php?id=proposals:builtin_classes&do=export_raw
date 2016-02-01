@@ -1,0 +1,491 @@
+This is a simple brute force attempt to write the ECMA-262 builtin classes using the new language.
+
+(The contents of this page has mostly been superseded by what's now in the reference implementation repository.)
+
+(Also see the [[discussion:builtin_classes|discussion page]] for this proposal)
+
+====== ECMA-262.15 Reminders ======
+
+  * Every builtin function and ctor has ''%%[[Prototype]]%% = Function.prototype''.
+  * Every builtin prototype has ''%%[[Prototype]]%% = Object.prototype'', except ''Object.prototype''.
+  * Builtin functions do not have a ''prototype'' property unless stated otherwise.
+  * Every function has ''length'' {RO,DE,DD} with number of formal parameters including optional parameters.
+  * All properties are {DE} unless otherwise specified.
+
+====== Invented Syntax ======
+
+By default, declared properties inside a class are {DontEnum,DontDelete}, and are part of the type constraint for the class type, instance type, or prototype that they're on.
+
+  * ''dynamic'': means {!DontDelete}, in effect describing the initial state of an object that can change at runtime.
+  * ''prototype'': means the property is declared on ''C.prototype'', and if the decl is a function, the function is unbound.  Where a property is declared is orthagonal to whether its bound, however its mostly useless to have a bound prototype function, so prototype will imply unbound.
+  * ''static'': means the property is declared on C itself, not ''C.prototype'' or instances of C.
+  * ''this:T'' if given as the first parameter of an unbound (prototype or anonymous) function, the type of ''this'' is constrained to ''T''.  Error on bound (instance) functions.  In ''static'' functions, use of ''this'' is an error.
+  * anonymous and global functions have ''this:Object'' by default
+  * {DE} = {DontEnum}
+  * {DD} = {DontDelete}
+  * {RO} = {ReadOnly}
+
+<code>
+class C 
+{
+    prototype function f()	// {DD,DE,RO} unbound, on prototype, this:C
+    function		        // {DD,DE,RO} bound to instance, this:C
+    static function             // {DD,DE,RO} bound to C, this causes error
+    dynamic prototype function g(this:Object)  // {DE}, generic dynamic prototype function, e.g. Array.slice()
+}
+</code>
+
+
+We also use some namespaces to imagine how host-specific properties might be declared.  This is mainly to point out host-specific behaviors that are important, and less to propose that hosts actually use namespaces for their specific properties.  Although that may be a good idea.
+
+<code>
+namespace SpiderMonkey
+namespace ActionScript
+namespace JScriptNET
+</code>
+
+
+
+
+
+====== Open Issues ======
+
+
+  * Class itself is sealed, but all the builtin objects in E262 are dynamic.  Should all class objects be dynamic?  This would be unfortunate for usability, but legacy code requires it... specifically, "function Foo(){}; Foo.bar = 3;" is not legal in Tamarin but is required for web compatibility. We'd prefer user-defined classes be sealed with respect by default, but builtin E262 objects must be unsealed. Deferred until we can get Edwin's opinion.
+
+  * C.prototype is not exactly the same type as an instance of C.  Is it an implicit subclass?
+
+  * What, exactly, is Math?  if it's a singleton class, how to limit access to its constructor?  In ECMA-262, it's an object, so it's dynamic.  But class objects are not dynamic.  If it's a singleton object, how to declare its methods in an early-bindable way?  Should it be a package?  (Discussed/resolved in http://bugs.ecmascript-lang.org/ticket/8.)
+
+  * How can Number.toString(radix) take an optional parameter if it is to override Object.toString()?  Either it's not overriding, but proto-function-hiding, or else we must allow override functions to add optional parameters.  Proposal: allow override to add parameters.  If optional parameters are initialized in the function body, rather than at the call site, then the implementation is straightforward.
+
+  * where does C.prototype.constructor.name get set?
+
+  * Douglass Crockford [[http://www.crockford.com/javascript/recommend.html|recommended]] we should support dots in function names, like this <code> function myClass.prototype.myMethod() {...} </code> Translating to our "invented syntax" it might look like this <code> class myClass { function prototype.myMethod() {} } </code> Since ''prototype'' is invented for this effort, which syntax do we like better?  Doug's syntax implies that ''prototype'' in the function declartion isnt an attribute but rather a lexical reference to a class property.  Should that work on any class property?  Can arbitrary expressions be used there?
+
+
+====== Resolved Issues ======
+
+  * Several vararg functions have ''length > 0'' in E262, but their behavior is tied to the number of args only, as if there were no formal parameters.  In other words, calling with no args is not the same as calling with 1 or more args equal to their default values.  Resolved: Bug in E262.  ''f.length'' should be the number of required and optional formal parameters, not counting this, and not counting rest args.   Individual cases are marked with a comment.
+ 
+  * Writing generic functions as <code> dynamic prototype var f = function() </code> is too subtle a way to creat unbound functions.  Resolved: allow ''this:T'' to de-constrain the type of ''this'' <code> dynamic prototype function f(this:Object) </code>
+
+
+  * In ECMA-262, global properties ''undefined'', ''NaN'', etc, are ''var'' {DE,DD}, but ''Number'' constants are ''const'' {DD,DE,RO}.  Resolution: make the globals ''const'' {DE,DD,RO} too.
+
+  * We agreed to use ''intrinsic'' as the namespace for ''call'' and ''construct'' methods needed to override invocation and construction-via-''new'' defaults.  If ''static'' in a class, these override the class called as a function, and via ''new'', respectively.  If not ''static'', they define how an instance is invoked or ''new''ed.
+
+  * For ''this:T'' T have be C or a superclass of C.
+
+  * if ''class'' keyword creates a Class, then ''C.%%[[Prototype]]%% == Class.prototype''. To maintain compatibility with E262, which requires it to be''Function.prototype'', a get/set pair will be used to reroute it to appear to be ''Function.prototype''.
+
+  * If a runtime has a single set of host objects exposed to ECMA-262 code and ECMAScript 4 code, old code may see a new global Class constructor; however, this is deemed acceptable because it implies that a partial code migration has occurred and thus potential name collisions will have to be checked for and resolved. However, because Function.prototype has a getter that returns the "ClassClosure" prototype, Function will still always appear to be a Function instance, not a Class instance.
+
+  * ''String'' is currently marked ''final'' in AS3 but this may not be a good choice for ES4, as subclassing String may be a desirable thing.  **Resolved**: "String" is non-final but its subclass "string" is final.
+
+
+
+====== Globals ======
+
+<code>
+// {DE,DD,RO} properties of the global object.  These were {DD,DE} var in ECMA-262
+const NaN
+const Infinity
+const undefined
+
+// {DE} functions on the global object
+// issue: this isn't E3-esque at all, maybe function implies dynamic at top level
+dynamic function eval(x)
+dynamic function parseInt(string, radix)
+dynamic function parseFloat(string)
+dynamic function isNaN(number)
+dynamic function isFinite(number)
+dynamic function decodeURI(encodedURI)
+dynamic function decodeURIComponent(encodedURIComponent)
+dynamic function encodeURI(uri)
+dynamic function encodeURIComponent(uriComponent)
+</code>
+
+
+
+====== Object ======
+
+<code>
+dynamic class Object
+{
+	static intrinsic function call(v)
+	/*
+           I'm not sure what this is trying to do, but neither this nor C is bound for a static -- help?
+           --- //[[brendan@mozilla.org|Brendan Eich]] 2006/11/16 12:14//
+
+        static intrinsic function construct()
+	{
+		this.[[Class]] = C.[[Classname]]  // eg "Array" or "Date"
+		this.[[Prototype]] = C.prototype
+	}
+        */
+
+	// non-generic unbound {DE} properties of Object.prototype
+	// (generic or not is the same since all types extend Object)
+	dynamic prototype function toString(this:Object)		
+	dynamic prototype function hasOwnProperty(this:Object, V)
+	dynamic prototype function isPrototypeOf(this:Object, V)
+	dynamic prototype function propertyIsEnumerable(this:Object, V)
+
+	// properties of Object instances	
+	const [[Class]]		// name of most derived type
+	
+        // bound {DE,DD} accessors
+	SpiderMonkey function get __proto__() { return [[Prototype]] }
+	SpiderMonkey function set __proto__(o) { [[Prototype]] = o }   // check for a cycle, throw Error if so
+
+        // ECMA-262 doesn't expose __proto__ and it's internally readonly
+	private const [[Prototype]]
+
+	// bound {DD,DE,RO} properties of Object instances
+	ActionScript prototype function toString()
+}
+</code>
+
+====== Class ======
+
+<code>
+// ISSUE do we need class Class or can class Function be extended
+// to support builtin functions and user defined / anonymous functions?
+class Class
+{
+	// class setup, invoked when class object is created
+	function Class()
+	{
+                // implicit super() is Object ctor, which sets this.[[Prototype]] = Class.prototype
+
+                // create this class's prototype object		
+		this.prototype = new this() // in E3 prototypes are instances of class
+		this.prototype.constructor = this
+		this.prototype.[[Prototype]] = this.[[BaseClass]].prototype
+	}
+
+	// {RO,DD,DE} properties of Class objects 
+	const prototype						
+}
+</code>
+
+====== Function ======
+
+<code>
+dynamic class Function
+{
+        // Function constructor called as a function
+        static intrinsic function call()
+
+	// non-generic unbound {DE} properties of Function.prototype 
+	dynamic prototype function toString(this:Function)
+	dynamic prototype function apply(this:Function, thisArg, argArray)
+	dynamic prototype function call(this:Function, thisArg, ...args)
+
+	// {DE,DD} properties of function instances
+	const length		// {RO}, number of args
+	var prototype
+	
+        // bound {DD,DE,RO} methods of function instances
+	function [[HasInstance]](V)		// implements instanceof
+}
+</code>
+
+====== Array ======
+
+<code>
+dynamic class Array
+{
+        // the Array constructor called as a function
+        static intrinsic function call()
+
+	// non-generic unbound {DE} properties of Array.prototype
+	dynamic prototype function toString(this:Array)
+	dynamic prototype function toLocaleString(this:Array)
+
+	// bound {DE,DD,RO} methods 
+	ActionScript function toString()
+	ActionScript function toLocaleString()
+
+	// generic unbound {DE} properties of Array.prototype
+	dynamic prototype function concat(this:Object, ...items)
+	dynamic prototype function join(this:Object, separator)
+	dynamic prototype function pop(this:Object)
+	dynamic prototype function push(this:Object, ...items)
+	dynamic prototype function reverse(this:Object)
+	dynamic prototype function shift(this:Object)
+	dynamic prototype function slice(this:Object, start, end)
+	dynamic prototype function sort(this:Object, comparefn)
+	dynamic prototype function splice(this:Object, start, deleteCount, ...items)
+	dynamic prototype function unshift(this:Object, ...items) // length=0, bug in E262 that unshift.length=1
+
+	// bound {DE,DD} properties of Array instances 	
+        function get length()
+	function set length(v)
+
+        // bound internal methods of Array instances
+	function [[Put]](P,V)
+}
+</code>
+
+====== String ======
+
+<code>
+dynamic class String
+{
+        // the String constructor called as a function
+        static intrinsic function call()
+        static intrinsic function construct()   // does not necessarily construct anything!
+
+	// unbound {DE} properties of String constructor (this is not used)
+        // E3 bug: fromCharCode.length=1, but should be 0 since behavior is strictly based on # args
+	dynamic static function fromCharCode(...chars)
+	
+	// bound equivalent {DD,DE,RO}
+	ActionScript static function fromCharCode(...chars)
+
+	// Edwin: dynamic static sounds weird, but the meaning is clear
+        // Jeff: can only use dynamic on unsealed objects.
+        // In ES3 all objects are unsealed so it is okay, but not so in ES4
+
+	// non generic unbound {DE} properties of String.prototype
+
+	dynamic prototype function toString(this:String)
+	dynamic prototype function valueOf(this:String)
+
+	// generic unbound {DE} properties of String.prototype
+	dynamic prototype function charAt(this:Object, pos)
+	dynamic prototype function charCodeAt(this:Object, pos)
+	dynamic prototype function concat(this:Object, ...strings)
+	dynamic prototype function indexOf(this:Object, searchString, position)
+	dynamic prototype function lastIndexOf(this:Object, searchString, position)
+	dynamic prototype function localeCompare(this:Object, that)
+	dynamic prototype function match(this:Object, regexp)
+	dynamic prototype function replace(this:Object, searchValue, replaceValue)
+	dynamic prototype function search(this:Object, regexp)
+	dynamic prototype function slice(this:Object, start, end)
+	dynamic prototype function split(this:Object, separator, limit)
+	dynamic prototype function substring(this:Object, start, end)
+	dynamic prototype function toLowerCase(this:Object)
+	dynamic prototype function toLocaleLowerCase(this:Object)
+	dynamic prototype function toUpperCase(this:Object)
+	dynamic prototype function toLocaleUpperCase(this:Object)
+
+	// bound {DE,DD,RO} properties of String instances
+	function get length()
+        // or const length?
+}
+</code>
+
+====== Boolean ======
+
+<code>
+dynamic class Boolean
+{
+        // Boolean constructor called as a function
+        static intrinsic function call()
+
+	// non-generic {DE} properties of Boolean.prototype
+	dynamic prototype function toString(this:Boolean)
+	dynamic prototype function valueOf(this:Boolean)
+}
+</code>
+
+====== Number ======
+
+<code>
+dynamic class Number
+{
+        // Number constructor called as a function
+        static intrinsic function call()
+        
+	// properties of the Number Constructor {DE,DD,RO}
+        // note: these are const in E3, even though global.undefined, etc, are vars.
+	static const MAX_VALUE
+	static const MIN_VALUE
+	static const NaN
+	static const NEGATIVE_INFINITY
+	static const POSITIVE_INFINITY
+
+	// non-generic unbound {DE} properties of Number.prototype
+	dynamic prototype function toString(this:Number, radix=10) // not a simple override: adds radix param
+	dynamic prototype function toLocaleString(this:Number)
+	dynamic prototype function valueOf(this:Number)
+	dynamic prototype function toFixed(this:Number, fractionDigits)
+	dynamic prototype function toExponential(this:Number, fractionDigits)
+	dynamic prototype function toPrecision(this:Number, precision)
+}
+</code>
+
+====== Math ======
+
+<code>
+// Math is a singleton object, not a class, but has the type "Math"
+// which suggests a private Math class that created the singleton.
+var Math = new private::Math
+private dynamic class Math
+{
+	// {DE,DD,RO} value properties of the Math object
+	const E	
+	const LN10	
+	const LN2	
+	const LOG2E	
+	const LOG10E
+	const PI	
+	const SQRT1_2
+	const SQRT2	
+
+	// unbound {DE}, function properties of the Math object.  
+        // this is unused
+	dynamic function abs(x)
+	dynamic function acos(x)
+	dynamic function asin(x)
+	dynamic function atan(x)
+	dynamic function atan2(x,y)
+	dynamic function ceil(x)
+	dynamic function cos(x)
+	dynamic function exp(x)
+	dynamic function floor(x)
+	dynamic function log(x)
+	dynamic function pow(x,y)
+	dynamic function random()
+	dynamic function round(x)
+	dynamic function sin(x)
+	dynamic function sqrt(x)
+	dynamic function tan(x)
+
+        // in ECMA-262, max.length==min.length==2.  But, the actual behavior is
+        // based on arg count even with 0 or 1 args.   decision: bug in ECMA-262 spec.
+	dynamic function max(...values)
+	dynamic function min(...values)
+
+        // high performance runtimes want bound math functions
+        ActionScript function sqrt(x)
+}
+</code>
+
+====== Date ======
+
+<code>
+dynamic class Date
+{
+        // Date called as function
+	static instrinsic function call(year=0, month=0, date=0, hours=0, minutes=0, seconds=0, ms=0):String
+
+        // Date called as constructor... overloads based on arg count
+	function Date(yearOrTime=NaN, month=NaN, date=NaN, hours=NaN, minutes=NaN, seconds=NaN, ms=NaN)
+
+	// properties of the Date Constructor
+	static function parse(string)
+	static function UTC(year, month, date=NaN, hourse=NaN, minutes=NaN, seconds=NaN, ms=NaN)
+
+	Date.prototype = new Date(NaN) // not same as new Date()
+
+	// non-generic unbound {DE} properties of Date.prototype 
+	dynamic prototype function toString(this:Date)
+	dynamic prototype function toDateString(this:Date)
+	dynamic prototype function toTimeString(this:Date)
+	dynamic prototype function toLocaleString(this:Date)
+	dynamic prototype function toLocaleDateString(this:Date)
+	dynamic prototype function toLocaleTimeString(this:Date)
+	dynamic prototype function toUTCString(this:Date)
+	dynamic prototype function valueOf(this:Date)
+	dynamic prototype function getTime(this:Date)
+	dynamic prototype function getFullYear(this:Date)
+	dynamic prototype function getUTCFullYear(this:Date)
+	dynamic prototype function getMonth(this:Date)
+	dynamic prototype function getUTCMonth(this:Date)
+	dynamic prototype function getDate(this:Date)
+	dynamic prototype function getUTCDate(this:Date)
+	dynamic prototype function getDay(this:Date)
+	dynamic prototype function getUTCDay(this:Date)
+	dynamic prototype function getHours(this:Date)
+	dynamic prototype function getUTCHours(this:Date)
+	dynamic prototype function getMinutes(this:Date)
+	dynamic prototype function getUTCMinutes(this:Date)
+	dynamic prototype function getSeconds(this:Date)
+	dynamic prototype function getUTCSeconds(this:Date)
+	dynamic prototype function getMilliseconds(this:Date)
+	dynamic prototype function getUTCMilliseconds(this:Date)
+	dynamic prototype function getTimezoneOffset(this:Date)
+	dynamic prototype function setTime(this:Date, time)
+	dynamic prototype function setMilliseconds(this:Date, ms)
+	dynamic prototype function setUTCMilliseconds(this:Date, ms)
+	dynamic prototype function setSeconds(this:Date, sec, ms=getMilliseconds())
+	dynamic prototype function setUTCSeconds(this:Date, sec, ms=getUTCMilliseconds())
+	dynamic prototype function setMinutes(this:Date, min, sec=getUTCSeconds(), ms=getMilliseconds())
+	dynamic prototype function setUTCMinutes(this:Date, min, sec=getUTCSeconds(), ms=getUTCMilliseconds())
+	// yada yada
+	// setHours, setUTCHours
+	// setDate, setUTCDate
+	// setMonth, setUTCMonth
+	// setFullYear, setUTCFullYear
+}
+</code>
+
+====== RegExp ======
+
+<code>
+dynamic class RegExp
+{
+	// RegExp called as function
+	static intrinsic function call(pattern,flags)	// called as function, eg RegExp()
+	function RegExp(pattern,flags)			// regexp constructor eg new RegExp
+
+        intrinsic function call()                       // instance of RegExp called as function
+        intrinsic function construct()                  // instance called as constructor
+
+	// override default prototype setup
+	RegExp.prototype = new Object
+	RegExp.prototype.constructor = RegExp
+
+	// non-generic unbound {DE} properties of RegExp.prototype
+	dynamic prototype function exec(this:RegExp, string)
+	dynamic prototype function test(this:RegExp, string)
+	dynamic prototype function toString(this:RegExp, )
+
+	// {DD,DE,RO} properties of regexp instances
+	const source
+	const global
+	const ignoreCase
+	const multiline
+	var lastIndex	// {DD,DE,!RO}
+}
+</code>
+
+====== Error ======
+
+<code>
+dynamic class Error
+{
+	static function call Error(message) {
+		return new Error(message)
+	}
+	function Error(message) {
+		if (message != undefined) this.message = message // dynamically create this.message
+	}
+
+	// {DE} properties of Error.prototype
+	dynamic prototype var name = "Error"
+	dynamic prototype var message = // impl defined
+	dynamic prototype function toString()
+}
+
+// EvalError
+// RangeError
+// ReferenceError
+// SyntaxError
+// TypeError
+// URIError
+dynamic class NativeError extends Error
+{
+	// issue: instances have [[Class]] = "Error" not "NativeError"
+	// yet, NativeError.prototype.[[Prototype]] = Error.prototype, 
+	// as if NativeError extends Error
+
+	dynamic prototype var name = "NativeError"
+	dynamic prototype var message = // impl defined
+}
+</code>
+

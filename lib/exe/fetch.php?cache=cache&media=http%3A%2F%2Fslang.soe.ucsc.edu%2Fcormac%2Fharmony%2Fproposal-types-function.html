@@ -1,0 +1,241 @@
+<html>
+<head>
+<title>ECMAScript Harmony Strawman Proposal </title>
+<style>
+/* -*- indent-tabs-mode: nil -*- */
+.fixme { font-size: smaller; padding-left: 1em; color: red }
+.note { font-size: smaller; padding-left: 1em }
+.part { font-size: 24pt }
+.grammar { font-style: italic }
+.indented { padding-left: 3em }
+.nonterm { padding-top: 1em }
+.xref { border: thin solid red; }
+.section { margin-bottom: -1em; font-family: sans-serif; font-size: smaller }
+.implsection { margin-bottom: -1em; padding-bottom: 0.3em; font-family: sans-serif; font-size: smaller }
+.literal { font-style: normal; font-weight: bold }
+H1,H2,H3,H4,H5,H6 { font-family: sans-serif }
+H1 { font-size: 14pt }
+H2 { font-size: 12pt }
+H3 { font-size: 11pt }
+H4 { font-size: 10pt }
+
+P code { font-size: 10pt }
+code { font-style: normal; font-weight: normal }
+
+pre { font-size: 9pt }
+
+body { counter-reset: chapter section subsection subsubsection subsubsubsection;
+       font-size: 10pt; 
+       margin: 0.75in }
+
+table { font-size: inherit;
+        width: 70%;
+        margin: 2em; 
+        border: 1px solid lightgrey; }
+
+th { background: lightgrey; }
+
+td { padding: 1em; }
+
+.pcounter:before {
+    content: counter(para); 
+}
+
+.pcounter {
+    position: absolute; left: 0.5in;
+    counter-increment: para
+}
+
+H1:before {
+    padding-right: 1em;
+    content: counter(chapter) "  ";
+    counter-increment: chapter }
+
+H1 {
+    counter-reset: section para;
+}
+
+H2:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "  ";
+    counter-increment: section }
+
+H2 {
+    counter-reset: subsection para;
+}
+
+H3:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "  ";
+    counter-increment: subsection }
+
+H3 {
+    counter-reset: subsubsection para;
+}
+
+H4:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "  ";
+    counter-increment: subsubsection }
+
+H4 {
+    counter-reset: para;
+}
+
+H5:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "." counter(subsubsubsection) "  ";
+    counter-increment: subsubsubsection }
+
+H5 {
+    counter-reset: para;
+}
+
+</style>
+</head>
+
+<body>
+<h1>Function Types Proposal for Harmony</h1>
+
+<h2>Function types</h2>
+
+<P><span class="pcounter"></span>A <i>function type</i> is a subtype of the <code><b>Function</b></code> type
+that describes additional type constraints on any function populating
+it.
+
+<P><span class="pcounter"></span>A function type describes the number and type of required
+parameters, any optional parameters, any trailing "rest" parameter
+that accumulates excess arguments, and the return value.
+
+<P><span class="pcounter"></span>Function types are denoted with the keyword <code><b>function</b></code>, followed
+by a parenthesis-enclosed, comma-separated list of parameter types --
+optionally including default and rest symbols -- and an optional colon
+and trailing return type. 
+
+<P><span class="pcounter"></span>An example of a function type is:
+
+<b>
+<PRE>
+    function (Number, String) : String
+</PRE>
+</b>
+
+<P><span class="pcounter"></span>This function type is populated by any function that is declared as
+taking a <code><b>Number</b></code> value and a <code><b>String</b></code> value as parameters, and
+returning a <code><b>String</b></code> value.
+
+<P><span class="pcounter"></span>The return type of a function type can be omitted, in which case
+the return type is implicity the any type.
+
+<P><span class="pcounter"></span>If a function should not return a value, the function return type
+can be annotated as <code><b>void</b></code>, which is a notation for defining return
+types of function types only; there is no separate "void type" that
+can be denoted elsewhere. 
+
+<P><span class="pcounter"></span>Function type cannot describe a type constraint for the <code><b>this</b></code>
+binding.
+
+<P><span class="pcounter"></span>A function type may denote the presence of default value
+assignments for some suffix of its parameter types by annotating the
+types of such parameters with trailing <code><b>=</b></code> symbols. For example, the
+function type
+
+<b>
+<PRE>
+    function(Number, String=) : String
+</PRE>
+</b>
+
+denotes a type of function that takes a mandatory <code><b>Number</b></code> argument
+and an optional second <code><b>String</b></code> argument, and returns a <code><b>String</b></code>. 
+
+<P><span class="pcounter"></span>A function type may denote the presence of a trailing
+"rest-argument" with the symbol <code><b>...</b></code> in the final position of the
+function parameter list. This final parameter, if present, indicates
+that there is no maximum number of arguments to the function:
+additional arguments beyond the parameter list are collected into an
+array object and passed to the function. For example, the function
+type
+
+<b>
+<PRE>
+    function(String, ... ) : String
+</PRE>
+</b>
+
+denotes a type of function that takes a <code><b>String</b></code> and any number of
+additional arguments (of any type), returning a <code><b>String</b></code>. Rest
+arguments cannot have type constraints.
+
+<P><span class="pcounter"></span>Function types can optionally include a parameter name preceeding
+each argument types, and separated from that type by a colon. These
+parameter names are for documentation purposes only. For example, the
+type of a <code>substring</code> function might be specified as:
+
+<b>
+<PRE>
+    function(str : String, start : double, end : double ) : String
+</PRE>
+</b>
+
+<h2>Subtyping Function Types</h2>
+
+<P><span class="pcounter"></span> A function type <code><b>function(S<sub>1</sub>, .., S<sub>n</sub>) : U</b></code> is a subtype of
+<code><b>function(T<sub>1</sub>, .., T<sub>n</sub>) : R</b></code> if <code><b>U</b></code> is a subtype of <code><b>R</b></code> and <code><b>T<sub>i</sub></b></code> is
+a subtype of <code><b>S<sub>i</sub></b></code> for all i in 1..m.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  Function subtyping is contravariant in the argument position, and
+covariant in the result type.
+
+<P><span class="pcounter"></span> This rule generalizes to default arguments
+and rest arguments according to the following rule, where the number
+of default arguments (indicated via the <code><b>=</b></code> symbol) in each function
+type may be zero, and where <code><b>[...]</b></code> indicates an optional rest
+argument.  A function type
+
+<b>
+<PRE>
+    function(S<sub>1</sub>, S<sub>2</sub>, .., S<sub>n</sub>, S<sub>n+1</sub>=, .., S<sub>m</sub>=, [...]) : U
+</PRE>
+</b>
+is a subtype of
+<b>
+<PRE>
+    function(T<sub>1</sub>, T<sub>2</sub>, .., T<sub>p</sub>, T<sub>p+1</sub>=, .., T<sub>q</sub>=, [...]) : R
+</PRE>
+</b>
+
+if <code><b>U</b></code> is a subtype of <code><b>R</b></code> and n &#x2264; p and <code><b>S<sub>i</sub></b></code> is equivalent
+to <code><b>T<sub>i</sub></b></code> for all i in 1..min(q,m). In addition:
+
+<UL>
+  <LI>If neither function type  has a rest argument, then we require that  q &#x2264; m.
+
+  <LI>If only the first function type has a rest argument, then no
+additional conditions are needed.
+
+  <LI>If only the second function type has a rest argument, then
+  subtyping does not hold.
+
+  <LI>If both function types have a rest argument, then <code><b>S<sub>i</sub></b></code> must be
+equivalent to the any type <code><b>*</b></code> for all i in (q+1)..m.
+
+</UL>
+
+
+
+<P><span class="pcounter"></span> Any function type  is a subtype of the class
+type <code><b>public::Function</b></code>.
+
+<h2>Compatible Types</h2>
+
+<P><span class="pcounter"></span>The compatibility relation is a binary relation on type values. Two
+types <code><b>S</b></code> and <code><b>T</b></code> are compatible if <code><b>T</b></code> can be obtained from
+<code><b>S</b></code> by replacing certain portions of <code><b>S</b></code> by the any type <code><b>*</b></code>.
+
+<P><span class="pcounter"></span>For example, the function type <code><b>function(int):int</b></code> is compatible with
+both <code><b>function(*):*</b></code> and with <code><b>*</b></code>.
+
+
+</body>
+</html>

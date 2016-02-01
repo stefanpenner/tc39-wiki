@@ -1,0 +1,108 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:existential_operator&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:existential_operator&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:existential_operator&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="motivation"></a><h1>Motivation</h1>
+<div class="level1">
+
+<p>
+ See the <a href="doku.php%3Fid=strawman:default_operator.html" class="wikilink1" title="strawman:default_operator" onclick="return svchk()" onkeypress="return svchk()">default operator</a> proposal for a <code>??</code> binary connective with a <code>??=</code> assignment operator form, useful for ensuring a variable has a default value instead of <code>undefined</code>.
+</p>
+
+<p>
+This proposal augments the <a href="doku.php%3Fid=strawman:default_operator.html" class="wikilink1" title="strawman:default_operator" onclick="return svchk()" onkeypress="return svchk()">default operator</a> by adding syntax to avoid accessing a missing property, specifically <code>?.</code> for getting and setting a property from a reference base that might be <code>undefined</code> or <code>null</code>:
+</p>
+<pre class="code javascript"><span class="co1">// given obj an object that may or may not have a hints property:</span>
+let greedy = obj.<span class="me1">hints</span>?.<span class="me1">greedy</span>;</pre>
+<p>
+In the case where the property to the left is missing or has a value that cannot be coerced to an object, evaluating the expression results in undefined rather than a <code>TypeError</code> being thrown.
+</p>
+
+<p>
+This operator is inspired by CoffeeScript&rsquo;s existential operator accessor variant (see <a href="http://coffeescript.org/#operators" class="urlextern" target="_blank" title="http://coffeescript.org/#operators" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://coffeescript.org/#operators</a> under &ldquo;The Existential Operator&rdquo;), Ruby&rsquo;s <a href="http://andand.rubyforge.org/" class="urlextern" target="_blank" title="http://andand.rubyforge.org/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">&quot;andand&quot; gem</a>, and Groovy&rsquo;s <a href="http://groovy.codehaus.org/Operators#Operators-SafeNavigationOperator" class="urlextern" target="_blank" title="http://groovy.codehaus.org/Operators#Operators-SafeNavigationOperator" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Safe Navigation operator</a>.
+</p>
+
+</div>
+<!-- SECTION [1-1088] -->
+<a name="syntax"></a><h1>Syntax</h1>
+<div class="level1">
+
+<p>
+ We add two productions: 
+</p>
+<ul>
+<li class="level1"><div class="li"> <em>MemberExpression</em> : <em>MemberExpression</em> <em>QuestionDot</em> <em>IdentifierName</em></div>
+</li>
+<li class="level1"><div class="li"> <em>CallExpression</em> : <em>CallExpression</em> <em>QuestionDot</em> <em>IdentifierName</em></div>
+</li>
+</ul>
+
+<p>
+ to the syntactic grammar.
+</p>
+
+<p>
+As a numeric literal may begin with the decimal point, conditional expressions such as <em>condition</em><code>?.1415926538:</code><em>elsePart</em> are valid <acronym title="JavaScript">JS</acronym> and have been since the beginning. Therefore we need a lexical lookahead restriction when tokenizing <code>?.</code>:
+</p>
+<pre class="code ebnf">QuestionDot ::
+    ?. [lookahead ∉ DecimalDigit]
+</pre>
+</div>
+<!-- SECTION [1089-1652] -->
+<a name="semantics"></a><h1>Semantics</h1>
+<div class="level1">
+
+<p>
+ We extend 11.2.1, Property Accessors. The production <em>MemberExpression</em> : <em>MemberExpression</em> <em>QuestionDot</em> <em>IdentifierName</em> is evaluated as follows: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let <em>baseReference</em> be the result of evaluating <em>MemberExpression</em>.</div>
+</li>
+<li class="level1"><div class="li"> If Type(<em>baseReference</em>) is Reference and IsUnresolvableReference(<em>baseReference</em>) is <strong>true</strong>, then return <strong>undefined</strong>.</div>
+</li>
+<li class="level1"><div class="li"> Let <em>baseValue</em> be GetValue(<em>baseReference</em>).</div>
+</li>
+<li class="level1"><div class="li"> If <em>baseValue</em> is <strong>null</strong> or <strong>undefined</strong>, then return <strong>undefined</strong>.</div>
+</li>
+<li class="level1"><div class="li"> Let <em>propertyName</em> be the result of evaluating <em>IdentifierName</em>.</div>
+</li>
+<li class="level1"><div class="li"> If the syntactic production that is being evaluated is contained in strict mode code, let <em>strict</em> be <strong>true</strong>, else let <em>strict</em> be <strong>false</strong>.</div>
+</li>
+<li class="level1"><div class="li"> Return a value of type Reference whose base value is <em>baseValue</em> and whose referenced name is <em>propertyName</em>, and whose strict mode flag is <em>strict</em>.</div>
+</li>
+</ol>
+
+<p>
+ The production <em>CallExpression</em> : <em>CallExpression</em> <em>QuestionDot</em> <em>IdentifierName</em> is evaluated in exactly the same manner, except that the contained <em>CallExpression</em> is evaluated in step 1.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2012/06/18 03:40</em> 
+</p>
+
+</div>
+<!-- SECTION [1653-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/e/e12335f2e5872f1663f70cb6fb018bb3.xhtml used -->
+</body>
+</html>

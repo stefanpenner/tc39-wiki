@@ -1,0 +1,54 @@
+====== Intrinsic namespace proposal ======
+
+(Also see the [[discussion:intrinsic_namespace|discussion page]] for this proposal)
+
+For [[proposals:builtin classes]]/[[clarification:which prototype]], [[proposals:catchalls]], [[proposals:hashcodes]], [[proposals:operators]], and probably other places, we would like an ''intrinsic'' namespace that can be used to access a built-in or default function or operator, no matter the user-defined override.  The intrinsic properties should in general be immutable ({DontDelete, ReadOnly}) for early binding.  For example,
+
+<code javascript>
+  this.intrinsic::get(ident)
+</code>
+
+would always return the value of ''ident'' in the scoped ''this''.
+
+Or for a ''Complex'' number class, the ''+'' operator static method might look like this:
+
+<code javascript>
+  class Complex {
+    . . .
+    public static function +(a:*, b:*):* {
+      if (b === null) {
+        // Handle unary + here
+        return a
+      }
+      if (a is Complex && b is Complex) {
+        // Perform complex addition on a and b and return the result
+        return result
+      }
+      return intrinsic::+(a, b)
+    }
+  }
+</code>
+
+This namespace constant should be the one globally polluting identifier added for ES4, if we can help it.  We need to test that no or few web pages assign to ''intrinsic''.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/05/04 16:32//
+
+List of intrinsic names and their meanings:
+
+  * Unary operators ''+'', ''-'', ''~''
+    * Standard meaning but unaffected by the ''use <number type>'' pragma; these always operate as if no pragma is in effect.  See [[proposals:operators]].
+  * Binary operators ''+'', ''-'', ''*'', ''/'', ''%'', ''%%<<%%'', ''%%>>%%'', ''%%>>>%%'', ''&'', ''|'', ''^'', ''%%<%%'', ''%%<=%%'', ''%%>%%'', ''%%>=%%'', ''=='', ''!='', ''==='', ''!==''
+    * Standard meaning but unaffected by the ''use <number type>'' pragma; these always operate as if no pragma is in effect.  See [[proposals:operators]].
+  * ''get'', ''set'', ''call''
+    * Non-overridable property lookup and mutation, and universal nonoverridable call handler.  See [[proposals:catchalls]].
+  * ''Null'', ''Undefined'', ''int'', ''double'', ''uint'', ''decimal'', ''Number'', ''Date'', ''RegExp'', ''Boolean'', ''String'', ''Function'', ''Array'', ''Object''
+    * These names denote type values always.  See [[spec:type system]].
+  * ''hashcode''
+    * Computes a hash code for an object.  See [[proposals:hashcodes]]
+  * ''global''
+    * Returns a reference to the global object.  See [[meetings:minutes_jul_27_2006]], there is no separate proposal for this.
+  * ''wrap''
+    * Wraps an object in a security policy.  See unapproved proposal [[proposals:security wrappers]].
+  * (please add more + references as you find them)
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/09/21 09:07//

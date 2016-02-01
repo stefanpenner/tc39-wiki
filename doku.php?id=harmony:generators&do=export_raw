@@ -1,0 +1,312 @@
+====== Overview ======
+
+
+
+**This proposal has progressed to the Draft ECMAScript 6 Specification, which is available for review here: [[harmony:specification_drafts]]. Any new issues relating to them should be filed as bugs at [[http://bugs.ecmascript.org]]. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.**
+
+
+First-class coroutines, represented as objects encapsulating suspended execution contexts (i.e., function activations). Prior art: Python, Icon, Lua, Scheme, Smalltalk.
+
+====== Examples ======
+
+The "infinite" sequence of Fibonacci numbers (notwithstanding behavior around 2<sup>53</sup>):
+
+<code javascript>
+function* fibonacci() {
+    let [prev, curr] = [0, 1];
+    for (;;) {
+        [prev, curr] = [curr, prev + curr];
+        yield curr;
+    }
+}
+</code>
+
+Generators can be iterated over in loops:
+
+<code javascript>
+for (n of fibonacci()) {
+    // truncate the sequence at 1000
+    if (n > 1000)
+        break;
+    print(n);
+}
+</code>
+
+Generators are iterators:
+
+<code javascript>
+let seq = fibonacci();
+print(seq.next()); // 1
+print(seq.next()); // 2
+print(seq.next()); // 3
+print(seq.next()); // 5
+print(seq.next()); // 8
+</code>
+
+
+====== API ======
+
+See the ''"@iter"'' module in [[iterators]].
+
+===== Generator objects =====
+
+Every generator object has the following internal properties:
+
+  * %%[[%%Prototype%%]]%% : the original value of ''Object.prototype''
+  * %%[[%%Code%%]]%% : the code for the generator function body
+  * %%[[%%ExecutionContext%%]]%% : either **null** or an execution context
+  * %%[[%%Scope%%]]%% : the scope chain for the suspended execution context
+  * %%[[%%Handler%%]]%% : a standard generator handler for performing iteration
+  * %%[[%%State%%]]%% : "newborn", "executing", "suspended", or "closed"
+  * %%[[%%Send%%]]%% : see semantics below
+  * %%[[%%Throw%%]]%% : see semantics below
+  * %%[[%%Close%%]]%% : see semantics below
+
+There are four function objects, **send**, **next**, **throw**, and **close**. Every generator object has four properties, ''send'', ''next'', ''throw'', and ''close'', all respectively pointing to their corresponding function value. The functions' behavior is specified below.
+
+
+====== Syntax ======
+
+The function syntax is extended to add an optional ''*'' token:
+
+<code javascript>
+FunctionDeclaration:
+    "function" "*"? Identifier "(" FormalParameterList? ")" "{" FunctionBody "}"
+
+FunctionExpression:
+    "function" "*"? Identifier? "(" FormalParameterList? ")" "{" FunctionBody "}"
+</code>
+
+A function with a ''*'' token is known as a //generator function//. The following two unary operators are only allowed in the immediate body of a generator function (i.e., in the body but not nested inside another function):
+
+<code javascript>
+AssignmentExpression:
+    ...
+    YieldExpression
+
+YieldExpression:
+    "yield" ("*"? AssignmentExpression)?
+
+</code>
+
+An early error is raised if a ''yield'' or ''yield*'' expression occurs in a non-generator function.
+
+
+====== Generator functions ======
+
+This section describes the semantics of generator functions.
+
+===== Calling =====
+
+Let ''f'' be a generator function. The semantics of a function call ''f(x1, ..., xn)'' is:
+
+    Let E = a new VariableEnvironment record with mappings for ''x1'' ... ''xn'' \\
+    Let S = the current scope chain extended with E \\
+    Let V = a new generator object with \\
+        %%[[%%Scope%%]]%% = S \\
+        %%[[%%Code%%]]%% = f.%%[[%%Code%%]]%% \\
+        %%[[%%ExecutionContext%%]]%% = **null** \\
+        %%[[%%State%%]]%% = "newborn" \\
+        %%[[%%Handler%%]]%% = the standard generator handler \\
+    Return V
+
+===== Yielding =====
+
+The semantics of evaluating an expression of the form ''yield e'' is:
+
+    Let V ?= Evaluate(e) \\
+    Let K = the current execution context \\
+    Let O = K.currentGenerator \\
+    O.%%[[%%ExecutionContext%%]]%% := K \\
+    O.%%[[%%State%%]]%% := "suspended" \\
+    Pop the current execution context \\
+    Return (**normal**, V, **null**)
+
+
+
+
+===== Delegating yield =====
+
+The ''yield*'' operator delegates to another generator. This provides a convenient mechanism for composing generators.
+
+The expression ''yield* %%<<%%expr%%>>%%'' is equivalent to:
+
+<code javascript>
+let (g = <<expr>>) {
+    let received = void 0, send = true, result = void 0;
+    try {
+        while (true) {
+            let next = send ? g.send(received) : g.throw(received);
+            try {
+                received = yield next;
+                send = true;
+            } catch (e) {
+                received = e;
+                send = false;
+            }
+        }
+    } catch (e) {
+        if (!isStopIteration(e))
+            throw e;
+        result = e.value;
+    } finally {
+        try { g.close(); } catch (ignored) { }
+    }
+    result
+}
+</code>
+
+This is similar to a ''for''-''in'' loop over the generator, except that it propagates exceptions thrown via the outer generator's ''throw'' method into the delegated generator.
+
+
+===== Returning =====
+
+The semantics of ''return e'' inside a generator function is:
+
+    Let V ?= Evaluate(e) \\
+    Let K = the current execution context \\
+    Let O = K.currentGenerator \\
+    O.%%[[%%State%%]]%% := "closed" \\
+    Let R = a new object with \\
+        %%[[%%Class%%]]%% = "StopIteration" \\
+    R.value := V \\
+    Throw R
+
+See [[iterators]] for a discussion of ''StopIteration''.
+
+As in ordinary functions, ''return;'' is equivalent to ''return (void 0);'', and if control falls off the end of a generator function body, the generator function performs an implicit ''return;''.
+
+
+====== Generator methods ======
+
+===== Method: next =====
+
+The **next** function's behavior is:
+
+    If **this** is not a generator object, Throw Error \\
+    Call **this**.%%[[%%Send%%]]%% with single argument **undefined** \\
+    Return the result
+
+===== Method: send =====
+
+The **send** function's behavior is:
+
+    If **this** is not a generator object, Throw Error \\
+    Call **this**.%%[[%%Send%%]]%% with the first argument \\
+    Return the result
+
+===== Method: throw =====
+
+The **throw** function's behavior is:
+
+    If **this** is not a generator object, Throw Error \\
+    Call **this**.%%[[%%Throw%%]]%% with the first argument \\
+    Return the result
+
+===== Method: close =====
+
+The **close** function's behavior is:
+
+    If **this** is not a generator object, Throw Error \\
+    Call **this**.%%[[%%Close%%]]%% with no arguments \\
+    Return the result
+
+===== Method: iterate =====
+
+Every generator is an iterator object, and it has an //iterate// method whose behavior is:
+
+    Return **this**
+
+In other words, generator iterators can be automatically used with ''for''-''of'' loops and comprehensions.
+
+====== Generator objects ======
+
+===== States =====
+
+A generator object can be in one of four states:
+
+  * "newborn": G.%%[[%%Code%%]]%% != **null** ∧ G.%%[[%%ExecutionContext%%]]%% = **null**
+  * "executing": G.%%[[%%Code%%]]%% = **null** ∧ G.%%[[%%ExecutionContext%%]]%% != **null** ∧ G.%%[[%%ExecutionContext%%]]%% is the current execution context
+  * "suspended": G.%%[[%%Code%%]]%% = **null** ∧ G.%%[[%%ExecutionContext%%]]%% != **null** ∧ G.%%[[%%ExecutionContext%%]]%% is not the current execution context
+  * "closed": G.%%[[%%Code%%]]%% = **null** ∧ G.%%[[%%ExecutionContext%%]]%% = **null**
+
+It is never the case that G.%%[[%%Code%%]]%% != **null** ∧ G.%%[[%%ExecutionContext%%]]%% != **null**.
+
+===== Internal method: send =====
+
+G.%%[[%%Send%%]]%%
+
+    Let State = G.%%[[%%State%%]]%% \\
+    If State = "executing" Throw Error \\
+    If State = "closed" Throw Error \\
+    Let X be the first argument \\
+    If State = "newborn" \\
+        If X != **undefined** Throw TypeError \\
+        Let K = a new execution context as for a function call \\
+        K.currentGenerator := G \\
+        K.scopeChain := G.%%[[%%Scope%%]]%% \\
+        Push K onto the stack \\
+        Return //Execute//(G.%%[[%%Code%%]]%%) \\
+    G.%%[[%%State%%]]%% := "executing" \\
+    Let Result = //Resume//(G.%%[[%%ExecutionContext%%]]%%, **normal**, X) \\
+    Return Result
+
+===== Internal method: throw =====
+
+G.%%[[%%Throw%%]]%%
+
+    Let State = G.%%[[%%State%%]]%% \\
+    If State = "executing" Throw Error \\
+    If State = "closed" Throw Error \\
+    Let X be the first argument \\
+    If State = "newborn" \\
+        G.%%[[%%State%%]]%% := "closed" \\
+        G.%%[[%%Code%%]]%% := **null** \\
+        Return (**throw**, X, **null**) \\
+    G.%%[[%%State%%]]%% := "executing" \\
+    Let Result = //Resume//(G.%%[[%%ExecutionContext%%]]%%, **throw**, X) \\
+    Return Result
+
+===== Internal method: close =====
+
+The **close** method terminates a suspended generator. This informs the generator to resume roughly as if via ''return'', running any active ''finally'' blocks first before completing.
+
+G.%%[[%%Close%%]]%%
+
+    Let State = G.%%[[%%State%%]]%% \\
+    If State = "executing" Throw Error \\
+    If State = "closed" Return **undefined** \\
+    If State = "newborn" \\
+        G.%%[[%%State%%]]%% := "closed" \\
+        G.%%[[%%Code%%]]%% := **null** \\
+        Return (**normal**, **undefined**, **null**) \\
+    G.%%[[%%State%%]]%% := "executing" \\
+    Let Result = //Resume//(G.%%[[%%ExecutionContext%%]]%%, **return**, **undefined**) \\
+    G.%%[[%%State%%]]%% := "closed" \\
+    Return Result
+
+===== Resuming generators =====
+
+(This operation assumes that we re-specify expressions to have completion types just like statements.)
+
+**Operation** //Resume//(K, completionType, V)
+
+    Push K onto the execution context stack \\
+    Let G = K.currentGenerator \\
+    Set the current scope chain to G.%%[[%%Scope%%]]%% \\
+    Continue executing K as if its last expression produced (completionType, V, **null**)
+
+====== References ======
+
+  * [[https://developer.mozilla.org/en/new_in_javascript_1.7|Generators in SpiderMonkey]]
+  * [[http://www.python.org/dev/peps/pep-0255/|PEP 255]], "Simple generators"
+  * [[http://www.python.org/dev/peps/pep-0380/|PEP 380]], "Syntax for delegating to a sub-generator"
+  * [[http://www.python.org/dev/peps/pep-3152/|PEP 3152]], "Cofunctions"
+
+====== Generator Object Model Diagram ======
+
+Based upon discussions at Nov. 2012 TC39 meeting.
+
+
+
+ {{harmony:es6_generator_object_model_3-29-13.png}}

@@ -1,0 +1,165 @@
+===== Trait Semantics =====
+
+This page describes the semantics of trait composition for the [[strawman:syntax_for_efficient_traits|syntax for efficient traits]] strawman.
+
+A trait is a "property descriptor map", represented as a set of properties. Only a property descriptor map object's own properties are treated as members of this set. The prototype of the property descriptor map is ignored. Properties are represented as ''name:pd'' tuples where name is the property name (a string) and pd is a property descriptor object (this corresponds to the "Property Identifier" type in ES-262 5th ed, section 8.10). Property descriptors are either plain ES5 data or accessor property descriptors, or one of the following traits-specific property descriptors: a "required" property (identifying an "abstract" property that should be present in the final trait), a "conflicting" property (identifying a name conflict during composition) or a "method" property, which identifies a data property whose function value should be treated as a "method" (with bound-''this'' semantics).
+
+<code>
+PDMap ::= { PropertyIdentifier* }
+PropertyIdentifier ::= String:PropDesc
+PropDesc ::= { value: v, writable: b }
+           | { get: fg, set: fs }
+           | { required: true }
+           | { conflict: true }
+           | { value: f, writable: false, method: true }
+</code>
+
+The functions below are specified using a Haskell-like syntax. Property descriptor maps are represented using the syntax ''{ n1:p1, ..., nk:pk }''. These property descriptor maps are treated as sets, so the ordering of the properties ''n1:p1'' up to ''nk:pk'' is irrelevant. Property descriptors on this page are assumed to have default attributes ''enumerable:true'' and ''configurable:true''.
+
+Metasyntactic variables used: ''v'' for any value, ''b'' for booleans, ''f'' for functions, ''fg'' for getter functions, ''fs'' for setter functions, ''n'' for property names, ''p'' for property descriptors, ''pdm'' for property descriptor maps.
+
+==== TraitLiteral ====
+
+The function ''TraitLiteral'' describes how a ''TraitPartList'' consisting of a series of property declarations is converted into a property descriptor map.
+
+<code>
+TraitLiteral :: TraitPartList -> PDMap
+TraitLiteral [] = {}
+TraitLiteral (part:parts) =
+  add_prop (TraitLiteral parts) (to_property part)
+
+to_property :: TraitPart -> PropertyIdentifier
+to_property 'n : expr'                = n:{ value: expr, writable: true }
+to_property 'get n() { body }'        = n:{ get: const() { body }, set: undefined }
+to_property 'set n(arg) { body }'     = n:{ get: undefined, set: const(arg) { body } }
+to_property 'method n(args) { body }' = n:{ value: const(args) { body }, writable: false, method: true }
+to_property 'require n'               = n:{ required: true }
+</code>
+
+Notes:
+  * we implicitly assume that all created property descriptors have additional attributes ''{ enumerable: true, configurable: true }''.
+  * See below for the definition of ''add_prop''.
+
+==== TCompose ====
+
+''TCompose'' takes an arbitrary number of property descriptor maps and returns a property descriptor map that combines all own properties of its arguments. Name clashes lead to the generation of special ''conflict'' properties in the resulting trait. ''TCompose'' is commutative: its result is independent of the ordering of its arguments.
+
+<code>
+TCompose :: [ PDMap ] -> PDMap
+TCompose [] = {}
+TCompose (pdm:pdms) =
+  compose_pdmap pdm (TCompose pdms)
+
+compose_pdmap :: PDMap -> PDMap -> PDMap
+compose_pdmap pdm { } = pdm
+compose_pdmap pdm { n1:p1, … , nk:pk } =
+  compose_pdmap (add_prop pdm n1:p1) { n2:p2, …, nk:pk }
+
+add_prop :: PDMap -> PropertyIdentifier -> PDMap
+add_prop { n1:p1, …, nk:pk } ni:pi =
+  { n1:p1, …, nk:pk, ni:pi } if not member ni { n1, …, nk }
+add_prop { n1:p1, … , n:pi1, … nk:pk } n:pi2 =
+  { n1:p1, …, n:(compose_pd pi1 pi2), … , nk:pk }
+
+compose_pd :: PropDesc -> PropDesc -> PropDesc
+compose_pd { value: v1, writable: bw1, method: b1 } { value: v2, writable bw2, method: b2 } =
+  { value: v1, writable: bw1, method: b1 } if (identical v1 v2) and bw1 === bw2 and b1 === b2
+compose_pd { value: v1, writable: bw1, method: b1 } { value: v2, writable bw2, method: b2 } =
+  { conflict: true } if not (identical v1 v2) or bw1 !== bw2 or b1 !== b2
+compose_pd { get: fg1, set: fs1 } { get: fg2, set: fs2 } = { get: fg1, set: fs1 } if (identical fg1 fg2) and (identical fs1 fs2)
+compose_pd { get: fg1, set: fs1 } { get: fg2, set: fs2 } = { conflict: true } if not (identical fg1 fg2) or not (identical fs1 fs2)
+compose_pd { get: fg, set: undefined } { get: undefined, set: fs } = { get: fg, set: fs }
+compose_pd { get: undefined, set: fs } { get: fg, set: undefined } = { get: fg, set: fs }
+compose_pd { value: v, writable: bw, method: b } { get: fg, set: fs } = { conflict: true }
+compose_pd { get: fg, set: fs } { value: v, writable: bw, method: b } = { conflict: true }
+compose_pd { required: true } p = p
+compose_pd p { required: true } = p
+compose_pd { conflict: true } p = { conflict: true }
+compose_pd p { conflict: true } = { conflict: true }
+</code>
+
+Notes:
+  * ''{ value: v, writable: b, method: false }'' is considered equivalent to the plain data property descriptor ''{ value: v, writable: b }''.
+  * We implicitly assume that the ''enumerable'' and ''configurable'' attributes of the above property descriptors are equal. This is the case for property descriptors created using ''TraitLiteral''. If these attributes are not equal for a pair of property descriptors, they are treated as non-equal and would generate ''{ conflict: true }'' if composed.
+  * ''identical(a,b)'' has the semantics of [[harmony:egal]].
+
+==== TOverride ====
+
+''TOverride'' takes an arbitrary number of property descriptor maps and combines them into a single property descriptor map. It automatically resolves name clashes by having the left-hand trait's property value take precedence over the right-hand trait's property value. Hence, ''TOverride'' is not commutative: the ordering of arguments is significant and precedence is from left to right.
+
+<code>
+TOverride :: [ PDMap ] -> PDMap
+TOverride [] = {}
+TOverride (pdm:pdms) =
+  override_pdmap pdm (TOverride pdms)
+
+override_pdmap :: PDMap -> PDMap -> PDMap
+override_pdmap pdm {} = pdm
+override_pdmap pdm { n1:p1, … , nk:pk } =
+  override_pdmap (override_prop pdm n1:p1) { n2:p2, …, nk:pk }
+
+override_prop :: PDMap -> PropertyIdentifier -> PDMap
+override_prop { n1:p1, …, nk:pk } ni:pi = { n1:p1, …, nk:pk, ni:pi } if not member ni { n1, …, nk }
+override_prop { n1:p1, … , n:pi1, … nk:pk } n:pi2 = { n1:p1, …, n:pi1, … , nk:pk }
+</code>
+
+==== TResolve ====
+
+''TResolve'' renames and excludes property names of a single argument property descriptor map.
+
+Let Renames be a map from String to String and Exclusions be a set of Strings:
+
+<code>
+Renames    ::= [ String -> String ]
+Exclusions ::= [ String ]
+
+TResolve :: Renames -> Exclusions -> PDMap -> PDMap
+TResolve r e pdm = 
+  rename r (exclude e pdm)
+
+exclude :: Exclusions -> PDMap -> PDMap
+exclude e {} = {}
+exclude e { n1:p1, …, nk:pk } =
+  add_prop (exclude e { n2:p2, …, nk:pk }) n1:{ required: true } if member n1 e
+exclude e { n1:p1, … , nk:pk } =
+  add_prop (exclude e { n2:p2, …, nk:pk }) n1:p1 if not member n1 e
+
+rename :: Renames ->  PDMap -> PDMap
+rename map {} = {}
+rename map { n1:p1, …, nk:pk } =
+  add_prop (rename map { n2:p2, …, nk:pk }) m:p1 if member (n1 -> m) map
+rename map { n1:p1, …, nk:pk } =
+  add_prop (rename map { n2:p2, …, nk:pk }) n1:p1 if not member (n1 -> m) map
+</code>
+
+==== TCreate ====
+
+''TCreate'' takes a prototype object and a property descriptor map and returns an "instance" of the property descriptor map. ''TCreate'' validates the property descriptor map to see if it contains unsatisfied ''required'' arguments and unresolved ''conflict'' properties. If so, it fails. ''TCreate'' also binds and freezes all properties marked as ''method''s.
+
+<code>
+TCreate :: Object -> PDMap -> Object
+TCreate proto pdm =
+  do {
+   -- pardon the awkward mixture of Haskell and Javascript syntax
+   obj <- Object.create(proto);
+   Object.defineProperties(obj, validate obj pdm);
+   return Object.freeze(obj);
+  }
+
+validate :: Object -> PDMap -> PDMap
+validate obj {} = {}
+validate obj { n1:p1, …, nk:pk } =
+  add_prop (validate obj { n2:p2, …, nk:pk }) n1:(validate_prop obj n1:p1)
+
+validate_prop :: Object -> PropertyIdentifier -> PropDesc
+validate_prop self n:{ value: v, writable: b, method: false } = { value: v, writable: b }
+validate_prop self n:{ value: v, writable: b, method: true } = { value: freezeAndBind(v,self), writable: b  }
+validate_prop self n:{ get: fg, set: fs } = { get: freezeAndBind(fg,self), set: freezeAndBind(fs,self) }
+validate_prop self n:{ required: true } = <error: required property: n> if not (n in self)
+validate_prop self n:{ required: true } = {} if (n in self)
+validate_prop self n:{ conflict: true } = <error: conficting property: n>
+
+freezeAndBind :: Function -> Object -> Function
+freezeAndBind fun obj = 
+  Object.freeze(Function.prototype.bind.call(fun, obj))
+</code>

@@ -1,0 +1,52 @@
+
+====== Motivation ======
+
+When using multiline string literals (either with triple-quotes or with backslash-newline), CRLF should only contribute one character to the string (so strlen works the same on all platforms, for example).  Also, backslash-CRLF needs to do the right thing on all platforms.
+
+
+====== Proposal ======
+
+We should interpret CRLF and CR in the source text as a single LF.  (The other line terminators, U+2028 and U+2029, are treated as in ES262.)
+
+Thus, the following is a string of length 1, consisting of a single U+000A character, regardless of platform:
+<code>
+"""
+"""
+</code>
+
+Similarly, the follow is always the empty string:
+<code>
+"\
+"
+</code>
+
+
+ --- //[[chrispi@opera.com|Chris Pine]] 2007/05/23 06:10//
+
+<code>
+"\
+"
+</code>
+
+====== Discussion ======
+
+It isn't possible to look at the text and determine what the language processor is going to do. That makes it a dangerous construction. I would like to make \ followed by whitespace be an error. 
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2007/05/24 04:53//
+
+As discussed in the May face to face, \ followed by horizontal whitespace followed by newline in a single- or double-quoted string is an error already. But \ followed by newline is an escaped newline, a continuation line indicator. That's a //de facto// standard we're codifying, required by web content.
+
+Does whitespace mean horizontal whitespace above?
+
+The discussion led to a proposal that \ followed by horizontal whitespace be treated as a continuation indicator (that the horizontal whitespace be discarded). We could do that in single- and double-quoted strings, but there's not much call for it AFAICT, and it makes for an interoperation hazard until the existing ES3 implementations go away.
+
+Triple-quoted strings don't want or need continuation marks, so \ followed by one horizontal whitespace character should mean just that character, and \ at end of line in a triple-quoted string should escape the newline.
+
+IOW \ as literal-next when there isn't a special interpretation (as for ''\u'') seems like the right rule to conserve. Adding more rules based on horizontal whitespace being hard to see probably just makes for confusion and interoperation problems.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/05/24 06:58//
+
+This discussion is resolved by the agreement that \ <ws> always translates to a <ws> character.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2007/05/25 04:01//
+

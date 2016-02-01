@@ -1,0 +1,137 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:type_inference&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:type_inference&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:type_inference&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="motivation"></a><h2>Motivation</h2>
+<div class="level2">
+
+<p>
+ With <a href="doku.php%3Fid=proposals:strict_and_standard_modes.html" class="wikilink1" title="proposals:strict_and_standard_modes" onclick="return svchk()" onkeypress="return svchk()">strict and standard modes</a>, ES4 users can gain the benefits of static type checking.  But the cost could be high: the system won&rsquo;t necessarily catch most kinds of bugs, yet may lead to over-annotating (we have anecdotal evidence of this from AS3 users).  What if we were to change the language so that no type annotation meant &ldquo;infer this type&rdquo; instead of &ldquo;top type&rdquo;?
+</p>
+
+</div>
+<!-- SECTION [1-411] -->
+<a name="precedent"></a><h2>Precedent</h2>
+<div class="level2">
+
+<p>
+ Nicolas Cannasse&rsquo;s <a href="http://haxe.org/" class="urlextern" target="_blank" title="http://haxe.org/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">haXe</a> language has already explored this idea.  HaXe looks like an ML-flavored ES4.  It translates to <acronym title="JavaScript">JS</acronym> and AS.  It seems to feature: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Classes and interfaces.</div>
+</li>
+<li class="level1"><div class="li"> Enums as n-ary <a href="doku.php%3Fid=proposals:switch_class.html" class="wikilink1" title="proposals:switch_class" onclick="return svchk()" onkeypress="return svchk()">switch classes</a> with matching <code>switch</code> semantics.</div>
+</li>
+<li class="level1"><div class="li"> Type parameters, including constraints (e.g., <code>class EvtQueue&lt;T : Event, EventDispatcher&gt;</code>)</div>
+</li>
+<li class="level1"><div class="li"> Hindley-Milner (I presume) unification-based type inference.</div>
+</li>
+<li class="level1"><div class="li"> Structural types using object initialisers as type annotations.</div>
+</li>
+</ul>
+
+<p>
+ HaXe seems neat, but it might just be a big hack.  Of course, it&rsquo;s not constrained by compatibility. But it is aimed straight at the <acronym title="JavaScript">JS</acronym> and AS languages, both in terms of translation target and developer audience.
+</p>
+
+</div>
+<!-- SECTION [412-1181] -->
+<a name="proposal"></a><h2>Proposal</h2>
+<div class="level2">
+
+<p>
+ This proposal will explore type inference for ES4.  It won&rsquo;t be more than a place-holder by our deadline for new proposals, but I&rsquo;d like to get a &ldquo;foot in the door&rdquo;.  It should not disrupt <a href="doku.php%3Fid=proposals:strict_and_standard_modes.html" class="wikilink1" title="proposals:strict_and_standard_modes" onclick="return svchk()" onkeypress="return svchk()">strict and standard modes</a> so much as extend the static part after modifying what the lack of a type annotation means.  Comments welcome.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/02/28 23:08</em>
+</p>
+
+<p>
+I&rsquo;d have to recommend against anything beyond the necessary (expression-temporary type) inference. I believe this violates too many assumptions in the user communities we&rsquo;re addressing. Consider this value:
+</p>
+<pre class="code">
+function f(x) { return x; }
+</pre>
+
+<p>
+We&rsquo;re agreed that this is going to be valid ES4 code. Let&rsquo;s consider its type (note that it has to have the same type in static or dynamic mode). 
+</p>
+<ul>
+<li class="level1"><div class="li"> ML people might think <code>f : forall X . X &rarr; X</code>.</div>
+</li>
+<li class="level1"><div class="li"> Ruby/Python/<acronym title="JavaScript">JS</acronym>/<acronym title="Practical Extraction and Report Language">Perl</acronym> people think <code>f : obj&rarr;obj</code> where <code>obj</code> can have any slots you like.</div>
+</li>
+<li class="level1"><div class="li"> Java/C++ people think this function is nonsense and wish it would go away, but since they&rsquo;re programming in ECMAScript there are going to be <em>some</em> cases where they have to accept the existence of hashtable-y expando objects. We can probably expect them to gloss this as <code>f : map&lt;string,obj&gt; &rarr; map&lt;string,obj&gt;</code>.</div>
+</li>
+</ul>
+
+<p>
+ Much as I&rsquo;d like to cater to ML people, I think they represent zero percent of our real audience. I think we&rsquo;re already bending the Java/C++ people a bit by making them accept dynamic objects in some circumstances. I don&rsquo;t think any of them will expect ML-style inference in any circumstance. The confusion just gets worse if you have this:
+</p>
+<pre class="code">
+function f(x) { return x.bar; }
+</pre>
+
+<p>
+For this code: 
+</p>
+<ul>
+<li class="level1"><div class="li"> The dynamic crowd thinks nothing new, they still think <code>f : obj&rarr;obj</code>.</div>
+</li>
+<li class="level1"><div class="li"> Java/C++ crowd sees nothing new either, they can still think <code>f : map&lt;string,obj&gt; &rarr; map&lt;string,obj&gt;</code>.</div>
+</li>
+<li class="level1"><div class="li"> With ML-style inference, the typechecker has to synthesize a type constraint on <code>x</code> &ndash; note that we have no notation for types like <code>forall X,Y with (X.bar : Y) . X &rarr; Y</code> &ndash; then export that type to <code>f</code>, and propagate it through all the variables used as arguments to <code>f</code>, and fail when someone uses argument objects with two non-unifiable types in the <code>.bar</code> slots</div>
+</li>
+</ul>
+
+<p>
+ I&rsquo;d argue that nobody in our target audience will expect this latter behavior. That makes it surprising, and we want to minimize surprise.
+</p>
+
+<p>
+(plus, as technical arguments: I don&rsquo;t think we have a proof that inference is decidable in this language, and it would be a lot of work)
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x67%3B%26%23x72%3B%26%23x61%3B%26%23x79%3B%26%23x64%3B%26%23x6f%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x67;&#x72;&#x61;&#x79;&#x64;&#x6f;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">graydon</a> 2006/03/15 11:58</em>
+</p>
+
+<p>
+I&rsquo;m so in favor of withdrawing this proposal, you&rsquo;d have to bribe me not to.  But I did want to record it, and I still welcome comments from others.
+</p>
+
+<p>
+Just based on lack of annotation meaning something different from Edition 3, and the ongoing quest to unify static and dynamic and avoid &ldquo;two languages&rdquo;, this does seem like a non-starter.  But at least we can say why we didn&rsquo;t do anything like haXe.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/03/15 19:05</em> 
+</p>
+
+</div>
+<!-- SECTION [1182-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/2/2fa378c0855c4c5979c12ff6cc80b045.xhtml used -->
+</body>
+</html>

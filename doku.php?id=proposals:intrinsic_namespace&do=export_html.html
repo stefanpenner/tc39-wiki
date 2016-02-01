@@ -1,0 +1,124 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:intrinsic_namespace&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:intrinsic_namespace&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:intrinsic_namespace&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="intrinsic_namespace_proposal"></a><h1>Intrinsic namespace proposal</h1>
+<div class="level1">
+
+<p>
+ (Also see the <a href="doku.php%3Fid=discussion:intrinsic_namespace.html" class="wikilink1" title="discussion:intrinsic_namespace" onclick="return svchk()" onkeypress="return svchk()">discussion page</a> for this proposal)
+</p>
+
+<p>
+For <a href="doku.php%3Fid=proposals:builtin_classes.html" class="wikilink1" title="proposals:builtin_classes" onclick="return svchk()" onkeypress="return svchk()">builtin classes</a>/<a href="doku.php%3Fid=clarification:which_prototype.html" class="wikilink1" title="clarification:which_prototype" onclick="return svchk()" onkeypress="return svchk()">which prototype</a>, <a href="doku.php%3Fid=proposals:catchalls.html" class="wikilink1" title="proposals:catchalls" onclick="return svchk()" onkeypress="return svchk()">catchalls</a>, <a href="doku.php%3Fid=proposals:hashcodes.html" class="wikilink1" title="proposals:hashcodes" onclick="return svchk()" onkeypress="return svchk()">hashcodes</a>, <a href="doku.php%3Fid=proposals:operators.html" class="wikilink1" title="proposals:operators" onclick="return svchk()" onkeypress="return svchk()">operators</a>, and probably other places, we would like an <code>intrinsic</code> namespace that can be used to access a built-in or default function or operator, no matter the user-defined override.  The intrinsic properties should in general be immutable ({DontDelete, ReadOnly}) for early binding.  For example,
+</p>
+<pre class="code javascript">  <span class="kw1">this</span>.<span class="me1">intrinsic</span>::get<span class="br0">&#40;</span>ident<span class="br0">&#41;</span></pre>
+<p>
+would always return the value of <code>ident</code> in the scoped <code>this</code>.
+</p>
+
+<p>
+Or for a <code>Complex</code> number class, the <code>+</code> operator static method might look like this:
+</p>
+<pre class="code javascript">  <span class="kw2">class</span> Complex <span class="br0">&#123;</span>
+    . . .
+    <span class="kw2">public</span> static <span class="kw2">function</span> +<span class="br0">&#40;</span>a:*, b:*<span class="br0">&#41;</span>:* <span class="br0">&#123;</span>
+      <span class="kw1">if</span> <span class="br0">&#40;</span>b === <span class="kw2">null</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="co1">// Handle unary + here</span>
+        <span class="kw1">return</span> a
+      <span class="br0">&#125;</span>
+      <span class="kw1">if</span> <span class="br0">&#40;</span>a <span class="kw1">is</span> Complex &amp;&amp; b <span class="kw1">is</span> Complex<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="co1">// Perform complex addition on a and b and return the result</span>
+        <span class="kw1">return</span> result
+      <span class="br0">&#125;</span>
+      <span class="kw1">return</span> intrinsic::+<span class="br0">&#40;</span>a, b<span class="br0">&#41;</span>
+    <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span></pre>
+<p>
+This namespace constant should be the one globally polluting identifier added for ES4, if we can help it.  We need to test that no or few web pages assign to <code>intrinsic</code>.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/05/04 16:32</em>
+</p>
+
+<p>
+List of intrinsic names and their meanings: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Unary operators <code>+</code>, <code>-</code>, <code>~</code></div>
+<ul>
+<li class="level2"><div class="li"> Standard meaning but unaffected by the <code>use &lt;number type&gt;</code> pragma; these always operate as if no pragma is in effect.  See <a href="doku.php%3Fid=proposals:operators.html" class="wikilink1" title="proposals:operators" onclick="return svchk()" onkeypress="return svchk()">operators</a>.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Binary operators <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>%</code>, <code>&lt;&lt;</code>, <code>&gt;&gt;</code>, <code>&gt;&gt;&gt;</code>, <code>&amp;</code>, <code>|</code>, <code>^</code>, <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code>, <code>==</code>, <code>!=</code>, <code>===</code>, <code>!==</code></div>
+<ul>
+<li class="level2"><div class="li"> Standard meaning but unaffected by the <code>use &lt;number type&gt;</code> pragma; these always operate as if no pragma is in effect.  See <a href="doku.php%3Fid=proposals:operators.html" class="wikilink1" title="proposals:operators" onclick="return svchk()" onkeypress="return svchk()">operators</a>.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <code>get</code>, <code>set</code>, <code>call</code></div>
+<ul>
+<li class="level2"><div class="li"> Non-overridable property lookup and mutation, and universal nonoverridable call handler.  See <a href="doku.php%3Fid=proposals:catchalls.html" class="wikilink1" title="proposals:catchalls" onclick="return svchk()" onkeypress="return svchk()">catchalls</a>.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <code>Null</code>, <code>Undefined</code>, <code>int</code>, <code>double</code>, <code>uint</code>, <code>decimal</code>, <code>Number</code>, <code>Date</code>, <code>RegExp</code>, <code>Boolean</code>, <code>String</code>, <code>Function</code>, <code>Array</code>, <code>Object</code></div>
+<ul>
+<li class="level2"><div class="li"> These names denote type values always.  See <a href="doku.php%3Fid=spec:type_system.html" class="wikilink1" title="spec:type_system" onclick="return svchk()" onkeypress="return svchk()">type system</a>.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <code>hashcode</code></div>
+<ul>
+<li class="level2"><div class="li"> Computes a hash code for an object.  See <a href="doku.php%3Fid=proposals:hashcodes.html" class="wikilink1" title="proposals:hashcodes" onclick="return svchk()" onkeypress="return svchk()">hashcodes</a></div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <code>global</code></div>
+<ul>
+<li class="level2"><div class="li"> Returns a reference to the global object.  See <a href="doku.php%3Fid=meetings:minutes_jul_27_2006.html" class="wikilink1" title="meetings:minutes_jul_27_2006" onclick="return svchk()" onkeypress="return svchk()">minutes_jul_27_2006</a>, there is no separate proposal for this.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <code>wrap</code></div>
+<ul>
+<li class="level2"><div class="li"> Wraps an object in a security policy.  See unapproved proposal <a href="doku.php%3Fid=proposals:security_wrappers.html" class="wikilink1" title="proposals:security_wrappers" onclick="return svchk()" onkeypress="return svchk()">security wrappers</a>.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> (please add more + references as you find them)</div>
+</li>
+</ul>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/09/21 09:07</em> 
+</p>
+
+</div>
+
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/4/43c56dd272f9fb072ec40fdb55d8cb6b.xhtml used -->
+</body>
+</html>

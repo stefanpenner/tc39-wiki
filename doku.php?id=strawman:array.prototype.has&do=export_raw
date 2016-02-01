@@ -1,0 +1,44 @@
+====== Proposal ======
+
+Add a ''has'' generic method to ''Array.prototype'' that determines if the array contains a given value, determined by the internal %%[[SameValue]]%% algorithm.
+
+
+====== Spec ======
+
+**15.5.4.27 Array.prototype.has (searchElement, fromIndex = 0)**
+
+**has** compares //searchElement// to the elements of the array, in ascending order, using the SameValue algorithm (9.12), and if found, returns **true**; otherwise, **false** is returned.
+
+When the **has** method is called with one or two arguments, the following steps are taken:
+
+  - Let //O// be the result of calling ToObject passing the **this** value as the argument.
+  - ReturnIfAbrupt(//O//).
+  - Let //lenValue// be the result of calling the %%[[Get]]%% internal method of //O// with the argument **''"length"''**.
+  - Let //len// be ToUint32(//lenValue//).
+  - ReturnIfAbrupt(//len//).
+  - If //len// is 0, return **false**.
+  - Let //pos// be ToInteger(//position//). (If //position// is **undefined**, this step produces the value 0).
+  - ReturnIfAbrupt(//pos//).
+  - Let //k// be min(max(//pos//, 0), //len//).
+  - Repeat, while //k// < //len//,
+    - Let //kPresent// be the result of calling the %%[[HasProperty]]%% internal method of //O// with argument ToString(//k//).
+    - If //kPresent// is **true**, then
+      - Let //elementK// be the result of calling the %%[[Get]]%% internal method of //O// with the argument ToString(//k//).
+      - ReturnIfAbrupt(//elementK//).
+      - Let //same// be the result of performing SameValue(//searchElement//, //elementK//).
+      - If same is **true**, return **true**.
+    - Increase //k// by 1.
+  - Return **false**.
+
+The **length** property of the **has** method is 1.
+
+NOTE The **has** function is intentionally generic; it does not require that its **this** value be an Array object. Therefore it can be transferred to other kinds of objects for use as a method. Whether the **has** function can be applied successfully to an exotic object that is not an Array is implementation-dependent.
+
+
+====== Discussion ======
+
+The name of this was initially proposed as ''contains'' to match [[http://dom.spec.whatwg.org/#interface-domstringlist|DOMStringList in the DOM spec]]. The latest ES6 draft also has ''String.prototype.contains'' so we need to unify these names.
+
+====== References ======
+
+[[https://mail.mozilla.org/pipermail/es-discuss/2012-February/020726.html|es-discuss]].

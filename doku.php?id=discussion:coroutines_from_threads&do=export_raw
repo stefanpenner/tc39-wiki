@@ -1,0 +1,187 @@
+This page contains a sketch of how to implement coroutines (generators) using threads in Concurrent ML (CML). The code repository contains a much more complete and up-to-date version, so this is just here for historical purposes.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2006/10/28 17:28//
+
+====== Code sketch (obsolete) ======
+
+Here's a relatively simple implementation of generators using threads.
+
+The first module, **value.sml**, defines some simple datatypes for modeling basic ES values and exceptions. This would be beefed up in the full version, of course.
+
+<code sml>
+structure Value =
+    struct
+
+        (* sufficient for the purposes of this example *)
+        datatype value = Undefined
+                       | Null
+                       | String of string
+                       | Number of int
+                       | StopIteration
+
+        (* we model ES exceptions as ML exceptions *)
+        exception Thrown of value
+
+        fun print x =
+            let val s = case x of
+                             Undefined => "undefined"
+                           | Null => "null"
+                           | String s => s
+                           | Number i => Int.toString i
+                           | StopIteration => "StopIteration"
+            in
+                TextIO.print(s);
+                TextIO.print("\n")
+            end
+
+    end
+</code>
+
+The next module, **generator.sml**, models generators. The ''signal'' datatype models different kinds of messages sent back and forth between a generator and its client. The datatype ''generator'' models the actual internal data structure of a generator, which in this case is just a //channel// of communication between the generator and the client. The symmetric ''send'' and ''recv'' operations are CML primitives that block on a channel: ''send'' waits for a listener to receive the data it sends, and ''recv'' waits to listen for a sender's information.
+
+The ''spawnGenerator'' function creates a new generator channel and spawns a separate thread for the generator code to run in. I probably got the details of the actual protocol wrong, but I think this gives the basic idea.
+
+The three communication operations ''yieldFromGen'', ''sendToGen'', and ''throwToGen'' force generators to be synchronous: they each send a signal from one coroutine to another, and then block waiting to receive a new signal.
+
+<code sml>
+structure Generator =
+    struct
+        open CML
+        open Value
+
+        datatype signal = Yield of value (* client <=  producer *)
+                        | Throw of value (* client <=> producer *)
+                        | Send of value  (* client  => producer *)
+                        | Close          (* client  => producer *)
+
+        (* internal error: signal sent in the wrong direction *)
+        exception WrongDirection
+
+        type generator = signal chan
+
+        fun makeGenerator () : generator = channel ()
+
+        val spawnGenerator : (generator -> unit) -> generator =
+            fn body =>
+                let val g = makeGenerator ()
+                    val thread = fn () =>
+                                 (
+                                     recv g; (* XXX: who receives first? *)
+                                     (body (g); send (g, Throw StopIteration))
+                                         handle Thrown v => send (g, Throw v) (* XXX: then throw StopIteration? *)
+                                 )
+                in
+                    spawn (thread);
+                    g
+                end
+
+        (* implements yield v *)
+        fun yieldFromGen (g, v) =
+        (
+            send (g, Yield v);
+            case (recv g) of
+                 Send v => v
+               | Throw e => raise (Thrown e)
+               | _ => raise WrongDirection
+        )
+
+        (* implements gen.send(v) *)
+        fun sendToGen (g, v) =
+        (
+            send (g, Send v);
+            case (recv g) of
+                 Yield v' => v'
+               | Throw e => raise (Thrown e)
+               | _ => raise WrongDirection
+        )
+
+        (* implements gen.throw(v) *)
+        fun throwToGen (g, v) =
+        (
+            send (g, Throw v);
+            case (recv g) of
+                 Yield v' => v'
+               | Throw e => raise (Thrown e)
+               | _ => raise WrongDirection
+        )
+
+    end
+</code>
+
+Here's the Fibonacci example from [[proposals:iterators and generators]].
+
+<code sml>
+structure Main =
+    struct
+        open CML       (* Concurrent ML primitives *)
+        open Value     (* data model for ES values *)
+        open Generator (* generator operations     *)
+
+        fun fib () =
+            spawnGenerator (fn (g) =>
+                                let val rec fib = fn (i,j) =>
+                                                  (
+                                                      yieldFromGen (g, Number i);
+                                                      fib (j, i+j)
+                                                  )
+                                in
+                                    fib (0,1)
+                                end)
+
+        fun main () =
+            RunCML.doit(fn () =>
+                            let val g = fib()
+                                val rec loop = fn i =>
+                                                   if i < 10
+                                                   then (print (sendToGen (g, Undefined));
+                                                         loop (i+1))
+                                                   else ()
+                            in
+                                loop 0
+                            end,
+                        NONE)
+
+    end
+</code>
+
+To actually run the code, put each of the above files into the same directory, and then create one more file in that directory called **generator_example.cm** with the contents:
+
+<code sml>
+Library
+	structure Main
+        structure Value
+        structure Generator
+is
+	main.sml
+        value.sml
+        generator.sml
+	$cml/cml.cm
+	$/basis.cm
+</code>
+
+Then you can try it out:
+
+<code sml>
+% sml.bat cml_test.cm
+Standard ML of New Jersey v110.59 [built: Mon Jun 05 13:26:49 2006]
+[scanning cml_test.cm]
+[parsing (cml_test.cm):cml_test.sml]
+[library $cml/cml.cm is stable]
+[library $cml/cml-internal.cm is stable]
+[library $cml/core-cml.cm is stable]
+[library $SMLNJ-BASIS/basis.cm is stable]
+- Main.main();
+[autoloading]
+[autoloading done]
+0
+1
+1
+2
+3
+5
+8
+13
+21
+34
+val it = 0wx1 : Word32.word
+</code>

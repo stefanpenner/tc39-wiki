@@ -1,0 +1,98 @@
+This proposal has been deferred. For now, [[type refinements]] is a less ambitious proposal that could ultimately lead to the development of a more sophisticated, post-ES4 contract system.
+
+====== Motivation ======
+
+Types are a great tool for programmers to specify invariants about their programs, but they are limited in their expressive power. There are plenty of invariants programmers would like to specify that cannot easily be expressed as types, either due to limitations of the type system or actual computability limitations.
+
+In those cases, allowing the programmer to express the invariants as dynamic checks that produce runtime errors allows them to program with contracts and still catch the errors relatively early.
+
+Furthermore, research on dynamic contract systems has shown that it's possible to detect specific information about which component is to blame for a contract violation, beyond merely indicating that something went wrong. For programming in the large, this ability to narrow down the source of a bug to a particular component can be indispensible.
+
+====== Proposal ======
+
+In the strict mode (see [[strict and standard modes]]), contracts are expressed as refinements of types. These can take one of two forms: //bound contracts// and //unbound contracts//.
+
+===== Bound contracts =====
+
+In the case where a contract is a bound method (with the return type ''Boolean'') defined in the class of the object in question, a contract can simply be specified with the name of the method. When the value is received at runtime, the system implicitly invokes the method on the object; if the result is ''false'', a contract violation is signalled.
+
+For example, imagine that the ''Int'' class has a method called ''isNatural'' which checks whether the integer is non-negative:
+
+<code javascript>class Int {
+    ...
+    function isNatural() : Boolean { return this >= 0 }
+    ...
+}</code>
+
+Then an expression typed as ''Int'' may refine the type with the bound contract ''isNatural'' via some special operator (''"@"''? ''"#"''? ''"|"''? ''"."'' would be nice but I believe introduces ambiguities with package qualifiers):
+
+<code javascript>function factorial(n : Int#isNatural) { ... }</code>
+
+===== Unbound contracts =====
+
+Unbound functions may be used as contracts as well. In this case, the type of the function used for the contract must have as its ''this'' type a compatible type with the type being refined.
+
+<code javascript>function trimmedString(this:String) : Boolean {
+    return (this.length == 0) || ((this[0] != ' ') && (this[this.length - 1] != ' '))
+}
+
+function trim(s : String) : String#trimmedString { ... }</code>
+
+===== Arguments to contracts =====
+
+It should also be possible to pass extra arguments to contracts. For example:
+
+<code javascript>function hasLength(this:String, n:Int#isNatural) : Boolean { return s.length == n }
+
+function repeat(n : Int#isNatural, s : String) : String#hasLength(n * s.length) { ... }</code>
+
+Here the unbound method ''hasLength'' receives as its argument the value ''n * s.length''. Notice that the arguments to ''repeat'' are in scope for the contract expression.
+
+===== Arbitrary expressions for contracts =====
+
+The syntax used above may not be conducive to using complex expressions for contracts. We may also want a syntax that allows any expression to be used (for unbound contracts), such as:
+
+<code javascript>function foo() : [ String | /* complicated expression */(args, ...) ] { ... }</code>
+
+This reads something like "''foo'' has return type ''String'', where the string must pass the predicate specified by calling the unbound method returned by the //complicated expression// on arguments //args//."
+
+===== Subtyping and Conversion =====
+
+Int#isNatural is a subtype of Int. 
+
+Int#isNatural and 
+Int#isPositive  are not subtypes of each other, but they are convertible.
+
+Similarly, Int is convertible to  Int#isNatural.
+
+===== Contract erasure =====
+
+In order for the static type checker to work, it must be able to erase contract annotations and just look at the static type portions of the annotations. This is an obvious algorithm for the system described so far. Function types and class refinements can easily be erased.
+
+===== Contract combinators =====
+
+It's also useful to use contract combinators like ''and'' and ''or''. In this case, though, it's not as obvious how to do contract erasure. For this case, it might be useful only to allow ''and'' and ''or'' of non-function types, and to force the contract combinators to go within the refinement. I need a little more time to flesh this out.
+
+===== Blame =====
+
+The distinction between contracts and vanilla assertions is that contracts indicate an agreement between parties, particularly for functions and methods: argument contracts are preconditions, i.e., requirements on the client, and return contracts are postconditions, i.e., requirements on the function/method implementation. A well-designed contract system can actually keep track of these responsibilities as the values flow through the program, and assign blame to the guilty party whenever a contract is violated.
+
+Our system should require these blame annotations. I'll work on ways of specifying this as precisely (hopefully formally) as possible.
+
+===== Granularity of blame =====
+
+An important decision is the granularity of the parties involved in the blame assignment. Blame can be as specific as individual source expressions and as wide as modules. Contracts are most important for programming in the large, where you want to pinpoint individual modules in a large system. And contract checking incurs a serious performance hit. Therefore it usually behooves the designer to pick a level of granularity narrow enough to be helpful in narrowing down bugs, but wide enough not to degrade performance too badly.
+
+Furthermore, it's important to keep in mind that return type contracts prevent tail calls from exhibiting iterative control behavior, because they introduce an extra operation to perform on return. Thus, disabling contract checking at the intra-module level allows tail-recursive and mutually tail-recursive functions even when they are wrapped in return-type contracts, while possibly preventing inter-module tail calls.
+
+This also means that programmers who truly want iterative behavior even across module boundaries have to know not to put contracts on the return types of their exported functions and methods.
+
+We will need to decide whether we want blame assignment to be at the level of granularity of individual classes, or namespaces, or packages.
+
+===== Modes =====
+
+Contracts should be available both in the strict mode and the standard mode (see [[strict and standard modes]]). Perhaps the two modes can remain syntactically identical, with the type portion of the annotation translating to nothing more than an additional dynamic contract in the standard mode. This is worth discussing more.
+
+====== Dave's original discussion ======
+
+Moved to [[discussion about contracts]]

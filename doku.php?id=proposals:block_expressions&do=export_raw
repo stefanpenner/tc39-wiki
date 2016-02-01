@@ -1,0 +1,182 @@
+====== ''Let'' bindings ======
+**Tickets**: [[http://bugs.ecmascript.org/ticket/240|#240]], [[http://bugs.ecmascript.org/ticket/243|#243]], [[http://bugs.ecmascript.org/ticket/253|#253]].
+
+(Also see the [[discussion:block_expressions|discussion page]] for this proposal)
+
+This proposal introduces a keyword ''let'' that provides local scoping constructs for variables, constants, and functions.
+
+The rationale for the proposal is that tighter scope discipline for all variables is Good.
+
+
+===== Let statement =====
+
+Syntax:
+
+<code>
+   LetStatement ::= "let" "(" (VarInit ("," VarInit)*)? ")" Block
+   VarInit ::= ID (":" Type)? ("=" Expression)?
+             | Pattern (":" Type)? "=" Expression
+</code>
+
+The ''let'' statement binds zero or more variables whose scopes are the following Block (but not the binding clause), and then evaluates Block.  The completion value of the statement is the completion value of the Block.
+
+There is nothing magic about the Block.  ''var'' statements inside the Block are hoisted as they are normally.  Function declarations are not allowed here (just as they are not normally allowed inside Blocks).
+
+Observe that the parens following ''let'' are required, they could be optional but for symmetry with Let expressions (where they are not optional) they are made mandatory.
+
+Example:
+
+<code>
+   let (x=x+10, y=12) {
+     print(x+y);
+   }
+</code>
+
+The use of a destructuring ''Pattern'' in the binding is explored more fully in the proposal for [[destructuring assignment]].
+
+===== Let expression =====
+
+Syntax:
+
+<code>
+    LetExpression ::= let "(" (VarInit ("," VarInit)*)? ")" ListExpression
+</code>
+
+The variables bound by the ''let'' expression have as their scope the ListExpression (but not the binding clause).  The expression evaluates the initializers in order and then evaluates ListExpression, whose value is the result of the entire expression.
+
+LetExpressions are PrimaryExpressions in the sense of section 14.2 of the draft spec.
+
+Example:
+
+<code>
+   print( let (x=x+10, y=12) x+y )
+</code>
+
+**Restriction:** If the LetExpression is in the statement position then the ListExpression cannot be an object literal, as that would be seen to be the start of a Block (and the statement would be taken to be a LetStatement).
+
+==== Comments ====
+
+The expression at the tail of a let expression should be an AssignmentExpression to avoid conflicts when embedded in other lists. For example,
+
+<code>
+   print( let (x=x+10, y=12) x+y, "hello, world!" )
+</code>
+
+If the user wants the second expression to be a part of the let, they can use parens to say so.
+
+<code>
+   print( let (x=x+10, y=12) (x+y, "hello, world!") )
+</code>
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/05/21 09:38//
+
+
+===== Let definitions =====
+
+The ''let'' keyword can be used to introduce definitions of variables, constants, and functions into a block.  For example,
+
+<code javascript>
+   if (x > y)
+   {
+      let const k = 37;
+      let gamma : int = 12.7 + k;
+      let i = 10;
+      let function f(n) { return (n/3)+k; }
+      return f(gamma) + f(i);
+   }
+</code>
+
+Variables, functions, and constants declared by ''let'', ''let function'', and ''let const'' respectively have as their scope the entire Block in which they are defined and any inner Blocks in which they are not redefined.
+
+In programs and classes ''let'' does not create properties on the global and class objects like ''var'' does; instead, it creates properties in an implicit block created for the evaluation of statements in those contexts.
+
+In functions, ''let'' executed by ''eval'' does not create properties on the variable object (activation object or innermost binding rib) like ''var'' does; instead, it creates properties in an implicit block created for the evaluation of statements in the program.  (This is just a consequence of ''eval'' operating on programs coupled with the preceding rule.)
+
+----
+
+This may seem like a "dumb question", but it's really a dumb bug in our prototype: Does the mandatory braced body of ''switch'' count as a block?
+
+<code javascript>
+function g() {
+    // are y and z visible here?  (I hope not.)
+    switch (x) {
+      case 1:
+        // In any case, y and z should be bound here...
+        let y;
+      case 2:
+        // and here...
+        let z;
+    }
+    // but probably not here.
+}
+</code>
+
+With ''try'', ''catch'', and ''finally'' which have mandatory blocks, there's no confusion.  But ''switch'' bodies are not blocks, grammatically.  They look like blocks, however, and I think they should scope ''let'' as other blocks do.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/09/07 16:27//
+
+Agreed. The brace after ''switch'' should begin a block scope.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/09/11 12:10//
+
+----
+
+OK, for another "dumb question" that I don't see explicitly addressed (but is used by way of example in the previous question)... is it legal to leave the initializer off of a let-declared variable, as with a var-declared variable? e.g.,
+
+<code javascript>
+   let foo;
+   let i:int;
+   trace(i);  // outputs "undefined", I presume
+</code>
+
+ --- //[[stejohns@adobe.com|Steven Johnson]] 2006/10/05 17:22//
+
+I think this should be fine.  ''let'' is just a better ''var'' in that it provides control over the scope; in all other respects they should be the same (reduces cognitive load).
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/10/11 05:52//
+
+But the default value for an ''int''-annotated variable (declared by any means) is ''0'', not ''undefined'' -- right?  ''undefined'' is not in the value set for ''int''.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/10/11 10:11//
+
+===== Let-scoped variables in ''for'' loops =====
+
+''let'' can be used to bind variables locally in the scope of ''for'' loops in the same way that ''var'' can.  For example,
+
+<code>
+   var i=0;
+   for ( let i=i ; i < 10 ; i++ )
+     print(i);
+
+   for ( let &[name,value] in obj )
+     print("Name: " + name + ", Value: " + value);
+</code>
+
+In loops of the form ''for (let E1 ; E2 ; E3) S'' the scope of variables bound in E1 excludes E1.  The first example illustrates this case, where a locally bound ''i'' takes the value of the outer ''i'' as its initial value.
+
+In loops of the form ''for (let E1 in E2) S'' and ''for each (let E1 in E2)'' the scope of variables bound in E1 excludes both E1 and E2.
+
+In order to allow a natural update style for loop variables, the variables are bound once before the first iteration and reused in subsequent iterations.  Thus the result of the following program is ''5'', not ''0'':
+
+<code>
+    var x = null;
+    for ( let i=0 ; i < 5 ; i++ )
+        if (!x)
+            x = function () { return i; }
+    x();
+</code>
+
+For ''for-in'' and ''for-each'' loops it seems viable to rebind the variables for each iteration, but it is probably unnecessarily confusing to have different rules for different loop types.
+
+----
+This question came up just recently based on our implementation: is ''for (let (x = y.z) side_effects(x*x); E2; E3);'' legal?  Should it be?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/09/01 23:01//
+
+As an instance of ''for (E1; E2; E3);'', you mean? I don't see why not. Are you suggesting adding restrictions to the grammar to prevent certain instances? Even if you don't have macros in the language, grammar restrictions are a pain for any tools that generate code.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2006/09/02 06:34//
+
+Yes, this is about the C-style for loop.  We support ''var'' or ''let'' declarations, but code re-use in our parser led to exclusion of the ''let'' expression form, because ''var (...'' has never been legal.  And yes, I agree we should not have any such restriction in the ES4 grammar, so this is our bug.  This proposal was not complete in specifying that an E1 that is a ''let'' expression must be legal, though.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/09/02 17:44//

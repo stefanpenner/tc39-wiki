@@ -1,0 +1,150 @@
+====== Name objects (and others) ======
+
+(Also see the [[discussion:name objects|discussion page]].)
+
+===== Problem Statement =====
+
+The ''for-in'' loop combined with namespace-qualified names means we need a ''Name'' class reflecting namespace-qualified identifiers of enumerable properties:
+
+<code javascript>
+let o = {x:1, 2:"two", '@funny':3};
+for (let i in o)
+  print(i, typeof i);
+</code>
+
+Per ES1-3, and required for backward compatibility, this script should print
+
+<code>
+x string
+2 string
+@funny string
+</code>
+
+Consider this code:
+
+<code javascript>
+namespace n;
+let p = {n::m: 42};
+for (let i in p)
+  print(i, typeof i);
+</code>
+
+It would be impossible to index ''p.n::m'' by ''p[i]'' if ''i'' were ''"m"'' (if the output of this loop were ''m string''). We need something like the ''QName'' class from E4X (ECMA-357). Jeff proposes we call it ''Name''. It should have a conversion method such that you can write:
+
+<code javascript>
+namespace q;
+let o = {x:1, 2:"two", '@funny':3, q::m: 42};
+for (let n : Name in o)
+  print(n, typeof n);
+</code>
+
+This script should print:
+
+<code>
+x object
+2 object
+@funny object
+q::m object
+</code>
+
+===== Proposed Solution =====
+
+The Name class is defined as follows:
+
+<code javascript>
+intrinsic final class Name extends String {
+  type NS = (Name, Namespace, string);
+  type ID = (undefined, string);
+
+  function Name(ns : NS, id : ID = undefined) {
+    if (id is undefined) {
+      if (ns is Name) {
+        let n : Name = ns;
+        identifier = n.identifier;
+        qualifier = n.qualifier;
+      } else {
+        identifier = ns;
+      }
+    } else {
+      qualifier = ns;
+      identifier = id;
+    }
+  }
+
+  meta static function invoke(ns : NS, id : ID = undefined) : Name
+    new Name(ns, id);
+
+  meta static function convert(v : (Namespace, string))
+    new Name(v);
+
+  prototype function toString(this : Name)
+    this.intrinsic::toString();
+
+  intrinsic override function toString() : string {
+    if (qualifier === null)
+      return identifier;
+    return qualifier + "::" + identifier;
+  }
+
+  prototype function valueOf(this : Name)
+    this.intrinsic::valueOf();
+
+  intrinsic override function valueOf() : string
+    intrinsic::toString();
+
+  public const qualifier  : Namespace,
+               identifier : string;
+}
+</code>
+
+Note that ''class Name'' is ''final'' to allow optimization including inlining of construction, conversion (''meta::from''), and ''toString''.
+
+An [[iterators and generators#enumeration|enumerating]] ''for-in'' loop or comprehension must reflect an enumerable property name as a ''Name'' instance if the property was defined with an explicit or default namespace. Otherwise, with no namespace, an enumerating ''for-in'' reflects the name as a ''string'' per ES1-3 and existing JS implementations.
+
+A property access of the form ''o[n]'' where ''n'' is of type ''Name'' looks for a binding in the namespace ''n.qualifier'' if non-null or in no namespace if null, whose unqualified name is ''n.identifier''. This implies that for any object ''obj'':
+
+<code javascript>
+'foo' in obj === Name('foo') in obj
+</code>
+
+As with E4X's ''QName'', ''Name'' can be called with one parameter to create an instance with a null ''qualifier'', or with two parameters where the first initializes ''qualifier'' and the second initializes ''identifier''. When called with one parameter that is a ''Name'', the constructor clones its argument.
+
+''Name'' derives from ''String'' so that existing ''for-in'' loops that call ''String.prototype'' methods on the enumerated identifier continue to work. Therefore it must override ''toString'' and ''valueOf'', which are not generic.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/03/01 12:53//
+
+
+
+
+===== Namespace sets, namespace set lists, security =====
+
+Discussion on 2007-09-26 revealed a number of interesting things.  [[http://bugs.ecmascript.org/ticket/90|Ticket #90]] is useful background material here.
+
+Consider the following snippet:
+
+<code>
+    let t = {}
+    t.private::x = 37
+    for (let n in t)
+        if (n is Name && n.identifier == "x")
+            private_ns = n.qualifier
+</code>
+
+What the snippet reveals is that it's possible to obtain one's private, protected, and internal namespace (because expandos are not ''DontEnum'' and there's no restriction on using namespaces when setting them, unlike in AS3 -- and the AS people generally consider the AS behavior an oversimplification).
+
+Ergo system-internal supposedly-private namespaces can't be hidden.  Ergo the security problem outlined in ticket #90 is real.
+
+After some discussion it became clear that the real bug is that enumeration, or generally iteration, does not respect the set of open or accessible namespaces, thus enumeration subverts the idea of namespaces-as-keys.
+
+The real fix for this, as the reflection proposal has also discovered, is to make [[iterators and generators|enumeration and iteration]] respect a namespace set.  If this set can be constructed it can be leaked, but the leaking is less accidental than leaking through enumeration.
+
+Thus we propose the following:
+
+  - Iterators/enumerators take an optional argument which is an instance of ''NamespaceSetList'', defined below.
+  - By default this argument is null, which means "only the public (nons) namespace"
+  - The for-in syntax supplies a value which is the result of the special form ''namespaces'' (see below)
+  - The types ''NamespaceSet'' and ''NamespaceSetList'' are available to construct new sets, and new lists of sets, and to extend lists of sets.  Instances of these types are immutable.
+  - The special form ''namespaces'' results in a ''NamespaceSetList'' which contains the ordered list of sets of lexically open namespaces
+  - The special form ''namespace N'', where ''n'' is some reserved namespace name (public, private, protected, internal), returns a standard ''Namespace'' object for that reserved namespace name.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/09/26 21:50//

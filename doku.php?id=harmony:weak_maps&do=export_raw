@@ -1,0 +1,474 @@
+**This proposal has progressed to the Draft ECMAScript 6 Specification, which is available for review here: [[harmony:specification_drafts]]. Any new issues relating to them should be filed as bugs at [[http://bugs.ecmascript.org]]. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.**
+
+
+
+
+
+This proposal is inspired by ideas from Bosworth et.al.'s //[[http://doi.acm.org/10.1145/263698.263733|Ephemerons]]//, in order to fix a memory leak present in many uses of weak-key tables. One of the more common uses for [[strawman:weak references]] is non-enumerable weak-key tables, used to build //soft fields// as explained below. However, any weak-key table built only from weak references and finalization, when used for soft fields, results in a memory leak. From Ephemerons we get a better form of weak-key table that avoids this memory leak. (See also [[http://www.jucs.org/jucs_14_21/eliminating_cycles_in_weak/jucs_14_21_3481_3497_barros.pdf|Eliminating Cycles in Weak Tables]] which is similar to this proposal.)
+
+We specify the proposed API in terms of a new function: ''WeakMap''. Pending an accepted [[strawman:modules]] proposal, we do not yet specify in what namespace this function is found. With WeakMaps alone, garbage collection remains as unobservable as before -- that is, unobservable until a program fails from memory exhaustion. Since ''WeakMap'' does not introduce any new source of non-determinism into the language, it may be made generally accessible without weakening the //confidentiality// issues of our [[strawman:gc_semantics]]. The non-enumerability of our WeakMaps also enables aggressive collection to be //safe// without need for further specification. Regarding the //liveness// issues needed to calculate asymptotic space complexity, we present a pseudo-code GC algorithm [[harmony:weak_maps#abstract_gc_algorithm|below]]. Note that this algorithm is intended only to help specify space complexity. It has poor time complexity which actual implementations should avoid.
+
+----
+
+I think this would benefit from an overview of the key aspects of the design, e.g.:
+
+  * weak maps are unordered tables mapping objects to values
+  * neither keys nor values in a weak map are held strongly
+  * i.e., the presence of a mapping k => v in a reachable weak map m does not by itself make k or v reachable
+  * for each mapping k => v in a reachable weak map m, if k is reachable then v is reachable
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2010/09/04 03:37//
+
+===== Controversies =====
+
+See [[strawman:Allen Wirfs-Brock's comments on Ephemeron Table Proposal]] for comments on [[http://wiki.ecmascript.org/doku.php?do=revisions&id=strawman:ephemeron_tables|revisions of the strawman]] preceding May 2010. This proposal addresses Allen's comments.
+
+The API below achieves simplicity at the price of making a mapping to undefined indistinguishable from an absent association. As such, it provides an imperfect realization of soft fields. Alternatively, in addition to ''get(key)'' and ''set(key, value)'' we could provide ''has(key)'' and ''delete(key)''. We have not yet decided which of these alternatives to adopt. The [[#explicit_soft_own_fields]] example below shows how to build the more complex API on the simpler one.
+
+====== WeakMap ======
+
+This API breaks some crucial JavaScript behaviors. See discussion below for alternative API (still in progress).
+
+<code javascript>
+  const WeakMap() {
+    // Leaky O(N) executable spec for what is hopefully a non-leaky O(1) implementation.
+    const keys = [];
+    const values = [];
+    return Object.freeze({
+      /** put the key,value association into the table */
+      set: const(key, value) {
+        if (key !== Object(key)) { 
+          throw new TypeError(...); // key must not be a value type
+        }
+        let i = keys.indexOf(key);
+        if (i < 0) { i = keys.length; }
+        keys[i] = key;
+        values[i] = value;
+      },
+      /** return whatever value was most recently associated with key, or undefined if absent. */
+      get: const(key) {
+        // since keys only contains non-value types, this works even if key is NaN or -0.
+        const i = keys.indexOf(key);
+        return i < 0 ? undefined : values[i];
+      }
+    });
+  }
+</code>
+
+Notice that the weak map made by the above function is a non-enumerable map. Since it only accepts ''key''s which are not value types, if a given ''key'' is not otherwise accessible, the ''value'' associated with that ''key'' is also not not reachable from the table.
+
+The code above depends on the [[strawman:const functions]] strawman. Should this strawman not be accepted, then the above usage can be replaced by the expansion shown on that page.
+
+
+====== Implementation Considerations ======
+
+Since ''get'' returns ''undefined'' to indicate absence, one cannot distinguish between absence and a mapping to ''undefined''. Therefore implementations should implement ''table.set(k, undefined)'' by removing the association for ''k''.
+
+A weak map should
+  * Work both within and between frames.
+  * Have O(1) time complexity measure with high probability.
+  * GC aside, a table should not have more than O(numberOfStoredKeys) space complexity.
+
+
+
+
+===== Abstract GC Algorithm =====
+
+This abstract GC algorithm is needed only in order to specify reachability for purposes of //liveness// in our [[strawman:gc semantics]]. For purposes of safety or confidentiality, it may be ignored.
+
+Since I can never remember the black/white polarity of traditional GC descriptions, I will use //retained// for black, //fringe// for gray, and //untraced// for white.
+
+At some arbitrary time -- perhaps never, but prior to failing from storage exhaustion -- initiate an //atomic// garbage collection. For each atomic garbage collection, suspend computation at a safe point. Color all roots fringe. Color all other objects untraced.
+
+
+<code>
+ While any objects are fringe {
+  While any objects are fringe, pick a fringe object x {
+   If (x is the get() function of a weak map) {
+    Note this weak map.
+   } else {
+    For all y's directly reachable from x {
+      if y is untraced, color it fringe.
+    }
+   }
+   Color x retained.
+  }
+
+  For each noted weak map wm {
+   For each k,v pair in wm {
+    If k is retained and v is untraced, color v fringe
+   }
+  }
+ }
+</code>
+
+All untraced objects SHOULD eventually be collected, if needed to prevent failure from storage exhaustion. Our asymptotic space complexity is measured in terms of the storage occupied by the retained objects.
+
+See [[strawman:weak references#abstract gc algorithm|weak references abstract GC algorithm]] for an elaboration of the above algorithm to account for the co-existence of weak references and weak maps.
+
+----
+
+A more declarative way of describing the semantics is just to describe the reachability relation, without giving an algorithm for computing it. For example, you might write:
+
+<code>
+roots ⊢ reachable(x)    weak-map(x)   (k,v) in x   roots ⊢ reachable(k)
+-------------------------------------------------------------------------
+                      roots ⊢ reachable(v)
+</code>
+
+This is just the reachability rule for weak maps, and leaves out the definition of reachability for the rest of the language (as does the algorithm above). The spec doesn't need to go into great detail giving a full memory model for the language. I suspect we can leave the spec for weak maps pretty informal, but rather than giving a GC algorithm, I think it's sufficient and even clearer to say something like:
+
+//Weak maps do not contain strong references to their keys and values. Instead, weak maps extend the notion of reachability for garbage collection with the following rule: for each key-value pair (k,v) in a reachable weak map, if k is reachable then v is reachable.//
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2010/09/03 21:41//
+
+
+====== Discussion =====
+
+The current proposal breaks the following JavaScript idioms:
+
+<code javascript>
+let m = new WeakMap;
+assertTrue(m instanceof WeakMap);
+assertTrue(WeakMap.prototype.set instanceof Function)
+assertTrue(WeakMap.prototype.get instanceof Function)
+</code>
+
+The following proposal is supposed to correct these issues without breaking any of the other properties of weak maps. It relies on [[strawman:names]] for describing the semantics but that is just an implementation detail.
+
+<code javascript>
+const WeakMap = (function() {
+  // Leaky O(N) executable spec for what is hopefully a non-leaky O(1) implementation.
+
+  const keys = new Name;
+  const values = new Name;
+
+  const ensureKeysAndValues(object) {
+    if (!object[keys]) {
+      object[keys] = [];
+      object[values] = [];
+    }
+  }
+
+  const WeakMap = function() {
+    // A real implementation would just make [[Call]] call [[Construct]]
+    if (!(this instanceof WeakMap)) { return new WeakMap; }
+  };
+
+  const proto = Object.create(Object.prototype, {
+    /** put the key,value association into the table */
+    set: {
+      value: function(key, value) {
+        if (key !== Object(key)) {
+          throw new TypeError(...); // key must not be a value type
+        }
+        ensureKeysAndValues(this);
+        // since keys only contains non-value types, this works even if key is NaN or -0.
+        let i = this[keys].indexOf(key);
+        if (i < 0) { i = this[keys].length; }
+          this[keys][i] = key;
+          this[values][i] = value;
+        }
+      },
+      configurable: true,
+      enumerable: false,
+      writable: true
+    },
+
+    /** return whatever value was most recently associated with key, or undefined if absent. */
+    get: {
+      value: function(key) {
+        if (!this[keys]) { return undefined; }
+        const i = this[keys].indexOf(key);
+        return i < 0 ? undefined : this[values][i];
+      },
+      configurable: true,
+      enumerable: false,
+      writable: true
+    }
+  };
+
+  Object.defineProperty(WeakMap, 'prototype', {
+    value: proto,
+    configurable: false,
+    enumerable: false,
+    writable: false
+  });
+
+  return WeakMap;
+})();
+</code>
+
+
+
+===== Alternate Spec based on FF6.0a1 =====
+
+The Firefox 6.0a1 (Nightly) alpha has a WeakMap implementation that merges Arv's suggestion above -- to move the WeakMap methods onto WeakMap.prototype -- with the explicit soft own field pattern below, which adds ''has'' and ''delete'' methods to the ''get'' and ''set'' defined above. As an experiment, here we use the notation from [[strawman:classes_with_trait_composition]] as a specification tool. This allows us to explain the internal properties we would really spec by using the class-private instance variables supported by this classes strawman.
+
+Two further differences, matching the Firefox implementation: ''get'' takes an optional defaultValue as second argument, and ''delete'' returns a boolean saying whether it deleted anything. Note that this is different from the boolean returned by the ''delete'' operator, which returns true if there was nothing to delete.
+
+<code javascript>
+  const class WeakMap {
+    private keys;
+    private vals;
+    new() {
+      private(this).keys = [];
+      private(this).vals = [];
+    }
+    get(key, defaultValue = undefined) {
+      if (key !== Object(key)) {
+        throw new TypeError(...); // key must be an object
+      }
+      const i = private(this).keys.indexOf(key);
+      return i < 0 ? defaultValue : private(this).values[i];
+    }
+    has(key) {
+      if (key !== Object(key)) {
+        throw new TypeError(...); // key must be an object
+      }
+      return private(this).keys.indexOf(key) >= 0;
+    }
+    set(key, val) {
+      if (key !== Object(key)) {
+        throw new TypeError(...); // key must be an object
+      }
+      const keys = private(this).keys;
+      const vals = private(this).vals;
+      let i = keys.indexOf(key);
+      if (i < 0) { i = keys.length; }
+      keys[i] = key;
+      vals[i] = val;
+    }
+    delete(key) {
+      if (key !== Object(key)) {
+        throw new TypeError(...); // key must be an object
+      }
+      const keys = private(this).keys;
+      const vals = private(this).vals;
+      const i = keys.indexOf(key);
+      if (i < 0) { return false; }
+      keys.splice(i, 1);
+      vals.splice(i, 1);
+      return true;          
+    }
+  }   
+</code>
+
+====== WeakMap Patterns ======
+
+
+
+
+===== Soft Own Fields =====
+
+<code javascript>
+  const field = WeakMap();
+  //...
+  field.set(k, v); // like k[field] = v;
+  //...
+  ...field.get(k)...; // like ...k[field]...
+</code>
+
+In other words, for objects which are not value types, soft own fields have similarities to own expando properties, where the property "name" is anonymous, unforgeable, and not obtainable from the "expanded" object. Unlike expandos, soft own fields can virtually expand frozen objects, since they rely only on the object in question having a unique identity.
+
+===== Explicit Soft Own Fields =====
+
+The emulation of soft field above is missing one feature compared to own properties -- the ability to distinguish undefined from absence. The following shows how to build this more explicit form of soft field from weak maps.
+
+<code javascript>
+  const ExplicitSoftOwnField() {
+    const et = WeakMap();
+    const mascot = {}; // fresh and encapsulated, so differs from any possible provided value.
+    return Object.freeze({
+      get: const(key) {
+        const result = et.get(key);
+        return result === mascot ? undefined : result;
+      },
+      set: const(key, val) {
+        et.set(key, val === undefined ? mascot : val);
+      },
+      has: const(key) {
+        return et.get(key) !== undefined;
+      },
+      delete: const(key) {
+        et.set(key, undefined);
+      }
+    });
+</code>
+
+
+===== Inherited Soft Fields =====
+
+The previous pattern is labeled "Soft Own Fields" because, unlike true expandos, such soft fields are not inherited. This is readily repaired:
+
+<code javascript>
+  const InheritedSoftField() {
+    const et = WeakMap();
+    return Object.freeze({
+      get: const(base) {
+        while (base !== null) {
+          const result = et.get(base);
+          if (result !== undefined) { return result; }
+          base = Object.getPrototypeOf(base);
+        }
+        return undefined;
+      },
+      set: et.set
+    });
+  }
+</code>
+
+Clearly, since implementations have already optimized inherited property lookup, a built-in implementation of ''SoftField'' might reuse that work in order to benefit from those optimizations. Such soft field might then perform as well as actual expandos.
+
+The [[strawman:inherited explicit soft fields]] strawman combines explicitness and inheritance.
+
+===== Trademarking =====
+
+Trademarks are generative nominal types, where the right to brand an object with a given trademark is distinct from the right to check whether an object is branded by that trademark.
+
+<code javascript>
+  const Trademark() {
+    const et = WeakMap();
+    return Object.freeze({
+      stamp: const(obj) { et.set(obj, true); },
+      has: const(obj) { return !!et.get(obj); },
+      guard: const(obj) {
+        if (!et.get(obj)) { throw new TypeError(..); }
+      }
+    });
+  }
+</code>
+
+Trademarks are useful in the absence of classes. However, as a simple demonstration of their utility, we show here how they could enhance the [[strawman:classes]] proposal.
+
+Given the above ''Trademark'' function, classes could unforgeably trademark their instances. We would likewise enhance the [[strawman:types]] proposal to check these trademarks. For example
+
+<code javascript>
+  class Point(x, y) {
+    public getX() { return x; }
+    public getY() { return y; }
+    public add(other :Point) {
+      return Point(x + other.getX(),
+                   y + other.getY());
+    }
+  }
+</code>
+
+could expand to
+
+<code javascript>
+  const Point = (const(){
+    const PointTrademark = Trademark();
+    function Point(x, y) {
+      const getX() { return x; }
+      const getY() { return y; }
+      const add(other) {
+        Point.guard(other); //non-exceptional exit implies success
+        return Point(x + other.getX(),
+                     y + other.getY());
+      }
+      const result = Object.freeze({getX, getY, add});
+      PointTrademark.stamp(result);
+      return result;
+    }
+    Point.has = PointTrademark.has;
+    Point.guard = PointTrademark.guard;
+    Object.freeze(Point.prototype);
+    return Object.freeze(Point);
+  })();
+</code>
+
+
+===== Unique Labeler =====
+
+<code javascript>
+  const Labeler() {
+    const et = WeakMap();
+    let count = 0;
+    return Object.freeze({
+      label: const(obj) {
+        const result = et.get(obj);
+        if (result) { return result; }
+        et.set(obj, ++count);
+        return count;
+      }
+    });
+  }
+</code>
+
+Each labeler instance labels objects in the order in which it is first asked to label them. For example, a labeler might assign labels for purposes of serializing an object graph while maintaining relative uniqueness.
+
+
+
+===== Sealer / Unsealer Pairs =====
+
+<code javascript>
+  const SealerUnsealerPair() {
+    const et = WeakMap(true);
+    return Object.freeze({
+      seal: const(cargo) {
+        const box = Object.freeze({});
+        et.set(box, cargo);
+        return box;
+      },
+      unseal: et.get
+    });
+  }
+</code>
+
+Such sealer/unsealer pairs are a basic rights amplification primitive with a logic similar to public key encryption; though [[http://www.erights.org/history/morris73.pdf|invented in 1973]].
+
+<code javascript>
+  const {seal, unseal} = SealerUnsealerPair();
+  ...
+  const can = seal('Tuna');
+  ...
+  const cargo = unseal(can); // 'Tuna'
+</code>
+
+
+
+===== Cycle-tolerant graph walking =====
+
+Say we wanted to walk all objects reachable from the global (window) object by property traversal and accumulate a list of all property names we encounter. In ES5 itself, we have a problem: How do we keep track of which objects we've already visited? We can't store a "visited" property on the visited objects, as some of them may be frozen. Our only choice is to keep the visited ones in an array and check (using ''==='' or ''indexOf'') whether an object we're visiting is already present. Unfortunately, this turns an operation that should be O(1) into O(N). It turns our graph walking algorithm from approx O(N) to approx O(N**2). For this use, weak maps aren't necessary. Any object-identity-keyed table will do, including weak maps. For other graph walking algorithms, where the traversal is spread out in time and interleaved with graph mutations, then weak maps may be necessary.
+
+<code javascript>
+  const allPropNames(root) {
+    const props = Object.create(null);
+    const seen = WeakMap();
+    const recur(node) {
+      if (node !== Object(node)) { return; }
+      if (seen.get(node)) { return; }
+      seen.set(node, true);
+      recur(Object.getPrototypeOf(node));
+      Object.getOwnPropertyNames(node).forEach(const(name) {
+        props[name] = true;
+        recur(node[name]);
+      });
+    }
+    recur(root);
+    return Object.keys(props);
+  }
+</code>
+
+
+===== Accessing handler from proxy =====
+
+The example at [[harmony:proxies#accessing_handler_from_proxy]] uses weak maps together with catchall proxies.
+
+
+====== See Also ======
+
+The original [[http://portal.acm.org/citation.cfm?id=263698.263733|Ephemerons: A new finalization mechanism]] by Barry Hayes.
+
+[[http://www.jucs.org/jucs_14_21/eliminating_cycles_in_weak/jucs_14_21_3481_3497_barros.pdf|Eliminating Cycles in Weak Tables]] in Lua, by Barros & Ierusalimschy.
+
+[[http://www.haskell.org/~simonmar/papers/weak.pdf| Stretching the Storage Manager: Weak Pointers and Stable Names in Haskell]] by Simon Peyton Jones, Simon Marlow, and Conal Elliott.
+
+[[http://cs-people.bu.edu/jhallett/papers/ismm08-hallett.pdf|Formal Semantics of Weak References]] by Donnelly, Hallett, and Kfoury.
+
+[[http://code.google.com/p/es-lab/downloads/detail?name=et.pdf|Slides]] for presentation on ephemeron tables (aka weak maps) to the EcmaScript committee, May 2010.
+
+[[strawman:inherited explicit soft fields]]
+
+Felix Lee's [[https://mail.mozilla.org/pipermail/es-discuss/2011-March/013241.html|linear-time weak-map gc]] algorithm

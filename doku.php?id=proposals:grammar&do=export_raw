@@ -1,0 +1,32 @@
+====== Grammar notation ======
+
+===== Proposal =====
+
+(Also see the [[discussion:grammar|discussion page]] for this proposal)
+
+The [[normative grammar]] should be written using the notation described here: [[http://www.mozilla.org/js/language/js20/introduction/notation.html#grammar|JS2.0 Grammar Notation]]. 
+
+The language the normative grammar describes should be LR(1), but not necessarily LL(k)
+
+The grammar should describe the translation to the abstract syntax trees that are input the to verifier (type checker) and evaluator 
+
+===== Rationale =====
+
+  * LR(k) grammars are easier to read than LL(k) grammars
+  * LR(1) grammars are sufficiently powerful to describe the ES4 syntax (to be proven by experiment)
+  * By eliminating left recursion and left factoring most of the grammar can be implemented as an efficient (top-down) predictive parser
+
+===== Sample grammar rules =====
+
+The wiki formatting is pretty limited, so the notation for grammar rules should be simple. Here is an example of  one alternative:
+
+//Identifier// -> **Identifier** ''|'' **ContextuallyReservedIdentifier**
+
+//Qualifier// -> //ReservedNamespace// ''|'' //PropertyIdentifier//
+
+//SimpleQualifiedIdentifier// -> //PropertyIdentifier// ''|'' //Qualifier// ''::'' //PropertyIdentifier// ''|'' //Qualifier// ''::'' **ReservedIdentifier**  ''|'' //Qualifier// ''::'' //Brackets//
+
+//Statement// -> //SuperStatement// //Semicolon// ''|'' //Block// ''|'' //IfStatement// ''|'' //SwitchStatement// ''|'' //DoStatement// //Semicolon// ''|'' //WhileStatement// ''|'' //ForStatement// ''|''
+//WithStatement// ''|'' //ContinueStatement// //Semicolon// ''|'' //BreakStatement// //Semicolon// ''|'' //ReturnStatement// //Semicolon// ''|'' //ThrowStatement// //Semicolon// ''|'' //TryStatement// ''|''
+//ExpressionStatement// //Semicolon// ''|'' //LabeledStatement// ''|'' //DefaultXMLNamespaceStatement//
+

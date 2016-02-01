@@ -1,0 +1,227 @@
+====== Confusion ======
+
+Edition 3 has several variations on how to create new standard objects (instances of the "standard" or "built-in" class constructors specified in the monumentally long Section 15).  Some places say, e.g.:
+
+  * Let A be a new array created as if by the expression new Array().
+
+while others say:
+
+  * Create a new native ECMAScript object and let F be that object.
+  * Set the %%[[Class]]%% property of F to "Function".
+  * Set the %%[[Prototype]]%% property of F to the original Function prototype object as specified in section 15.3.3.1.
+
+This came up at the 21 April meeting.  From the minutes:
+
+  * Doug Crockford’s call for typeof [] == “array” to solve browser cross-window is-array testing needs, but ''is'' should satisfy that use-case.
+
+  * What about code that hacks String = Array? Editions 1-3 allow this, but specify “original String.prototype value” be used for automatic constructions, leading to incoherence. Can we make the standard class constructors {RO,DD} in the global object?
+
+This gets to the heart of the matter.  I believe the "original Object.prototype value" or similar language ("original Object prototype object", e.g.) was inserted to match one implementation, and it was motivated by performance and coherence concerns about reflecting the current value of the mutable ''Object'' binding in the global object.  Yet many other places in Edition 3 do exactly that reflection.
+
+Worse, the "as if by the expression new Array()" spec language requires looking up ''Array'' in the scope chain, allowing the global ''Array'' binding to be shadowed, possibly maliciously.
+
+Note that the ''prototype'' properties in the built-in class constructor function objects have attributes {ReadOnly, DontDelete, DontEnum} and so can't change -- it's just the constructor bindings in the global object that can be rebound, removed, or replaced.
+
+Here follows a list of the seemingly more natural, "reflective" construction cases.
+
+====== Enumeration ======
+
+Places in Edition 3 that say "Create a new object as if by the expression new Object()" or equivalent for a different class, as opposed to those places that talk about creating an object whose prototype is "the original Object.prototype value":
+
+===== 11.1.4 Array Initialiser =====
+
+===== 11.1.6 Object Initialiser =====
+
+===== 12.14 The ''try'' statement =====
+
+The production Catch : catch (Identifier ) Block is evaluated as follows:
+
+1. Let C be the parameter that has been passed to this production.
+
+2. Create a new object as if by the expression new Object().
+
+===== 13 Function Definition =====
+
+(Under the semantics for the third production:)
+
+The production FunctionExpression : function Identifier ( FormalParameterListopt ) { FunctionBody } is
+evaluated as follows:
+
+1. Create a new object as if by the expression new Object().
+
+===== 15.4.4.4 Array.prototype.concat =====
+
+1.       Let A be a new array created as if by the expression new Array().
+
+===== 15.4.4.10 Array.prototype.slice =====
+
+1.       Let A be a new array created as if by the expression new Array().
+
+===== 15.4.4.12 Array.prototype.splice =====
+
+1.       Let A be a new array created as if by the expression new Array().
+
+===== 15.5.4.10 String.prototype.match =====
+
+If regexp is not an object whose %%[[Class]]%% property is "RegExp", it is replaced with the result of the expression new
+RegExp(regexp). Let string denote the result of converting the this value to a string. Then do one of the following:
+
+• If regexp.global is false: Return the result obtained by invoking RegExp.prototype.exec (see section
+15.10.6.2) on regexp with string as parameter.
+
+• If regexp.global is true: Set the regexp.lastIndex property to 0 and invoke RegExp.prototype.exec
+repeatedly until there is no match. If there is a match with an empty string (in other words, if the value of
+regexp.lastIndex is left unchanged), increment regexp.lastIndex by 1. Let n be the number of matches. **The
+value returned is an array** with the length property set to n and properties 0 through n–1 corresponding to the
+first elements of the results of all matching invocations of RegExp.prototype.exec.
+
+===== 15.5.4.14 String.prototype.split =====
+
+1. Let S = ToString(this).
+
+2. Let A be a new array created as if by the expression new Array().
+
+===== 15.9.2.1 Date =====
+
+All of the arguments are optional; any arguments supplied are accepted but are completely ignored. A string is created and returned as if by the expression (new Date()).toString().
+
+===== RegExp.prototype.exec =====
+
+13. Return a new array with the following properties:
+
+====== Contradiction ======
+
+Ok, here are the places I can find (and "find" in PDF and Word seems not always to find all the matches, grrr!) that do it the other way:
+
+===== 10.1.8 Arguments Object =====
+
+When control enters an execution context for function code, an arguments object is created and initialised as follows:
+
+• The value of the internal %%[[Prototype]]%% property of the arguments object is the original Object prototype object, the
+one that is the initial value of Object.prototype (section 15.2.3.1).
+
+===== 13.2 Creating Function Objects =====
+
+2. Create a new native ECMAScript object and let F be that object.
+
+3. Set the %%[[Class]]%% property of F to "Function".
+
+4. Set the %%[[Prototype]]%% property of F to the original Function prototype object as specified in section 15.3.3.1.
+
+===== 13.2.2 [[Construct]] =====
+
+When the %%[[Construct]]%% property for a Function object F is called, the following steps are taken:
+
+1. Create a new native ECMAScript object.
+
+2. Set the %%[[Class]]%% property of Result(1) to "Object".
+
+3. Get the value of the prototype property of the F.
+
+4. If Result(3) is an object, set the %%[[Prototype]]%% property of Result(1) to Result(3).
+
+5. If Result(3) is not an object, set the %%[[Prototype]]%% property of Result(1) to the original Object prototype object as
+described in section 15.2.3.1.
+
+===== 15.4.2.1 new Array =====
+
+The %%[[Prototype]]%% property of the newly constructed object is set to the original Array prototype object, the one that is
+the initial value of Array.prototype (section 15.4.3.1).
+
+===== 15.4.2.2 new Array =====
+
+ditto
+
+===== 15.5.2.1 new String =====
+
+The %%[[Prototype]]%% property of the newly constructed object is set to the original String prototype object, the one that
+is the initial value of String.prototype (section 15.5.3.1).
+
+===== 15.6.2.1 new Boolean =====
+
+The %%[[Prototype]]%% property of the newly constructed object is set to the original Boolean prototype object, the one
+that is the initial value of Boolean.prototype (section 15.6.3.1).
+
+===== 15.7.2.1 new Number =====
+
+The %%[[Prototype]]%% property of the newly constructed object is set to the original Number prototype object, the one
+that is the initial value of Number.prototype (section 15.7.3.1).
+
+===== 15.9.3.1 new Date =====
+
+When Date is called with two to seven arguments, it computes the date from year, month, and (optionally) date,
+hours, minutes, seconds and ms.
+
+The %%[[Prototype]]%% property of the newly constructed object is set to the original Date prototype object, the one that is
+the initial value of Date.prototype (section 15.9.4.1).
+
+===== 15.9.3.2 new Date (value) =====
+
+ditto
+
+===== 15.9.3.3 new Date ( ) =====
+
+ditto
+
+===== 15.10.4.1 new RegExp =====
+
+The %%[[Prototype]]%% property of the newly constructed object is set to the original RegExp prototype object, the one
+that is the initial value of RegExp.prototype.
+
+===== 15.11.1.1 Error =====
+
+The %%[[Prototype]]%% property of the newly constructed object is set to the original Error prototype object, the one that is
+the initial value of Error.prototype (section 15.11.3.1).
+
+===== 15.11.2.1 new Error =====
+
+ditto
+
+====== Error Subclasses Differ? ======
+
+For some reason, the subclasses of Error, namely EvalError, RangeError, ReferenceError, SyntaxError, TypeError, and URIError, all seem to reflect on their current prototype property's value to seed new instances' %%[[Prototype]]%% internal property.  Or do they?  The language is maddingly ambiguous.
+
+Note that Edition 3 uses //NativeError// to stand for each of the concrete subclasses.
+
+===== 15.11.7.2 NativeError =====
+
+The %%[[Prototype]]%% property of the newly constructed object is set to the prototype object for this error constructor.
+
+===== 15.11.7.4 New NativeError =====
+
+The %%[[Prototype]]%% property of the newly constructed object is set to the prototype object for this //NativeError// constructor.
+
+
+====== Recommendations ======
+
+For a user-defined class, an immutable ({ReadOnly, DontDelete} at least -- what about DontEnum?  separate issue...) property is bound in the global object (or something close to the global object in AS3 -- someone please clarify).  Yet the standard class constructor functions in Edition 3 are writable and deletable.  One obvious way to resolve the dilemma:
+
+  * Edition 4 binds the standard classes immutably, just as if they were user-defined.  The ''dynamic'' class qualifier does not alter this fundamental rule for all class name bindings.
+
+This may be too incompatible with too much existing web content.  My gut says it is not, as all of the AOP-like wrapping or substituting of standard objects in existing scripts and libraries that I have seen happens to methods on mutable prototype objects, not to the global bindings of the standard class constructors.  What's more, wrapping the constructors doesn't affect all the internal constructions that take the "original prototype" fork in the road, so it's not likely to be commonly done -- or at least it can't be said to be reliable enough that we couldn't break it ;-).  We could try this and see how it flies.
+
+If we can't pull of such an incompatible change to the global standard class bindings, then I suggest we unify around "the original Object prototype object" language, and not use the looser (albeit more natural) reflective formulations listed above under **Enumeration**.
+
+Comments?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/04/26 23:04//
+
+It would be nice to fix the spec in this regard.
+
+I think we can get away with the incompatible change.  Opera actually flaunts the standard and interprets "as if by ''new Array()''" by calling the internal array constructor, not by looking up ''Array'' in the global environment.  I've never received a bug report on this behavior, or seen a bug that could be traced back to this deviation.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/03 00:46//
+
+I think you mean "flout" -- but if you've got it, flaunt it ;-).  In this case, "it" would be a more consistent way to create objects in native methods.  The further test of "it"-ness would be if you made the standard class name bindings immutable, and no one complained.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/05/03 14:03//
+
+With regard to "flaunt", I plead support -- however feeble -- from the authorities, in this case http://www.m-w.com:
+
+> Flaunt (vt): 2.  to treat contemptuously <flaunted the rules -- Louis Untermeyer>
+
+> Usage: Although transitive sense 2 of flaunt undoubtedly arose from confusion with flout, the contexts in which it appears cannot be called substandard <meting out punishment to the occasional mavericks who operate rigged games, tolerate rowdyism, or otherwise flaunt the law -- Oscar Lewis> <observed with horror the flaunting of their authority in the suburbs, where men... put up buildings that had no place at all in a Christian commonwealth -- Marchette Chute> <in our profession...very rarely do we publicly chastise a colleague who has flaunted our most basic principles -- R. T. Blackburn, AAUP Bull.>. If you use it, however, you should be aware that many people will consider it a mistake.
+
+Anyhow, yes, there are several levels of "it"-ness.  Starting with a consistent way of creating objects internally would be good.  In some sense I sense "intrinsic" in all this; what we're after is "new intrinsic::Array".
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/03 21:41//

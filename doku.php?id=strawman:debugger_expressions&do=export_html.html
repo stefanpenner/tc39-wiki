@@ -1,0 +1,71 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:debugger_expressions&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:debugger_expressions&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:debugger_expressions&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="debugger_expressions"></a><h2>Debugger expressions</h2>
+<div class="level2">
+
+<p>
+ The <code>debugger</code> keyword is used by debuggers such as <a href="http://getfirebug.com" class="urlextern" target="_blank" title="http://getfirebug.com" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">FireBug</a> to allow programmers to set breakpoints programmatically. But it can&rsquo;t be used to set a breakpoint in the middle of an expression, since it is a statement form.
+</p>
+
+<p>
+This strawman proposes extending the syntax compatibly to allow <code>debugger</code> to be a <em>PrimaryExpression</em>:
+</p>
+<pre class="code javascript">PrimaryExpression ::= <span class="kw2">debugger</span> | ...</pre>
+<p>
+Eliminating the <em>DebuggerStatement</em> non-terminal from the grammar then allows existing <code>debugger</code> statements to be parsed as <em>ExpressionStatement</em>s.
+</p>
+
+</div>
+<!-- SECTION [1-613] -->
+<a name="semantics"></a><h2>Semantics</h2>
+<div class="level2">
+
+<p>
+ In ordinary evaluation, the <code>debugger</code> keyword would always produce the undefined value. But debuggers could add UI to allow programmers to specify a custom value to override this value. This way a programmer could add a breakpoint into an expression and decide to experiment with producing a different value. For example, when debugging the expression 
+</p>
+<pre class="code javascript">foo<span class="br0">&#40;</span>bar<span class="br0">&#40;</span>x<span class="br0">&#41;</span><span class="br0">&#41;</span></pre>
+<p>
+ a programmer might decide to insert a breakpoint before the call to <code>bar</code> by writing: 
+</p>
+<pre class="code javascript">foo<span class="br0">&#40;</span>bar<span class="br0">&#40;</span><span class="kw2">debugger</span> ?? x<span class="br0">&#41;</span><span class="br0">&#41;</span></pre>
+<p>
+ If the developer decides not to override the result of the <code>debugger</code> expression, then the program proceeds as usual. But now they also have the option of overriding the normal value with whatever value they want.
+</p>
+
+</div>
+<!-- SECTION [614-1384] -->
+<a name="references"></a><h2>References</h2>
+<div class="level2">
+
+<p>
+ <a href="http://www.softwareishard.com/blog/planet-mozilla/firebug-tip-disable-debugger-keyword/" class="urlextern" target="_blank" title="http://www.softwareishard.com/blog/planet-mozilla/firebug-tip-disable-debugger-keyword/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://www.softwareishard.com/blog/planet-mozilla/firebug-tip-disable-debugger-keyword/</a>
+</p>
+
+</div>
+<!-- SECTION [1385-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/7/7f7f6bd568251d4395c6037be74a856a.xhtml used -->
+</body>
+</html>

@@ -1,0 +1,135 @@
+**Why:**
+
+  * A simpler primitive underlying the language's first-class functions.
+  * Supports defining other features via desugaring without breaking equivalence with implicit features (''arguments'', ''this'', ''return'') --- this is sometimes described as Tennent's Correspondence Principle [ [[http://gafter.blogspot.com/2006/08/tennents-correspondence-principle-and.html|1]], [[http://books.google.com/books?id=TewmAAAAMAAJ&dq=tennent+principles+of+programming+languages&q=principle+of+correspondence&pgis=1|2]] ].
+  * A well-tested feature of programming languages since time immemorial.
+  * Supports tail calls more naturally than ''function''.
+  * Simple, composable features like ''lambda'' are useful for:
+    * other language features defined via desugaring
+    * compiling other languages to ES
+    * macros
+
+**How:**
+
+Add four productions to the grammar:
+<code ebnf>
+Expression  ::= ... | lambda Formals Block
+                    | lambda Formals Expression
+Declaration ::= ... | lambda Identifier Formals Block
+                    | lambda Identifier Formals Expression
+</code>
+
+Or possibly just one single production:
+
+<code ebnf>
+Expression ::= ... | lambda Formals Statement
+</code>
+
+This would allow for an expression body since ''ExpressionStatement'' is a production of ''Statement''. Unsure whether this causes any insurmountable ambiguities.
+
+**What:**
+
+  * The block form of a ''lambda'' is the primitive form. The expression form desugars to a block-''lambda'' with just the expression in its body.
+  * A ''lambda'' may take rest-args only with an explicit rest-parameter (e.g., ''...rest''). Otherwise it is a dynamic error to call the function with too few arguments.
+  * A ''lambda'' may take optional arguments and may have destructured parameters.
+  * The result of evaluating the body of a block-''lambda'' is the completion value of its body.
+  * A ''lambda'' must be properly tail calling: a procedure call in tail position must consume no more space than it would consume to return from the caller and call the callee.
+  * Tail position includes the last statement of a block, the consequent and alternate of an ''if'', the second subexpression of an ''||'' expression, etc.
+  * Tail position does not include loop bodies, ''switch'' bodies, ''try'' bodies, the test expression of an ''if'', etc.
+  * There is no implicit ''return'', ''arguments'', or ''this'' for a ''lambda'' body. These all keep the same meaning that they had in the immediate context of the ''lambda''.
+  * There is no new ''var'' scope for a ''lambda'' body. Any ''var'' declarations still hoist to the nearest enclosing ''function''.
+  * Unlike ''function''s, labeled ''break'' and ''continue'' statements may cross over ''lambda''s. Like with [[return to label]], if a ''break'' or ''continue'' dynamically attempts to jump to a dead label, an exception is raised.
+
+**Examples:**
+
+Several functional styles using ''lambda'':
+
+<code javascript>
+lambda fact(n) {
+    if (n === 0 || n === 1)
+        1
+    else
+        n * (fact(n-1))
+}
+
+lambda factIter(n, acc) {
+    if (n === 0 || n === 1)
+        acc
+    else
+        factIter(n - 1, n * acc)
+}
+
+lambda factCPS(n, k) {
+    if (n === 0 || n === 1)
+        k(1)
+    else
+        factCPS(n - 1, lambda(result) k(n * result))
+}
+</code>
+
+Desugaring the function expression ''function(x1,...,xn) Body'' requires simulating the behavior of ''this'', ''arguments'', and ''return''. The latter takes advantage of [[return to label]], but could also be implemented with exceptions. Since ''lambda''s and ''function''s are called with the same calling mechanism, we can't just pass the value for ''this'' as a parameter. So the function call protocol saves the ''this'' value in a variable ''thisRegister''. The implementation of ''arguments'' is described below.
+
+<code javascript>
+lambda(x0,...,xn,...$rest) {
+    let $THIS = thisRegister;
+    let arguments = makeAlias([[lambda() x1, lambda($x1) x1 = $x1],
+                               ...,
+                               [lambda() xn, lambda($xn) xn = $xn]],
+                              $rest);
+    $RETURN: { Body; void 0 }
+}
+</code>
+
+Then ''return e'' desugars to ''return : $RETURN e'' and ''this'' desugars to ''$THIS''. Note that both ''$RETURN'' and ''$THIS'' should be gensymed once for the whole program, i.e., they should not be capturable by user code but should be the same in every instance of the desugaring.
+
+The ''thisRegister'' variable is set by the function-call protocol. A function call ''e.m(e1,...,en)'' desugars to
+
+<code javascript>
+let ($obj = e, $t1 = e1, ..., $tn = en, $method = $obj.m)
+  (thisRegister = $obj, $method($t1, ..., tn))
+</code>
+
+Notice that ''thisRegister'' is trashed as the very last action --- even after the method dereference, in case the dereference invokes setter code --- before calling the method.
+
+The ''makeAlias'' helper produces an array-like object whose indexed properties behave like aliases for the function parameters. Its implementation looks more or less like so:
+
+<code javascript>
+lambda makeAlias(params, rest)
+  ({ get *: lambda(i) {
+                if (!isNumeric(i))
+                    // etc.
+                else if (i < 0)
+                    // etc.
+                else if (i < params.length)
+                    params[i][0]()
+                else {
+                    i -= params.length;
+                    if (i < rest.length)
+                        rest[i]
+                    else
+                        // etc.
+                }
+            },
+     set *: lambda(i, x) {
+                if (!isNumeric(i))
+                    // etc.
+                else if (i < 0)
+                    // etc.
+                else if (i < params.length)
+                    params[i][1](x)
+                else {
+                    i -= params.length;
+                    if (i < rest.length)
+                        rest[i] = x
+                    else
+                        // etc.
+                }
+            }
+   })
+</code>
+
+**Issues:**
+
+  * Let expressions introduce [[https://mail.mozilla.org/pipermail/es-discuss/2008-October/007890.html|ambiguity]] to bottom-up grammar, especially in light of automatic semicolon insertion.
+  * If there is a distinction between a ''let''-binding at function top-level and a ''let''-binding in a nested scope, then the Body becomes a nested block and any ''let''-declarations inside of it have the wrong meaning. One fix is to ensure that ''let''-declarations are no different at function top-level than in nested blocks (i.e., they should shadow function parameters).
+  * The desugaring of ''function'' above doesn't address ''var''-hoisting and the effect of ''function'' boundaries on ''break'' and ''continue'' labels.

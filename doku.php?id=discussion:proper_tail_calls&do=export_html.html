@@ -1,0 +1,146 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=discussion:proper_tail_calls&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=discussion" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=discussion:proper_tail_calls&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=discussion:proper_tail_calls&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=discussion:proper_tail_calls&amp;do=export_html.html#for-effect_calls_in_tail_position" class="toc">For-effect calls in tail position</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=discussion:proper_tail_calls&amp;do=export_html.html#notes" class="toc">Notes</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:proper_tail_calls&amp;do=export_html.html#implementation_strategies" class="toc">Implementation strategies</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:proper_tail_calls&amp;do=export_html.html#references" class="toc">References</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:proper_tail_calls&amp;do=export_html.html#issues" class="toc">Issues</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<p>
+This is a discussion page for <a href="doku.php%3Fid=proposals:proper_tail_calls.html" class="wikilink1" title="proposals:proper_tail_calls" onclick="return svchk()" onkeypress="return svchk()">proper_tail_calls</a>.
+</p>
+
+<a name="for-effect_calls_in_tail_position"></a><h3>For-effect calls in tail position</h3>
+<div class="level3">
+
+<p>
+ The spec requires that the call to <code>f()</code> below is a tail call:
+</p>
+<pre class="code javascript">    <span class="kw2">function</span> f<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="nu0">37</span>; <span class="br0">&#125;</span>
+    <span class="kw2">function</span> g<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> f<span class="br0">&#40;</span><span class="br0">&#41;</span>; <span class="br0">&#125;</span></pre>
+<p>
+In Edition 3, <code>f</code> returns a value to its continuation that is ignored by <code>g</code>, which instead returns an undefined value to its continuation.  For backwards compatibility we wish to carry this meaning forward into Edition 4.  Yet if the call to <code>f</code> is a tail call, <code>g</code> is in no position to receive the result, discard it, and return no value to its caller in turn.
+</p>
+
+<p>
+This can be fixed by using a slightly more expensive return protocol, for example.  Before <code>g</code> calls <code>f</code>, it marks its continuation (the one that will become also the continuation of the call to <code>f</code>) with a mark that says that the return value is to be ignored.  This mark must be obeyed either by every return statement (which must return undefined rather than a computed value when the mark is seen) or by every non-tail call (which must ignore the returned value after the call when the mark is set). 
+</p>
+
+<p>
+This seems completely doable and not expensive (in the context of the language seen as a whole).  It is desirable to specify tail calls as they have been here, as it would be unfortunate if only calls in the expression position of <code>return</code> are treated as tail calls:
+</p>
+<ul>
+<li class="level1"><div class="li"> It would require adding to the language the notion of returning &ldquo;nothing&rdquo;, ie the void type, so that <code>return g()</code> would work in the case above.</div>
+</li>
+<li class="level1"><div class="li"> It would require some notion of converting a value to the void type in the process as when <code>g</code> calls <code>f</code> in the example above &ndash; all the while maintaining proper tail calling.  That just brings us back to the original problem of having to insert some action at the time of the return.</div>
+</li>
+<li class="level1"><div class="li"> Much existing code would not benefit from proper tail calls without being rewritten</div>
+</li>
+</ul>
+
+<p>
+ The current attribute grammar above reflects this choice by assigning <code>E.tail = true</code> to all expressions that occur in statement expressions <code>S = E;</code> in tail position.
+</p>
+
+</div>
+<!-- SECTION [65-2118] -->
+<a name="notes"></a><h1>Notes</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [2119-2139] -->
+<a name="implementation_strategies"></a><h2>Implementation strategies</h2>
+<div class="level2">
+
+<p>
+ Unless you heap-allocate all your variable objects &ndash; in which case the garbage collector takes care of the problem for you as long as you keep your dynamic links straight &ndash; then there are two main strategies: replacing the current frame with the new frame when making a tail call, or only creating frames for non-tail calls.  The former is most natural if your implementation uses the stack for passing arguments and returning values; the latter is a natural fit for a register machine.
+</p>
+
+<p>
+The Twobit compiler for Scheme uses the register strategy.  Arguments and locals are kept in registers (with several strategies for handling overflow of the register file).  A non-tail call executes a SAVE instruction to push a frame and save live registers, then instructions to set up actual parameters in the registers, before the call is made.  Upon return it executes a RESTORE/<acronym title="Post Office Protocol">POP</acronym> pair to restore saved values and drop the frame.  Various optimizations are possible to allow frames to be reused for multiple calls.
+</p>
+
+<p>
+A tail call simply sets up actual parameters in registers and jumps to the callee.
+</p>
+
+</div>
+<!-- SECTION [2140-3274] -->
+<a name="references"></a><h2>References</h2>
+<div class="level2">
+
+<p>
+ Definition of tail recursion in the Revised<sup>5</sup> Report on Scheme:
+</p>
+
+<p>
+<a href="http://www.schemers.org/Documents/Standards/R5RS/HTML/r5rs-Z-H-6.html#%_idx_78" class="urlextern" target="_blank" title="http://www.schemers.org/Documents/Standards/R5RS/HTML/r5rs-Z-H-6.html#%_idx_78" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://www.schemers.org/Documents/Standards/R5RS/HTML/r5rs-Z-H-6.html#%_idx_78</a>
+</p>
+
+</div>
+<!-- SECTION [3275-3453] -->
+<a name="issues"></a><h2>Issues</h2>
+<div class="level2">
+
+<p>
+ It is likely that <code>function.arguments</code> interacts very poorly with tail recursion.  If function <code>g</code> called from function <code>f</code> references f.arguments (a facility not in 3rd Edition, but a reality nonetheless) then f.arguments must have the value it had inside f, even if f made a tail call before reaching g.  Implementations (like Opera) that have stack discipline for <code>function.arguments</code> objects will no longer be able to have that, and implementations that make the arguments object point into the evaluation stack to prevent heap allocation won&rsquo;t be able to do that either.  Foo.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/03/13 09:11</em>
+</p>
+
+<p>
+In 3rd edition the only statements in tail position are some return statements: all other statements are followed either by another statement or by an implicit &ldquo;return undefined&rdquo;.  
+</p>
+
+<p>
+A 3rd Edition return statement can reasonably be said to be in tail position if it is not inside a <code>try</code> block and not inside a <code>catch</code> block for which there is a <code>finally</code>, though this is not obvious from the semantics (with its label sets).  Cleaning this up in 4th edition means reformulating the semantics.  The current draft gets it pretty much right, I think, by reformulating unstructured control flow using exceptions.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/03/14 01:03</em> 
+</p>
+
+</div>
+<!-- SECTION [3454-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/9/9de3a6eb571af7f9239b4d2cf252fe87.xhtml used -->
+</body>
+</html>

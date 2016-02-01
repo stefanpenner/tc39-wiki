@@ -1,0 +1,77 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:regexp_x_flag&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:regexp_x_flag&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:regexp_x_flag&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="proposal"></a><h1>Proposal</h1>
+<div class="level1">
+
+<p>
+ Add <code>x</code> to the set of flags <code>gim</code>. The <code>x</code> flag causes line endings and unescaped spaces in the regular expression to be ignored. By allowing whitespace within regular expression literals, the literals may be significantly easier to read and modify.
+</p>
+
+<p>
+This proposal does not allow for comments within regular expression literals because of the confusion of <code>/</code> closing regexp literals and also being a component of <code>//</code> and <code>/* */</code>.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x40%3B%26%23x79%3B%26%23x61%3B%26%23x68%3B%26%23x6f%3B%26%23x6f%3B%26%23x2d%3B%26%23x69%3B%26%23x6e%3B%26%23x63%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x63;&#x72;&#x6f;&#x63;&#x6b;&#x40;&#x79;&#x61;&#x68;&#x6f;&#x6f;&#x2d;&#x69;&#x6e;&#x63;&#x2e;&#x63;&#x6f;&#x6d;">Douglas Crockford</a> 2010/12/15 19:43</em>
+</p>
+
+<p>
+This was proposed for ES4. The wiki saves us from being condemned to repeat history: <a href="doku.php%3Fid=proposals:extend_regexps.html#x_flag" class="wikilink1" title="proposals:extend_regexps" onclick="return svchk()" onkeypress="return svchk()">proposal</a>, <a href="doku.php%3Fid=discussion:extend_regexps.html#mixing_the_x_flag_comments_and_unescaped_with_separated_lexingparsing" class="wikilink1" title="discussion:extend_regexps" onclick="return svchk()" onkeypress="return svchk()">comments in x-flagged regexps discussion</a>, <a href="doku.php%3Fid=discussion:extend_regexps.html#issues_with_the_x_flag" class="wikilink1" title="discussion:extend_regexps" onclick="return svchk()" onkeypress="return svchk()">issues with the x flag</a>.
+</p>
+
+<p>
+In particular, the comment syntax Lars proposed was <code># till end of line</code>. This should be considered, but let&rsquo;s not ignore Waldemar&rsquo;s objections. Best I can find right now from Waldemar is <a href="http://permalink.gmane.org/gmane.comp.lang.javascript.ecmascript4.general/2298" class="urlextern" target="_blank" title="http://permalink.gmane.org/gmane.comp.lang.javascript.ecmascript4.general/2298" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">this es-discuss post</a>. In that message, Waldemar was poking one hole (there are others) in a forward-compatible syntax idea, but I recall him objecting to the x flag on its own.
+</p>
+
+<p>
+I should add that CoffeeScript uses triple-slash delimiters for multiline regexp literals: <a href="http://jashkenas.github.com/coffee-script/" class="urlextern" target="_blank" title="http://jashkenas.github.com/coffee-script/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">CoffeeScript docs</a> under &ldquo;Extended Regular Expressions&rdquo;. Note that CoffeeScript also uses <code># till end of line</code> internal-to-extended-regexp comment syntax.
+</p>
+
+<p>
+Of course <acronym title="JavaScript">JS</acronym> isn&rsquo;t CoffeeScript: <code>///</code> is already lexed as comment to end of line with an extra <code>/</code> in <acronym title="JavaScript">JS</acronym>, but something like this approach has the advantage that the lexer knows to handle a multiline regexp up front, instead of only after getting a newline (after which it must assume <code>/x</code> at the end, and require <code>x</code> to be there).
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2010/12/16 08:41</em>
+</p>
+
+<p>
+The important thing is to get the whitespace. I can live without the comments.
+</p>
+
+<p>
+Triple slash looks to be hazardous. 
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x40%3B%26%23x79%3B%26%23x61%3B%26%23x68%3B%26%23x6f%3B%26%23x6f%3B%26%23x2d%3B%26%23x69%3B%26%23x6e%3B%26%23x63%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x63;&#x72;&#x6f;&#x63;&#x6b;&#x40;&#x79;&#x61;&#x68;&#x6f;&#x6f;&#x2d;&#x69;&#x6e;&#x63;&#x2e;&#x63;&#x6f;&#x6d;">Douglas Crockford</a> 2011/01/03 17:50</em>
+</p>
+
+</div>
+
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/0/073c36db93c5548cfcc08712cd58afe3.xhtml used -->
+</body>
+</html>

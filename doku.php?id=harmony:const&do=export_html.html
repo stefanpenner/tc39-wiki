@@ -1,0 +1,89 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=harmony:const&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="http://wiki.ecmascript.org/feed.php?mode=list&amp;ns=harmony" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=harmony:const&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=harmony:const&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="rationale"></a><h2>Rationale</h2>
+<div class="level2">
+
+<p>
+ A initialize-once, read-only thereafter binding form is useful and has precedent in existing implementations, in the form of <code>const</code> declarations.
+</p>
+
+</div>
+<!-- SECTION [1-174] -->
+<a name="requirements"></a><h2>Requirements</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> syntactic requirement: <code>const</code> declarations must have initializers for each declared identifier</div>
+</li>
+<li class="level1"><div class="li"> avoid <a href="https://mail.mozilla.org/pipermail/es-discuss/2008-October/007807.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2008-October/007807.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">&quot;lexical dead-zone&quot;</a>:</div>
+<ul>
+<li class="level2"><div class="li"> we can&rsquo;t afford (inter-procedural) static analysis to ensure the property will be written before it&rsquo;s read</div>
+</li>
+<li class="level2"><div class="li"> and an unsafe analysis would leave us in a middle-ground, where we still need dynamic checks for uninitialized reads</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> prefer &ldquo;temporal dead zone&rdquo;:</div>
+<ul>
+<li class="level2"><div class="li"> need a dynamic semantics for dealing with uninitialized properties</div>
+</li>
+<li class="level2"><div class="li"> we don&rsquo;t want to have to add an &ldquo;uninitialized&rdquo; attribute for object properties simply to support <code>const</code></div>
+</li>
+<li class="level2"><div class="li"> so we want to separate the notion of an uninitialized <em>property</em> from an uninitialized <em>binding</em></div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> still may want to allow for the possibility of implementations rejecting programs statically based on detected read-before-write</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [175-1106] -->
+<a name="semantics"></a><h2>Semantics</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <code>const</code> has block scope, like <a href="doku.php%3Fid=harmony:let.html" class="wikilink1" title="harmony:let" onclick="return svchk()" onkeypress="return svchk()">let</a></div>
+</li>
+<li class="level1"><div class="li"> when environment frame is declarative, creates an initialize-only binding in the frame</div>
+</li>
+<li class="level1"><div class="li"> when environment frame is an object, creates an initialize-only binding in the frame but not in the backing object</div>
+<ul>
+<li class="level2"><div class="li"> when the binding is initialized, checks the backing object</div>
+</li>
+<li class="level2"><div class="li"> if there already is a property, raises an error</div>
+</li>
+<li class="level2"><div class="li"> if there is no such property, creates a non-configurable, non-writeable property and sets it to the initialization value</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> thus in global code, there&rsquo;s a reasonably clear and consistent semantics for <code>const</code> that doesn&rsquo;t leak the notion of uninitialized properties into the global object</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1107-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/3/3c6f91f1527fba0d2f51d4f066a02ea1.xhtml used -->
+</body>
+</html>

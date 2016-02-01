@@ -1,0 +1,88 @@
+====== Operator Overloading with Double Dispatch ======
+[[strawman:value types]] discuss requires for adding to ECMAScript additional value types that overload the existing operators. [[strawman:value objects]] proposed a fixed set of immutable value types proposes incorporating the operator overload semantics for this set directly into ES specifications operator semantics.
+
+The following proposal can be viewed as both an alternative and an adjunct to [[strawman:value objects]]. It is an alternative in that rather than building overload semantics for specific types into the ES operator semantics, it redefines the operator semantics in a manner that can support an open-ended set of types.  It is an adjunct in that the specific types and representations proposed in [[strawman:value objects]] could be supported by this extensible mechanism in a manner that should be amendable to to the same general implementation and optimization techniques as assume in the [[strawman:value objects]] proposal.
+
+===== Operator Overloading =====
+
+The set of operators to be overloaded is discussed in [[strawman:value types]]. Identification of the exact set is not essential to understand this proposal.  It is sufficient to understand that the vast majority of ES Chapter 11 operators will be overloadable and the the same general technique will be applied for all overloadable operators. For the result of this proposal I will use the binary subtraction operator (-) as an example, but the same general idea would be applied for specifying all of the overloaded operators. 
+
+==== ES5.1 11.6.2  The Subtraction Operator: ====
+
+  - Let //lref// be the result of evaluating //AdditiveExpression//.
+  - Let //lval// be GetValue(//lref//).
+  - Let //rref// be the result of evaluating //MultiplicativeExpression//.
+  - Let //rval// be GetValue(//rref//).
+  - Let //lnum// be ToNumber(//lval//).
+  - Let //rnum// be ToNumber(//rval//).
+  - Return the result of applying the subtraction operation to //lnum// and //rnum//. See the note below 11.6.3.
+
+
+==== Modified 11.6.2  The Overloadable Subtraction Operator ====
+  - Let //lref// be the result of evaluating //AdditiveExpression//.
+  - Let //lval// be GetValue(//lref//).
+  - Let //rref// be the result of evaluating //MultiplicativeExpression//.
+  - Let //rval// be GetValue(//rref//).
+  - If Type(//lval//) is Number and Type(//rval//) is Number, then  
+    - Return the result of applying the subtraction operation to //lval// and //rval//. See the note below 11.6.3.
+  - Let //dispatchable// be the result of calling the %%[[%%Get]] internal methods of //lval// with the private name @operatorMinus as argument.
+  - If IsCallable(//dispatchable//) is **true**, then
+    - Return the result of calling the %%[[%%Call]] internal method of //dispatchable// with providing //lval// as the **this** value and //rval// as the argument.
+  - Let //lnum// be ToNumber(//lval//).
+  - Let //rnum// be ToNumber(//rval//).
+  - Return the result of applying the subtraction operation to //lnum// and //rnum//. See the note below 11.6.3.
+
+
+==== Explanation ====
+
+The modification to the algorithm can be summarized as:
+  * If both operands are numbers IEEE substraction is performed (just like in ES5.1)
+  * If not, and the first operand has a method for overloading -, that method is called and its result is the result of evaluating the binary - operator.
+  * Otherwise, do exactly what ES5.1 did.
+
+Note that //@operatorMinus// is a new algorithm convention for expressing a private name value that is both known to the implementation and made publicly available to ECMAScrpt code. In a primordial ECMAScript environment no ES5.1 built-in objects would have either own or inherited  private named operator methods. So the above algorithm changes have no semantic impact on existing code that does not explicitly add such operator methods to built-in or user defined objects. 
+
+Note that an implementation could treat lines 8-10 as the body of a default fallback @operatorMinus method.  This enables the generic – operator to be code generated as a guarded double subtract with a fall back to a PIC-able method call.
+
+Similar modification would need to be made to the definition of all the chapter 11 operators.  These are essentially the only changes that need to be made to the core language semantics to support over-loadable operators.  All support for any new data types that over-load the operators is provided library methods and functions (either standard, implementation, or user provided libraries).  In particular, all (beyond what exits in ES5.1) type promotion and coercion semantics is implemented in the library code and is not part of the base language operator semantics.  If the libraries are implemented in ES then any inter-procedural optimization techniques available in an implementation are fully applicable to them. 
+
+An operator method can be implemented to do anything that is desired and appropriate for its operands.  For example, such a method might do explicit type analysis on the this value and the argument value to determine what operation to perform based upon a closed ended set of types.   Note that the type of the first //lval// is typically implicitly known by the operator method based upon the property lookup that was performed to retrieve the method. The method can then apply the “double dispatch” technique with the argument to invoke a  “minus” function that is appropriate to that specific operator combination.   Use of this technique allows operator over-loading of an open-ended set of extensible numeric types.
+
+For example:
+
+<code javascript>
+// overload – with two over-loads:
+//          perform scalar subtraction from array elements
+//          compute element-by-element subtraction of two arrays
+
+
+import operatorMinus from "@builtinOperators";  //operatorMinus is a built-in private name.
+export const subFromArray = Name.create();  //this is a new private name, we export it
+                                            //to allow further extensions.
+
+
+Array.prototype.@operatorMinus = function (rval) {return rval.@subFromArray(this)};
+
+Number.prototype.@subFromArray = function(minuend) {“use strict”;
+     // array-number subtracts number from each minuend element and returns a new array
+     var self = this;
+     return anArray.map(function(v) {return minuend-self});
+}
+
+Array.prototype.@subFromArray(minuend)
+     // array-array subtracts corresponding elements and collects in a new array
+     var result = new Array;
+     for (var i = Math.max(this.length, minuend.length)-1; i>= 0; i--)
+         result[i] = minuend[i]-this[i];
+     return result;
+}
+
+</code>
+
+Note that while monkey patching such is an easy way to extend existing objects to support operator double dispatch for new types, it is not the only extensibility mechanisms that can be used.  Side-tables can also be used to accomplish the same result. 
+
+Finally, there are no restrictive requirements imposed upon the objects that implement operator methods. In particular, they need not be immutable.  However, if a standard library defines certain classes of immutable objects that include support for operator methods then an implementation might choose to recognize such objects in the generic or specialized code emitted for operators.  
+
+===== Discussion =====
+(please contribute)
+

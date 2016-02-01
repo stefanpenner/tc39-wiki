@@ -1,0 +1,115 @@
+**This proposal has progressed to the Draft ECMAScript 6 Specification, which is available for review here: [[harmony:specification_drafts]]. Any new issues relating to them should be filed as bugs at [[http://bugs.ecmascript.org]]. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.**
+
+
+
+
+
+====== Overview ======
+
+Array comprehensions were introduced in [[https://developer.mozilla.org/en/Core_JavaScript_1.5_Guide/Working_with_Arrays#Array_comprehensions|JavaScript 1.7]]. Comprehensions are a well-understood and popular language feature of list comprehensions, found in languages such as [[http://docs.python.org/tutorial/datastructures.html#list-comprehensions|Python]] and [[http://www.haskell.org/haskellwiki/List_comprehension|Haskell]], inspired by the mathematical notation of [[http://en.wikipedia.org/wiki/Set-builder_notation|set comprehensions]].
+
+Array comprehensions are a convenient, declarative form for creating computed arrays with a literal syntax that reads naturally.
+
+Per [[harmony:iterators]], default property value (not key) enumeration and custom value iteration may be done using ''for''-''of'' loop head syntax, rather than ''for''-''in''.
+
+
+====== Examples ======
+
+Filtering an array:
+
+<code javascript>
+[ x for (x of a) if (x.color === ‘blue’) ]
+</code>
+
+Mapping an array:
+
+<code javascript>
+[ square(x) for (x of [1,2,3,4,5]) ]
+</code>
+
+Cartesian product:
+
+<code javascript>
+[ [i,j] for (i of rows) for (j of columns) ]
+</code>
+
+
+
+
+
+===== Template String Nesting Example =====
+
+The [[harmony:quasis#nesting|nesting example]] on the template string page 
+
+<code>
+rows = [['Unicorns', 'Sunbeams', 'Puppies'], ['<3', '<3', '<3']],
+safehtml`<table>${
+  rows.map(function(row) {
+    return safehtml`<tr>${
+      row.map(function(cell) {
+        return safehtml`<td>${cell}</td>`
+      })
+    }</tr>`
+  })
+}</table>`
+</code>
+
+Can be made prettier using other features of ES6. Using arrow functions:
+
+<code>
+rows = [['Unicorns', 'Sunbeams', 'Puppies'], ['<3', '<3', '<3']],
+safehtml`<table>${
+  rows.map(row => safehtml`<tr>${
+    row.map(cell => safehtml`<td>${cell}</td>`)
+  }</tr>`
+}</table>`
+</code>
+
+or using comprehensions:
+
+<code>
+rows = [['Unicorns', 'Sunbeams', 'Puppies'], ['<3', '<3', '<3']],
+safehtml`<table>${
+  [safehtml`<tr>${
+    [safehtml`<td>${cell}</td>` for cell of row]
+  }</tr>` for row of rows]
+}</table>`
+</code>
+
+or using hypothetical left-to-right array comprehensions with parenful syntax:
+
+<code>
+rows = [['Unicorns', 'Sunbeams', 'Puppies'], ['<3', '<3', '<3']],
+safehtml`<table>${
+  [for (row of rows) safehtml`<tr>${
+    [for (cell of row) safehtml`<td>${cell}</td>`]
+  }</tr>`]
+}</table>`
+</code>
+
+====== Syntax ======
+
+<code>
+ArrayLiteral ::= ...
+              |  "[" Expression ("for" "(" LHSExpression "of" Expression ")")+ ("if" "(" Expression ")")? "]"
+</code>
+
+====== Translation ======
+
+An array comprehension:
+
+**%%[%%** //Expression<sub>0</sub>// **for (** //LHSExpression<sub>1</sub>// **of** //Expression<sub>1</sub>// **)** ... **for (** //LHSExpression<sub>n</sub>// **) if (** //Expression// **)**<sub>//opt//</sub> **%%]%%**
+
+can be defined by expansion to the expression:
+
+**let (**//result// **= %%[]%%) {** \\
+    **for (let **//LHSExpression<sub>1</sub>// **of** //Expression<sub>1</sub>// **) {** \\
+        ... \\
+        **for (let **//LHSExpression<sub>n</sub>// **of** //Expression<sub>n</sub>// **) {** \\
+            **if (** //Expression// **)**<sub>//opt//</sub> \\
+                //ArrayPush//**(**//result//**,** //Expression<sub>0</sub>//**);** \\
+            **}** \\
+        **}** \\
+    **}** \\
+**%%=>%%** //result// \\
+**}**

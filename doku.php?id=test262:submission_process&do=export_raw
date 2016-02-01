@@ -1,0 +1,115 @@
+====== Getting Started ======
+
+===== Getting the Sources =====
+If you’re simply interested in //viewing// the sources to Test262, you can download them directly from [[http://hg.ecmascript.org/tests/test262]] as a tarball or zip file.  Alternatively, you’ll be able to peruse them with your web browser if you prefer.  For content submissions to Test262, you’ll need to install and configure Mercurial as described below.  
+
+
+===== Mercurial Repository Structure =====
+   * //external/contributions%%/%%//:  contains original copies of ECMAScript tests that have been officially contributed to Test262 by TC39 members
+   * //test/harness%%/%%//:  test harness(es) used to run Test262 test cases
+   * //test/suite%%/%%//:  suite of Test262 tests.  Consists of tests contributed by TC39 members that may have been adapted to run against the harness(es) found under //test/harness%%/%%//
+   * //test/config%%/%%//:  contains various configuration files which are among other things used to control which test cases are deployed to the Test262 website (e.g., //excludelist.xml//)
+   * //tools%%/%%//:  contains various tools used to create and run Test262 tests
+   * //website%%/%%//:  a verbatim copy of the Test262 website.  Scripts under //tools%%/%%// generate assets here
+   * //docs%%/%%//:  contains various documents pertaining to test262 ES coverage, architecture, etc.
+
+===== Downloading and Installing Mercurial =====
+Sources to the Test262 test harness, tests, and website are available through the Mercurial source control system.  A Mercurial client for all major operating systems can be downloaded at [[http://mercurial.selenic.com/wiki/Download]].  If you’re running the Windows operating system, you’ll also need to install a good SSH tool.  We recommend the free SSH application, plink.exe, which can be downloaded at [[http://www.putty.org]].
+
+
+
+===== Obtaining Mercurial Submission Permissions for Test262 =====
+Email dherman@mozilla.com (if you're a TC39 committee member) for details.
+
+
+===== Configuring Mercurial for Check-ins =====
+First, clone a copy of the Test262 repository to your favorite directory, my_test262:
+                > hg clone http://hg.ecmascript.org/tests/test262/ my_test262
+                requesting all changes
+                …
+                17614 files updated, 0 files merged, 0 files removed, 0 files unresolved
+
+Next, you’ll need to tell Mercurial where to submit your changes to and also to use the credentials created in the prior step to accomplish this.  To this end, add the following to the file, my_test262/.hg/hgrc:
+                [ui]
+                username = first_name last_name <email_alias@domain>
+                ssh=%PathToPlink%/plink -ssh -i %SomeProtectedDirectory%/test262_private_key.ppk -l email_alias@domain
+                
+                [paths]
+                default = http://hg.ecmascript.org/tests/test262
+                default-push = ssh://email_alias@domain@hg.ecmascript.org/tests/test262
+
+where email_alias@domain is your Mercurial username (given to Test262) and test262_private_key.ppk is the private SSH key corresponding to the public SSH key you submitted to Test262.  Please note that the “ssh=…” line will vary considerably depending upon your operating system and chosen SSH tool.
+
+
+====== Making Changes ======
+
+
+===== Play Nice! =====
+It might be very tempting to take advantage of the latest and greatest HTML5 or ECMAScript feature in either the Test262 website or the test harness itself.  Please don't:)  Both of these have been kept relatively simple to ensure new, partially implemented ECMAScript engines can run the test suite once they reach a minimum level of the language's functionality. While some new feature might make the website look very cool in your browser, it could very well break others so please consider this when making changes.
+
+===== Mercurial =====
+If you're familiar with other source control systems such as Subversion, Team Foundation Server, etc., working with Mercurial will be a breeze.  File edits do not require any special Mercurial command usage, file additions are accomplished via //hg add//, and removal of files can be done via //hg remove//.  When your changes are complete, call //hg commit// to commit the changes locally on your machine followed by //hg push// to push your changesets out to the official test262 repository.  You can get a full list of all Mercurial commands by calling //hg commands//.  **Please note while the semantics of pushing changes to Test262 have been described above, there is a little bit of Test262 process (described below) that you must follow before calling //hg submit//**.
+
+
+===== Regenerate the Website =====
+You should always regenerate the Test262 website within your local enlistment before submitting changes to the Test262 Mercurial repository.  Today, you'll need any machine with Python 2.7 installed to accomplish this:
+                > cd %PathToYourEnlistment%/test262/tools/packaging
+                > %pathToPython%/python.exe packager.py ES5
+                Generating test cases for ES5 chapter: 07_Lexical_Conventions
+                ...
+                Done.
+
+Provided that your changes do not add a brand new ES5 chapter to the test suite, the command above should have taken care of everything for you.  If you did happen to add a new test chapter, call //hg status// to see which new files under //website%%/%%// you need to call //hg add// on.
+
+===== Sanity Check the Generated Website =====
+  - Run the full test suite against your favorite ES3+ browser. Also run it against your favorite JavaScript command line engine Using the [[test262:command|Test262 command line runner]]. Ensure the run is //sane//: it doesn't hang the browser, new tests take under a couple seconds to run on //modern// hardware, no layout bugs have been introduced, etc.
+  - Repeat the previous step for at least one other vendor's most recently released non-nightly/Alpha/Beta web browser.  We do this as a minimal sanity check to try to make sure the website and harness do not take dependencies on non-standard browser functionality
+
+===== Code Reviews =====
+
+
+==== Test Harness and Website ====
+The only process here is that there's very little process.  In short, major website changes should be reviewed by the TC39 committee of ECMA **prior** to being uploaded to the public website.
+
+
+
+
+
+
+==== Test Cases ====
+All test cases should be written in the [[test262:test_case_format|Test262 test case format]].
+
+We have no formal test case reviewing process at the moment.  That said, we do have a formal mechanism to keep track of which tests have been reviewed by someone other than the contributor and which haven't.  For tests that have been reviewed please add a property named //reviewers// followed by a string identifying the reviewers in the metadata for the individual test case.  For example, a test file 1.2-1.js:
+<code javascript>                
+                /**
+                 * @description Simple test case.
+                 */
+                
+                if (2 + 3 !== 5) {
+                    $ERROR("Addition does not work.");
+                }
+</code>
+would be changed to:
+<code javascript>
+                /**
+                 * @description Simple test case.
+                 * @reviewers jane@doe.com
+                 */
+                
+                if (2 + 3 !== 5) {
+                    $ERROR("Addition does not work.");
+                }
+</code>
+
+===== Updating the Live Website =====
+  - SSH into //test262.ecmascript.org//
+  - Grab the latest //website// directory from Test262's Mercurial repository.  To this effect you can maintain a repository clone on //test262.ecmascript.org// or simply //scp// your local copy up to //test262//
+  - //cd /var/www/test262/www//
+  - Backup everything in this directory (minus //old//) to ///var/www/test262/www/old/TODAYS_DATE//
+  - Nuke everything in ///var/www/test262/www// **except for //index.html// and //old//**
+  - Copy the contents of the //website// directory you grabbed from Mercurial in an earlier step to ///var/www/test262/www//
+  - **Important**: verify the changes you've made to the live website actually //work// from at least one browser.  If not, revert the changes using the backup you made to ///old/TODAYS_DATE//
+  - Send an email to the test262-discuss alias if the changes were significant
+
+
+====== Other ======

@@ -1,0 +1,214 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:match_web_reality_spec&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:match_web_reality_spec&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:match_web_reality_spec&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="match_web_reality_spec"></a><h3>Match Web Reality Spec</h3>
+<div class="level3">
+
+</div>
+<!-- SECTION [1-33] -->
+<a name="examples"></a><h4>Examples</h4>
+<div class="level4">
+
+<p>
+The spec below aims to capture the following cases which are syntax errors according to ES5, but are broadly supported and relied upon on the web.  
+</p>
+<pre class="code">
+exec(/\12/, &quot;\n&quot;);
+exec(/[\12]/, &quot;\n&quot;);
+exec(/\xg/, &quot;xg&quot;);
+exec(/[\xg]+/, &quot;xg&quot;);
+exec(/\ug/, &quot;ug&quot;);
+exec(/[\ug]+/, &quot;ug&quot;);
+exec(/\a/, &quot;a&quot;);
+exec(/[\a]/, &quot;a&quot;);
+exec(/\8/, &quot;8&quot;);  
+exec(/[\8]/, &quot;8&quot;);
+exec(/(?=a)+/, &quot;&quot;);
+exec(/(?!a)+/, &quot;&quot;);
+exec(/{/, &quot;{&quot;);
+exec(/}/, &quot;}&quot;);
+exec(/\c1/, &quot;c1&quot;);
+exec(/[\c1]+/, &quot;c1&quot;);
+</pre>
+
+</div>
+<!-- SECTION [34-525] -->
+<a name="spec"></a><h4>Spec</h4>
+<div class="level4">
+
+<p>
+ <strong> 15.10.1 Patterns </strong>
+</p>
+
+<p>
+The pattern grammar in this section is instead context sensitive for the productions listed below, and ambiguities are introduced that are broken by ordering and contextual information.  The following grammar is used, with each alternative considered only if previous production alternatives do not match.  Additions <u>underlined</u>:
+</p>
+<pre class="code">
+Term ::
+  Assertion
+  AtomNoBrace Quantifier
+  Atom
+  QuantifiableAssertion Quantifier
+AtomNoBrace ::
+  PatternCharacterNoBrace
+  .
+  \ AtomEscape
+  CharacterClass
+  ( Disjunction )
+  ( ? : Disjunction )
+Atom ::
+  PatternCharacter
+  .
+  \ AtomEscape
+  CharacterClass
+  ( Disjunction )
+  ( ? : Disjunction )
+PatternCharacterNoBrace ::
+  SourceCharacter but not one of
+    ^ $ \ . * + ? ( ) [ ] { } |
+PatternCharacter ::
+  SourceCharacter but not one of
+    ^ $ \ . * + ? ( ) [ ] |
+QuantifiableAssertion ::
+  ( ? = Disjunction ) 
+  ( ? ! Disjunction )
+Assertion ::
+  ^
+  $
+  \ b 
+  \ B 
+  QuantifiableAssertion
+AtomEscape ::
+  DecimalEscape but only if the integer value of DecimalEscape is &lt;= NCapturingParens
+  CharacterClassEscape
+  CharacterEscape
+CharacterEscape ::
+  ControlEscape
+  c ControlLetter
+  HexEscapeSequence
+  UnicodeEscapeSequence
+  OctalEscapeSequence
+  IdentityEscape
+IdentityEscape ::
+  SourceCharacter but not c
+  &lt;ZWJ&gt;
+  &lt;ZWNJ&gt;
+NonemptyClassRanges ::
+  ClassAtom
+  ClassAtom NonemptyClassRangesNoDash
+  ClassAtomInRange - ClassAtomInRange ClassRanges
+NonemptyClassRangesNoDash ::
+  ClassAtom
+  ClassAtomNoDash NonemptyClassRangesNoDash
+  ClassAtomNoDashInRange - ClassAtomInRange ClassRanges
+ClassAtom ::
+  -
+  ClassAtomNoDash
+ClassAtomNoDash ::
+  SourceCharacter but not one of \ or ] or -
+  \ ClassEscape
+ClassAtomInRange ::
+  -
+  ClassAtomNoDashInRange
+ClassAtomNoDashInRange ::
+  SourceCharacter but not one of \ or ] or -
+  \ ClassEscape but only if ClassEscape evaluates to a CharSet with exactly one character
+  \ IdentityEscape
+ClassEscape ::
+  DecimalEscape but only if the integer value of DecimalEscape is &lt;= NCapturingParens
+  b
+  CharacterClassEscape
+  CharacterEscape
+</pre>
+
+<p>
+<strong>15.10.2.5 Term</strong>
+</p>
+
+<p>
+In addition to the existing productions for Term, include this:
+</p>
+
+<p>
+The production Term :: QuantifiableAssertion Quantifier evaluates as follows:
+</p>
+<ol>
+<li class="level1"><div class="li"> Return the result of evaluating the term ( ? : QuantifiableAssertion ) Quantifier </div>
+</li>
+</ol>
+
+<p>
+ <strong>15.10.2.8 Atom</strong>
+</p>
+
+<p>
+In addition to the existing productions for Atom, include identical productions for AtomNoBrace, except replacing Atom :: PatternCharacter with:
+</p>
+
+<p>
+The production AtomNoBrace :: PatternCharacterNoBrace evaluates as follows:
+</p>
+<ol>
+<li class="level1"><div class="li"> Let ch be the character represented by PatternCharacterNoBrace.</div>
+</li>
+<li class="level1"><div class="li"> Let A be a one-element CharSet containing the character ch.</div>
+</li>
+<li class="level1"><div class="li"> Call CharacterSetMatcher(A, false) and return its Matcher result.</div>
+</li>
+</ol>
+
+<p>
+ <strong>15.10.2.10 CharacterEscape</strong>
+</p>
+
+<p>
+In addition to the existing productions for CharacterEscape, include this:
+</p>
+
+<p>
+The production CharacterEscape :: OctalEscapeSequence evaluates by evaluating the CV of the OctalEscapeSequence (see B.1.2) and returning its character result.
+</p>
+
+<p>
+<strong>15.10.2.17 ClassAtom</strong>
+</p>
+
+<p>
+Add the following:
+</p>
+
+<p>
+The production ClassAtomInRange :: - evaluates by returning the CharSet containing the one character -.
+</p>
+
+<p>
+The production ClassAtomInRange :: ClassAtomNoDashInRange evaluates by evaluating ClassAtomNoDashInRange to obtain a CharSet and returning that CharSet.
+</p>
+
+</div>
+<!-- SECTION [526-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/e/e317b9a0178205897f305479785e1f57.xhtml used -->
+</body>
+</html>

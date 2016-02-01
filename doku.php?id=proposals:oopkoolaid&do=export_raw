@@ -1,0 +1,61 @@
+====== oopKoolAid for Map ======
+
+Also see [[discussion:dictionary|the discussion page]] for this proposal.
+
+This is a proposal that builds on ''Map'' to provide a hashtable that holds associations whose keys are objects with ''hashcode'' and ''equals'' methods.  It's separate because we don't know if it adds enough value at this time.
+
+===== Proposal 2: ObjectIdentity and IdentityMap =====
+
+(This has not yet been approved.)
+
+
+==== The ObjectIdentity interface ====
+
+The interface ''ObjectIdentity'' provides a common protocol for classes that want to define class-specific equality and hashcode methods:
+
+<code>
+__ES4__ interface ObjectIdentity
+{
+    function equals(that: *): boolean;
+    function hashcode(): uint;
+}
+</code>
+
+The type of ''that'' can't usefully be ''ObjectIdentity'', because just because two options implement an interface doesn't mean they are comparable, and it probably can't be ''Self'' because of the problems with ''Self'' in a nominal setting (see the discussion page for that proposal).  Without bounds, the best we've been able to do so far is ''*'', and the implementating class must probably use an ''is'' test to make sure the comparison is sound.
+
+
+==== The IdentityMap class ====
+
+The ''IdentityMap'' is a subclass of ''Map'' for keys that implement the ''ObjectIdentity'' protocol:
+
+<code>
+    public class IdentityMap.<V> extends Map.<ObjectIdentity,V> {
+        function IdentityMap() 
+            : super(function (x: ObjectIdentity, y: ObjectIdentity): boolean { return x.equals(y) },
+                    function (x: ObjectIdentity): uint { return x.hashcode() })
+        {
+        }
+    }
+</code>
+
+----
+Quick plea for renaming to ''ObjectMap''. This data structure maps ''Object'' to ''*'', not ''Identity'' to ''*''. It uses ''ObjectIdentity'' and that's well-named (starts with ''Object''). ''ObjectIdentityMap'' is too long and doesn't add value. Really, we have two ''Object''-related types, both peers. So suffixing ''Identity'' (''Key'' would work for me too) and ''Map'' makes more sense than a false hierarchy from ''Object'' to ''ObjectIdentity'' to ''ObjectIdentityMap''. True, ''Object'' does not implement ''ObjectIdentity'', so the map is not from any ''Object'' -- but the ''Object'' here is more about OOP kool-aid, than about the ES1-3 ''Object'' type.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/09/04 02:23//
+
+=== Constructor ===
+
+The constructor takes no arguments:
+
+<code>
+function IdentityMap() 
+</code>
+
+Unlike the case for ''Map'' there is no conversion function from ''Object'' because none of the key types gotten through enumeration of
+an object implement the ''ObjectIdentity'' protocol. 
+
+
+=== Method suite ===
+
+The method suite is the same as for ''Map''.
+

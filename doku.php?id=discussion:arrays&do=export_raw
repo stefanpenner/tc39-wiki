@@ -1,0 +1,149 @@
+====== Arrays ======
+
+This is the discussion page for [[proposals:arrays|the array proposal]].
+
+
+===== Limitations in the type syntax =====
+
+It will not be possible to indicate a tuple of length 1.  This is probably not a big problem in practice (it's not an important use case), and a programmer who believes that it is possible will only be confused in some edge cases where he finds that behavior he thought was illegal or false is in fact legal or true, ie
+
+<code>
+  function f() : [int] { return [1]:[int] }
+  delete f()[0]
+</code>
+
+will successfully delete the ''0''th element, which is not what the programmer expected.
+
+
+====== Older proposals not carried forward ======
+
+The following is structured as independent fixes to observed problems, with a new class ''array'' capturing all the fixes in a way that fits into the existing language.
+
+==== Fixed-length arrays ====
+
+(See also ticket 69, unresolved as of 2007-07-16.)
+
+There is a property ''fixed'' on true arrays and tuples.  Its type is ''boolean''.  If its value is ''true'' then ''length'' cannot be changed (attempts to change it will throw exceptions).
+
+For tuple types, ''fixed'' is set at construction time to ''true'' and it is read-only.
+
+For true array types, ''fixed'' can be set at construction time if we accept a constructor syntax that accepts a length argument, and in that case the property should also be read-only.  See ticket 69.
+
+In all other cases, ''fixed'' can be set and reset arbitrarily by the user program, see ticket 69.  Setting ''length'' and then setting ''fixed'' to true effectively creates an array that will catch out-of-bound assignments and references.  There is no need for the ''fixedLength'' or ''bound'' properties proposed in ticket 69.
+
+
+==== Iteration ====
+
+For-in iteration over tuples and true arrays step through every index from 0 through length-1 in that order and consider neither the prototype property nor properties outside the index range.
+
+For-each iteration does the same, except of course it iterates over values.
+
+
+==== The class "array" ====
+
+This all comes together in a new class called ''array''.  The class ''array'' is to ''Array'' as ''string'' is to ''String'': a subclass, final, sealed, and hopefully rather more optimizable.
+
+Tuples and true arrays are instances of ''array'', whereas other arrays are instances of ''Array'', as before.
+
+Using the type name:
+
+  * ''new array()'' means ''[]:[*]''
+  * ''new array(n)'' means ''let (x=[]:[*]) x.length=n, x.fixed=true, x'' 
+  * ''new array(a, b, ..., k)'' is illegal, an exception is thrown.
+  * ''array'' used as a type annotation is to be interpreted as ''[*]''.
+
+Operations on ''array'' instances:
+
+  * Reads by index will throw an exception if the index is not in the range ''0'' through ''length-1''.
+  * Writes outside the index range will throw an exception
+  * Extending and shrinking the array must be done by increasing or decreasing ''length''
+  * Element deletion in the index range will fail (return false) in all cases.
+  * ''in'' always succeeds in the index range and always fails outside the index range.
+  * iterators on the class iterate only over elements in the index range
+
+See [[discussion:arrays|the discussion page]] for a discussion on whether a new type is really necessary.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/07/16 13:46//
+
+===== Open Issues about the older proposal =====
+
+(Recorded at the July 2007 f2f.)
+
+These should turn into trac tickets or be disposed of quickly here:
+
+  * Should ''array'' be named ''vector'' or something differing by more than the case of the first letter from ''Array''?
+    * Votes for ''vector'': chris, pratap, allen, doug
+    * Votes for ''array'': 
+    * Abstaining: jeff
+    * Brendan's point: users don't need to talk about this type, so maybe it doesn't need a name, but calling it ''vector'' makes it plain it's something different
+      * Second point: ''vector'' might mean homogenous fixed length only, to many programmers who already use the word informally.
+  * Doug: will this thing have a prototype?
+  * Real-world (bogo-benchmark and production code) bug:
+    * People use ''a.sort()'' for an array of numbers.
+    * But the default comparison function (which converts element values to strings and compares them in lexicographic order) does not adapt to the latent element type.
+    * With array types we have explicit type information with which to do better.
+  * The proposal breaks the progression ''[int, string, int] <: [int, string] !<: [int]''.
+    * Will this be confusing to users who widen structural types to unit-length tuple types?
+  * If this proposal is accepted, should rest args be of type ''array'' instead of ''Array''?
+  * The prohibition on writing outside the index range means the array idiom ''a[a.length]=x'' to push an element onto the array won't work with these structures.  Bug or feature?
+    * If you allow deleting at the end of unfixed length arrays, why not allow writing at the end?  --- //[[brendan@mozilla.org|Brendan Eich]] 2007/07/20 12:40//
+  * Any reason this should not be a parameterized type ''vector.<T>'', either with the proposed type syntax as shorthand or with just that syntax?  (For easy construction we may wish to retain ''[...]:[int]'' in any case.)
+
+
+===== Tuples of length 1 =====
+
+The syntax I propose for array types does not provide for tuples of length 1.  One can simulate these with fixed-length arrays of length 1, but it's ugly:
+
+<code>
+  x = new [int](1); 
+  x[0] = 37
+</code>
+
+and it can't be done for non-nullable types without default values.  IMO this use case is worth less than the ability to just write down a type and have it "mean what I say", ie, ''[int]'' means array of int and ''[int,string]'' is a tuplish array.  This is especially true since a program that uses
+
+<code>
+  x = [37]:[int]
+</code>
+
+will in fact work as expected in most cases, and finally since the asymmetry of this case is similar to the asymmetry of the ES3 ''Array'' constructor, which treats a single argument differently from no arguments or more than one argument.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/07/16 11:11//
+
+
+===== Multi-dimensional arrays =====
+
+Consider matrices of floating-point numbers, which we can type as %%[][double]%%, allocate using ''x = new [][double](5,8)'', and dereference as ''x[1][5]''.  We can extract subarrays using ''x[2:4][1:3]'', maybe (creating a 2x2 matrix).  This should not be important for ES4 but it might be important to make sure we can consider it for ES5, somehow.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/07/16 13:33//
+
+
+===== Is the "array" class necessary? =====
+
+It certainly allows most of the semantics of true arrays and tuples to be expressed in the language, using getters, setters, operator overloading (maybe), and iterators.  It also avoids introducing new properties on existing classes, which is nice for backwards compatibility.
+
+The ''array'' class is also unobtrusive, it can be hidden in the same namespace where we hide ''string'' et al so it won't clutter up the global namespace.
+
+I don't know what kind of burden this is on the type system, if any.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/07/16 13:58//
+
+===== Generic Array type =====
+
+At various times we've discussed whether the ''Array'' type should be generic, ie, ''Array.<int>'' creates some sort of monotyped array.  We've rejected this because it introduces backwards compatibility issues.  Attempt to summarize this discussion:
+  * ''Array'' must itself be a valid object and also a type name for backwards compatibility reasons.
+  * Thus there will either have to be an ''Array'' that is different from the type ''Array.<T>'' or the T will have to default to ''*'', ie ''Array.<T=*>''. 
+  * If we introduce a default type argument then:
+    * Just mentioning ''Array'' must imply (for backwards compatibility reasons) an implicit instantiation of the type.
+    * Thus for any generic class ''Cls.<T=*>'' there will be a similar implicit instantiation.
+    * This is probably not what's desired.
+    * (Anyway it's unclear that default type parameters are a good thing, and we don't want to add this just so that we can get one step further to implementing ''Array'' in the language.)
+    * Thus we're stuck.
+  * Otherwise, there is some ''Array'' object that is different from the ''Array.<T>'' type object
+    * It must be possible for a program to talk about both without ambiguity
+    * Our only mechanism for this is namespaces, eg ''intrinsic''
+    * Thus the type will be known as ''intrinsic::Array.<T>''
+    * Note that it can't be in an implicitly opened namespace, or we'll have ambiguity; in particular, it can't be in whatever namespace we end up putting ''int'' and friends in
+    * This is probably not what's desired.
+    * Thus we're stuck.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/07/16 10:52//

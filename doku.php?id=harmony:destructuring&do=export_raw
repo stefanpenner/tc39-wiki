@@ -1,0 +1,249 @@
+**This proposal has progressed to the Draft ECMAScript 6 Specification, which is available for review here: [[harmony:specification_drafts]]. Any new issues relating to them should be filed as bugs at [[http://bugs.ecmascript.org]]. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.**
+
+
+
+
+===== Background =====
+
+  * ES4's [[proposals:destructuring assignment]] proposal
+  * The ES4 destructuring assignment [[discussion:destructuring_assignment|discussion page]]
+  * Array destructuring is implemented in the Opera browser starting with Opera 8
+  * ES4's proposal is implemented in SpiderMonkey and Rhino
+
+
+===== Goals =====
+
+  * Allow for destructuring of arrays and objects using syntax that mirrors array and object initialisers
+  * Destructuring patterns can appear in assignment expressions but also in the various binding forms
+  * Create optimizable idioms such as "group assignment", e.g. ''[a, b] = [b, a]'' to swap two variables
+
+
+
+===== Syntax =====
+
+<code ebnf>
+Pattern ::= "{" (Field ("," Field)* ","?)? "}"  
+          | "[" ArrayPatternList "]"
+ArrayPatternList ::= "..." Element
+                   | Element? ("," Element?)* ("," "..." Element)?
+Element ::= Pattern | LValue
+Field   ::= Identifier (":" Element)?
+LValue  ::= <any lvalue expression allowed in a normal assignment expression> 
+</code>
+
+A //Pattern// may appear only on the left-hand-side of "=" in the following contexts:
+
+  * in a plain assignment expression
+  * in a variable initializer in a ''var'', ''let'' or ''const'' definition
+  * in the first expression in the head of a ''for-in'' loop
+
+If preceded by a ''var'', ''let'', or ''const'' the //Pattern// must contain //LValue//s that are all identifiers, else the compiler must throw a ''SyntaxError''.
+
+A //Pattern// may appear not on the left-hand side of "=" in the following contexts:
+
+  * in a ''catch'' clause head: ''try {...} catch ({type, message, filename, lineNumber}) {...}''
+  * in a formal parameter list: ''function foo([first, second], third) {...}'', callable via ''foo([1, 2], 3)''
+    * ES1-3 allow duplicate formal parameter names
+
+In these cases all //LValue//s must be identifiers. Thus only assignment expressions may bind other lvalues than fresh identifiers.
+
+"Don't Repeat Yourself" motivates a shorthand familiar from ML for object patterns: ''{x, y}'' in a pattern context is equivalent to ''{x: x, y: y}''.
+
+Note that an object initialiser cannot appear at the start of a statement, so an object destructuring assignment statement ''{ x } = y'' must be parenthesized either as ''({ x } = y)'' or ''({ x }) = y''.
+
+Empty patterns are allowed. Rationale: same basis case as for initialisers helps code generators avoid extra checks.
+
+//(We don't understand the statement about Empty patterns. Besides, they aren't allowed by the above grammar. -- MarkM & Tom)//
+
+The grammar does produce empty patterns such as in ''var {} = obj;'' and ''[] = returnsArray()''. Note the parentheses and Kleene ''*'' usage. The rationale is that empty initialisers are allowed, and indeed top-down parsers must parse an empty pattern on the left of assignment as a primary initialiser expression first, only then discover a ''='' token and revise the AST appropriately to make the initialiser be a destructuring pattern.
+
+The further rationale is that code generators should not need to check and avoid emitting a no-op empty destructuring assignment or binding, if it happens that there are no properties or elements to destructure for the particular case the code generator is handling (say, based on database records or JSON). This is a bit thin by itself, but with the first point (symmetry with initialisers) it adds up to a better case for empty patterns.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2010/01/30 17:51//
+
+===== Semantics =====
+
+
+==== Assignments ====
+
+The meaning of the assignment expression P ''='' E where P is a //Pattern// and E is an //AssignmentExpression// is:
+
+  - Evaluate E yielding a value V
+  - Assign V to a fresh temporary T
+  - If P is an array pattern then 
+      - Taking each element L at the top level of P in order, with index I of L in P
+          - If L is an //... Element// E then
+              - Let A be a new array created as if by the expression new Array() where Array is the standard built-in constructor with that name. 
+              - If T is null or undefined
+                  - Perform E = A
+              - Else if Type(T) is not Object, then throw a TypeError exception.
+              - Else
+                  - Let len be the result of calling the <nowiki>[[Get]]</nowiki> internal method of T with argument “length”.
+                  - Let n be ToUint32(len).
+                  - Let index be I.
+                  - Repeat while index < n
+                      - Let indexName be ToString(index).
+                      - Let value be the result of calling the <nowiki>[[Get]]</nowiki> internal method of T with argument indexName.
+                      - Call the <nowiki>[[DefineOwnProperty]]</nowiki> internal method of A with arguments indexName, the Property Descriptor { <nowiki>[[Value]]</nowiki>: value, <nowiki>[[Writable]]</nowiki>: true, <nowiki>[[Enumerable]]</nowiki>: true, <nowiki>[[Configurable]]</nowiki>: true}, and false.
+                      - Set index to index + 1.
+                  - Perform E = A
+          - Else if L is an //LValue// N then
+              - Perform N = T[I]
+          - Else L is a //Pattern// P'
+              - Destructure P' and T[I] according to this algorithm (from step 2)
+  - If P is an object pattern then
+      - Taking each field F with name Q at the top level of P in order
+          - If there is no ":" or right-hand side in F
+              - Perform Q = T.Q
+          - If the right-hand-side of F is an //LValue// N
+              - Perform N = T.Q
+          - Else the right-hand-side of F is a //Pattern// P'
+              - Destructure P' and T.Q according to this algorithm (from step 2)
+  - Return T
+
+As can be seen, destructuring assignment is simple syntactic sugar.
+
+//Note//: In contrast with normal assignment expressions, the locations updated by destructuring assignment are not computed before the value that is to be stored. Destructuring assignment is simple syntactic sugar for a common compute-and-destructure pattern, and true to this pattern it computes the value prior to computing the locations. Apart from ''with'' and embedding-specific deep scope chains, there is no difference between prebinding lvalues vs. post-binding them.
+
+==== Variable Definitions ====
+
+The meaning of //DefiningKeyword// P ''='' E where the //DefiningKeyword// can be ''var'', ''let'', or ''const'' and all //LValue//s in the //Pattern// P are simple identifiers i1, i2, ..., is //DefiningKeyword// i1, i2, ... '';'' P ''='' E.
+
+==== For Loops ====
+
+==== Catch Heads ====
+
+==== Function Parameters ====
+
+==== Setter Parameter ====
+
+
+===== Examples =====
+
+Swap:
+
+<code>
+[a, b] = [b, a]
+</code>
+
+Multiple-value returns:
+
+<code javascript>
+function f() { return [1, 2] }
+var a, b;
+[a, b] = f();
+</code>
+
+Multiple-value returns, some values are not interesting:
+
+<code javascript>
+function f() { return [1, 2, 3] }
+var [a, , b] = f();
+</code>
+
+Going deeper into the array:
+
+<code javascript>
+[a,,[b,,[c]]] = f();
+</code>
+
+Object destructuring:
+
+<code javascript>
+var { op: a, lhs: b, rhs: c } = getASTNode()
+</code>
+
+Digging deeper into an object:
+
+<code javascript>
+var { op: a, lhs: { op: b }, rhs: c } = getASTNode()
+</code>
+
+Looping across an object:
+
+<code javascript>
+for ( let [name, value] in obj )
+    print("Name: " + name + ", Value: " + value);
+</code>
+
+Looping across values in an object:
+
+<code javascript>
+for each ( let { name: n, family: { father: f } } in obj )
+    print("Name: " + n + ", Father: " + f);
+</code>
+
+Summing the salary fields of all records whose record key begins with ''N'':
+
+<code javascript>
+for ( let [[k], { "salary": s }] in database )
+    if (k == "N")
+        sum += s;
+</code>
+ 
+Function that destructures its first argument and accepts some optional object arguments:
+
+<code javascript>
+function f( { "name": n }, ...[ a, b, c ] )
+{
+}
+</code>
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2009/05/06 01:41//
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/01/16 07:47//
+
+
+===== Issues =====
+
+It would be nice if we could get destructuring to work with rest arguments/spread operator.
+
+<code javascript>
+[x, ...xs] = someList
+</code>
+
+ --- //[[arv@google.com|Erik Arvidsson]] 2009/07/30 18:48//
+
+Erik: good idea, I will write it up in the [[harmony:rest parameters]] proposal.
+
+The idea of ''{x: a, y: b, ...: c}'' -- [[http://successor-ml.org/index.php?title=Functional_record_extension_and_row_capture|record extension and row capture]] -- for structuring and destructuring comes to mind, but ES objects are a different animal compared to ML records. For example, which properties of ''c'' are copied into the object being initialized by ''{x: a, y: b, ...: c}''? enumerable? own? etc.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2009/07/30 22:25//
+
+The shorthand ''{x, y}'' for ''{x: x, y: y}'' allowed on the left-hand side of assignment should be allowed on the right too, markm suggests.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2009/07/30 22:10//
+
+Allowing ''{x, y}'' in an object literal expression seems like a great idea. It seems useful since it makes patterns //reversible// and it also makes common programming patterns shorter:
+
+<code javascript>
+var obj = (function() {
+  function foo() {...}
+  ...
+  return {foo};
+})();
+</code>
+
+ --- //[[arv@google.com|Erik Arvidsson]] 2010/04/08 03:08//
+
+Agreed -- see [[strawman:object initialiser shorthand]].
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2010/05/26 21:57//
+
+A non matching rest pattern is bound to an empty ''Array''. This follows from symmetry with rest params.
+
+<code javascript>
+[x, ...xs] = [0, 1]; // x = 0, xs = [1]
+[y, ...ys = [0]; // y = 0, ys = []
+[z, ...zs] = []; // z = undefined, zs = []
+</code>
+
+And the rest param symmetry just for reference:
+
+<code javascript>
+function f(x, ...xs) {
+  assertTrue(Array.isArray(xs));
+}
+f();
+</code>
+
+ --- //[[arv@google.com|Erik Arvidsson]] 2010/11/05 22:26//

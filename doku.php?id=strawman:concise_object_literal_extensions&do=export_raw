@@ -1,0 +1,146 @@
+====== Concise Object Literal Extensions ======
+
+This is a set of syntactically concise extensions that cover the most common object property creation use cases that are not covered by the current 
+//ObjectLiteral// syntax:
+
+
+===== Motivation =====
+All properties of objects created using object literal syntax currently have the attributes enumerable: true, configurable: true, writable: true. This limits the utility of object literals as ECMAScript's primary declarative form of object creation.  It is particularly problematic in the case of method properties as it is seldom desirable for such properties to be enumerable.
+
+ES5 permits constructions of objects with arbitrary property attribute setting using the ''Object.create'' function. However, this form is much more verbose and its usage is complicated by the fact that the default attribute values are different than what is used for object literals. This can be see as follow:
+
+<code javascript>
+var obj = {a:x, k:0.5, m: function(z) {return z+this.a+this.k}};
+</code>
+
+If the programmer desires for the property ''k'' to be non-writable, non-configurable, and non-enumberable and for the method property  ''m'' to be  non-enumerable, they would express like this using ''Object.create'':
+
+<code javascript>
+var obj = Object.create(Object.prototype,{
+   a: {value: x, writable: true, enumerable: true, configurable: true},
+   k: {value: 0.5},  //use default false values for all attributes
+   m: {value: function(z) {return z+this.a+this.k}, writable: true, enumerable: false, configurable: true}
+};
+</code>
+
+or perhaps in a slightly less verbose (but arguably more obscure) form using ''Object.defineProperties'':
+<code javascript>
+var obj = Object.defineProperties(
+   {a:x, k:0.5, m: function(z) {return z+this.a+this.k}},
+   {k: {writable: false, enumerable: false, configurable: false},
+    m:  enumerable: false}
+   }
+};
+</code>
+
+Using the extensions in this proposal the above could be directly expressed using an object literal as:
+<code javascript>
+var obj = {a:x, ~!k:=0.5, m(z) {return z+this.a+this.k}};
+</code>
+ 
+
+===== Summary =====
+This proposal extnds object literals in these four ways:
+  - If a property definition (a //PropertyAssignment// in the ES grammar) is prefixed with **''~''** the property is non-enumerable
+  - If a property definition is prefixed with **''!''** the property is non-configurable
+  - If a data property definition uses **'':=''** in place of **'':''** the property is non-writable
+  - If a property definition has the form of a //FunctionDeclaration// without the keyword ''function'' it is a non-enumerable data property definition whose name is the function name
+
+
+
+
+===== Non-Enumerable and Non-Configurable Properties  =====
+Define a property to be non-enumerable and/or non-configurable:
+
+**//PropertyNameAndValueList// :**\\
+//PrefixedPropertyAssignment// \\
+//PropertyNameAndValueList// **,** //PrefixedPropertyAssignment//
+
+**//PrefixedPropertyAssignment//:** \\
+//PropertyPrefix//<sub>opt</sub> //PropertyAssignment//
+
+**//PropertyPrefix// :** \\
+**!**\\
+**~**\\
+**~!**\\
+**!~**
+
+Prefixing a property with **!** makes it non-configurable.  Prefixing a property with **~** makes it non-enumerable. Prefixing a property with either **~!** or **!~** makes it both non-configurable and non-enumerable.
+
+
+
+
+==== Examples ====
+
+<code javascript>
+var = {
+   //non-configurable properties
+   !x : 1,   
+   !"non identifier name" : 2,
+   !get 3() {return 3},
+   !set 3(v) {},    //both get and set must have the same confiburablility
+   //non-enumerable properties
+   ~y: 2,
+   ~0: 0,
+   ~get "a b"() {return 3},
+   ~set "a b"(v) {},    //both get and set must have the same enumerability
+   //non-configurable, non-enumerable properties
+   !~z : 3,
+   ~!a: 4,
+   ~!get c() {return 4}
+}
+</code>
+
+===== Non-Writable Data Properties  =====
+Define a property to be non-writable:
+
+//ProperyAssignment// : \\
+//PropertyName// := //AssignmentStatement//  
+
+
+==== Examples ====
+
+<code javascript>
+var obj = {
+   //constant properties
+   a := 1,   
+   "non identifier name" := 2,
+   3 := 3,
+   //constant non-enumerable property
+   ~b := 4
+   };
+
+//or more compactly:
+var obj={a:=1,"non identifier name":=2,3:=3,~b"=4};
+</code>
+
+
+
+
+===== methods =====
+
+As a convenience for the most common use case, the most concise forms of methods definitions define a non enumerable data property:
+
+//ProperyAssignment// : \\
+//PropertyName// **(** //FormalParameterList//<sub>opt</sub> **)** **{** //FunctionBody//  **}**  \\
+
+If the //PropertyName// is an //Identifier//, that //Identifier// is also treated for binding purposes as if it was the //Identifier// in a //FunctionExpression// .
+
+If the //PropertyAssignment// is prefixed with a **!** the property is made both non-configurable and non-writable.
+
+
+==== Examples ====
+
+<code javascript>
+var = {
+   toString () {return "literal"},//enumerable: false, writable: true configurable: true
+   !"non identifier name" () {},   /enumerable: false, writable: false configurable: false
+   ~length () {return 0},         // ~ doesn't change enumerability for methods
+
+   // the following are just regular data property definitions using the ~ and := extensions defined above
+   f: function f() {},    //enumerable: true, writable: true configurable: true
+   ~g: function g() {},   //enumerable: false, writable: true configurable: true
+   h := function h() {},  //enumerable: true, writable: false configurable: true
+   ~!hg := function hh{}   //enumerable: false, writable: false configurable: false
+}
+</code>

@@ -1,0 +1,434 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:scoped_object_extensions&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:scoped_object_extensions&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:scoped_object_extensions&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:scoped_object_extensions&amp;do=export_html.html#scoped_object_extensions" class="toc">Scoped Object Extensions</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:scoped_object_extensions&amp;do=export_html.html#goals" class="toc">Goals</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:scoped_object_extensions&amp;do=export_html.html#examples" class="toc">Examples</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:scoped_object_extensions&amp;do=export_html.html#related_work" class="toc">Related Work</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:scoped_object_extensions&amp;do=export_html.html#syntax" class="toc">Syntax</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:scoped_object_extensions&amp;do=export_html.html#extension_definition" class="toc">Extension Definition</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:scoped_object_extensions&amp;do=export_html.html#exporting_extensions" class="toc">Exporting Extensions</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:scoped_object_extensions&amp;do=export_html.html#importing_extensions" class="toc">Importing Extensions</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:scoped_object_extensions&amp;do=export_html.html#multiple_extensions" class="toc">Multiple Extensions</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:scoped_object_extensions&amp;do=export_html.html#lexical_scope" class="toc">Lexical Scope</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:scoped_object_extensions&amp;do=export_html.html#property_lookup" class="toc">Property Lookup</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:scoped_object_extensions&amp;do=export_html.html#property_lookup_spec_changes" class="toc">Property Lookup Spec Changes</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:scoped_object_extensions&amp;do=export_html.html#property_iteration" class="toc">Property Iteration</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:scoped_object_extensions&amp;do=export_html.html#reflective_api_for_extensions" class="toc">Reflective API for Extensions</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:scoped_object_extensions&amp;do=export_html.html#implementation_notes" class="toc">Implementation Notes</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="scoped_object_extensions"></a><h1>Scoped Object Extensions</h1>
+<div class="level1">
+
+<p>
+ Scoped object extensions allows different libraries to define and reuse monkey patches without conflicting with each other.
+</p>
+
+</div>
+<!-- SECTION [1-166] -->
+<a name="goals"></a><h2>Goals</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Allow property extensions to any object</div>
+</li>
+<li class="level1"><div class="li"> Extensions are only available in lexical scopes where they have been explicitly defined or imported</div>
+</li>
+<li class="level1"><div class="li"> When in scope property extensions are indistinguishable from normal properties </div>
+</li>
+<li class="level1"><div class="li"> Extensions may be used to extend objects to support interfaces that non-extended objects support. Extensions can be used to support duck-type polymorphism between extended and non-extended objects.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [167-622] -->
+<a name="examples"></a><h2>Examples</h2>
+<div class="level2">
+
+<p>
+ Extensions add properties to an object. Extensions are specified declaratively as part of a module declaration. The properties added via an extension are only visible within the module within which the extension is declared.
+</p>
+<pre class="code">
+module {
+  extension Array.prototype {
+    where: Array.prototype.filter,
+    select: Array.prototype.map
+  }
+
+  // extensions are in scope in their defining module
+  var evens = [1, 2, 3, 4].where(function (value) { return {value %2) == 0; });
+  alert(typeof([].where));  // function
+  alert(typeof(Array.prototype.select));  // function
+}
+// extensions are not in scope outside the lexical scope of the module
+alert(typeof([].where));  // undefined
+alert(typeof(Array.prototype.select));  // undefined
+</pre>
+
+<p>
+Extensions can be exported and imported across modules:
+</p>
+<pre class="code">
+module Collections { 
+  export extension Extensions = Array.protoype {
+    where: function(condition) { ... }
+    select: function(transformer) { ... }
+  }
+}
+
+module LolCatzDotCom {
+  // imports Array.prototype extensions where and select into this module
+  import Collections.Extensions;
+
+  var allCatz = someArrayValue;
+  // Array extensions are in scope
+  var cuteCatz = allCatz.where(function(cat) { return cat.isCute; });
+
+  alert(typeof([].where));  // function
+}
+</pre>
+
+<p>
+Extension properties appear to the programmer the same as any regular property defined on an object. In the above example, allCatz might be an array, or it might be any other object which contains a suitable &lsquo;where&rsquo; property. Extensions may be used in this way to introduce duck type polymorphism.
+</p>
+
+<p>
+Any object may be extended:
+</p>
+<pre class="code">
+module DOMExtensions {
+  extension window {
+    width: function () { return this.innerWidth; }
+  }
+
+  alert(window.width());
+}
+</pre>
+
+</div>
+<!-- SECTION [623-2404] -->
+<a name="related_work"></a><h2>Related Work</h2>
+<div class="level2">
+
+<p>
+ Very similar to Ruby refinements which are based on ClassBlocks. Open Classes from MultiJava. C# extension methods.
+</p>
+
+</div>
+<!-- SECTION [2405-2547] -->
+<a name="syntax"></a><h2>Syntax</h2>
+<div class="level2">
+
+<p>
+ Scoped object extension syntax builds on the syntax from the modules proposal.
+</p>
+<pre class="code">
+ExtensionDeclaration ::= &quot;extension&quot; [Identifier &quot;=&quot;] Expression ObjectLiteral
+
+ExportDeclaration ::= ...
+                   | export ExtensionDeclaration
+
+ModuleElement ::= ...
+               | ExtensionDeclaration
+</pre>
+
+</div>
+<!-- SECTION [2548-2883] -->
+<a name="extension_definition"></a><h2>Extension Definition</h2>
+<div class="level2">
+
+<p>
+ Object extensions are defined by ExtensionDeclarations:
+</p>
+<pre class="code">
+ExtensionDeclaration ::= &quot;extension&quot; [Identifier &quot;=&quot;] Expression ObjectLiteral
+</pre>
+
+<p>
+The <code>Expression</code> identifies the object being extended. The <code>Expression</code> is evaluated once at module startup (TODO: compile-time, link-time, run-time). The <code>ObjectLiteral</code> specifies the extension object containing the extension properties for the extended object. Extension objects are frozen and are prototype-less.
+</p>
+
+<p>
+If the <code>Identifier</code> is present in an ExtensionDeclaration then the extension is a named extension. The <code>Identifier</code> is bound to a const variable whose value is the extension object. TODO: Naming extensions is needed for importing/exporting them. Should the Identifier be in scope outside of import declarations? If not, is there a better syntax for naming extensions?
+</p>
+
+<p>
+As a matter of style, it is recommended that extension names be  &ldquo;Extensions&rdquo; where possible, or end on &ldquo;Extensions&rdquo;. This will increase clarity when importing extensions.
+</p>
+
+</div>
+<!-- SECTION [2884-3938] -->
+<a name="exporting_extensions"></a><h2>Exporting Extensions</h2>
+<div class="level2">
+
+<p>
+ Object extensions may be exported from a module:
+</p>
+<pre class="code">
+ExportDeclaration ::= ...
+                   | export ExtensionDeclaration
+</pre>
+
+<p>
+An object extension declared in an ExportDeclaration is exported from the containing module. An exported object extension which is named adds the named extension identifier to the set of identifiers exported by the module. Exported ExtensionDeclarations may be named or unnamed.
+</p>
+
+</div>
+<!-- SECTION [3939-4395] -->
+<a name="importing_extensions"></a><h2>Importing Extensions</h2>
+<div class="level2">
+
+<p>
+ Extensions may be imported from another module.
+</p>
+<pre class="code">
+ImportPath(load) ::= ModuleExpression(load) &quot;.&quot; ImportSpecifierSet
+ImportSpecifierSet ::= &quot;*&quot;
+                    | IdentifierName
+                    | &quot;{&quot; (ImportSpecifier (&quot;,&quot; ImportSpecifier)*)? &quot;,&quot;? &quot;}&quot;
+ImportSpecifier ::= IdentifierName (&quot;:&quot; Identifier)?
+</pre>
+
+<p>
+An import specifier of <code>*</code> imports all exported object extensions from the identified module - both named and unnamed extensions. If an import specifier of <code>IdentifierName</code> identifies an exported named extension then that extension is imported. 
+</p>
+
+<p>
+TODO: Individual extension properties may also be imported by name. Need to wrangle the syntax...
+</p>
+
+</div>
+<!-- SECTION [4396-5107] -->
+<a name="multiple_extensions"></a><h2>Multiple Extensions</h2>
+<div class="level2">
+
+<p>
+ A module may contain multiple extension definitions for the same object. When multiple extension definitions exist for the same object, the individual extension objects are removed from the extended object and a new extension object is created. The new extension object is created by adding all the extension properties from the defining extensions in the lexical order the extensions are defined in. The new extension object is frozen and has no prototype. In the case of conflicting extension definitions to the same object with the same property name, the last definition wins. TODO: could make this an error.
+</p>
+
+<p>
+A module may both import and locally define extensions for the same object. In the more general case, the conflicting extensions are removed and a new extension is added. The new extension is created by first adding all imported extensions in lexical order of importing, then local extension definitions are added. The new extension object is frozen and has no prototype. Conflicts between imported extensions and conflicts between imported extensions and locally defined extensions are not an error. Locally defined extensions always win over imported extensions, regardless of lexical order of import and definition. TODO: Is this the right rule? 
+</p>
+
+<p>
+TODO: nested modules have extensions from outer modules in scope.
+</p>
+
+<p>
+Inside a given lexical scope an object will have at most one extension object. Extension objects are frozen and have no prototype. The complete set of extension properties in a lexical scope can be determined statically.
+</p>
+
+<p>
+TODO: This should be reworked in terms of property descriptors.
+</p>
+
+</div>
+<!-- SECTION [5108-6760] -->
+<a name="lexical_scope"></a><h2>Lexical Scope</h2>
+<div class="level2">
+
+<p>
+ Each module declaration has a unique lexical scope. The lexical scope of an expression is the lexical scope of the immediately containing module. The notion of lexical scope propagates similarly to &lsquo;strict mode&rsquo;. Calls to <code>eval</code> inherit the lexical scope of their immediate caller.
+</p>
+
+</div>
+<!-- SECTION [6761-7072] -->
+<a name="property_lookup"></a><h2>Property Lookup</h2>
+<div class="level2">
+
+<p>
+ Property lookup on an object proceeds by first doing a lookup on the extension object if one is in scope. If the object does not have an extension object, or the extension object does not have a matching named property, then lookup proceeds normally on the object. When an object extension is in scope, the extension properties win. Note that all objects may be extended. 
+</p>
+
+<p>
+Given:
+</p>
+<pre class="code">
+var P = {};
+var O = Object.create(P);
+</pre>
+
+<p>
+The expression <code>O.M</code> searches for a property <code>M</code> in the following order: 
+</p>
+<ol>
+<li class="level1"><div class="li"> extension object for <code>O</code></div>
+</li>
+<li class="level1"><div class="li"> <code>O</code></div>
+</li>
+<li class="level1"><div class="li"> extension object for <code>P</code></div>
+</li>
+<li class="level1"><div class="li"> <code>P</code></div>
+</li>
+<li class="level1"><div class="li"> extension object for <code>Object.prototype</code></div>
+</li>
+<li class="level1"><div class="li"> <code>Object.prototype</code></div>
+</li>
+</ol>
+
+</div>
+<!-- SECTION [7073-7774] -->
+<a name="property_lookup_spec_changes"></a><h2>Property Lookup Spec Changes</h2>
+<div class="level2">
+
+<p>
+ Section 8.12.1 [[GetOwnProperty]](P) is modified as follows:
+</p>
+
+<p>
+When the [[GetOwnProperty]] internal method of O is called with property name P and lexical scope L, the following steps are taken:
+</p>
+<ol>
+<li class="level1"><div class="li"> Let D be the result of calling [[GetExtensionProperty]] on object O with property name P and lexical scope L.</div>
+</li>
+<li class="level1"><div class="li"> If D is not undefined, return D.</div>
+</li>
+<li class="level1"><div class="li"> Else return [[GetUnextendedOwnProperty]] on object O with property name P.</div>
+</li>
+</ol>
+
+<p>
+ When the [[GetExtensionProperty]] internal method of O is called with property name P and lexical scope L, the following steps are taken:
+</p>
+<ol>
+<li class="level1"><div class="li"> If O doesn’t have an object extension in lexical scope L return undefined.</div>
+</li>
+<li class="level1"><div class="li"> Else let E be the object extension for O in lexical scope L.</div>
+</li>
+<li class="level1"><div class="li"> Return [[GetUnextendedOwnProperty]] with object E and property name P.</div>
+</li>
+</ol>
+
+<p>
+ When the [[GetUnextendedOwnProperty]] internal method of O is called with property name P, the following steps are taken: NOTE: this is just the old version of [[GetOwnProperty]]
+</p>
+<ol>
+<li class="level1"><div class="li"> If O doesn’t have an own property with name P, return undefined.</div>
+</li>
+<li class="level1"><div class="li"> Let D be a newly created Property Descriptor with no fields.</div>
+</li>
+<li class="level1"><div class="li"> Let X be O’s own property named P.</div>
+</li>
+<li class="level1"><div class="li"> If X is a data property, then</div>
+<ol>
+<li class="level2"><div class="li"> Set D.[[Value]] to the value of X’s [[Value]] attribute.</div>
+</li>
+<li class="level2"><div class="li"> Set D.[[Writable]] to the value of X’s [[Writable]] attribute</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Else X is an accessor property, so</div>
+<ol>
+<li class="level2"><div class="li"> Set D.[[Get]] to the value of X’s [[Get]] attribute.</div>
+</li>
+<li class="level2"><div class="li"> Set D.[[Set]] to the value of X’s [[Set]] attribute.</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Set D.[[Enumerable]] to the value of X’s [[Enumerable]] attribute.</div>
+</li>
+<li class="level1"><div class="li"> Set D.[[Configurable]] to the value of X’s [[Configurable]] attribute.</div>
+</li>
+<li class="level1"><div class="li"> Return D.</div>
+</li>
+</ol>
+
+<p>
+ A consequence of the changes to [[GetOwnPropertyDescriptor]] is that extensions apply to MemberExpressions (both &lsquo;.&rsquo; and &lsquo;[&rsquo; operators), internal methods from 8.12 (Get, CanPut, Put, HasProperty, ...), as well as Object.getOwnPropertyDescriptor. The lexical scope will need to be propagated from all reflection APIs(Get, CanPut, Put, HasProperty, ...) down to [[GetOwnPropertyDescriptor]].
+</p>
+
+<p>
+Extension properties are non-configurable so assignment and Object.defineProperty will not allow modification of extension properties. 
+</p>
+
+<p>
+Alternative:
+</p>
+
+<p>
+An alternative design is to only apply extension lookup to the &lsquo;.&rsquo; and &lsquo;[&rsquo; operators.
+</p>
+
+</div>
+<!-- SECTION [7775-10169] -->
+<a name="property_iteration"></a><h2>Property Iteration</h2>
+<div class="level2">
+
+<p>
+ Extension properties participate in object property iteration. 
+</p>
+
+<p>
+In sections: 
+</p>
+<ul>
+<li class="level1"><div class="li"> 12.6.4 The for-in Statement</div>
+</li>
+<li class="level1"><div class="li"> 15.2.3.4 Object.getOwnPropertyNames</div>
+</li>
+<li class="level1"><div class="li"> 15.2.3.14 Object.keys</div>
+</li>
+</ul>
+
+<p>
+ Extension properties are included in property iterations and shadow non-extension properties of the same name. When iterating over the properties of an object, if an object has both an extension property and a regular(non-extension) property then the iteration will proceed as if the non-extension property is not present on the object.
+</p>
+
+<p>
+TODO: formalize this section.
+</p>
+
+</div>
+<!-- SECTION [10170-10748] -->
+<a name="reflective_api_for_extensions"></a><h2>Reflective API for Extensions</h2>
+<div class="level2">
+
+<p>
+ TODO: Need <acronym title="Application Programming Interface">API</acronym> on Object to access [[GetUnextendedOwnProperty]] and [[GetExtensionProperty]] directly.
+</p>
+
+</div>
+<!-- SECTION [10749-10904] -->
+<a name="implementation_notes"></a><h2>Implementation Notes</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> An existing compiling implementation will not need to change its code gen for legacy code  because it can determine statically that no object extensions are in scope. </div>
+</li>
+<li class="level1"><div class="li"> The set of extension objects in scope is a compile time constant. Extensions objects are frozen and the set of extensions is specified declaratively. Taking advantage of this fact should allow implementations to minimize the performance impact.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [10905-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/a/ae9406589e0215c53c6dd31f0c346e6e.xhtml used -->
+</body>
+</html>

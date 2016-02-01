@@ -1,0 +1,50 @@
+//Description//: The specification of Catch is clear enough, but has an unfortunate consequence.
+
+Catch is defined as creating a new object with the caught object as a property and putting the new object at the head of the scope chain.
+
+If the caught object is a function, calling it within the catch supplies the head of the scope chain as the this value. The called function can add properties to this object. This implies that for code of this shape:
+
+<code>
+    var x;
+    try { ...}
+    catch (E)
+    {
+       E();
+       return x;
+    }
+</code>
+
+The reference to ''x'' within the catch is not necessarily to the local declaration of ''x'';
+
+For example:
+
+<code>
+function foo() {
+  this.x = 11;
+}
+ 
+x = "global.x";
+
+try {
+  throw foo;
+} catch(e) {
+  print(x) // Should print "global.x"
+  e();
+  print(x) // Should add x to e
+           // (Both IE and Firefox modify the global x)
+}
+
+print(x);  // Should print "global.x". IE and Firefox both print 11
+</code>
+
+This gives Catch the same performance problems as **with**. If the call to E above were specified to supply the global object (rather than the head of the scope chain) as the ''this'' value, the performance issue evaporates and the catch variable can be treated as a local scoped to the catch clause.
+
+Relevant Goal: [[es3.1:es3.1_goals|1]]\\
+Relevant Design Principle: [[es3.1:design_principles|2a, 2b]]\\
+Relevant ES4 proposal: [[proposals:bug_fixes|bug fixes]]
+
+ --- //[[pratapl@microsoft.com|Pratap Lakshman]] 2007/04/15 03:17//
+
+FYI, Firefox 1.5 and earlier followed ES3. Firefox 2 anticipates ES4 based on IE's precedent.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/04/16 17:46//

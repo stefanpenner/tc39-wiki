@@ -1,0 +1,695 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:direct_proxies&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:direct_proxies&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:direct_proxies&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:direct_proxies&amp;do=export_html.html#direct_proxies" class="toc">Direct Proxies</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:direct_proxies&amp;do=export_html.html#motivation" class="toc">Motivation</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:direct_proxies&amp;do=export_html.html#in_a_nutshell" class="toc">In a Nutshell</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:direct_proxies&amp;do=export_html.html#acquisition_of_internal_properties" class="toc">Acquisition of Internal Properties</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:direct_proxies&amp;do=export_html.html#api_changes" class="toc">API Changes</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:direct_proxies&amp;do=export_html.html#fixing_direct_proxies" class="toc">Fixing Direct Proxies</a></span><ul class="toc">
+<li class="level4"><span class="li"><a href="doku.php%3Fid=strawman:direct_proxies&amp;do=export_html.html#protect" class="toc">Protect</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=strawman:direct_proxies&amp;do=export_html.html#proxy.stoptrapping" class="toc">Proxy.stopTrapping()</a></span></li>
+</ul>
+</li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:direct_proxies&amp;do=export_html.html#merging_object_and_function_proxies" class="toc">Merging Object and Function proxies</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:direct_proxies&amp;do=export_html.html#proxy.starttrapping_a.k.a._proxy.attach" class="toc">Proxy.startTrapping() (a.k.a. Proxy.attach)</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:direct_proxies&amp;do=export_html.html#non-wrapping_direct_proxies" class="toc">Non-wrapping direct proxies?</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:direct_proxies&amp;do=export_html.html#default_forwarding_handler" class="toc">Default Forwarding Handler</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:direct_proxies&amp;do=export_html.html#advantages_w.r.t._existing_proxies" class="toc">Advantages w.r.t. existing proxies</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:direct_proxies&amp;do=export_html.html#invariant_enforcement" class="toc">Invariant enforcement</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:direct_proxies&amp;do=export_html.html#open_issues" class="toc">Open issues</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:direct_proxies&amp;do=export_html.html#feedback_and_discussion" class="toc">Feedback and Discussion</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:direct_proxies&amp;do=export_html.html#references" class="toc">References</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="direct_proxies"></a><h1>Direct Proxies</h1>
+<div class="level1">
+
+<p>
+ Most parts of this strawman are now accepted as the new <a href="doku.php%3Fid=harmony:direct_proxies.html" class="wikilink1" title="harmony:direct_proxies" onclick="return svchk()" onkeypress="return svchk()">direct proxies</a> <acronym title="Application Programming Interface">API</acronym>. The <code>Proxy.stopTrapping</code> part has been <a href="doku.php%3Fid=strawman:stoptrapping.html" class="wikilink1" title="strawman:stoptrapping" onclick="return svchk()" onkeypress="return svchk()">deferred</a>. The <code>Proxy.startTrapping</code> (aka <code>Proxy.attach</code>) part remains a separate <a href="doku.php%3Fid=strawman:attach.html" class="wikilink1" title="strawman:attach" onclick="return svchk()" onkeypress="return svchk()">strawman</a>.
+</p>
+
+</div>
+<!-- SECTION [1-301] -->
+<a name="motivation"></a><h2>Motivation</h2>
+<div class="level2">
+
+<p>
+ Direct Proxies resolve a number of outstanding open issues with current proxies:
+</p>
+<ul>
+<li class="level1"><div class="li"> They enable proxies to emulate non-configurable properties</div>
+</li>
+<li class="level1"><div class="li"> They enable proxies to emulate non-extensible, sealed and frozen objects</div>
+</li>
+<li class="level1"><div class="li"> They do so without enabling proxies to violate ES5.1 spec invariants that relate to non-configurability and non-extensibility.</div>
+</li>
+<li class="level1"><div class="li"> They enable proxies with a custom [[Class]], and enable sensible transparent wrapping of host objects.</div>
+</li>
+<li class="level1"><div class="li"> They unify object and function proxies.</div>
+</li>
+</ul>
+
+<p>
+ In addition to this, we expect direct proxies to be more efficient than current proxies for the typical use case where a proxy is used to wrap an existing object.
+</p>
+
+</div>
+<!-- SECTION [302-1000] -->
+<a name="in_a_nutshell"></a><h2>In a Nutshell</h2>
+<div class="level2">
+
+<p>
+ The biggest difference between direct proxies and non-direct proxies is that a direct proxy always wraps an existing Javascript object (which we shall name the <em>target</em> of the proxy). The Proxy.create and Proxy.createFunction functions are replaced by a single Proxy.for function:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> proxy = Proxy.<span class="kw1">for</span><span class="br0">&#40;</span>target, handler<span class="br0">&#41;</span>;</pre>
+<p>
+Here,
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>target</code> is the object which the direct proxy wraps,</div>
+</li>
+<li class="level1"><div class="li"> <code>handler</code> is a handler object, as in the original proposal</div>
+</li>
+</ul>
+
+<p>
+A function proxy becomes a direct proxy that wraps a function (see details below).
+</p>
+
+<p>
+As in the original proxy proposal, operations applied to the direct proxy are trapped by the handler, except for <code>typeof</code>, <code>instanceof</code>, <code>===</code>. A direct proxy is <code>!==</code> to its target.
+</p>
+
+<p>
+All traps defined in <code>handler</code> are optional: if missing, the direct proxy defaults to forwarding the trapped operation to <code>target</code>.
+</p>
+
+<p>
+Unlike in the original proxy proposal, any non-configurable properties reported by the handler of a direct proxy are also stored on the target object. In doing so, the proxy ensures that the target object always &ldquo;matches&rdquo; the proxy as far as non-configurability of properties is concerned. For a full list of enforced invariants, see below.
+</p>
+
+<p>
+When a direct proxy is made non-extensible, so is its target. Once a direct proxy is non-extensible, all properties reported by the handler are stored on the target, regardless of their configurability. This ensures that the handler cannot report any &ldquo;new&rdquo; properties, since the target object will now reject any attempt to add new properties.
+</p>
+
+<p>
+<a href="lib/exe/detail.php%3Fid=strawman%253Adirect_proxies&amp;cache=cache&amp;media=strawman:directproxies_transparent.png.html" class="media" title="strawman:directproxies_transparent.png" onclick="return svchk()" onkeypress="return svchk()"><img src="lib/exe/fetch.php%3Fw=600&amp;h=&amp;cache=cache&amp;media=strawman:directproxies_transparent.png" class="mediacenter" title="Direct proxies" alt="Direct proxies" width="600" /></a>
+</p>
+
+</div>
+<!-- SECTION [1001-2673] -->
+<a name="acquisition_of_internal_properties"></a><h2>Acquisition of Internal Properties</h2>
+<div class="level2">
+
+<p>
+ A direct proxy may acquire some of its internal properties from its target object. This includes the [[Class]] and [[Prototype]] internal properties:
+</p>
+<ul>
+<li class="level1"><div class="li"> calling <code>Object.prototype.toString.call(aProxy)</code> on <code>aProxy</code> uses the <code>target</code>&lsquo;s [[Class]]</div>
+</li>
+<li class="level1"><div class="li"> calling <code>Object.getPrototypeOf(aProxy)</code> queries <code>aProxy</code> for its [[Prototype]], which is the [[Prototype]] of its target when the proxy was created.</div>
+</li>
+<li class="level1"><div class="li"> <code>typeof aProxy</code> is equal to <code>typeof target</code>.</div>
+</li>
+</ul>
+
+<p>
+ Example:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> d = <span class="kw2">new</span> Date<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+<span class="kw2">var</span> p = Proxy.<span class="kw1">for</span><span class="br0">&#40;</span>d, <span class="br0">&#123;</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;
+Object.<span class="me1">prototype</span>.<span class="me1">toString</span>.<span class="me1">call</span><span class="br0">&#40;</span>p<span class="br0">&#41;</span> <span class="co1">// &quot;[object Date]&quot;</span>
+Object.<span class="me1">getPrototypeOf</span><span class="br0">&#40;</span>p<span class="br0">&#41;</span> <span class="co1">// Date.prototype</span>
+<span class="kw1">typeof</span> p <span class="co1">// &quot;object&quot;</span>
+p === d <span class="co1">// false</span></pre>
+<p>
+We could even allow for direct proxies to acquire non-standard internal properties from their target object. This could be a useful principle when wrapping host objects.
+</p>
+
+</div>
+<!-- SECTION [2674-3591] -->
+<a name="api_changes"></a><h2>API Changes</h2>
+<div class="level2">
+
+<p>
+ For Direct Proxies, rather than adopting the <a href="doku.php%3Fid=strawman:handler_access_to_proxy.html" class="wikilink1" title="strawman:handler_access_to_proxy" onclick="return svchk()" onkeypress="return svchk()">handler_access_to_proxy</a> strawman that adds the <code>proxy</code> itself as an additional argument to all traps, we propose to instead add the <code>target</code> as an additional, last, argument to all traps. That allows the handler to interact with the target that it implicitly wraps.
+</p>
+
+<p>
+Providing access to the target rather than the proxy itself is also safer, as it prevents runaway recursion hazards. Only in the <code>get</code> and <code>set</code> traps do we provide access to _both_ proxy and target, since a forwarding proxy may either want to bind <code>this</code> in a forwarded method or accessor to the proxy itself, or to the target directly, depending on whether it wants to intercept self-sends.
+</p>
+
+</div>
+<!-- SECTION [3592-4345] -->
+<a name="fixing_direct_proxies"></a><h3>Fixing Direct Proxies</h3>
+<div class="level3">
+
+<p>
+ In the original proxy proposal, a proxy was born in a &ldquo;trapping&rdquo; state and could become &ldquo;fixed&rdquo; by calling any of <code>Object.{freeze, seal, preventExtensions}</code>. In other words, non-extensibility and trapping were mutually exclusive. This was viewed as a serious drawback of proxies.
+</p>
+
+<p>
+With direct proxies, &ldquo;fixing&rdquo; the proxy (i.e. stopping the handler from trapping) is entirely decoupled from &ldquo;protecting&rdquo; the proxy and its target, by calling <code>Object.{freeze,seal,preventExtensions}</code>.
+</p>
+
+<p>
+The old <code>fix</code> trap is replaced by two new traps:
+</p>
+<pre class="code javascript">protect: <span class="kw2">function</span><span class="br0">&#40;</span>operation, target<span class="br0">&#41;</span> -&gt; boolean
+stopTrapping: <span class="kw2">function</span><span class="br0">&#40;</span>target<span class="br0">&#41;</span> -&gt; boolean</pre>
+</div>
+<!-- SECTION [4346-5035] -->
+<a name="protect"></a><h4>Protect</h4>
+<div class="level4">
+
+<p>
+ The <code>protect</code> trap is called on <code>Object.{freeze,seal,preventExtensions}(aProxy)</code>. The <code>operation</code> argument is a string identifying the corresponding operation (<code>&ldquo;freeze&rdquo;</code>, <code>&ldquo;seal&rdquo;</code>, <code>&ldquo;preventExtensions&rdquo;</code>). This makes it easy for a handler to forward this operation, by e.g. performing <code>Object[operation](obj)</code>.
+</p>
+
+<p>
+Recall that <code>fix()</code> returned either a property descriptor map or undefined. If it returned undefined, the operation would fail, if it returned a pdmap, the proxy would &ldquo;become&rdquo; an object with those properties. With direct proxies, protecting the proxy does not stop the proxy from trapping, so the proxy will not &ldquo;become&rdquo; another object, it just keeps on wrapping the target. Since <code>target</code> is passed as an argument to the <code>protect</code> trap, the trap is free to (re)define any properties on the target before it&rsquo;s made non-extensible, sealed or frozen. The <code>protect</code> trap no longer needs to return a property descriptor map or undefined, just a boolean: if it returns true, the operation is applied to the target. If it returns false, the operation fails with a TypeError.
+</p>
+
+</div>
+<!-- SECTION [5036-6157] -->
+<a name="proxy.stoptrapping"></a><h4>Proxy.stopTrapping()</h4>
+<div class="level4">
+
+<p>
+ Since trapping is now entirely decoupled from &ldquo;protecting&rdquo; a proxy, we propose the introduction of a separate operation, named <code>Proxy.stopTrapping</code>. The call <code>Proxy.stopTrapping(aProxy)</code> triggers the proxy&rsquo;s <code>stopTrapping()</code> trap. This gives the handler a chance to either accept or reject the request:
+</p>
+<ul>
+<li class="level1"><div class="li"> If the <code>stopTrapping</code> trap returns true, the handler will be relinquished and the proxy henceforth becomes nothing but an empty forwarder to its target. In some sense, it has &ldquo;become&rdquo; its target (and indeed, smart engines may even implement it that way).</div>
+</li>
+<li class="level1"><div class="li"> If the <code>stopTrapping</code> trap returns false, the request to stop trapping is ignored.</div>
+</li>
+</ul>
+
+<p>
+ Unlike a failed protection operation, a failed <code>Proxy.stopTrapping</code> operation fails silently. If it were to fail by throwing an exception, this would expose that the object is a proxy and break transparent virtualization. <code>Proxy.stopTrapping(obj)</code> on a regular non-proxy object <code>obj</code> is a no-op.
+</p>
+
+<p>
+Now that protecting an object no longer requires fixing the proxy, <code>Proxy.stopTrapping</code> is an operation with a relatively narrow set of use cases. We expect it to only be used in special cases where the original creator of a proxy knows precisely when the proxy is no longer needed, and can be &ldquo;switched off&rdquo; for performance reasons. In most cases, we envision that a proxy will be trapping for its full lifetime and <code>stopTrapping</code> by default returns false.
+</p>
+
+<p>
+<a href="lib/exe/detail.php%3Fid=strawman%253Adirect_proxies&amp;cache=cache&amp;media=strawman:stoptrapping.png.html" class="media" title="strawman:stoptrapping.png" onclick="return svchk()" onkeypress="return svchk()"><img src="lib/exe/fetch.php%3Fw=600&amp;h=&amp;cache=cache&amp;media=strawman:stoptrapping.png" class="mediacenter" title="stopTrapping operation: before and after" alt="stopTrapping operation: before and after" width="600" /></a>
+</p>
+
+</div>
+<!-- SECTION [6158-7692] -->
+<a name="merging_object_and_function_proxies"></a><h3>Merging Object and Function proxies</h3>
+<div class="level3">
+
+<p>
+ Because a direct proxy inherits internal properties from its target, the old distinction between object and function proxies almost disappears. In fact, calling <code>Proxy.for(aFunction, handler)</code> almost effectively creates a function proxy, in that:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>Object.prototype.toString</code> returns <code>&ldquo;[object Function]&rdquo;</code></div>
+</li>
+<li class="level1"><div class="li"> <code>Function.prototype.toString</code> returns the function representation of <code>aFunction</code></div>
+</li>
+<li class="level1"><div class="li"> <code>Object.getPrototypeOf</code> returns the prototype of <code>aFunction</code> (which by default is <code>Function.prototype</code>)</div>
+</li>
+</ul>
+
+<p>
+ However, this leaves the proxy without a [[Call]] and [[Construct]] behavior, which still require a separate call and construct trap. Rather than introducing two proxy-creating functions as in the original proposal, we propose to introduce a <code>call</code> and a <code>new</code> trap on the handler:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> p = Proxy.<span class="kw1">for</span><span class="br0">&#40;</span>aFunction, handler<span class="br0">&#41;</span>;
+p<span class="br0">&#40;</span>...<span class="me1">args</span><span class="br0">&#41;</span>; <span class="co1">// calls handler.call(undefined, args, aFunction, p);</span>
+<span class="kw2">new</span> p<span class="br0">&#40;</span>...<span class="me1">args</span><span class="br0">&#41;</span>; <span class="co1">// calls handler.new(args, aFunction, p);</span>
+&nbsp;
+<span class="kw2">Function</span>.<span class="me1">prototype</span>.<span class="me1">call</span><span class="br0">&#40;</span>p, rcvr, <span class="nu0">1</span>, <span class="nu0">2</span>, <span class="nu0">3</span><span class="br0">&#41;</span>; <span class="co1">// calls handler.call(rcvr,[1,2,3],aFunction,p)</span></pre>
+<p>
+Both the <code>call</code> and <code>new</code> trap are optional and default to forwarding the operation to the wrapped target function.
+</p>
+
+<p>
+The [[Call]] and [[Construct]] behavior of a direct proxy is governed by the following rule:
+</p>
+<ul>
+<li class="level1"><div class="li"> If <code>typeof target === &ldquo;function&rdquo;</code>, then so is <code>typeof p</code> and calling/constructing the proxy always traps the <code>call/new</code> trap.</div>
+</li>
+<li class="level1"><div class="li"> If <code>typeof target !== &ldquo;function&rdquo;</code>, then so is <code>typeof p</code> and any attempt to call/construct <code>p</code> raises a <code>TypeError</code> as usual, stating that <code>p</code> is not a function. The <code>call</code> or <code>new</code> traps are never invoked.</div>
+</li>
+</ul>
+
+<p>
+ This upholds the constraints that:
+</p>
+<ul>
+<li class="level1"><div class="li"> The result of <code>typeof</code> is stable: it depends only on <code>typeof target</code>, not on the presence or absence of the <code>call</code> or <code>new</code> traps.</div>
+</li>
+<li class="level1"><div class="li"> An object is callable iff <code>typeof obj === &ldquo;function&rdquo;</code></div>
+</li>
+</ul>
+
+<p>
+ The second restriction could be revisited if there exist host objects that are not <code>typeof &ldquo;function&rdquo;</code> but that are callable/constructable.
+</p>
+
+</div>
+<!-- SECTION [7693-9801] -->
+<a name="proxy.starttrapping_a.k.a._proxy.attach"></a><h1>Proxy.startTrapping() (a.k.a. Proxy.attach)</h1>
+<div class="level1">
+
+<p>
+ Given that direct proxies are not in a position to violate any of the non-configurability or non-extensibility constraints of their wrapped target, it should be safe to replace an existing normal object by a direct proxy wrapping that object. This would enable interception of operations on <em>existing</em> objects.
+</p>
+
+<p>
+We can think of <code>Proxy.stopTrapping</code> as taking a proxy and turning it into its target. By analogy, we propose to rename &ldquo;Proxy.attach&rdquo; to <code>Proxy.startTrapping</code>, since it takes a normal object and turns it into a proxy.
+</p>
+
+<p>
+Since being able to intercept all operations applied to an object is a powerful capability, an object that is actively trying to defend itself should not be replaceable by a proxy. Therefore, calling <code>Proxy.startTrapping(obj)</code> on an already non-extensible object <code>obj</code> should fail.
+</p>
+
+<p>
+<a href="lib/exe/detail.php%3Fid=strawman%253Adirect_proxies&amp;cache=cache&amp;media=strawman:starttrapping.png.html" class="media" title="strawman:starttrapping.png" onclick="return svchk()" onkeypress="return svchk()"><img src="lib/exe/fetch.php%3Fw=600&amp;h=&amp;cache=cache&amp;media=strawman:starttrapping.png" class="mediacenter" title="The startTrapping operation: before and after" alt="The startTrapping operation: before and after" width="600" /></a>
+</p>
+
+</div>
+<!-- SECTION [9802-10769] -->
+<a name="non-wrapping_direct_proxies"></a><h1>Non-wrapping direct proxies?</h1>
+<div class="level1">
+
+<p>
+ What about fully virtual proxies that are not backed by a wrapped existing object? It&rsquo;s still as easy to create such &ldquo;virtual&rdquo; proxies: just pass a fresh empty object (or perhaps even <code>null</code>?) as the target to Proxy.for and implement all the handler traps so that none of them defaults to forwarding. As long as the virtual proxy doesn&rsquo;t expose non-configurable properties or becomes non-extensible, the target object is fully ignored (except to acquire internal properties such as [[Prototype]] and [[Class]])
+</p>
+
+<p>
+As a matter of fact, the existing Proxy.create and Proxy.createFunction functions can easily be defined in terms of Proxy.for:
+</p>
+<pre class="code">
+  Proxy.create = function(handler, proto) {
+    return Proxy.for(Object.create(proto), handler);
+  };
+  Proxy.createFunction = function(handler, call, opt_construct) {
+    var extHandler = Object.create(handler);
+    extHandler.call = call;
+    extHandler.new = opt_construct;
+    return Proxy.for(call, extHandler);
+  };
+</pre>
+
+<p>
+Note: the above emulation of <code>Proxy.create{Function}</code> in terms of Proxy.for is transparent only if &lsquo;handler&rsquo; implements all required traps. Proxy.for will treat missing traps in the handler as forwarding traps, whereas missing traps in Proxy.create{Function} would cause a TypeError. Also, the ability to automatically define derived traps in terms of fundamental traps is lost.
+</p>
+
+</div>
+<!-- SECTION [10770-12185] -->
+<a name="default_forwarding_handler"></a><h1>Default Forwarding Handler</h1>
+<div class="level1">
+
+<p>
+ Even though the <a href="doku.php%3Fid=harmony:proxy_defaulthandler.html" class="wikilink1" title="harmony:proxy_defaulthandler" onclick="return svchk()" onkeypress="return svchk()">default forwarding handler</a> is now &ldquo;baked into&rdquo; direct proxies, we still propose to standardize it, since it allows traps to <em>generically</em> forward an operation to another object, without needing to consider the fine details of a faithful forwarding operation. By standardizing it, we ensure that the forwarding handler remains &ldquo;in sync&rdquo; with the proxy implementation, should new traps be added later.
+</p>
+
+<p>
+Since the <code>target</code> of a direct proxy is passed as an additional argument to all traps, the default forwarding handler can be a singleton object. There is no need for it to explicitly store its <code>target</code> in an instance variable:
+</p>
+<pre class="code javascript">Proxy.<span class="kw3">forward</span> = <span class="br0">&#123;</span>
+  getOwnPropertyDescriptor<span class="br0">&#40;</span><span class="kw3">name</span>, target<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> Object.<span class="me1">getOwnPropertyDescriptor</span><span class="br0">&#40;</span>target, <span class="kw3">name</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span>,
+  ...
+<span class="br0">&#125;</span></pre>
+<p>
+We propose to bind the singleton forwarding handler to <code>Proxy.forward</code>. This makes for an easy way to forward operations, for instance:
+</p>
+<pre class="code javascript">funtion makeChangeLogger<span class="br0">&#40;</span>target<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw1">return</span> Proxy.<span class="kw1">for</span><span class="br0">&#40;</span>target, <span class="br0">&#123;</span>
+    set: <span class="kw2">function</span><span class="br0">&#40;</span><span class="kw3">name</span>, value, target, proxy<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      log<span class="br0">&#40;</span><span class="st0">'property '</span>+<span class="kw3">name</span>+<span class="st0">' on '</span>+target+<span class="st0">' set to '</span>+value<span class="br0">&#41;</span>;
+      <span class="kw1">return</span> Proxy.<span class="kw3">forward</span>.<span class="me1">set</span><span class="br0">&#40;</span><span class="kw3">name</span>, value, target, proxy<span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+<span class="br0">&#125;</span></pre>
+<p>
+This relieves the <code>makeChangeLogger</code> abstraction from accurately mimicking the semantics of forwarding <code>set</code>.
+</p>
+
+<p>
+An explicit default forwarding handler is also still required to implement the <a href="doku.php%3Fid=harmony:proxies.html#transparent_chains_of_no-op_proxies" class="wikilink1" title="harmony:proxies" onclick="return svchk()" onkeypress="return svchk()">double lifting</a> pattern:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> metaHandler = Proxy.<span class="kw1">for</span><span class="br0">&#40;</span>target, <span class="br0">&#123;</span>
+  get: <span class="kw2">function</span><span class="br0">&#40;</span>trapName, target, proxy<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> <span class="kw2">function</span><span class="br0">&#40;</span>...<span class="me1">args</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="co1">// code here is run before every operation triggered on proxy</span>
+      <span class="kw1">return</span> Proxy.<span class="kw3">forward</span><span class="br0">&#91;</span>trapName<span class="br0">&#93;</span><span class="br0">&#40;</span>...<span class="me1">args</span><span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+<span class="kw2">var</span> proxy = Proxy.<span class="kw1">for</span><span class="br0">&#40;</span>target, metaHandler<span class="br0">&#41;</span>;</pre>
+<p>
+Some of the default forwarding operations enable programmers to express operations that were previously hard to accomplish:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>Proxy.forward.set(name, value, target)</code> can be used to set a property and test (via the return value) whether the set succeeded.</div>
+</li>
+<li class="level1"><div class="li"> <code>Proxy.forward.new(args, target)</code> can be used to generically forward <code>new target(...args)</code>.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [12186-14428] -->
+<a name="advantages_w.r.t._existing_proxies"></a><h1>Advantages w.r.t. existing proxies</h1>
+<div class="level1">
+<ul>
+<li class="level1"><div class="li"> Enables emulation of non-configurable properties.</div>
+</li>
+<li class="level1"><div class="li"> Enables emulation of non-extensible, sealed and frozen objects.</div>
+</li>
+<li class="level1"><div class="li"> &ldquo;Fixing&rdquo; a proxy (i.e. stopping the handler from trapping), becomes decoupled from &ldquo;protecting&rdquo; a proxy (making it non-extensible, sealed or frozen).</div>
+</li>
+<li class="level1"><div class="li"> No need to distinguish between object and function proxies. Proxy.create and Proxy.createFunction are replaced by a single uniform Proxy.for function.</div>
+</li>
+<li class="level1"><div class="li"> All traps become optional, they default to forwarding to the target. No distinction between fundamental and derived traps is needed.</div>
+</li>
+<li class="level1"><div class="li"> Wrapping an existing object using a direct proxy can be made much more efficient than wrapping an existing object using non-direct proxies. The default forwarding handler now becomes part of the internal proxy implementation. There is no intermediate ForwardingHandler. The proxy points to the target directly.</div>
+</li>
+<li class="level1"><div class="li"> When wrapping a target object, the prototype of the proxy automatically is the prototype of the target.</div>
+</li>
+<li class="level1"><div class="li"> Proxy acquires built-in properties of target. Enables faithful wrapping of Host objects, Arrays, etc.</div>
+</li>
+<li class="level1"><div class="li"> Direct proxies cannot break ES5 spec invariants.</div>
+<ul>
+<li class="level2"><div class="li"> This in turn enables safe transformation of regular objects into proxies (Proxy.startTrapping, a.k.a. Proxy.attach)</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> The default forwarding handler becomes a stateless singleton object.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [14429-15825] -->
+<a name="invariant_enforcement"></a><h1>Invariant enforcement</h1>
+<div class="level1">
+
+<p>
+ A direct proxy tries to keep its handler and target &ldquo;in sync&rdquo;. That is: the direct proxy inspects the return values from the handler traps, and updates the target accordingly. If the handler and the target are always consistent, then this synchronization is effectively a no-op. 
+</p>
+<ul>
+<li class="level1"><div class="li"> If the handler reports deleted/missing properties, these properties are deleted on the target.</div>
+</li>
+<li class="level1"><div class="li"> If the handler reports or successfully updates an existing target property, the property is updated on the target.</div>
+</li>
+<li class="level1"><div class="li"> If handler reports a new non-configurable property, this property is also added to the target.</div>
+</li>
+</ul>
+
+<p>
+ Failure to update the target indicates an invariant violation and will cause a TypeError to be thrown.
+</p>
+
+<p>
+Below is a list of invariants for Objects based on the ES5 spec.
+</p>
+
+<p>
+Definitions:
+</p>
+<ul>
+<li class="level1"><div class="li"> A <em>sealed property</em> is a non-configurable own property of the target.</div>
+</li>
+<li class="level1"><div class="li"> A <em>frozen property</em> is a non-configurable non-writable own property of the target.</div>
+</li>
+<li class="level1"><div class="li"> A <em>new property</em> is a property that does not exist on a non-extensible target.</div>
+</li>
+</ul>
+
+<p>
+ <strong>get{Own}PropertyDescriptor</strong> 
+</p>
+<ul>
+<li class="level1"><div class="li"> Non-configurability invariant: cannot return incompatible descriptors for sealed properties </div>
+</li>
+<li class="level1"><div class="li"> Non-extensibility invariant (only for getOwnPropertyDescriptor): must return undefined for new properties</div>
+</li>
+<li class="level1"><div class="li"> Synchronization actions:</div>
+<ul>
+<li class="level2"><div class="li"> if trap returns undefined, delete the property from target</div>
+</li>
+<li class="level2"><div class="li">  if property exists on target, update target&rsquo;s property based on returned descriptor</div>
+</li>
+<li class="level2"><div class="li"> if returned descriptor is non-configurable, (re)define the property on the target</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ <strong>defineProperty</strong> 
+</p>
+<ul>
+<li class="level1"><div class="li"> Non-configurability invariant: cannot succeed (return true) for incompatible changes to sealed properties </div>
+</li>
+<li class="level1"><div class="li"> Non-extensibility invariant: must reject (return false) for new properties</div>
+</li>
+<li class="level1"><div class="li"> Synchronization actions:</div>
+<ul>
+<li class="level2"><div class="li"> on success, if property exists on target, update property on target</div>
+</li>
+<li class="level2"><div class="li"> on success, if argument descriptor is non-configurable, (re)define property on target</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ <strong>get{Own}PropertyNames</strong> 
+</p>
+<ul>
+<li class="level1"><div class="li"> Non-configurability invariant: must report all sealed properties</div>
+</li>
+<li class="level1"><div class="li"> Non-extensibility invariant (only for getOwnPropertyNames): must not list new property names </div>
+</li>
+<li class="level1"><div class="li"> Synchronization actions:</div>
+<ul>
+<li class="level2"><div class="li"> delete all own properties of the target that are not listed in the trap result</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ <strong>delete</strong> 
+</p>
+<ul>
+<li class="level1"><div class="li"> Non-configurability invariant: cannot succeed (return true) for sealed properties</div>
+</li>
+<li class="level1"><div class="li"> Synchronization actions:</div>
+<ul>
+<li class="level2"><div class="li"> on success, delete the property from target</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ <strong>has{Own}</strong> 
+</p>
+<ul>
+<li class="level1"><div class="li"> Non-configurability invariant: cannot return false for sealed properties</div>
+</li>
+<li class="level1"><div class="li"> Non-extensibility invariant (only for hasOwn): must return false for new properties </div>
+</li>
+<li class="level1"><div class="li"> Synchronization actions:</div>
+<ul>
+<li class="level2"><div class="li"> if false is returned, delete the property from target</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ <strong>get</strong> 
+</p>
+<ul>
+<li class="level1"><div class="li"> Non-configurability invariant: cannot return inconsistent values for frozen data properties, and must return undefined for sealed accessors with an undefined getter </div>
+</li>
+<li class="level1"><div class="li"> Synchronization actions:</div>
+<ul>
+<li class="level2"><div class="li"> if property exists on target as a data property, updates the target&rsquo;s property with the returned value</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ <strong>set</strong> 
+</p>
+<ul>
+<li class="level1"><div class="li"> Non-configurability invariant: cannot succeed (return true) for frozen data properties or sealed accessors with an undefined setter </div>
+</li>
+<li class="level1"><div class="li"> Synchronization actions:</div>
+<ul>
+<li class="level2"><div class="li"> on success, if property exists on target as a data property, updates the target&rsquo;s property with the returned value</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ <strong>keys</strong> 
+</p>
+<ul>
+<li class="level1"><div class="li"> Non-configurability invariant: must report all enumerable sealed properties</div>
+</li>
+<li class="level1"><div class="li"> Non-extensibility invariant: must not list new property names</div>
+</li>
+<li class="level1"><div class="li"> Synchronization actions:</div>
+<ul>
+<li class="level2"><div class="li"> delete all own enumerable properties of the target that are not listed in the trap result</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ <strong>enumerate</strong> 
+</p>
+<ul>
+<li class="level1"><div class="li"> Non-configurability invariant: must report all enumerable sealed properties</div>
+</li>
+<li class="level1"><div class="li"> Synchronization actions:</div>
+<ul>
+<li class="level2"><div class="li"> delete all own enumerable properties of the target that are not listed in the trap result</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ More information about these invariants can be found in the header documentation of the <a href="http://code.google.com/p/es-lab/source/browse/trunk/src/proxies/DirectProxies.js#92" class="urlextern" target="_blank" title="http://code.google.com/p/es-lab/source/browse/trunk/src/proxies/DirectProxies.js#92" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">prototype implementation</a>.
+</p>
+
+</div>
+<!-- SECTION [15826-19905] -->
+<a name="open_issues"></a><h1>Open issues</h1>
+<div class="level1">
+<ul>
+<li class="level1"><div class="li"> The <a href="doku.php%3Fid=strawman:refactoring_put.html" class="wikilink1" title="strawman:refactoring_put" onclick="return svchk()" onkeypress="return svchk()">refactoring_put</a> proposal defines a saner semantics for (direct) proxies and prototype inheritance. If this strawman were accepted, the <code>get</code> and <code>set</code> traps would regain their lost <code>receiver</code> argument, which would make the additional <code>proxy</code> argument unnecessary: the <code>receiver</code> is typically (in the absence of inheritance) equal to the <code>proxy</code>.</div>
+</li>
+<li class="level1"><div class="li"> Proxy.for could be renamed to Proxy.create. We used a new name to avoid confusion with the existing Proxy.create function.</div>
+</li>
+<li class="level1"><div class="li"> Making all traps optional a) makes the <acronym title="Application Programming Interface">API</acronym> much more lightweight, b) is more future-proof. It does lose the distinction between fundamental vs derived traps. However, it would be easy for a library to reintroduce this distinction, such that a handler could specify only fundamental traps, and have the other traps be derived from these automatically.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [19906-20794] -->
+<a name="feedback_and_discussion"></a><h1>Feedback and Discussion</h1>
+<div class="level1">
+
+<p>
+ This strawman was presented and extensively discussed at the November 2011 TC39 meeting, with two major differences from what is recorded here:
+</p>
+<ul>
+<li class="level1"><div class="li"> Instead of a <code>Proxy.forward</code> default forwarding handler, we proposed the introduction of a separate <code>Reflect</code> module.</div>
+</li>
+<li class="level1"><div class="li"> The synchronization actions to keep a proxy and its target automatically &ldquo;in sync&rdquo; were dropped. Instead, it was proposed that a proxy only checks the invariants. If it cannot reliably ensure that the invariant continues to hold, it throws a <code>TypeError</code>. The proxy never implicitly side-effects its target.</div>
+</li>
+</ul>
+
+<p>
+ What follows is a list of issues that came up during this meeting, recorded by Tom: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Allen: forwarding of internal properties. Not clear yet what spec implications are.</div>
+</li>
+<li class="level1"><div class="li"> MarkM: Type(target) should be Object, throw TypeError otherwise. More future-proof than calling ToObject.</div>
+</li>
+<li class="level1"><div class="li"> Clarification: [[Class]] of target not only used for toString, but also as nominal type. We want Array.isArray to return true for array-wrapping proxies.</div>
+</li>
+<li class="level1"><div class="li"> default [[Construct]] behavior: forward or make it a derived trap? Forward, to be consistent with other missing traps.</div>
+</li>
+<li class="level1"><div class="li"> Waldemar: derived traps were good for future-proofing. Conclusion: add a language-provided handler to the <acronym title="Application Programming Interface">API</acronym> that defines all derived traps in terms of all fundamental traps.</div>
+</li>
+<li class="level1"><div class="li"> Put the <code>target</code> parameter first for all traps.</div>
+</li>
+<li class="level1"><div class="li"> Put the <code>receiver</code> parameter last for get/set traps (makes it optional for reflective use)</div>
+</li>
+<li class="level1"><div class="li"> rename <code>call</code> trap to <code>apply</code> (because it takes an array of args, not a variable list of parameters)</div>
+</li>
+<li class="level1"><div class="li"> protect trap: split them out into freeze/seal/preventExtensions again. Make freeze/seal derived traps.</div>
+</li>
+<li class="level1"><div class="li"> freeze/seal/pE: handler should perform the operation, proxy should check the state of the target if trap returns true.</div>
+</li>
+<li class="level1"><div class="li"> Waldemar: get/set don&rsquo;t uphold invariants involving inheritance. MarkM: too costly to uphold.</div>
+</li>
+<li class="level1"><div class="li"> Should we allow a <code>null</code> target? No, avoid this irregularity. Instead provide a &ldquo;non-committal&rdquo; singleton object as the target (i.e. an object that rejects non-configurable properties and rejects preventExtensions).</div>
+</li>
+<li class="level1"><div class="li"> mutable __proto__ and proxies: no problem, proxies can intercept __proto__ via get/set trap. If target&rsquo;s [[Prototype]] changes, will be reflected via <code>Object.getPrototypeOf(proxy)</code>.</div>
+</li>
+<li class="level1"><div class="li"> <code>getPropertyDescriptor</code> / <code>getPropertyNames</code>: don&rsquo;t remove the built-ins, do remove the traps. Built-ins for convenience. They will walk proto chain and call getOwnPropertyDescriptor/getOwnPropertyNames.</div>
+</li>
+<li class="level1"><div class="li"> Proxy.for: <code>for</code> is a bad name when using modules: import <code>for</code> from Proxy? Dave: suggest to use Proxy as a function, i.e. <code>Proxy(target, handler)</code>.</div>
+</li>
+<li class="level1"><div class="li"> Do we need a <code>defaultValue</code> trap? Use a private name instead.</div>
+</li>
+<li class="level1"><div class="li"> drop <code>stopTrapping</code></div>
+</li>
+<li class="level1"><div class="li"> Discussion on startTrapping/attach:</div>
+<ul>
+<li class="level2"><div class="li"> non-extensible is not the right flag to check for: configurable props of a non-extensible obj can be overridden anyway. Too constraining. Instead, non-configurability seems more important: under current proposal, can still attach to an extensible object whose props are all non-configurable.</div>
+</li>
+<li class="level2"><div class="li"> disallow intercepting non-configurable props? Problem: array <code>length</code> is non-configurable. MarkM: we can special-case Array if need be.</div>
+</li>
+<li class="level2"><div class="li"> Sam: being able to intercept <code>apply</code>/<code>new</code> on functions: violates even ES3 invariant that when <code>A</code> passes a function to <code>B</code> and <code>C</code>, <code>B</code> and <code>C</code> shouldn&rsquo;t be able to see each other&rsquo;s arguments passed into that function.</div>
+</li>
+<li class="level2"><div class="li"> To get consensus on Proxy.attach, we need to weaken the power of attachable proxies (e.g. only intercept delete,defineProperty,set; do not intercept apply,new) and/or restrict the type of objects/properties to which proxies can be attached. What is a sensible subset of the Proxy <acronym title="Application Programming Interface">API</acronym> for data-binding purposes?</div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [20795-24684] -->
+<a name="references"></a><h1>References</h1>
+<div class="level1">
+<ul>
+<li class="level1"><div class="li"> <a href="http://code.google.com/p/es-lab/source/browse/trunk/src/proxies/DirectProxies.js" class="urlextern" target="_blank" title="http://code.google.com/p/es-lab/source/browse/trunk/src/proxies/DirectProxies.js" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Prototype implementation</a> based on Firefox 7 proxies: after loading this file, the page effectively uses direct proxies as specified here.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [24685-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/1/1a93515fed782ed591b88113d10bb5a8.xhtml used -->
+</body>
+</html>

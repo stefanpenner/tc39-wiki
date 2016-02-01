@@ -1,0 +1,480 @@
+====== Class Initialisers: Class Declarations Based On Object Initilisers ======
+
+//This is a revised proposal that is based upon discussions at the Sept. 2010 TC39 meeting.// 
+
+//This is one of several related [[strawman:object_initialiser_extensions|Object Initialiser Extensions]].// \\
+//This extension builds upon concepts introduced in [[strawman:Obj_initialiser_meta|Object Initialiser Meta Properties]], [[Object Initialiser Initialization Blocks]], [[strawman:Obj_initialiser_methods|Method Properties]], and [[strawman:Obj_initialiser_const|Other Object Initialiser Property Modifiers]]// \\
+//[[Private Names in Object Initialisers]] and [[super in Object Initialisers]] add additional features to Class Initialisers//
+
+Enhanced object initialisers  provide a self contained declarative construct for defining discrete objects. Such initialiser actually define object abstractions that often will be instantiated multiple times. For both engineering and cognitive reasons is usually desirable to name such abstractions. One way to name an object literal based abstraction is to wrap it in a factory function that is used to create instances of the abstraction. However, that pattern has the disadvantage it requires two distinct constructs (a function declaration containing an object initialiser) to represent the named abstraction and the name is most closely associated with the factory function rather than the object abstraction.
+
+The ECMAScript specification itself uses class-like abstractions to describe the behaviors of built-in ECMAScript objects. The  abstraction model used within the specification is based upon the core prototypical object model of ECMAScript and does not depend upon any semantic extensions to that core object model. It really is just the consistent application of a set of conventions for relating the objects (the constructor, the prototype, and instance objects) that are being abstracted. However, the consistent use of such conventions is important to the understandability of complex ECMAScript programs. Unfortunately,  ECMAScript has not had a declarative syntax for  defining object-abstractions that follow the same basic class-like model used in the specification.  The only way to duplicate it has been via imperative code that must explicitly construct the appropriate relationships among the relevant objects. This has led to subtle variations among the "class" conventions used in different programs and a proliferation of often incomparable libraries that exposing reflection based pseudo-declarative interfaces for creating class-like abstractions.
+
+This proposal show how ECMAScript existing declarative Object Literal notation can be extended to provide a declarative syntax for class-like abstractions that follow the same conventions used for the ECMAScript built-in objects. This extended syntax is called //Class Initialisers//.
+
+
+
+===== Basic Concepts =====
+
+The basic syntax of a Class Initialiser is just an object literal immediately preceded by the **class** reserved word.
+
+<code javascript>
+class { }
+</code>
+This is a //PrimaryExpression//. Like any expression element, its value can be named using a **const** declaration:
+<code javascript>
+const Point = class { };
+</code>
+However, the above definition of Point would probably be more commonly written like:
+
+<code javascript>
+class Point { };
+</code>
+
+Evaluation of a class initialiser always produces a pair of objects: a "constructor" function and a "prototype" object. The above class declaration is nearly semantically  equivalent to:
+
+<code javascript>
+function Point() { };
+</code>
+
+The value a class initialiser is a new function object.  It has a "prototype" property whose value is also a new object. For  brevity, the rest of this proposal will use the term "constructor" to refer to the the function object created by such a declaration and the term "prototype" to refer to the object that is created as the value of the function's "prototype" property. The prototype has a property named "constructor" whose value is the constructor. Both the prototype property and the constructor property have the attributes {writable: false, enumerable: false, configurable: false}. The only real variance from a function expression is the that these properties are non-configurable and that the "prototype attribute is not writable. 
+
+//Rationale//:  {writable: false, enumerable: false, configurable: false} is the attribute settings used for built-in "prototype" properties. The same attributes are used for "constructor" as a reflection of the declarative manner in which it was constructed. Class initialiser establish immutable relationships between a constructor and it prototype. If mutable relationships are needed, existing ECMAScript constructs and conventions should be used to define such objects.
+
+A class initialiser is similar to a function definition in that it may be used as either an expression element or as a declarative statement. An identifier may occur immediately following the **class** keyword and can be consider to be the class name.  When occurring in the declarative statement form,  the identifier is is bound in the enclosing scope to the value of the object initialiser's constructor. This form is called a //class declaration//. In terms of declaration instantiations, such a class declaration is hoisted similarly to a //FunctionDeclaration// but evaluation of its property assignments take place in statement order similarly to ''let'' or ''const'' statements.
+
+Similar to function expressions, when a class initialiser is used as an expression element, the class name identifier is optional and if it is present is only bound within the body of the object initialiser. A class initialiser used as an expression element is called a //class expression//. Class expressions are evaluated at their point of the enclosing expression.  They are not hoisted and the class name is not included in the scope of the containing block.
+
+//Rationale:// It is the constructor function of a class declaration that is hoisted as if it was a function declaration. The actual initialization of of the properties of the constructor and prototype take place at the point of occurrence of the declaration, similarly to a regular object initialiser. The hoisting permits circular constructor references to occur among the class declaration within a block while the initialization order maintains consistency with other declaration initialisers.
+
+
+The body of a class initialiser is quite different from that of a function. The bracketed body of a Class Initializer is essentially an extended object initialiser rather than a function body. Except as elaborated below, //the properties defined in the object initiliser are created as properties of the prototype//. For example:
+
+<code javascript>
+class Point  { 
+   var x: 0,  //data properties of the prototype
+   var y: 0,
+   method distanceFromOrigin() {
+      return Math.sqrt(this.x*this.x + this.y*this.y)
+   }
+};
+</code>
+
+The prototype properties are created when a class initialiser is evaluated. The property attributes are generally the same as are used for the same property keywords in an object initialiser.
+
+The constructor created by a class initialiser can be instantiated using the **new** operator.  This creates a new instance whose %%[[Prototype]]%% is the prototype created by the class initialiser:
+
+<code javascript>
+class Point { 
+   var x: 0,  //data properties of the prototype
+   var y: 0,
+   method distanceFromOrigin() {
+      return Math.sqrt(this.x*this.x + this.y*this.y)
+   }
+};
+
+let pt = new Point;
+console.log(pt.x + " " + pt.y);  // 0 0
+console.log(pt.hasOwnProperty("x")+" "+ pt.hasOwnProperty("y")); // false false
+pt.x= = 10;
+console.log(pt.x + " " + pt.y);  // 10 0
+console.log(pt.hasOwnProperty("x")+" "+ pt.hasOwnProperty("y")); // true false
+console.log(pt.distanceFromOrigin()); //10
+</code>
+
+The above example illustrates that new instances initially inherit all their properties from the prototype and have no own properties.  However, own properties can be added to such instances by assignment or any other normal means. However, in many cases it is desirable to include instance specific initialization behavior directly in a class initialiser. This can be accomplished using the **new** keyword:
+
+<code javascript>
+class Point  { 
+   var x: 0,  //data properties of the prototype
+   var y: 0,
+   method distanceFromOrigin() {
+      return Math.sqrt(this.x*this.x + this.y*this.y)
+   },
+   new (x,y) {
+      var x: +x,
+      var y: +y
+   }
+};
+
+let pt1 =  new Point(10,10);
+console.log(pt1.x + " " + pt1.y);  // 10 10
+console.log(pt1.hasOwnProperty("x")+" "+ p1.hasOwnProperty("y")); // true true
+</code>
+
+The ''**new**'' keyword introduces the portion of a class initialisier that defines the parameters and body of the constructor.  The //FormalParameterList// following the **''new''** is the formal parameter list of the constructor.  This is called by //ObjectLiteral//. This object literal declaratively defines the own properties of instance objects created by the constructor. When the constructor is invoked, the **this** binding within the **''new''** //ObjectLiteral// is the newly instantiated object that is being initialized. Free variables in the //ObjectLiteral//, like all free variables in a class initialiser are closed over the environment that contains the class initialiser. If //ObjectLiteral// may include a //MetaProperties// part, but it may not contain a **proto:** meta property. All other meta properties that occur apply to all instance objects that are created by the constructor.
+
+Occasionally, complex imperative code is need to full initialize object instances.  In such situations, an [[Object Initialiser Initialization Blocks]] can be used within the //ObjectLiteral// to perform the initialization.  For example:
+
+<code javascript>
+class Point  { 
+   var x: 0,  //data properties of the prototype
+   var y: 0,
+   method distanceFromOrigin() {
+      return Math.sqrt(this.x*this.x + this.y*this.y)
+   },
+   new (xOrPoint,y) {        // call with either a single Point or two numbers
+      var x: undefined,      // define non-enumerable own properties for x and y 
+      var y: undefined, 
+      {
+         if (xOrPoint instanceof Point) {
+            this.x = xOrPoint.x;
+            this.y = xOrPoint.y;
+         else {
+            this.x = +xOrPoint;
+            this.y = +y;
+         }
+      }
+   }
+};
+</code>
+
+//Rationale:// It may appear odd that an //ObjectLiteral// appears in position where a function body might be expected and is parameterized with a //FormalParameterList//.  However, a major motivation for class initialisers is to make available a declarative syntax for describing the structure of objects. The own properties of instance objects is an important part of the structure that is defined by a class initialiser so a declarative definition of the own properties is needed.  An //ObjectLiteral// is a natural way to do this, but needs to be identified as such (hence the ''new'' keyword) and needs to be parameterized by the constructor call (hence the //FormalParameterList//).  Earlier versions of this proposal used just used a function body after **''new''** but this result in a highly imperative instance construction style of the sort this feature was intended to generally eliminate.
+
+Properties of the constructor may also be defined within a class initialiser:
+
+<code javascript>
+class Point  {
+   var x: 0,  //data properties of the prototype
+   var y: 0,
+   method distanceFromOrigin() {
+      return Math.sqrt(this.x*this.x + this.y*this.y)
+   },
+   new (xOrPoint,y) {        // call with either a single Point or two numbers
+      var x: undefined,      // define non-enumerable own properties for x and y 
+      var y: undefined, 
+      {
+         if (xOrPoint instanceof Point) {
+            this.x = xOrPoint.x;
+            this.y = xOrPoint.y;
+         else {
+            this.x = +xOrPoint;
+            this.y = +y;
+         }
+      }
+   },
+   //constructor properties
+   class method fromString(s) {
+      //parse a string of the format number@number and construct a point from the two numbers
+      let [x,y] = s.split("@");
+      return new Point(x,y);
+   },
+   class var origin = const new Point(0,0)
+};
+</code>
+
+
+
+
+
+
+
+
+===== Other Features =====
+
+By default, the prototype created by a class initialiser has ''Object.prototype'' as its %%[[Prototype]]%% value. If the body contains a **proto** metaProperty then it explicitly specifies the  %%[[Prototype]]%% value of the prototype crated by the class initialiser:
+
+<code javascript>
+//Define an abstract class
+class GeometricObject  {
+   sealed var isGeoObj: const true,
+   new {{throw TypeError("Attempt to instantiate an abstract class")}}
+}
+
+class Point {
+   <proto: GeometricObject.prototype>,
+   var x: 0,
+   var y: 0,
+   ...
+};
+</code>
+
+Having to say ".prototype" in value of the proto metaProperty seems awkward when we are dealing with class declarations.  As an alternative, the //superclass// meta Property and be used to designate a constructor object that serves the role of super class" to a class initialiser. This causes the  %%[[Prototype]]%% value of the new class' prototype to be set to the prototype property value of the designated constructor function:
+<code javascript>
+class Point {
+   <superclass: GeometricObject>,
+   var x: 0,
+   var y: 0,
+   ...
+};
+</code>
+
+A ''TypeError'' exception is thrown if the object specified as the value of a ''superclass'' meta property does not have a prototype property when the class initialiser is instantiated 
+
+If the constructor specified as the value of the ''superclass'' meta properties is the standard built-in constructors Array then both the prototype object and all instances created by the constructor have the same special %%[[%%DefineOwnProperty%%]]%% behavior as built-in array instances. If it is desired to define a class whose prototype  inherits from ''Array.prototype'' but which does not have special Array behavior, the ''proto'' meta property should be used for that class instead of the ''superclass'' meta property.
+
+//Rationale://  The most common use case for creating new classes that "inherit" specialized object semantics behavior.  This proposal supports that specific use case. It is probably possible to extend this special case to include RegExp and String but it isn't clear that they have compelling use cases.  A more interesting scenario would be using a Proxy function as a "superclass" and inheriting the Proxy handler behavior.  However, that is not part of this current proposal because its design details have not been worked out.
+
+The %%[[Prototype]]%% of the constructor is created by a class initialiser Function.prototype. There is no way to set it to something else.
+
+//Rationale:// "class side" inheritance seems to have too few use cases in ECMASScript to warrant adding an additional mechanism for setting the constructor's %%[[Prototype]]%%.  If this proves to be a problem it could be addressed by a future extensions.
+
+The constructor object created by an class initialiser has identical behavior for its %%[[Call]]%% and %%[[Construct]]%% internal methods.  They both instantiate a new object and then invoke the function (the **new** body) with the new object as the **''this''** value.
+
+If the meta properties include **''sealed''**, **''frozen''**, or ''**closed**'' then both the constructor and prototype created from the class initialiser are placed in that state.  Meta properties on the instance initializer //ObjectLiteral// apply only to instance objects.   For example:
+<code javascript>
+class Stable {
+   <frozen>,
+   var isStable:  const true,
+   new (prop) {
+      <closed>,
+      prop: prop
+   }
+}
+</code>
+will have a closed (meaning non-extensible) constructor and prototype, and instances that are not extensible have writable/configurable properties.
+
+The property attributes implied by these meta properties are set on individual constructor and prototype properties when each such property is initialized. The %%[[%%extensible%%]]%% internal property of the constructor and prototype objects are set after all of their properties have been initialized. Meta properties of instance objects are automatically set to the appropriate state after evaluation of the constructor body.
+
+It is a syntax error to include redundant meta properties.
+
+:!: //Open Issue//: Method properties and **new** definitions need to take lexical scoped **''this''** into account.  It may make sense for class initialiser methods to always have a lexical **''this''** binding.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+===== SYNTAX =====
+//ClassDeclaration// :\\
+**''class''** //Identifier// //ClassBody//
+
+//ClassExpression// :\\
+**''class''** //Identifier<sub>opt</sub>// //ClassBody//
+
+//ClassBody//\\
+**{ }**\\
+**{** //ClassMetaProperties// **}**\\
+**{** //ClassMetaProperties// **, }**\\
+**{** //ClassMetaProperties// **,**    //ClassPropertyNameAndValueList// **}**\\
+**{** //ClassMetaProperties// **,**    //ClassPropertyNameAndValueList// **, }**\\
+**{** //ClassPropertyNameAndValueList// **}**\\
+**{** //ClassPropertyNameAndValueList// **, }**\\
+
+//ClassMetaProperties// :\\
+**%%<%%** ClassMetaPropertyList **%%>%%**\\
+
+//ClassMetaPropertyList// :\\
+//ClassMetaProperty//\\
+//ClassMetaPropertyList// **,** //MetaProperty//\\
+
+//ClassMetaProperty// :\\
+**''proto''** **:** //AssignmentExpression//\\
+**''superclass''** **:** //AssignmentExpression//\\
+**''sealed''** \\
+**''frozen''** \\
+**''closed''** \\
+
+//ClassPropertyNameAndValueList// :\\
+//ClassPropertyAssignment//\\
+//ClassPropertyNameAndValueList// **,** //ClassPropertyAssignment//\\
+
+//ClassPropertyAssignment// : \\
+**''class''** //PropertyAssignment// \\
+//ConstrutorBody// \\
+//PropertyAssignment//
+
+//ConstrutorBody// : \\
+**''new''** //ObjectLiteral// \\
+**''new''** **(** //FormalParameterList<sub>opt</sub?// **)** //ObjectLiteral// \\
+
+Note: A //ConstructorBody// may appear at most once in //ClassPropertyNameAndValueList//.
+
+
+
+
+===== Desugaring =====
+
+In order to avoid tweaks that will be necessary to the Declaration Instantiation Specification,  the following should be interpreted as class expressions rather than class declaration.
+
+
+== Basic constructor ==
+ 
+<code javascript>
+class c {};
+</code>
+
+desugars to 
+
+<code javascript>
+function c() {};
+Object.defineProperty(c,'prototype',{writable: false, configurable: false}};
+Object.defineProperty(c.prototype,'constructor',{writable: false, configurable: false}};
+</code>
+
+
+
+
+
+== Constructor body/Instance initialization ==
+ 
+<code javascript>
+class c {
+   new (a,b) {
+     a : a,
+     b : b,
+     {this.x = somebody(this)}
+   }
+};
+</code>
+
+desugars to 
+
+<code javascript>
+function c(a,b) {
+    Object.defineProperty(this,"a",{value: a,enumerable: true, writable: true, configurable: true});
+    Object.defineProperty(this,"b",{value: a,enumerable: true, writable: true, configurable: true});
+    {this.x = somebody(this)}
+};
+Object.defineProperty(c,'prototype',{writable: false, configurable: false}};
+Object.defineProperty(c.prototype,'constructor',{writable: false, configurable: false}};
+</code>
+
+
+== Prototype Inheritance ==
+<code javascript>
+class c {
+   <prototype: p>
+};
+
+class d {
+   <superclass: c>
+};
+
+</code>
+
+desugars to 
+
+<code javascript>
+function c() {};
+Object.defineProperty(c,'prototype',{value: Object.create(p), enumerable: false, writable: false, configurable: false}};
+Object.defineProperty(c.prototype,'constructor',{writable: false, configurable: false}};
+
+function d() {};
+Object.defineProperty(d,'prototype',{value: Object.create(c.prototype), enumerable: false, writable: false, configurable: false}};
+Object.defineProperty(d.prototype,'constructor',{value: d, enumerable: false, writable: false, configurable: false}};
+</code>
+
+
+== Prototype Properties  ==
+<code javascript>
+class c {
+   <prototype: p>,
+   a: initial,
+   method m() {},
+   var k: const 2
+};
+</code>
+
+desugars to 
+
+<code javascript>
+function c() {};
+Object.defineProperty(c,'prototype',{value: Object.create(p), enumerable: false, writable: false, configurable: false}};
+Object.defineProperty(c.prototype,'constructor',{writable: false, configurable: false}};
+Object.defineProperty(c.prototype,'a', {value: initial, writable: true, enumerable: true, configurable: true});
+Object.defineProperty(c.prototype,'m', {value: function () {}, writable: false, enumerable: false, configurable: true});
+Object.defineProperty(c.prototype,'k', {value: 2, writable: false, enumerable: false, configurable: true});
+</code>
+
+Note that individual calls to ''Object.defineProperty'' are shown instead of ''Object.defineProperties'' or including them in ''Object.create'' because of initialization ordering issues that show up for more complex class initialisers.
+
+
+== Constructor Properties  ==
+<code javascript>
+class c {
+   <prototype: p>,
+   a: initial,
+   class method isC(obj) {return obj instanceof c},
+   method m() {},
+   class method another(){},
+   var k: const 2
+};
+</code>
+
+desugars to 
+
+<code javascript>
+function c() {};
+Object.defineProperty(c,'prototype',{value: Object.create(p), enumerable: false, writable: false, configurable: false}};
+Object.defineProperty(c.prototype,'constructor',{writable: false, configurable: false}};
+Object.defineProperty(c.prototype,'a', {value: initial, writable: true, enumerable: true, configurable: true});
+Object.defineProperty(c,'isC', {value: function () {return obj instanceof c}, writable: false, enumerable: false, configurable: true});
+Object.defineProperty(c.prototype,'m', {value: function () {}, writable: false, enumerable: false, configurable: true});
+Object.defineProperty(c,'another', {value: function () {}, writable: false, enumerable: false, configurable: true});
+Object.defineProperty(c.prototype,'k', {value: 2, writable: false, enumerable: false, configurable: true});
+</code>
+
+
+
+== Sealing,Freezing,Closing ==
+
+<code javascript>
+class c {
+   <prototype: p, sealed>,
+   new (a,b) {
+     a : a,
+     b : b,
+     {this.x = somebody(this)}
+   }
+};
+</code>
+
+desugars to 
+
+<code javascript>
+function c(a,b) {
+    Object.defineProperty(this,"a",{value: a,enumerable: true, writable: true, configurable: true});
+    Object.defineProperty(this,"b",{value: a,enumerable: true, writable: true, configurable: true});
+    {this.x = somebody(this)};
+};
+Object.defineProperty(c,'prototype',{value: Object.create(p), enumerable: false, writable: false, configurable: false}};
+Object.defineProperty(c.prototype,'constructor',{writable: false, configurable: false}};
+Object.seal(c);
+Object.seal(c.prototype);
+</code>
+
+<code javascript>
+class c {
+   <prototype: p, sealed>,
+   new (a,b) {
+     <closed>,
+     a : a,
+     b : b,
+     {this.x = somebody(this)}
+   },
+   class method isC(obj) {return obj instanceof c},
+   method m() {}   
+};
+</code>
+
+desugars to 
+
+<code javascript>
+function c(a,b) {
+    Object.defineProperty(this,"a",{value: a,enumerable: true, writable: true, configurable: true});
+    Object.defineProperty(this,"b",{value: a,enumerable: true, writable: true, configurable: true});
+    {this.x = somebody(this)};
+    Object.preventExtensions(this);
+};
+Object.defineProperty(c,'prototype',{value: Object.create(p), enumerable: false, writable: false, configurable: false}};
+Object.defineProperty(c.prototype,'constructor',{writable: false, configurable: false}};
+Object.defineProperty(c,'isC', {value: function () {return obj instanceof c}, writable: false, enumerable: false, configurable: true});
+Object.defineProperty(c.prototype,'m', {value: function () {}, writable: false, enumerable: false, configurable: true});
+Object.seal(c);
+Object.seal(c.prototype);
+</code>
+
+
+===== History =====
+An earlier design for object literal based constructors is [[strawman:Obj_initialiser_constructors|Constructor Declarations]].  This proposal supersedes that one. 
+
+Revised to make constructor bodies //ObjectLiteral // instead of //FunctionBody//  --- //[[Allen@Wirfs-Brock.com|Allen Wirfs-Brock]] 2011/03/19 21:59//

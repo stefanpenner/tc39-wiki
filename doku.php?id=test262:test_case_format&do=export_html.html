@@ -1,0 +1,208 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=test262:test_case_format&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=test262" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=test262:test_case_format&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=test262:test_case_format&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="test_case_format"></a><h1>Test Case Format</h1>
+<div class="level1">
+
+<p>
+ We have converted all the submitted test cases to the canonical test262 test case format, which is now the source format for all future tests. In this source format, a single *.js source file carries both the meta-data, extractable by simple regular expressions, and the raw source text for the body of the test itself. 
+</p>
+
+<p>
+Unless stated otherwise in the meta-data, the test itself assumes it will be run in a fresh JavaScript context (e.g., a new browser frame or command-line <acronym title="JavaScript">JS</acronym> process), and may be run in strict-mode, non-strict mode, or both. A test case runner uses the meta-data to determine how to package and spawn the test body for the platform in question. For example, this packaging and spawning may be different on the command line than it is in a browser. 
+</p>
+
+</div>
+<!-- SECTION [1-806] -->
+<a name="informal_test262_test_case_syntax"></a><h2>Informal Test262 Test Case Syntax</h2>
+<div class="level2">
+
+<p>
+ First we present an approximation of the regular expression extraction as an ad-hoc bnf-like pseudo-grammar:
+</p>
+<pre class="code">
+  TestCase :
+      TestHeaderLine*   // copyright notice, whitespace, noise
+      TestDocComment?   // meta-data
+      TestBody          // raw test body text
+
+  TestHeaderLine :
+      \s* \n            // blank lines
+      \s* &quot;//&quot; .* \n    // &quot;//&quot; commented lines
+
+  TestDocComment :
+      TestDocCommentCapture := &quot;/*&quot; &quot;*&quot;? \s* ((?:\s|\S)*?) \s* &quot;*/&quot; \s* \n
+
+  TestDocCommentCapture :
+      TestCommentText (TestCommentNewLine &quot;@&quot; TestCommentProperty)*
+
+  TestCommentText :
+      \s* (.*) (TestCommentNewLine .*)* \s*
+  
+  TestCommentNewLine :  // Left margin &quot;*&quot;s capture just newlines
+      \s* (\n) \s* &quot;*&quot; \s*
+
+  TestCommentProperty :
+      (\w+) \s+ TestCommentText
+
+  TestBody :
+      ((?:\s|\S)*)
+</pre>
+
+<p>
+For example, for the following test case source file
+</p>
+<pre class="code javascript">  <span class="co1">// Copyright 1492 Columbus, no rights reserved</span>
+  <span class="co1">// Other stuff</span>
+&nbsp;
+  <span class="coMULTI">/**
+   * This test serves as an example. This first part
+   * of the doc-comment, before the first at-sign, is
+   * just commentary text that normally gets omitted,
+   * along with the header above, when uploading to a
+   * browser for web testing.
+   *
+   * @description Checks whether addition seems to work
+   * @onlyStrict
+   */</span>
+&nbsp;
+  <span class="kw1">if</span> <span class="br0">&#40;</span><span class="nu0">2</span> + <span class="nu0">3</span> !== <span class="nu0">5</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    t262.$ERROR<span class="br0">&#40;</span><span class="st0">"Addition does not work."</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span></pre>
+<p>
+the testRecord extracted from this test source, expressed as a JSON record, is:
+</p>
+<pre class="code javascript">  <span class="br0">&#123;</span>
+    <span class="st0">"header"</span>       <span class="st0">"// Copy...stuff"</span>,
+    <span class="st0">"commentary"</span>:  <span class="st0">"This test...testing."</span>,
+    <span class="st0">"description"</span>: <span class="st0">"Checks whether addition seems to work"</span>,
+    <span class="st0">"onlyStrict"</span>:  <span class="st0">""</span>,
+    <span class="st0">"test"</span>:        <span class="st0">"<span class="es0">\n</span>if (...<span class="es0">\n</span>}<span class="es0">\n</span>"</span>
+  <span class="br0">&#125;</span></pre>
+<p>
+Test cases throw an exception to indicate failure; running to the end without an exception indicates success.
+</p>
+
+<p>
+Test cases should use &ldquo;use strict&rdquo; only when testing strict-mode specific behavior. Generally, test cases are run in both strict and non-strict mode, and are expected to exhibit the same behavior in both modes. The @noStrict and @onlyStrict properties (see below) can restrict execution to one of the two modes.
+</p>
+
+<p>
+Old test cases may use a more complicated format, defining a testcase function and then calling that function. This format is no longer required by the harness (it is still useful when testing behavior specific to functions).
+</p>
+
+</div>
+<!-- SECTION [807-3207] -->
+<a name="informal_test262_test_case_semantics"></a><h2>Informal Test262 Test Case Semantics</h2>
+<div class="level2">
+
+<p>
+ The recognized property names and their meanings are 
+</p>
+<table class="inline">
+	<tr>
+		<th> Property name </th><th> @-name </th><th> value and/or purpose </th>
+	</tr>
+	<tr>
+		<td class="leftalign">&ldquo;header&rdquo;:       </td><td class="rightalign">               </td><td> Copyright, whitespace, and noise. Typically omitted. </td>
+	</tr>
+	<tr>
+		<td class="leftalign">&ldquo;commentary&rdquo;:   </td><td class="rightalign">               </td><td> Explains purpose of test. Typically omitted. </td>
+	</tr>
+	<tr>
+		<td class="leftalign">&ldquo;description&rdquo;:  </td><td class="leftalign"> @description  </td><td> Short description of test. </td>
+	</tr>
+	<tr>
+		<td class="leftalign">&ldquo;noStrict&rdquo;:     </td><td class="leftalign"> @noStrict     </td><td> No value. Presence indicates test should not be run in strict mode. </td>
+	</tr>
+	<tr>
+		<td class="leftalign">&ldquo;onlyStrict&rdquo;:   </td><td class="leftalign"> @onlyStrict   </td><td> No value. Presence indicates test should not be run in non-strict mode. </td>
+	</tr>
+	<tr>
+		<td class="leftalign">&ldquo;negative&rdquo;:     </td><td class="leftalign"> @negative     </td><td> Optional value. If present with empty value, indicates test body must fail somehow. A non-empty value is taken to be the name of an error and indicates the test must fail by throwing a object (presumably an Error) with that .name. &ldquo;@negative SyntaxError&rdquo; passes either from an early SyntaxError (a failure to parse), or if running the test throws SyntaxError. </td>
+	</tr>
+	<tr>
+		<td class="leftalign">&ldquo;hostObject&rdquo;:   </td><td class="leftalign"> @hostObject   </td><td> Documentary purposes only. Marks that the test probes for a normative ES5.1 spec violation by an object that may be a host object. </td>
+	</tr>
+	<tr>
+		<td class="leftalign">&ldquo;reviewers&rdquo;:     </td><td class="leftalign"> @reviewers     </td><td> Documentary purposes only. Comma delimited list of the people who have <a href="doku.php%3Fid=test262:submission_process.html#test_cases" class="wikilink1" title="test262:submission_process" onclick="return svchk()" onkeypress="return svchk()">reviewed</a> this test case. </td>
+	</tr>
+	<tr>
+		<td class="leftalign">&ldquo;generator&rdquo;:    </td><td class="leftalign"> @generator    </td><td> NOT YET SUPPORTED. No value. Presence indicates that the test body, when run, will register more test cases to be run in the same JavaScript context as that testBody. </td>
+	</tr>
+	<tr>
+		<td class="leftalign">&ldquo;verbatim&rdquo;:     </td><td class="leftalign"> @verbatim     </td><td> NOT YET SUPPORTED. No value. If present, treat the whole source text as the raw test body. </td>
+	</tr>
+	<tr>
+		<td class="leftalign">&ldquo;noHelpers&rdquo;:    </td><td class="leftalign"> @noHelpers    </td><td> NOT YET SUPPORTED. No value. If present, do not preload any test runtime APIs. </td>
+	</tr>
+	<tr>
+		<td class="leftalign">&ldquo;noHelpers&rdquo;:    </td><td class="leftalign"> @noHelpers    </td><td> NOT YET SUPPORTED. No value. If present, do not preload any test runtime APIs. </td>
+	</tr>
+	<tr>
+		<td>&ldquo;implDependent&rdquo;: </td><td> @implDependent </td><td> NOT YET SUPPORTED. Implementation dependent. Might not pass on all platforms (e.g., CPU architectures) validly. </td>
+	</tr>
+	<tr>
+		<td class="leftalign">&ldquo;test&rdquo;:         </td><td class="rightalign">               </td><td> The raw test body &ndash; exactly the text after the newline following the doc-comment. </td>
+	</tr>
+	<tr>
+		<td class="leftalign">&ldquo;author&rdquo;:       </td><td class="leftalign"> @author      </td><td> Author of the test case. </td>
+	</tr>
+</table>
+<br />
+
+<p>
+Old test cases may contain an @path property. This property is no longer needed; the harness uses the test case&rsquo;s actual file path instead.
+</p>
+
+</div>
+<!-- SECTION [3208-5608] -->
+<a name="t262_test_runtime_api"></a><h2>t262 Test Runtime API</h2>
+<div class="level2">
+
+<p>
+ <em>The Test Runtime <acronym title="Application Programming Interface">API</acronym> is not yet the following</em>:
+</p>
+
+<p>
+The t262 namespace provides an <acronym title="Application Programming Interface">API</acronym> of conveniences for the test cases to call. These APIs include: 
+</p>
+<table class="inline">
+	<tr>
+		<td><pre class="code">new t262.TestFailureError(message ::string)</pre>
+</td><td> Constructor for an Error indicating a test body failure. </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><pre class="code">t262.$ERROR(message ::string)</pre>
+</td><td> The test body fails with a t262.TestFailureError, with <code>message</code> as the diagnostic. If the test is a simple @negative test, then the test passes iff the test body fails. </td>
+	</tr>
+</table>
+<br />
+
+</div>
+<!-- SECTION [5609-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/f/f9a3f58db4ec2146abe44be8ca2050d9.xhtml used -->
+</body>
+</html>

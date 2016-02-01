@@ -1,0 +1,49 @@
+====== Motivation ======
+
+See the [[default operator]] proposal for a ''??'' binary connective with a ''??='' assignment operator form, useful for ensuring a variable has a default value instead of ''undefined''.
+
+This proposal augments the [[default operator]] by adding syntax to avoid accessing a missing property, specifically ''?.'' for getting and setting a property from a reference base that might be ''undefined'' or ''null'':
+
+<code javascript>
+// given obj an object that may or may not have a hints property:
+let greedy = obj.hints?.greedy;
+</code>
+
+In the case where the property to the left is missing or has a value that cannot be coerced to an object, evaluating the expression results in undefined rather than a ''TypeError'' being thrown.
+
+This operator is inspired by CoffeeScript's existential operator accessor variant (see [[http://coffeescript.org/#operators]] under "The Existential Operator"), Ruby's [[http://andand.rubyforge.org/|"andand" gem]], and Groovy's [[http://groovy.codehaus.org/Operators#Operators-SafeNavigationOperator|Safe Navigation operator]].
+
+
+====== Syntax ======
+
+We add two productions:
+
+  * //MemberExpression// : //MemberExpression// //QuestionDot// //IdentifierName//
+  * //CallExpression// : //CallExpression// //QuestionDot// //IdentifierName//
+
+to the syntactic grammar.
+
+As a numeric literal may begin with the decimal point, conditional expressions such as //condition//''?.1415926538:''//elsePart// are valid JS and have been since the beginning. Therefore we need a lexical lookahead restriction when tokenizing ''?.'':
+
+<code ebnf>
+QuestionDot ::
+    ?. [lookahead ∉ DecimalDigit]
+</code>
+
+
+
+====== Semantics ======
+
+We extend 11.2.1, Property Accessors. The production //MemberExpression// : //MemberExpression// //QuestionDot// //IdentifierName// is evaluated as follows:
+
+  - Let //baseReference// be the result of evaluating //MemberExpression//.
+  - If Type(//baseReference//) is Reference and IsUnresolvableReference(//baseReference//) is **true**, then return **undefined**.
+  - Let //baseValue// be GetValue(//baseReference//).
+  - If //baseValue// is **null** or **undefined**, then return **undefined**.
+  - Let //propertyName// be the result of evaluating //IdentifierName//.
+  - If the syntactic production that is being evaluated is contained in strict mode code, let //strict// be **true**, else let //strict// be **false**.
+  - Return a value of type Reference whose base value is //baseValue// and whose referenced name is //propertyName//, and whose strict mode flag is //strict//.
+
+The production //CallExpression// : //CallExpression// //QuestionDot// //IdentifierName// is evaluated in exactly the same manner, except that the contained //CallExpression// is evaluated in step 1.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2012/06/18 03:40//

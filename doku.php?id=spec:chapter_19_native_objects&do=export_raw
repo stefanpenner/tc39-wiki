@@ -1,0 +1,2377 @@
+The form and function of the native objects is the same as Ecmascript
+ed. 3 except that all prototype properties are also implemented as class
+methods. Prototype properties that are functions are implemented as
+regular methods. Prototype properties that are variables are implemented
+as a pair of get and set methods that forward state to the prototype
+property.
+
+**PROPOSAL** --- Please see the [[proposals:builtin_classes|Builtin classes proposal page]] for more information.
+
+====== Global object ======
+
+<code javascript>
+
+package
+{
+    // 15.1.1.1 NaN
+    // 15.1.1.2 Infinity
+    // 15.1.1.3 undefined
+    // {DE,DD,RO} -- change from ECMA-262, which has them as {DE,DD}
+    ECMA4 const NaN = 0.0/0.0;
+    ECMA4 const Infinity = 1.0/0.0;
+    ECMA4 const undefined = void(0);
+    
+    // @todo: "dynamic function" is probably redundant at the top level, but is useful for clarity
+    
+    // 15.1.2.1 eval (x)
+    ECMA4 native function eval(x);
+
+    // 15.1.2.2 parseInt (string , radix)
+    ECMA4 native function parseInt(string:String, radix:Number);
+
+    // 15.1.2.3 parseFloat (string)
+    ECMA4 native function parseFloat(string:String);
+
+    // 15.1.2.4 isNaN (number)
+    ECMA4 native function isNaN(number:*):Boolean;
+
+    // 15.1.2.4 isFinite (number)
+    ECMA4 native function isFinite(number:*):Boolean;
+    
+    // 15.1.3.1 decodeURI (encodedURI)
+    ECMA4 native function decodeURI(encodedURI);
+
+    // 15.1.3.2 decodeURIComponent (encodedURIComponent)
+    ECMA4 native function decodeURIComponent(encodedURIComponent);
+    
+    // 15.1.3.3 encodeURI (uri)
+    ECMA4 native function encodeURI(uri);
+    
+    // 15.1.3.4 encodeURIComponent (uriComponent)
+    ECMA4 native function encodeURIComponent(uriComponent);
+
+
+    var NaN = ECMA4::NaN;
+    var Infinity = ECMA4::Infinity;
+    var undefined = ECMA4::undefined;
+
+    var eval = ECMA4::eval;
+    var parseInt = ECMA4::parseInt;
+    var parseFloat = ECMA4::parseFloat;
+    var isNaN = ECMA4::isNaN;
+    var isFinite = ECMA4::isFinite;
+    var decodeURI = ECMA4::decodeURI;
+    var decodeURIComponent = ECMA4::decodeURIComponent;
+    var encodeURI = ECMA4::encodeURI;
+    var encodeURIComponent = ECMA4::encodeURIComponent;
+}
+</code>
+
+**PROPOSAL** --- A global, non-deletable, non-alterable function intrinsic::hashcode(o:*):uint shall exist in every implementation. 
+Please see the [[proposals:hashcodes|hashcodes proposals page]] for more information.
+
+ 
+
+**PROPOSAL** --- The expression
+<code>
+    intrinsic::global
+</code>
+evaluates to a reference to the global object in effect for the calling code. 
+Please see the [[proposals:globals|globals proposals page]] for more information.
+
+====== Class objects ======
+
+<code javascript>
+package
+{
+    /* Metaclasses.
+
+       The class "Class" is the base class for the class metaobjects
+       that are defined as the result of defining new classes, ie, the
+       object that results from defining some class C is an instance
+       of an internal class that directly subclasses Class.
+
+       Suppose C is defined like this:
+
+           class C
+           {
+               function C(a,b,c) {
+                   ....
+               }
+           }
+
+       Let [C] denote the metaclass of C.  A class definition C
+       results in the system effectively defining the class [C] as the
+       following; see below for more information:
+
+           class [C] extends Class 
+           {
+               intrinsic function construct(a,b,c) : C!
+               {
+                   const o : C! = super.construct(C);  // allocate and initialize; see below
+                   const x : * = o.C(o, a, b, c);      // call the constructor
+                   return (x is Object) ? x to C! : o;
+               }
+
+               // Static methods defined on C appear as instance methods here
+
+               // Probably much information about C
+           }
+
+           const C : [C] = new [C];
+
+       where the last "new" is "logical new"; use your imagination.
+
+       (Note the use of "super" as scope resolution in that method.  A
+       consequence of its existence is that super must be allowed in a
+       similar role in static class methods in user defined classes.)
+
+       If C contains a "static instrinsic construct()" then that
+       method replaces (without "static") the generated construct
+       function shown above (this follows from normal rules), and the
+       only constraints on it is that it must return an object of type
+       C (or a subclass of C).  It need not allocate storage.  If it
+       does allocate storage, it must follow the protocol shown above,
+       however.
+
+       Observe that the signature of the generated construct method reflects 
+       the signature of the programmer-defined constructor.
+
+       The expression "new C(e, ...)" is expanded by the compiler as
+       "C.intrinsic::construct(e,...)".
+
+
+       Security note.
+
+       It seems fairly clear that class "Class" should *not* be
+       accessible to user programs; we don't want people to go around
+       creating metaclasses willy-nilly. */
+
+    class Class
+    {
+        /* Becomes available as Object.prototype, Boolean.prototype,
+           and so on */
+
+        const prototype;
+
+        /* Magic: Instantiation.
+
+           The "intrinsic construct(classobj)" method of the Class
+           metaclass does the following.
+
+           - allocates an instance o of a particular class (eg, "C") based
+             on information in the classobj
+           - sets the [[Class]] of o to reflect the name of the class
+           - sets the [[Prototype]] of o from classobj.prototype
+           - sets o.prototype to a fresh Object instance, provided the
+             Object class has been initialized.  Otherwise, it sets 
+             o.prototype to null.
+           - sets the constructor field of o.prototype (if not null) to
+             classobj.
+           - initializes fields of o to their defaults, using information
+             from the classobj
+           - returns o.
+
+           construct() does not call the new object's user-defined
+           constructor, the client must do that.  */
+
+        native intrinsic function construct(classobj : Class!);
+
+        private var classname : String;
+        
+        intrinsic function getClass() : String! { return classname; }
+
+        /* More fields here common to all metaclasses, but these are
+           implementation dependent. */
+
+        // ...
+    }
+}
+
+</code>
+====== Object objects ======
+
+<code javascript>
+    dynamic class Object 
+    {       
+        use namespace intrinsic;
+        use strict;
+
+        /* E262-3 15.2.1.1: The Object constructor called as a function */
+        intrinsic static function invoke(value)
+            ToObject(value);
+
+        /* E262-3 15.2.2.1: The Object constructor. */
+        /* magic */ object function Object();
+
+        /* E262-3 15.2.4.2: Object.prototype.toString */
+        prototype function toString()
+            this.toString();
+
+        intrinsic function toString() : string
+            "[object " + magic::getClassName(this) + "]";
+
+        /* E262-3 15.2.4.3: Object.prototype.toLocaleString */
+        prototype function toLocaleString()
+            this.toLocaleString();
+
+        intrinsic function toLocaleString() : string
+            "[object " + magic::getClassName(this) + "]";
+
+        /* E262-3 15.2.4.4:  Object.prototype.valueOf */
+        prototype function valueOf()
+            this.valueOf();
+
+        intrinsic function valueOf() : Object!
+            this;
+
+        /* E262-3 15.2.4.5:  Object.prototype.hasOwnProperty */
+        prototype function hasOwnProperty(V)
+            this.hasOwnProperty(V);
+
+        intrinsic function hasOwnProperty(V : string) : Boolean 
+            magic::hasOwnProperty(this, V);
+        
+        /* E262-3 15.2.4.6:  Object.prototype.isPrototypeOf */
+        prototype function isPrototypeOf(V)
+            this.isPrototypeOf(V);
+
+        intrinsic function isPrototypeOf(V) : Boolean {
+            if (!(V is Object))
+                return false;
+
+            let VO : Object = V to Object;
+            while (true) {
+                VO = magic::getPrototype(VO);
+                if (VO === null)
+                    return false;
+                if (VO === this)
+                    return true;
+            }
+        }
+
+        /* E262-3 15.2.4.7: Object.prototype.propertyIsEnumerable (V) */
+        prototype function propertyIsEnumerable(V, E=undefined)
+            this.propertyIsEnumerable(V, E);
+
+        /* E262-4 draft proposals:enumerability */
+        intrinsic function propertyIsEnumerable(V : string, E=undefined) : Boolean {
+            let O : Object = this;
+            while (O !== null) {
+                if (O.hasOwnProperty(V)) {
+                    let old : Boolean = !magic::getPropertyIsDontEnum(O, V);
+                    if (!magic::getPropertyIsDontDelete(O, V))
+                        if (E is Boolean)
+                            magic::setPropertyIsDontEnum(O, V, !E);
+                    return old;
+                }
+                O = magic::getPrototype(O);
+            }
+        }
+
+        /* E262-4 draft proposals:json_encoding_and_decoding */
+        prototype function toJSONString() 
+            this.toJSONString();
+
+        intrinsic function toJSONString(...args) : string
+            JSON.emit.apply(null, args.unshift(this));
+    }
+</code>
+
+**PROPOSAL** --- Please see the [[proposals:enumerability|Enumerability proposal page]] for more information.
+
+The enumerability proposal adds a second parameter to the ''propertyIsEnumerable()'' method that
+provides write access to a property's internal ''DontEnum'' attribute.
+
+====== Function objects ======
+
+<code javascript>
+    dynamic class Function
+    {       
+        use namespace intrinsic;
+        use strict;
+
+        /* E262-3 15.3.1.1: The Function constructor.  This
+           initializes the field "source" in the constructed object.
+         */
+        /* magic */ native function Function(...args);
+
+        /* E262-3 15.3.1: The Function Constructor Called as a Function */
+        intrinsic static function invoke(...args)
+            Function.construct.apply(null, args);
+
+        /* E262-3 10.X / 13.X: function invocation.
+
+           This method is never called.  The Function constructor
+           marks instances of Function specially, and recognizes these
+           instances in the implementation of function calling.  The
+           intrinsic invoke method is defined here to prevent
+           subclasses of Function to override it.
+
+           Other parts of the class hierarchy may however create
+           intrinsic invoke methods that will be considered by the
+           function calling machinery. 
+        */
+        intrinsic function invoke() {
+            throw new Error("Implementation error");
+        }
+
+        /* XXX: The prototype object behaves like a function (and
+           system magic makes its classname be "Function", though it's
+           not an instance of the Function class).  So here we install
+           some things in the prototype that ensures that the object
+           behaves like a function in some trivial ways.
+         */
+        prototype intrinsic function invoke()
+            undefined;
+
+        prototype var source : string = "function () { }";
+
+        prototype var length : uint = 0;
+
+        /* XXX: Function.prototype.toString */
+        prototype function toString()
+            this.source;
+
+        intrinsic function toString() : string
+            source;
+        
+        /* E262-3 15.3.4.3: Function.prototype.apply */
+        prototype function apply(thisArg, argArray)
+            Function.apply(this, thisArg, argArray);
+
+        intrinsic function apply(thisArg, argArray) : *
+            Function.apply(this, thisArg, argArray);
+
+        /* E262-4 draft: "apply" and "call" are static methods on the
+           Function object, and everyone eventually ends up in
+           Function.apply().
+
+           Note ES4 bug fix: the arguments object is an 'Array', so the test
+           for applicability of argArray is simpler than in ES3.
+        */
+        public static function apply(fn : Function!, thisArg, argArray) {
+            if (thisArg === undefined || thisArg === null)
+                thisArg = global;
+            if (argArray === undefined || argArray === null)
+                argArray = [];
+            else if (!(argArray is Array))
+                throw new TypeError("argument array to 'apply' must be Array");
+            return magic::apply(fn, thisArg, argArray);
+        }
+
+        /* E262-3 15.3.4.4: Function.prototype.call.
+
+           Assuming a rest argument does not contribute to the
+           "length" of the function, so the length of
+           Function.prototype.call is 1, which is what we want. 
+        */
+        prototype function call(thisObj, ...args)
+            Function.apply(this, thisObj, args);
+
+        intrinsic function call(thisObj, ...args:Array):*
+            Function.apply(this, thisObj, args);
+
+        /* E262-4 draft: "apply" and "call" are static methods on the
+           Function object. */
+        public static function call(thisObj, ...args:Array):*
+            Function.apply(this, thisObj, args);
+        
+        /* E262-3 15.3.5.3: [[HasInstance]] */
+        intrinsic function HasInstance(V) {
+            if (!(V is Object))
+                return false;
+
+            let O : Object = this.prototype;
+            if (!(O is Object))
+                throw new TypeError("[[HasInstance]]: prototype is not object");
+
+            while (true) {
+                V = magic::getPrototype(V);
+                if (V === null)
+                    return false;
+                if (O == V)
+                    return true;
+            }
+        }
+
+        var source : string;  /* Source code for decompilation, installed by the constructor */
+    }
+</code>
+
+====== Array objects ======
+
+<code javascript>
+    dynamic class Array extends Object
+    {
+        use namespace intrinsic;
+        use strict;
+
+        // 15.4.1 The Array Constructor Called as a Function
+        static intrinsic function invoke(...args) {
+            // args is already an Array. just return it.
+            return args;
+        }
+
+        // 15.4.2 The Array Constructor
+        // 15.4.2.1 new Array( [ item0 [ , item1 [ , ... ] ] ] )
+        // 15.4.2.2 new Array(len)
+        //
+        // Here we rely on magic or optimization, since the Array
+        // constructor takes a variable number of arguments, which
+        // itself requires an array to be constructed.
+        //
+        // Optimization gets around this by avoiding allocation of the
+        // array if all references to args is in the form of
+        // args.length and args[n].
+        //
+        // Magic would solve this by creating an array without
+        // invoking the array constructor, ie, essentially making this
+        // code pointless.
+
+        function Array(...args) {
+            let argslen:uint = uint(args.length);
+            if (argslen == 1 && (args[0] is Number)) {
+                let dlen:Number = args[0];
+                let ulen:uint = uint(dlen);
+                if (ulen != dlen)
+                    throw new RangeError;
+                length = ulen;
+            }
+            else {
+                length = argslen;
+                for (let i:uint = 0; i < argslen; i++)
+                    this[i] = args[i];
+            }
+        }
+
+        // 15.4.4 Properties of the Array Prototype Object
+        // prototype.[[Prototype]] = prototype;
+        // prototype.[[Class]] = "Array";
+        prototype._length = 0;
+
+        // 15.4.4.2 Array.prototype.toString ( )
+        prototype function toString(this:Array)
+            this.join();
+
+        intrinsic function toString():String
+            this.join();
+
+        // 15.4.4.3 Array.prototype.toLocaleString ( )
+        prototype function toLocaleString(this:Array)
+            this.toLocaleString();
+
+        intrinsic function toLocaleString():String {
+            let out:String = "";
+            for (let i:uint = 0, n:uint = a.length; i < n; i++) {
+                if (i != 0)
+                    out += ",";
+                let x = a[i];
+                if (x != null)
+                    out += x.toLocaleString();
+            }
+            return out;
+        }
+
+        // 15.4.4.4 Array.prototype.concat ( [ item1 [ , item2 [ , â€¦ ] ] ] )
+        private static function concatHelper(self, args) {
+            let out:Array = new Array;
+            let outlen:uint = 0;
+
+            if (self is Array)
+                args.unshift(self);
+
+            let argslen:uint = args.length;
+            for (let i:uint = 0; i < argslen; i++) {
+                let x = args[i];
+                if (x is Array) {
+                    let xlen:uint = x._length;
+                    for (let j:uint = 0; j < xlen; j++)
+                        out[outlen] = x[j];
+                    outlen++;
+                    continue;
+                }
+                out[outlen++] = x;
+            }
+
+            return out;
+        }
+
+        public static function concat(self, ...args)
+            concatHelper(self, args);
+
+        prototype function concat(...args)
+            concatHelper(this, args);
+
+        intrinsic function concat(...args):Array
+            concatHelper(this, args);
+
+        // 15.4.4.5 Array.prototype.join (separator)
+        public static function join(self, sep = undefined) {
+            let s:String = (sep === undefined) ? "," : String(sep);
+            let out:String = "";
+            let len:uint = self.length;
+            for (let i:uint = 0; i < len; i++) {
+                if (i != 0)
+                    out += s;
+                let x = self[i];
+                if (x != null)
+                    out += String(x);
+            }
+            return out;
+        }
+
+        prototype function join(sep = undefined)
+            Array.join(this, sep);
+
+        intrinsic function join(sep = undefined):String
+            Array.join(this, sep);
+
+        // 15.4.4.6 Array.prototype.pop ( )
+        public static function pop(self) {
+            let len:uint = self.length;
+
+            if (len != 0) {
+                let x = self[--len];
+                delete self[len];
+                self.length = len;
+                return x;
+            }
+            return undefined;
+        }
+
+        prototype function pop()
+            Array.pop(this);
+
+        intrinsic function pop():*
+            Array.pop(this);
+
+        // 15.4.4.7 Array.prototype.push ( [ item1 [ , item2 [ , â€¦ ] ] ] )
+        public static function pushHelper(self, args) {
+            let len:uint = self.length;
+            let argslen:uint = args.length;
+
+            for (let i:uint = 0; i < argslen; i++)
+                self[len++] = args[i];
+            self.length = len;
+            return len;
+        }
+
+        public static function push(self, ...args)
+            Array.pushHelper(this, args);
+
+        prototype function push(...args)
+            Array.pushHelper(this, args);
+
+        intrinsic function push(...args:Array):uint
+            Array.pushHelper(this, args);
+
+        // 15.4.4.8 Array.prototype.reverse ( )
+        public static function reverse(self) {
+            let i:uint = 0;
+            let j:uint = self.length;
+            let h:uint = j >>> 1;
+
+            while (i < h) {
+                --j;
+                [self[i], self[j]] = [self[j], self[i]];
+                i++;
+            }
+            return self;
+        }
+
+        prototype function reverse()
+            Array.reverse(this);
+
+        intrinsic function reverse():Array
+            Array.reverse(this);
+
+        // 15.4.4.9 Array.prototype.shift ( )
+        public static function shift(self) {
+            let len:uint = self.length;
+            if (len == 0) {
+                self.length = 0;        // ECMA-262 requires explicit set here
+                return undefined;
+            }
+
+            // Get the 0th element to return
+            let x = self[0];
+
+            // Move all of the elements down
+            for (let i:uint = 1; i < len; i++)
+                self[i-1] = self[i];
+            delete self[len - 1];
+            self.length = len - 1;
+            return x;
+        }
+
+        prototype function shift()
+            Array.shift(this);
+
+        intrinsic function shift()
+            Array.shift(this);
+
+        // 15.4.4.10 Array.prototype.slice (start, end)
+        public static function slice(self, start, end) {
+            if (start === undefined)
+                start = 0;
+            if (end === undefined)
+                end = Infinity;
+
+            let len:uint = uint(self.length);
+
+            // If a param is passed then the first one is start.
+            // If no params are passed then start = 0.
+            let a:uint = clamp(start, len);
+            let b:uint = clamp(end, len);
+            if (b < a)
+                b = a;
+
+            let out:Array = new Array;
+            for (let i:uint = a; i < b; i++)
+                out.push(self[i]);
+
+            return out;
+        }
+
+        prototype function slice(start, end)
+            Array.slice(this, start, end);
+
+        intrinsic function slice(start:double = 0, end:double = Infinity):Array
+            Array.slice(this, start, end);
+
+        // 15.4.4.11 Array.prototype.sort (comparefn)
+        // INFORMATIVE: this is an implementation that meets the spec, but the spec
+        // allows for different sort implementations (quicksort is not required)
+        type Comparator = function (x:*, y:*):double;
+
+        public static function sort(self, comparefn) {
+            let len:uint = self.length;
+
+            if (len > 1)
+                qsort(0, len-1, comparefn);
+
+            return self;
+        }
+
+        prototype function sort(comparefn)
+            Array.sort(this, comparefn);
+
+        intrinsic function sort(comparefn:Comparator):Array
+            Array.sort(this, comparefn);
+
+        // 15.4.4.12 Array.prototype.splice (start, deleteCount [ , item1 [ , item2 [ , â€¦ ] ] ] )
+        public static function splice(self, start, deleteCount) {
+            let out:Array = new Array();
+
+            let argslen:uint = uint(args.length);
+            if (argslen == 0)
+                return undefined;
+
+            let len:uint = self.length;
+            let start:uint = clamp(double(args[0]), len);
+            let d_deleteCount:double = argslen > 1 ? double(args[1]) : (len - start);
+            let deleteCount:uint = (d_deleteCount < 0) ? 0 : uint(d_deleteCount);
+            if (deleteCount > len - start)
+                deleteCount = len - start;
+
+            let end:uint = start + deleteCount;
+
+            // Copy out the elements we are going to remove
+            for (let i:uint = 0; i < deleteCount; i++)
+                out.push(self[i + start]);
+
+            let insertCount:uint = (argslen > 2) ? (argslen - 2) : 0;
+            let l_shiftAmount:double = insertCount - deleteCount;
+            let shiftAmount:uint;
+
+            // delete items by shifting elements past end (of delete) by l_shiftAmount
+            if (l_shiftAmount < 0) {
+                // Shift the remaining elements down
+                shiftAmount = uint(-l_shiftAmount);
+
+                for (let i:uint = end; i < len; i++)
+                    self[i - shiftAmount] = self[i];
+
+                // delete top elements here to match ECMAscript spec (generic object support)
+                for (let i:uint = len - shiftAmount; i < len; i++)
+                    delete self[i];
+            }
+            else {
+                // Shift the remaining elements up.
+                shiftAmount = uint(l_shiftAmount);
+
+                for (let i:uint = len; i > end; ) {
+                    --i;
+                    self[i + shiftAmount] = self[i];
+                }
+            }
+
+            // Add the items to insert
+            for (let i:uint = 0; i < insertCount; i++)
+                self[start+i] = args[i + 2];
+
+            // shrink array if shiftAmount is negative
+            self.length = len + l_shiftAmount;
+            return out;
+        }
+
+        prototype function splice(start, deleteCount)
+            Array.splice(this, arguments);
+
+        intrinsic function splice(...args:Array):Array
+            Array.splice(this, arguments);
+
+        // 15.4.4.13 Array.prototype.unshift ( [ item1 [ , item2 [ , â€¦ ] ] ] )
+        prototype function unshift(...args)
+            this.unshift(this, args);
+
+        intrinsic function unshift(...args:Array):uint {
+            let len:uint = this.length;
+            let argslen:uint = uint(args.length);
+            let k:uint = len;
+            while (k != 0) {
+                k--;
+                let d:uint = k + argslen;
+                if (k in this)
+                    this[d] = this[k];
+                else
+                    delete this[d];
+            }
+
+            for (let i:uint = 0; i < argslen; i++)
+                this[k++] = args[i];
+
+            len += argslen;
+            this.length = len;
+            return len;
+        }
+
+        // 15.4.5.1 [[Put]] (P, V)
+        // @todo: ensure that catchall-set for undeclared properties runs on every set
+        function set *(id, value):void {
+            let oldLength:uint = this.length;
+            this.set(id, value);
+            let idAsDouble:double = double(id);
+            let idAsUint:uint = uint(idAsDouble);
+            if (idAsUint == idAsDouble && idAsUint >= oldLength)
+                this.length = idAsUint+1;
+        }
+
+        // 15.4.5.2 length
+        private var _length:uint = 0;
+        public function get length():uint
+            this.length;
+
+        // ECMA-262 requires a RangeError if non-ints are passed in,
+        // so we must not type it as uint in the setter's signature
+        public function set length(newLength:*):void {
+            let oldLength:uint = length;
+            let newLengthAsDouble:double = double(newLength);
+            let newLengthAsUint:uint = uint(newLengthAsDouble);
+            if (newLengthAsUint != newLengthAsDouble)
+                throw new RangeError();
+            for (let i:uint = newLengthAsUint; i < oldLength; ++i)
+                if (this.hasOwnProperty(i))
+                    delete this[i];
+            length = newLengthAsUint;
+        }
+
+        // --------------------------------------------------
+        // private utility methods
+        // --------------------------------------------------
+        private static function clamp(intValue:double, len:uint):uint
+        {
+            return (intValue < 0.0)
+                 ? (intValue + len < 0.0) ? 0 : uint(intValue + len)
+                 : (intValue > len) ? len : uint(intValue);
+        }
+
+        private function compare(j:uint, k:uint, comparefn:Comparator):double {
+            let x = this[j];
+            let y = this[k];
+            if (x === undefined) {
+                if (y === undefined)
+                    return 0;
+                return 1;
+            }
+            if (y === undefined)
+                return -1;
+            if (comparefn === undefined) {
+                x = x.toString();
+                y = y.toString();
+                if (x < y) return -1;
+                if (x > y) return 1;
+                return 0;
+            }
+            return comparefn(x, y);
+        }
+
+        // INFORMATIVE note: as noted above, this is a very simple recursive
+        // implementation of Quicksort.  While it suffices for spec purposes,
+        // it is not efficient enough for a real implementation, which
+        // typically faces mostly-ordered inputs.  It is also not a stable
+        // sort, which may be desirable but is not required by the spec
+
+        private function qsort(lo:uint, hi:uint, comparefn:Comparator):void {
+            if (lo >= hi)
+                return;
+
+            let size:uint  = (hi - lo) + 1;
+            let pivot:uint = lo + (size / 2);
+            let i:uint = lo;
+            let j:uint = hi;
+            while (i <= j) {
+                while (compare(i, pivot, comparefn) < 0)
+                    ++i;
+                while (compare(j, pivot, comparefn) > 0)
+                    --j;
+                if (i <= j) {
+                    let temp = this[i];
+                    this[i] = this[j];
+                    this[j] = temp;
+                    ++i;
+                    --j;
+                }
+            }
+
+            if (lo < j)
+                qsort(lo, j, comparefn);
+            if (i < hi)
+                qsort(i, hi, comparefn);
+        }
+
+        // Array "extras" from JS1.6 (@todo: and JS1.8 -- reduce/reduceRight)
+        // See http://developer.mozilla.org/en/docs/New_in_JavaScript_1.6#Array_extras
+        // The callback function typically takes (item, i, list) parameters
+        type Mapper  = function (_:*, _:uint, _:Object):*;
+        type Eacher  = function (_:*, _:uint, _:Object):void;
+        type Checker = function (_:*, _:uint, _:Object):Boolean;
+        type Reducer = function (_:*, _:*, _:uint, _:Object):*;
+
+        prototype function map(mapper, thisObj)
+            this.map(mapper, thisObj);
+
+        intrinsic function map(mapper:Mapper, thisObj:Object):Array {
+            let result:Array = [];
+            for (let i:uint = 0; i < this.length; i++)
+                result[i] = mapper.call(thisObj, this[i], i, this);
+            return result;
+        }
+
+        prototype function filter(checker, thisObj)
+            this.filter(checker, thisObj);
+
+        intrinsic function filter(checker:Checker, thisObj:Object):Array {
+            let result:Array = [];
+            for (let i:uint = 0; i < this.length; i++) {
+                let item = this[i];
+                if (checker.call(thisObj, item, i, this))
+                    result[result.length] = item;
+            }
+            return result;
+        }
+
+        prototype function every(checker, thisObj)
+            this.every(checker, thisObj);
+
+        intrinsic function every(checker:Checker, thisObj:Object):Boolean {
+            for (let i:uint = 0; i < this.length; i++) {
+                if (!checker.call(thisObj, this[i], i, this))
+                    return false;
+            }
+            return true;
+        }
+
+        prototype function some(checker, thisObj)
+            this.some(checker, thisObj);
+
+        intrinsic function some(checker:Checker, thisObj:Object):Boolean {
+            for (let i:uint = 0; i < this.length; i++) {
+                if (checker.call(thisObj, this[i], i, this))
+                    return true;
+            }
+            return false;
+        }
+    }
+</code>
+
+====== String objects ======
+
+<code javascript>
+package
+{
+    use namespace intrinsic;
+    use strict;
+
+    /* The January 2007 meeting resolved that String is open and
+       dynamic, and the implementations will just have to work a
+       little harder.  Go ECMA!  */
+    dynamic class String
+    {       
+        /* E262-3 15.5.1: The String Constructor Called as a Function */
+        static intrinsic function invoke(value)
+            return arguments.length === 0 ? "" : ToString(value);
+
+        /* 15.5.2 The String Constructor 
+           Be careful to always return a new String object here, so don't
+           optimize by returning the return value of 
+         */
+        function String(v) {
+            if (arguments.length === 0)
+                value = "";
+            else if (v instanceof string)
+                value = v;
+            else if (v instanceof String)
+                value = v.value;
+            else
+                value = ToString(value);
+        }
+
+        var value : string = "";
+
+        /* E262-3 15.5.3.2: String.fromCharCode
+           E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
+        */
+        public static function fromCharCode(...args)
+            Function.apply(string.fromCharCodeHelper, null, args);
+
+        intrinsic static function fromCharCode(...args) : double
+            Function.apply(string.fromCharCodeHelper, null, args);
+
+        /* E262-3 15.5.4.2: String.prototype.toString */
+        prototype function toString(this : String)
+            ToString(this);
+
+        intrinsic function toString() : String
+            value;
+        
+        /* E262-3 15.5.4.3: String.prototype.valueOf */
+        prototype function valueOf(this : String)
+            this;
+
+        intrinsic function valueOf() : Object
+            this;
+
+        /* E262-3 15.5.4.4: String.prototype.charAt
+           E262-4 draft proposals:static_generics
+        */
+        prototype function charAt(pos)
+            ToString(this).charAt(pos);
+
+        public static function charAt(self, pos)
+            ToString(self).charAt(pos);
+            
+        intrinsic function charAt(pos: double = 0) : String
+            ToString(self).charAt(pos);
+
+        /* E262-3 15.5.4.5: String.prototype.charCodeAt
+           E262-4 draft proposals:static_generics
+        */
+        prototype function charCodeAt(pos)
+            ToString(this).charCodeAt(pos);
+
+        public static function charCodeAt(self, pos)
+            ToString(self).charCodeAt(pos);
+
+        intrinsic function charCodeAt(pos: double = 0) : double
+            value.charCodeAt(pos);
+
+        /* E262-3 15.5.4.6: String.prototype.concat.
+           E262-4 draft proposals:static_generics
+           E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
+         */
+        prototype function concat(...args)
+            Function.apply(string.concat, ToString(this), args);
+
+        public static function concat(self, ...args)
+            Function.apply(string.concat, ToString(self), args);
+
+        intrinsic function concat(...args) : String
+            Function.apply(string.concat, value, args);
+
+
+        /* E262-3 15.5.4.7: String.prototype.indexOf
+           E262-4 draft proposals:static_generics
+           E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
+        */
+        prototype function indexOf(searchString, position)
+            ToString(this).indexOf(searchString, position);
+
+        public static function indexOf(self, searchString, position)
+            ToString(self).indexOf(searchString, position);
+
+        intrinsic function indexOf(searchString: String!, position: double = 0.0) : double 
+            value.indexOf(searchString, position);
+
+        /* E262-3 15.5.4.8: String.prototype.lastIndexOf
+           E262-4 draft proposals:static_generics
+           E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
+        */
+        prototype function lastIndexOf(searchString, position)
+            ToString(this).lastIndexOf(searchString, position);
+
+        public static function lastIndexOf(self, searchString, position)
+            ToString(self).lastIndexOf(searchString, position);
+
+        intrinsic function lastIndexOf(searchString: String!, position: double) : double 
+            value.lastIndexOf(searchString, position);
+
+        /* E262-3 15.5.4.9: String.prototype.localeCompare 
+           E262-4 draft proposals:static_generics
+         */
+        prototype function localeCompare(that)
+            ToString(this).localeCompare(that);
+
+        public static function localeCompare(self, that)
+            ToString(self).localeCompare(that);
+
+        intrinsic function localeCompare(that : String!) : double
+            value.localeCompare(that);
+
+        /* E262-3 15.5.4.10: String.prototype.match
+           E262-4 draft proposals:static_generics
+        */
+        prototype function match(regexp)
+            ToString(this).match(regexp);
+
+        public static function match(self, regexp)
+            ToString(self).match(regexp);
+
+        intrinsic function match(r) : Array 
+            value.match(r);
+
+        /* E262-3 15.5.4.11: String.prototype.replace 
+           E262-4 draft proposals:static_generics
+         */
+        prototype function replace(searchValue, replaceValue)
+            ToString(this).replace(searchValue, replaceValue);
+
+        public static function replace(self, searchValue, replaceValue)
+            ToString(self).replace(searchValue, replaceValue);
+
+        intrinsic function replace(s, r) : String
+            value.replace(searchValue, replaceValue);
+        
+        /* E262-3 15.5.4.12: String.prototype.search 
+           E262-4 draft proposals:static_generics
+         */
+        prototype function search(regexp)
+            ToString(this).search(regexp);
+
+        public static function search(self, regexp)
+            ToString(self).search(regexp);
+
+        intrinsic function search(r) : double 
+            value.search(r);
+
+        /* E262-3 15.5.4.13: String.prototype.slice 
+           E262-4 draft proposals:static_generics
+         */
+        prototype function slice(start, end)
+            ToString(this).slice(start, end);
+
+        public static function slice(self, start, end)
+            ToString(self).slice(start, end);
+
+        intrinsic function slice(s, e) : Array
+            value.slice(s, e);
+        
+        /* ES262-3 15.5.4.14: String.prototype.split
+           E262-4 draft proposals:static_generics
+        */
+        prototype function split(separator, limit)
+            ToString(this).split(separator, limit);
+
+        public static function split(self, separator, limit)
+            ToString(self).split(separator, limit);
+
+        intrinsic function split(separator, limit) : Array
+            value.split(separator, limit);
+
+        /* E262-3 15.5.4.15: String.prototype.substring
+           E262-4 draft proposals:static_generics
+         */
+        prototype function substring(start, end)
+            ToString(this).substring(start, end);
+
+        public static function substring(self, start, end)
+            ToString(self).substring(start, end)
+
+        intrinsic function substring(start: double, end: double) : string
+            value.substring(start, end);
+
+        /* E262-3 15.5.4.16: String.prototype.toLowerCase 
+           E262-4 draft proposals:static_generics
+         */
+        prototype function toLowerCase()
+            ToString(this).toLowerCase();
+
+        public static function toLowerCase(selft)
+            ToString(self).toLowerCase();
+
+        intrinsic function toLowerCase() : string
+            value.toLowerCase();
+
+        /* E262-3 15.5.4.17: String.prototype.toLocaleLowerCase 
+           E262-4 draft proposals:static_generics
+         */
+        prototype function toLocaleLowerCase()
+            ToString(this).toLocaleLowerCase();
+
+        public prototype function toLocaleLowerCase(self)
+            ToString(self).toLocaleLowerCase();
+
+        intrinsic function toLocaleLowerCase() : string
+            value.toLocaleLowerCase();
+
+        /* E262-3 15.5.4.18: String.prototype.toUpperCase 
+           E262-4 draft proposals:static_generics
+         */
+        prototype function toUpperCase()
+            ToString(this).toUpperCase();
+
+        public static function toUpperCase(self)
+            ToString(self).toUpperCase();
+
+        intrinsic function toUpperCase() : string
+            value.toUpperCase();
+
+        /* E262-3 15.5.4.19: String.prototype.toLocaleUpperCase 
+           E262-4 draft proposals:static_generics
+         */
+        prototype function toLocaleUpperCase()
+            ToString(this).toLocaleUpperCase();
+
+        public static function toLocaleUpperCase(self)
+            ToString(self).toLocaleUpperCase();
+
+        intrinsic function toLocaleUpperCase() : string
+            value.toLocaleUpperCase();
+
+        /* E262-4 draft proposals:json_encoding_and_decoding */
+        prototype function parseJSON() 
+            ToString(this).parseJSON();
+
+        intrinsic function parseJSON(...args)
+            Function.apply(string.parseJSON, value, args);
+
+        /* E262-4 draft proposals:string.prototype.trim */
+        prototype function trim()
+            ToString(this).trim();
+
+        intrinsic function trim() : string
+            value.trim();
+
+        /* E262-3 15.5.5.1: length. */
+        public function get length() : uint
+            magic::stringLength(this);
+    }
+}
+</code>
+
+====== Boolean objects ======
+
+<code javascript>
+package
+{
+    /* Notionally, the boolean constants "true" and "false" reference
+       instances of the Boolean class.  These two instances are
+       necessarily magically constructed.
+
+       The Boolean constructor returns one of these instances, so
+       there are never more than two Boolean instances in the system.
+
+       The Boolean class is final and non-dynamic because most
+       implementations will in fact represent Boolean objects not
+       using objects, but using some magic tagged value, of which
+       there will be only two, one for "true" and the other for
+       "false".
+     */
+    final class Boolean! extends Object
+    {       
+        /* E262-3 15.6.1: The Boolean Constructor Called as a Function. */
+        static intrinsic function invoke(value) : Boolean
+            value ? true : false;
+
+        /* E262-3 15.6.2.1: The Boolean Constructor. */
+        function Boolean(value)
+            value ? true : false;
+
+        /* E262-3 15.6.4.2: Boolean.prototype.toString.  */
+        prototype function toString(this : Boolean) 
+            this.intrinsic::toString();
+
+        /* E262-4 draft ch 19 */
+        intrinsic function toString() : String
+            this === true ? "true" : "false";
+        
+        /* E262-3 15.6.4.3: Boolean.prototype.valueOf. */
+        prototype function valueOf(this : Boolean)
+            this;
+
+        /* E262-4 draft ch 19 */
+        intrinsic function valueOf() : Boolean
+            this;
+    }
+}
+</code>
+
+====== Number objects ======
+
+<code javascript>
+package
+{
+    use namespace intrinsic;
+    use strict;
+
+    dynamic class Number!
+    {
+        public static const MAX_VALUE : double         = double.MAX_VALUE;
+        public static const MIN_VALUE : double         = double.MIN_VALUE;
+        public static const NaN : double               = double.NaN;
+        public static const NEGATIVE_INFINITY : double = double.NEGATIVE_INFINITY;
+        public static const POSITIVE_INFINITY : double = double.POSITIVE_INFINITY;
+
+        const value : double;
+
+        /* E262-4 draft */
+        intrinsic static function to(x : Numeric) : Number
+            x is Number ? x : new Number(ToDouble(x));
+
+        /* E262-3 15.7.1.1: The Number Constructor Called as a Function */
+        intrinsic static function invoke(value) 
+            value === undefined ? 0.0 : new Number(value);
+
+        /* E262-3 15.7.2.1: The Number constructor */
+        public function Number(value) 
+            value = ToDouble(value);
+
+        prototype function toString(radix = 10)
+            this.toString(radix);
+
+        intrinsic function toString(radix = 10) : string
+            value.toString(radix);
+        
+        prototype function toLocaleString()
+            this.toLocaleString();
+
+        intrinsic function toLocaleString() : string
+            value.toLocaleString();
+
+        prototype function valueOf()
+            this.valueOf();
+
+        intrinsic function valueOf() : Object!
+            value.valueOf();
+
+        prototype function toFixed(fractionDigits)
+            this.toFixed(fractionDigits);
+
+        intrinsic function toFixed(fractionDigits:double) : string 
+            value.toFixed(fractionDigits);
+
+        prototype function toExponential(fractionDigits)
+            this.toExponential(fractionDigits);
+
+        intrinsic function toExponential(fractionDigits:double) : string
+            value.toExponential(fractionDigits);
+
+        prototype function toPrecision(precision)
+            this.toPrecision(precision);
+
+        intrinsic function toPrecision(precision:double) : string
+            value.toPrecision(precision);
+    }
+}
+</code>
+
+====== Math object ======
+
+<code javascript>
+package
+{
+    // ECMA4 version which allows early-binding.
+    ECMA4 final class Math extends Object
+    {       
+        // 15.8.1 Value Properties of the Math Object
+        static const E; 
+        static const LN10;  
+        static const LN2;   
+        static const LOG2E; 
+        static const LOG10E;    
+        static const PI;    
+        static const SQRT1_2;   
+        static const SQRT2; 
+
+        // 15.8.2 Function Properties of the Math Object
+        static native function abs(x:Number):Number;
+        static native function acos(x):Number;
+        static native function asin(x):Number;
+        static native function atan(x):Number;
+        static native function atan2(x,y):Number;
+        static native function ceil(x):Number;
+        static native function cos(x):Number;
+        static native function exp(x):Number;
+        static native function floor(x):Number;
+        static native function log(x):Number;
+        static native function max(...args):Number;
+        static native function min(...args):Number;
+        static native function pow(x,y):Number;
+        static native function random():Number;
+        static native function round(x):Number;
+        static native function sin(x):Number;
+        static native function sqrt(x):Number;
+        static native function tan(x):Number;
+
+    } // class
+    
+    // Math is a singleton object, not a class, but has the type "Math"
+    // which suggests a private Math class that created the singleton.
+
+    var Math = new private::Math;
+
+    dynamic class Math extends Object
+    {       
+        // 15.8.1 Value Properties of the Math Object
+        const E = ECMA4::Math.E;    
+        const LN10 = ECMA4::Math.LN10;  
+        const LN2 = ECMA4::Math.LN2;    
+        const LOG2E = ECMA4::Math.LOG2E;    
+        const LOG10E = ECMA4::Math.LOG10E;  
+        const PI = ECMA4::Math.PI;  
+        const SQRT1_2 = ECMA4::Math.SQRT1_2;    
+        const SQRT2 = ECMA4::Math.SQRT2;    
+
+        // 15.8.2 Function Properties of the Math Object
+        var abs = ECMA4::Math.abs;
+        var acos = ECMA4::Math.acos;
+        var asin = ECMA4::Math.asin;
+        var atan = ECMA4::Math.atan;
+        var atan2 = ECMA4::Math.atan2;
+        var ceil = ECMA4::Math.ceil;
+        var cos = ECMA4::Math.cos;
+        var exp = ECMA4::Math.exp;
+        var floor = ECMA4::Math.floor;
+        var log = ECMA4::Math.log;
+        var max = ECMA4::Math.max;
+        var min = ECMA4::Math.min;
+        var pow = ECMA4::Math.pow;
+        var random = ECMA4::Math.random;
+        var round = ECMA4::Math.round;
+        var sin = ECMA4::Math.sin;
+        var sqrt = ECMA4::Math.sqrt;
+        var tan = ECMA4::Math.tan;
+
+        // E262 specifies that length=2 for these.
+        max.length = 2;
+        min.length = 2;
+
+    } // class
+} // package
+</code>
+
+====== Date objects ======
+
+<code javascript>
+package
+{
+    use namespace intrinsic;  // Override with "public::" when necessary
+
+    /* The Date class is "final dynamic" in ActionScript 3.0, though
+       the motivation for that is unclear.  The consequence is anyway
+       that the getters for the components of a Date can be
+       inlined.  */
+
+    final dynamic class Date extends Object
+    {       
+        /* E262-3 15.9.2: The Date Constructor Called as a Function */
+        static intrinsic function date(...args)   // args are ignored.
+            (new Date()).public::toString();
+
+        /* E262-3 15.9.3: The Date Constructor. */
+        public function Date(year, month, a, b, c, d, e) {
+            let date=1, hours=0, minutes=0, seconds=0, ms=0;
+
+            setupNanoAge();
+
+            switch (arguments.length) {
+            case 0:  /* 15.9.3.3 */
+                timeval = Date.now();
+                return;
+            case 1:  /* 15.9.3.2 */
+                let v = ToPrimitive(year);
+                if (v is string)
+                    return parse(v cast string);
+
+                timeval = TimeClip(ToDouble(v));
+                return;
+            default:  /* 15.9.3.1 */
+                ms = ToDouble(e);
+            case 6:
+                seconds = ToDouble(d);
+            case 5:
+                minutes = ToDouble(c);
+            case 4:
+                hours = ToDouble(b);
+            case 3:
+                date = ToDouble(a);
+            case 2:
+                year = ToDouble(year);
+                month = ToDouble(month);
+
+                let intYear = ToInteger(year);
+                if (!isNaN(year) && 0 <= intYear && intYear <= 99)
+                    intYear += 1900;
+
+                timeval = TimeClip(UTCTime(MakeDate(MakeDay(intYear, month, date), 
+                                                    MakeTime(hours, minutes, seconds, ms))));
+                return;
+            }
+        }
+
+        /* E262-3 15.9.4.2: Date.parse
+           E262-4 proposals:date_and_time - "ISO Date strings".
+
+           Note incompatibilities with ES3, which allowed arbitrary
+           extra arguments to Date.parse and ignored them all
+           (standard behavior): E262-3 did not include a clause about
+           maybe interpreting extra arguments differently in the
+           future for Date.parse, unlike for some other methods.  This
+           shows that that kind of imprecation either (a) should be
+           the default for all library methods or (b) is pointless.
+           Take your pick.
+        */
+        public static var parse = function parse(string, reference:double=0.0) {
+            if (arguments.length > 2)
+                throw new TypeError("Too many arguments to Date.parse"); 
+            return Date.parse(ToString(string), reference);
+        }
+
+        static intrinsic function parse(s:string, reference:double=0.0) : Date! {
+
+            function fractionToMilliseconds(frac : string) : double
+                Math.floor(1000 * (parseInt(frac) / Math.pow(10,frac.length)));
+
+            let isoRes : Object = isoTimestamp.exec(s);
+            let defaults : Date! = new Date(reference);
+            if (isoRes !== undefined) {
+                let year = isoRes.year !== undefined ? parseInt(isoRes.year) : defaults.UTCYear;
+                let month = isoRes.month !== undefined ? parseInt(isoRes.month) : defaults.UTCMonth;
+                let day = isoRes.day !== undefined ? parseInt(isoRes.day) : defaults.UTCDay;
+                let hour = isoRes.hour !== undefined ? parseInt(isoRes.hour) : defaults.UTCHour;
+                let mins = isoRes.mins !== undefined ? parseInt(isoRes.mins) : defaults.UTCMinutes;
+                let secs = isoRes.secs !== undefined ? parseInt(isoRes.secs) : defaults.UTCSeconds;
+                let millisecs = isoRes.fraction !== undefined ? 
+                    fractionToMillisecons(isoRes.fraction) : 
+                    defaults.UTCMilliseconds;
+                let tzo = defaults.timezoneOffset;
+                if (isoRes.zulu !== undefined)
+                    tzo = 0;
+                else if (isoRes.offs !== undefined) {
+                    tzo = parseInt(isoRes.tzhr) * 60;
+                    if (isoRes.tzmin !== undefined)
+                        tzo += parseInt(isoRes.tzmin);
+                    if (isoRes.tzdir === "-")
+                        tzo = -tzo;
+                }
+                return new Date(Date.UTC(year, month, day, hour, mins, secs, millisecs).time - tzo);
+            }
+            else
+                return fromDateString(s, reference);
+        }
+        
+        /* INFORMATIVE.  
+
+           Most practical implementations have many heuristics for
+           parsing date formats, which are as numerous as the sands of
+           the desert, the snowflakes of the arctic, the stars in the
+           sky, etc.  Parsing the output of Date.prototype.toString is
+           the minimum required by the Standard and we handle that
+           here along with the output of Date.prototype.toUTCString.
+        */
+        static function fromDateString(s : string, reference : double) : Date {
+
+            function findMonth(name) {
+                for ( let i:int=0 ; i < monthNames.length ; i++ )
+                    if (name === monthNames[i])
+                        return i;
+                return 0;  // implementation bug if this happens...
+            }
+
+            let res = adhocTimestamp.exec(s);
+            if (res === null)
+                return new Date(reference);
+            let t = Date.UTC(parseInt(res.year),
+                             findMonth(res.month),
+                             parseInt(res.day),
+                             parseInt(res.hour),
+                             parseInt(res.minute),
+                             parseInt(res.second));
+            if (res.tz !== undefined) {
+                let hour = parseInt(res.tz[1:3]);
+                let min  = parseInt(res.tz[3:5]);
+                if (res.tz[0] == '+')
+                    t -= (hour*60 + min)*60*1000;
+                else 
+                    t += (hour*60 + min)*60*1000;
+            }
+            return new Date(t);
+        }
+
+        /* E262-4 proposals:date_and_time - "Current and elapsed times" */
+        static intrinsic native function now() : double;
+
+        public static function now() : double
+            Date.now();
+
+        /* E262-4 proposals:date_and_time - "Current and elapsed times" */
+        prototype function nanoAge() : double
+            this.nanoAge();
+
+        /* INFORMATIVE */
+        intrinsic function nanoAge() : double
+            (Date.now() - birthtime) * 1000;
+
+        /* INFORMATIVE */
+        function setupNanoAge() : void {
+            d.birthtime = Date.now();
+        }
+
+        /* E262-3 15.9.4.3: Date.UTC */
+        public static var UTC = 
+            function UTC(year, month, date, hours, minutes, seconds, ms)
+            let (argc:uint = arguments.length)
+                Date.UTC(ToDouble(year), 
+                         ToDouble(month), 
+                         argc >= 3 ? ToDouble(date) : 1,
+                         argc >= 4 ? ToDouble(hours) : 0,
+                         argc >= 5 ? ToDouble(minutes) : 0,
+                         argc >= 6 ? ToDouble(seconds) : 0,
+                         argc >= 7 ? ToDouble(ms) : 0);
+
+        static instrinsic function UTC(year : double, month : double, 
+                                       date : double=1, hours : double?=0, minutes : double?=0,
+                                       seconds : double=0, ms : double?=0) : double {
+            let intYear:double = Integer(year);
+            if (!isNaN(year) && 0 <= intYear && intYear <= 99)
+                intYear += 1900;
+            return TimeClip(MakeDate(MakeDay(intYear, month, date), 
+                                     MakeTime(hours, minutes, seconds, ms)));
+        }
+
+        static const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        static const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+                                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+        /* Format of string produced by Date.toString, recognized by Date.parse */
+        /* e.g., "Fri, 15 Dec 2006 23:45:09 GMT-0800" */
+        const adhocTimestamp : RegExp! = 
+            /(?: Mon|Tue|Wed|Thu|Fri|Sat|Sun )\s+
+             (?P<day> [0-9]+ )\s+
+             (?P<month> Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec )\s+
+             (?P<year> -? [0-9]+ )\s+
+             (?P<hour> [0-9]{2} ):
+             (?P<minute> [0-9]{2} ):
+             (?P<second> [0-9]{2} )\s+
+             GMT
+             (?P<tz> (?: \\+ | - ) [0-9]{4} )?/x;
+
+        /* Format of string produced by Date.toISOString, recognized by Date.parse */
+        /* e.g, "2006-12-15T23:45:09.33-08:00" */
+        const isoTimestamp : RegExp! =
+            /^
+            # Date, optional
+            (?: (?P<year> - [0-9]+ | [0-9]{4} [0-9]* )
+             (?: - (?P<month> [0-9]{2} )
+              (?: - (?P<day> [0-9]{2} ) )? )? )?
+            T
+            # Time, optional
+            (?: (?P<hour> [0-9]{2} )
+             (?: : (?P<minutes> [0-9]{2} )
+              (?: : (?P<seconds> [0-9]{2} )
+               (?: \. (?P<fraction> [0-9]+ ) )? )? )? )?
+            # Timezone, optional
+            (?: (?P<zulu> Z )
+             | (?P<offs> 
+                (?P<tzdir> \\+ | - )
+                (?P<tzhr> [0-9]{2} )
+                (?: : (?P<tzmin> [0-9]{2} ) )? ) )?
+            $/x;
+
+        /* E262-4 proposals:date_and_time - "ISO Date strings" */
+        prototype function toISOString(this:Date)
+            this.toISOString();
+
+        intrinsic function toISOString() : string {
+
+            function years(n : double) : String {
+                if (n >= 0 && n <= 9999)
+                    return (n+10000).toString().substring(1);
+                else
+                    return n.toString();
+            }
+
+            function fraction(n : int) : string {
+                while (n > 0 && n % 10 === 0)
+                    n /= 10;
+                return n.toString();
+            }
+
+            let tz:double = timezoneOffset;
+            let atz:double = Math.abs(tz);
+            return "" + years(fullYear) + "-" + twoDigit(month) + "-" + twoDigit(day) +
+                "T" + twoDigit(hours) + ":" + twoDigit(minutes) + ":" + twoDigit(seconds) +
+                "." + fraction(int(milliseconds)) + sign(tz) +
+                twoDigit(Math.floor(atz / 60)) + ":" + twoDigit(atz % 60);
+        }
+
+        /* E262-3 15.9.5.2: Date.prototype.toString */
+        prototype function toString(this:Date)
+            this.toString(); 
+
+        /* INFORMATIVE */
+        intrinsic function toString() : string
+            /* "Fri, 15 Dec 2006 23:45:09 GMT-0800" */
+            let (tz:double = timezoneOffset)
+                let (atz:double = Math.abs(tz))
+                    dayNames[date] + ", " + twoDigit(day) + " " + monthNames[month] + " " fullYear +
+                    " " + twoDigit(hours) + ":" + twoDigit(minutes) + ":" + twoDigit(seconds) +
+                    " GMT" + sign(tz) + twoDigit(Math.floor(atz / 60)) + twoDigit(atz % 60);
+
+        /* E262-3 15.9.5.42: Date.prototype.toUTCString */
+        prototype function toUTCString(this:Date)
+            this.toUTCString(); 
+
+        /* INFORMATIVE */
+        intrinsic function toUTCString() : string
+            /* "Sat, 16 Dec 2006 08:06:21 GMT" */
+            dayNames[UTCdate] + ", " + 
+            twoDigit(UTCday) + " " + 
+            monthNames[UTCmonth] + " " +
+            UTCFullYear + " " + 
+            twoDigit(UTCHours) + ":" + 
+            twoDigit(UTCMinutes) + ":" + 
+            twoDigit(UTCSeconds) + " GMT";
+
+        /* E262-3 15.9.5.3: Date.prototype.toDateString */
+        prototype function toDateString(this:Date)
+            this.toDateString(); 
+
+        /* INFORMATIVE */
+        intrinsic function toDateString() : string
+            /* "Sat, 16 Dec 2006" */
+            dayNames[date] + ", " + twoDigit(day) + " " + monthNames[month] + " " fullYear;
+
+        /* E262-3 15.9.5.4: Date.prototype.toTimeString */
+        prototype function toTimeString(this:Date)
+            this.toTimeString(); 
+
+        /* INFORMATIVE */
+        intrinsic function toTimeString():string
+            /* "00:13:29 GMT-0800" */
+            let (tz:double = timezoneOffset)
+                let (atz:double = Math.abs(tz))
+                    twoDigit(hours) + ":" + twoDigit(minutes) + ":" + twoDigit(seconds) +
+                    " GMT" + sign(tz) + twoDigit(Math.floor(atz / 60)) + twoDigit(atz % 60);
+
+        /* E262-3 15.9.5.5: Date.prototype.toLocaleString */
+        prototype function toLocaleString(this:Date)
+            this.toLocaleString(); 
+
+        /* INFORMATIVE */
+        intrinsic function toLocaleString() : string
+            toString();
+
+        /* E262-3 15.9.5.6: Date.prototype.toLocaleDateString */
+        prototype function toLocaleDateString(this:Date)
+            this.toLocaleDateString(); 
+
+        /* INFORMATIVE */
+        intrinsic function toLocaleDateString() : string
+            toDateString();
+
+        /* E262-3 15.9.5.7: Date.prototype.toLocaleTimeString */
+        prototype function toLocaleTimeString(this:Date)
+            this.toLocaleTimeString(); 
+
+        /* INFORMATIVE */
+        intrinsic function toLocaleTimeString() : string
+            toTimeString();
+
+        /* E262-3 15.9.5.8: Date.prototype.valueOf */
+        prototype function valueOf(this:Date)
+            this.valueOf(); 
+
+        intrinsic function valueOf() : Object
+            getTime();
+
+        /* E262-4 proposals:date_and_time: the logical components of
+           date values are gettable and settable through properties
+           naming those components, and everything else is implemented
+           in terms of those components.
+
+           Brendan and Lars agreed (2006-12-15) that these getters and
+           setters are not overridable by assignment, ie, they're on
+           the Date instances, not properties on the prototype.
+
+           As the Date class is final the getters and setters can be
+           inlined. */
+
+        public function get time(this:Date) : double                     getTime();
+        public function set time(this:Date, t : double) : double         setTime(t);
+        public function get fullYear(this:Date) : double                 getFullYear();
+        public function set fullYear(this:Date, t : double) : double     setFullYear(t);
+        public function get UTCFullYear(this:Date) : double              getUTCFullYear();
+        public function set UTCFullYear(this:Date, t : double) : double  setUTCFullYear(t);
+        public function get month(this:Date) : double                    getMonth();
+        public function set month(this:Date, t : double) : double        setMonth(t);
+        public function get UTCMonth(this:Date) : double                 getUTCMonth();
+        public function set UTCMonth(this:Date, t : double) : double     setUTCMonth(t);
+        public function get date(this:Date) : double                     getDate();
+        public function set date(this:Date, t : double) : double         setDate(t);
+        public function get UTCDate(this:Date) : double                  getUTCDate();
+        public function set UTCDate(this:Date, t : double) : double      setUTCDate(t);
+        public function get day(this:Date) : double                      getDay();
+        public function set day(this:Date, t : double) : double          setDay(t);
+        public function get UTCDay(this:Date) : double                   getUTCDay();
+        public function set UTCDay(this:Date, t : double) : double       setUTCDay(t);
+        public function get hours(this:Date) : double                    getHours();
+        public function set hours(this:Date, t : double) : double        setHours(t);
+        public function get UTCHours(this:Date) : double                 getUTCHours();
+        public function set UTCHours(this:Date, t : double) : double     setUTCHours(t);
+        public function get minutes(this:Date) : double                  getMinutes();
+        public function set minutes(this:Date, t : double) : double      setMinutes(t);
+        public function get UTCMinutes(this:Date) : double               getUTCMinutes();
+        public function set UTCMinutes(this:Date, t : double) : double   setUTCMinutes(t);
+        public function get seconds(this:Date) : double                  getSeconds();
+        public function set seconds(this:Date, t : double) : double      setSeconds(t);
+        public function get UTCSeconds(this:Date) : double               getUTCSeconds();
+        public function set UTCSeconds(this:Date, t : double) : double   setUTCSeconds(t);
+        public function get milliseconds(this:Date) : double             getMilliseconds();
+        public function set milliseconds(this:Date, t : double) : double setMilliseconds(t);
+        public function get UTCMilliseconds(this:Date) : double          getUTCMilliseconds();
+        public function set UTCMilliseconds(this:Date, t : double) : double setUTCMilliseconds(t);
+        public function get timezoneOffset(this:Date) : double            getTimezoneOffset();
+
+
+        /* Mandated aliases for the canonical getters and setters */
+
+        /* E262-3 15.9.5.9: Date.prototype.getTime */
+        prototype function getTime(this:Date)   
+            this.getTime();
+
+        intrinsic function getTime() : double   
+            timeval;
+
+        /* E262-3 15.9.5.10: Date.prototype.getFullYear */
+        prototype function getFullYear(this:Date)
+            this.getFullYear();
+
+        intrinsic function getFullYear() : double
+            let (t : double = timeval) 
+                isNaN(t) ? t : YearFromTime(LocalTime(t));
+
+        /* E262-3 15.9.5.11: Date.prototype.getUTCFullYear */
+        prototype function getUTCFullYear(this:Date)
+            this.getUTCFullYear();
+
+        intrinsic function getUTCFullYear() : double
+            let (t : double = timeval) 
+                isNaN(t) ? t : YearFromTime(t);
+
+        /* E262-3 15.9.5.12: Date.prototype.getMonth */
+        prototype function getMonth(this:Date)
+            this.getMonth();
+
+        intrinsic function getMonth() : double
+            let (t : double = timeval)
+                isNaN(t) ? t : MonthFromTime(LocalTime(t));
+        
+        /* E262-3 15.9.5.13: Date.prototype.getUTCMonth */
+        prototype function getUTCMonth(this:Date)
+            this.getUTCMonth();
+
+        intrinsic function getUTCMonth() : double
+            let (t : double = timeval)
+                isNaN(t) ? t : MonthFromTime(t);
+
+        /* E262-3 15.9.5.14: Date.prototype.getDate */
+        prototype function getDate(this:Date)
+            this.getDate();
+
+        intrinsic function getDate() : double
+            let (t : double = timeval)
+                isNaN(t) ? t : DateFromTime(LocalTime(t));
+
+        /* E262-3 15.9.5.15: Date.prototype.getUTCDate */
+        prototype function getUTCDate(this:Date)
+            this.getUTCDate();
+
+        intrinsic function getUTCDate() : double
+            let (t : double = timeval)
+                isNaN(t) ? t : DateFromTime(t);
+
+        /* E262-3 15.9.5.16: Date.prototype.getDay */
+        prototype function getDay(this:Date)
+            this.getDay();
+
+        intrinsic function getDay() : double
+            let (t : double = timeval)
+                isNaN(t) ? t : WeekDay(LocalTime(t));
+
+        /* E262-3 15.9.5.17: Date.prototype.getUTCDay */
+        prototype function getUTCDay(this:Date)
+            this.getUTCDay();
+
+        intrinsic function getUTCDay() : double
+            let (t : double = timeval)
+                isNaN(t) ? t : WeekDay(t);
+
+        /* E262-3 15.9.5.18: Date.prototype.getHours */
+        prototype function getHours(this:Date)
+            this.getHours();
+
+        intrinsic function getHours() : double
+            let (t : double = timeval)
+                isNaN(t) ? t : HourFromTime(LocalTime(t));
+
+        /* E262-3 15.9.5.19: Date.prototype.getUTCHours */
+        prototype function getUTCHours(this:Date)
+            this.getUTCHours();
+
+        intrinsic function getUTCHours() : double
+            let (t : double = timeval)
+                isNaN(t) ? t : HourFromTime(t);
+
+        /* E262-3 15.9.5.20: Date.prototype.getMinutes */
+        prototype function getMinutes(this:Date)
+            this.getMinutes();
+
+        intrinsic function getMinutes() : double
+            let (t : double = timeval)
+                isNaN(t) ? t : MinFromTime(LocalTime(t));
+        
+        /* E262-3 15.9.5.21: Date.prototype.getUTCMinutes */
+        prototype function getUTCMinutes(this:Date)
+            this.getUTCMinutes();
+
+        intrinsic function getUTCMinutes() : double
+            let (t : double = timeval)
+                isNaN(t) ? t : MinFromTime(t);
+
+        /* E262-3 15.9.5.22: Date.prototype.getSeconds */
+        prototype function getSeconds(this:Date)
+            this.getSeconds();
+
+        intrinsic function getSeconds() : double
+            let (t : double = timeval)
+                isNaN(t) ? t : SecFromTime(LocalTime(t));
+
+        /* E262-3 15.9.5.23: Date.prototype.getUTCSeconds */
+        prototype function getUTCSeconds(this:Date)
+            this.getUTCSeconds();
+
+        intrinsic function getUTCSeconds() : double
+            let (t : double = timeval)
+                isNaN(t) ? t : SecFromTime(t);
+
+        /* E262-3 15.9.5.24: Date.prototype.getMilliseconds */
+        prototype function getMilliseconds(this:Date)
+            this.getMilliseconds();
+
+        intrinsic function getMilliseconds() : double
+            let (t : double = timeval)
+                isNaN(t) ? t : msFromTime(LocalTime(t));
+        
+        /* E262-3 15.9.5.25: Date.prototype.getUTCMilliseconds */
+        prototype function getUTCMilliseconds(this:Date)
+            this.getUTCMilliseconds();
+
+        intrinsic function getUTCMilliseconds() : double
+            let (t : double = timeval)
+                isNaN(t) ? t : msFromTime(t);
+        
+        /* E262-3 15.9.5.26: Date.prototype.getTimezoneOffset */
+        prototype function getTimezoneOffset(this:Date)
+            this.getTimezoneOffset();
+
+        intrinsic function getTimezoneOffset() : double
+            let (t : double = timeval) 
+                isNaN(t) ? t : (t - LocalTime(t)) / msPerMinute;
+
+        /* E262-3 15.9.5.27: Date.prototype.setTime */
+        prototype function setTime(this:Date, t)
+            this.setTime(double(t));
+
+        intrinsic function setTime(t:double) : double
+            timeval = TimeClip(t);
+
+        /* E262-3 15.9.5.28:  Date.prototype.setMilliseconds (ms) */
+        prototype function setMilliseconds(this:Date, ms)
+            this.setMilliseconds(double(ms))
+
+        intrinsic function setMilliseconds(ms:double) : double
+            timeval = let (t : double = LocalTime(timeval))
+                          UTCTime(MakeDate(Day(t), MakeTime(HourFromTime(t), 
+                                                            MinFromTime(t), 
+                                                            SecFromTime(t), 
+                                                            ms)));
+
+        // 15.9.5.29 Date.prototype.setUTCMilliseconds (ms)
+        prototype function setUTCMilliseconds(this:Date, ms)
+            this.setUTCMilliseconds(double(ms));
+
+        intrinsic function setUTCMilliseconds(ms:double) : double
+            timeval = let (t : double = timeval)
+                          MakeDate(Day(t), MakeTime(HourFromTime(t), 
+                                                    MinFromTime(t), 
+                                                    SecFromTime(t), 
+                                                    ms));
+
+        // 15.9.5.30 Date.prototype.setSeconds (sec [, ms ] )
+        prototype function setSeconds(this:Date, sec, ms)
+            this.setSeconds(double(sec), double(ms)); 
+
+        intrinsic function setSeconds(sec:double, ms:double = milliseconds) : double
+            timeval = let (t : double = LocalTime(timeval))
+                          UTCTime(MakeDate(Day(t), MakeTime(HourFromTime(t), 
+                                                            MinFromTime(t), 
+                                                            sec, 
+                                                            ms)));
+
+        // 15.9.5.31 Date.prototype.setUTCSeconds (sec [, ms ] )
+        prototype function setUTCSeconds(this:Date, sec, ms) 
+            this.setUTCSeconds(double(sec), double(ms)); 
+
+        intrinsic function setUTCSeconds(sec:double, ms:double = milliseconds) : double
+            timeval = let (t : double = timeval)
+                          MakeDate(Day(t), MakeTime(HourFromTime(t), 
+                                                    MinFromTime(t), 
+                                                    sec, 
+                                                    ms));
+
+        // 15.9.5.33 Date.prototype.setMinutes (min [, sec [, ms ] ] )
+        prototype function setMinutes(this:Date, min, sec, ms)
+            this.setMinutes(double(min), double(sec), double(ms)); 
+
+        intrinsic function setMinutes(min:double, 
+                                      sec:double = seconds, 
+                                      ms:double = milliseconds) : double 
+            timeval = let (t : double = LocalTime(timeval))
+                          UTCTime(MakeDate(Day(t), MakeTime(HourFromTime(t), 
+                                                            min, 
+                                                            sec, 
+                                                            ms)));
+
+        // 15.9.5.34 Date.prototype.setUTCMinutes (min [, sec [, ms ] ] )
+        prototype function setUTCMinutes(this:Date, min, sec, ms)
+            this.setUTCMinutes(double(min), double(sec), double(ms)); 
+
+        intrinsic function setUTCMinutes(min:double, 
+                                         sec:double = seconds,
+                                         ms:double = milliseconds) : double 
+            timeval = let (t : double = timeval)
+                          MakeDate(Day(t), MakeTime(HourFromTime(t), 
+                                                    min, 
+                                                    sec, 
+                                                    ms));
+
+        // 15.9.5.35 Date.prototype.setHours (hour [, min [, sec [, ms ] ] ] )
+        prototype function setHours(this:Date, hour, min, sec, ms)
+            this.setHours(double(hour), double(min), double(sec), double(ms));
+
+        intrinsic function setHours(hour:double, 
+                                    min:double = minutes,
+                                    sec:double = seconds,
+                                    ms:double = milliseconds) : double 
+            timeval = let (t : double = LocalTime(timeval))
+                          UTCTime(MakeDate(Day(t), MakeTime(hour, 
+                                                            min, 
+                                                            sec, 
+                                                            ms)));
+
+        // 15.9.5.36 Date.prototype.setUTCHours (hour [, min [, sec [, ms ] ] ] )
+        prototype function setUTCHours(this:Date, hour, min, sec, ms)
+            this.setUTCHours(double(hour), double(min), double(sec), double(ms));
+
+        intrinsic function setUTCHours(hour:double, 
+                                       min:double = minutes,
+                                       sec:double = seconds,
+                                       ms:double = milliseconds) : double 
+            timeval = let (t : double = timeval)
+                          MakeDate(Day(t), MakeTime(hour, 
+                                                    min, 
+                                                    sec, 
+                                                    ms));
+
+        // 15.9.5.36 Date.prototype.setDate (date)
+        prototype function setDate(this:Date, date)
+            this.setDate(double(date)); 
+
+        intrinsic function setDate(date:double):double
+            timeval = let (t : double = LocalTime(timeval))
+                          UTCTime(MakeDate(MakeDay(YearFromTime(t), MonthFromTime(t), date), 
+                                           TimeWithinDay(t)));
+            
+
+        // 15.9.5.37 Date.prototype.setUTCDate (date)
+        prototype function setUTCDate(this:Date, date)
+            this.setUTCDate(double(date)); 
+
+        intrinsic function setUTCDate(date:double):double 
+            timeval = let (t : double = timeval)
+                          MakeDate(MakeDay(YearFromTime(t), MonthFromTime(t), date), 
+                                   TimeWithinDay(t));
+
+
+        // 15.9.5.38 Date.prototype.setMonth (month [, date ] )
+        prototype function setMonth(this:Date, month, date)
+            this.setMonth(double(month), double(date)); 
+
+        intrinsic function setMonth(month:double, date:double = date):double
+            timeval = let (t : double = LocalTime(timeval))
+                          UTCTime(MakeDate(MakeDay(YearFromTime(t), month, date), 
+                                           TimeWithinDay(t)));
+
+        /* E262-3 15.9.5.39: Date.prototype.setUTCMonth */
+        prototype function setUTCMonth(this:Date, month, date)
+            this.setUTCMonth(double(month), double(date)); 
+
+        intrinsic function setUTCMonth(month:double, date:double = date):double
+            timeval = let (t : double = timeval)
+                          MakeDate(MakeDay(YearFromTime(t), month, date), 
+                                   TimeWithinDay(t));
+
+        /* E262-3 15.9.5.40: Date.prototype.setFullYear */
+        prototype function setFullYear(this:Date, year, month, date)
+            this.setFullYear(double(year), double(month), double(date)); 
+
+        intrinsic function setFullYear(year:double, 
+                                       month:double = month, 
+                                       date:double = date) : double 
+            timeval = let (t : double = LocalTime(timeval))
+                          UTCTime(MakeDate(MakeDay(year, month, date), 
+                                           TimeWithinDay(t)));
+
+        /* E262-3 15.9.5.41: Date.prototype.setUTCFullYear */
+        prototype function setUTCFullYear(this:Date, year, month, date)
+            this.setUTCFullYear(double(year), double(month), double(date)); 
+
+        intrinsic function setUTCFullYear(year:double, 
+                                          month:double = month, 
+                                          date:double = date) : double 
+            timeval = let (t : double = timeval)
+                          MakeDate(MakeDay(year, month, date), 
+                                   TimeWithinDay(t));
+
+
+        /* Utilities */
+
+        function twoDigit(n : double)
+            (n + 100).toString().substring(1);
+
+        function sign(n : double)
+            n < 0 ? "-" : "+";
+
+        /* Primitives from E262-3 */
+
+        var timeval : double;    // This object's time value
+        var birthtime : double;  // INFORMATIVE.  For use by nanoAge
+
+        static const msPerDay : double = 86400000;
+        static const hoursPerDay : double = 24;
+        static const minutesPerHour : double = 60;
+        static const secondsPerMinute : double = 60;
+        static const msPerSecond : double = 1000;
+        static const msPerMinute : double = msPerSecond * secondsPerMinute;
+        static const msPerHour : double = msPerMinute * minutesPerHour;
+        static const monthOffsets : [double] 
+            = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334] : [double];
+
+        function MakeTime(hour:double, min:double, sec:double, ms:double ):double {
+            if (!isFinite(hour) || !isFinite(min) || !isFinite(sec) || !isFinite(ms))
+                return NaN;
+
+            return Integer(hour) * msPerHour +
+                Integer(min) * msPerMinute +
+                Integer(sec) * msPerSecond +
+                Integer(ms);
+        }
+
+        function MakeDay(year : double, month : double, date : double) : double {
+            if (!isFinite(year) || !isFinite(month) || !isFinite(date))
+                return NaN;
+
+            year = Integer(year);
+            month = Integer(month);
+            date = Integer(date);
+
+            /* INFORMATIVE, the spec is non-operational. */
+            year += Math.floor(month / 12);
+
+            month = month % 12;
+            if (month < 0)
+                month += 12;
+
+            let leap = (DaysInYear(year) == 366);
+
+            let yearday = Math.floor(TimeFromYear(year) / msPerDay);
+            let monthday = DayFromMonth(month, leap);
+
+            return yearday + monthday + date - 1;
+        }
+
+        function MakeDate(day : double, time : double) : double {
+            if (!isFinite(day) || !isFinite(time))
+                return NaN;
+
+            return day * msPerDay + time;
+        }
+
+        function Day(t : double) : double
+            Math.floor(t / msPerDay);
+
+        function TimeWithinDay(t : double) : double
+            t % msPerDay;
+
+        function HoursFromTime(t : double) : double
+            Math.floor(t / msPerHour) % hoursPerDay;
+        
+        function DaysInYear(y : double) : double {
+            if (y % 4 !== 0) return 365;
+            if (y % 100 !== 0) return 366;
+            if (y % 400 !== 0) return 365;
+            return 366;
+        }
+
+        function DayFromYear(y : double) : double 
+            365*(y-1970) + Math.floor((y-1969)/4) - Math.floor((y-1901)/100) + Math.floor((y-1601)/400);
+
+        function TimeFromYear(y : double) : double
+            msPerDay * DayFromYear(y);
+
+        function InLeapYear(t : double) : double
+            DaysInYear(YearFromTime(t)) ? 1 : 0;
+
+        function MonthFromTime(t : double) : double {
+            let dwy : double = DayWithinYear(t),
+                ily : double = InLeapYear(t);
+            for ( let i : int=0 ; i < monthOffsets.length-1 ; i++ )
+                if (dwy > monthOffsets[i] + (i >= 2 ? ily : 0) && 
+                    dwy < monthOffsets[i+1] + (i+1 >= 2 ? ily : 0))
+                    return i;
+            /*NOTREACHED*/
+        }
+
+        function DayWithinYear(t : double) : double
+            Day(t) - DayFromYear(YearFromTime(t));
+
+        function DayFromMonth(m : double, leap : boolean) : double 
+            (monthOffsets[m] - 1) + (leap && m >= 2 ? 1 : 0);
+
+        function DateFromTime(t : double) : double
+            let (dwy : double = DayWithinYear(t),
+                 mft : double = MonthFromTime(t),
+                 ily : double = InLeapYear(t))
+                dwy - (monthOffsets[mft] - 1) - (mft >= 2 ? ily : 0);
+
+        function WeekDay(t : double) : double
+            (Day(t) + 4) % 7;
+
+        function LocalTime(t : double) : double
+            t + LocalTZA() + DaylightSavingTA(t);
+
+        function UTCTime(t : double) : double
+            t - LocalTZA() - DaylighSavingsTA(t - LocalTZA());
+
+        function TimeClip(t : double) : double 
+            (!isFinite(t) || Math.abs(t) > 8.64e15) ? NaN : Integer(t);
+
+        /* INFORMATIVE */
+        function YearFromTime(t : double) : double {
+            let y : double = t / (msPerDay * 365);
+            while (TimeFromYear(y) < t)
+                y += 1;
+            while (TimeFromYear(y) > t)
+                y -= 1;
+            return y;
+        }
+
+        native function LocalTZA() : double;
+        native function DaylightSavingsTA(t : double) : double;
+    }
+}
+</code>
+
+**PROPOSAL** -- See [[proposals:date_and time]] for information on ''Date.toISOString'', ''Date.now'', ''Date.nanoAge'', changes to ''Date.parse'' to handle ISO timestamps, and all the new ''Date'' component properties, as well as on the ISO subset format produced by ''Date.toISOString'' and accepted by ''Date.parse''.
+
+====== Error objects ======
+
+^ Error object ^
+| ''Error''                       |
+| ''Error.prototype''             |
+| ''Error.prototype.constructor'' |
+| ''Error.prototype.name''        |
+| ''Error.prototype.message''     |
+| ''Error.prototype.toString''    |
+
+====== Meta-objects ======
+
+**PROPOSAL** --- Please see the [[proposals:meta_objects|Meta-objects proposal page]] for more information.
+
+This proposal adds a reflection mechanism comprising a normative set of meta-objects which provide
+runtime type information about an object.
+
+====== RegExp objects ======
+
+<code javascript>
+package RegExp
+{
+    import Unicode.*;
+    use namespace intrinsic;
+    use strict;
+
+    /* E262-3 15.10: Regular expression object */
+    public dynamic class RegExp
+    {
+        /* E262-3 15.10.3.1: The RegExp constructor called as a function */
+        static intrinsic function invoke( pattern, flags ) {
+            if (pattern is RegExp && flags === undefined)
+                return pattern;
+            else
+                return new RegExp(pattern, flags);
+        }
+
+        /* E262-3 15.10.4.1: The RegExp constructor */
+        public function RegExp( pattern, flags ) {
+            let source : string = "";
+
+            if (pattern is RegExp) {
+                if (flags === undefined) {
+                    source = pattern.source;
+                    flags = pattern.flags;
+                }
+                else 
+                    throw new TypeError("Illegal construction of regular expression");
+            }
+            else {
+                source = pattern === undefined ? "" : ToString(pattern);
+                flags = flags === undefined ? "" : ToString(flags);
+            }
+
+            let usedflags : Object! = { m: false, i: false, g: false, x: false, y: false };
+
+            for each ( let f : string in flags.split("") ) {
+                if (!(f in usedflags))
+                    throw new SyntaxError("Invalid flag: " + f);
+                if (usedflags.f)
+                    throw new SyntaxError("Duplicated flag: " + f);
+                usedflags[f] = true;
+            }
+
+            matcher = (new RegExpCompiler(source, flags)).compile();
+
+            multiline = usedflags.m;
+            ignoreCase = usedflags.i;
+            global = usedflags.g;
+            extended = usedflags.x;
+            sticky = usedflags.y;
+            lastIndex = 0;
+            source = source;
+        }
+
+        /* E262-4 proposals:extend_regexps: RegExp instances are
+           callable, and a call to an instance is equivalent to
+           calling its exec() method.
+        */
+        public function invoke(s) : Array
+            this.exec(s);
+
+        intrinsic function invoke(s : string) : Array
+            exec(s);
+
+        /* E262-3 15.10.6.2: RegExp.prototype.exec */
+        intrinsic function exec(s : string) : Array {
+            let S : string = ToString(s);
+            let length : uint = S.length;
+            let i : double = ToInteger(lastIndex);
+            if (!global)
+                i = 0;
+            let res : MatchResult = failure;
+            while (true) {
+                if (i < 0 || i > length) {
+                    lastIndex = 0;
+                    return null;
+                }
+                res = matcher.match(s, i);
+                if (res !== failure)
+                    break;
+                ++i;
+            }
+            if (global)
+                lastIndex = res.endIndex;
+            let a : Array = new Array(res.cap.length+1);
+            a.index = i;
+            a.input = S;
+            a.length = res.cap.length+1;
+            a[0] = S.substring(i,res.endIndex);
+            for ( var j=1 ; j <= res.cap.length ; j++ )
+                a[j] = res.cap[j];
+            return a;
+        }
+
+        prototype function exec(s)
+            this.exec(s);
+
+        /* E262-3 15.10.6.3: RegExp.prototype.test */
+        intrinsic function test(s : string) : Boolean
+            exec(s) !== null;
+
+        prototype function test(s)
+            this.test(s);
+
+        /* E262-3 15.10.6.4: RegExp.prototype.toString */
+        intrinsic function toString() : string
+            "/" + (source.length == 0 ? "(?:)" : source) + "/" + flags;
+
+        prototype function toString()
+            this.toString();
+
+        /* E262-3 15.10.7: properties of regexp instances */
+        public const multiline  : Boolean;
+        public const ignoreCase : Boolean;
+        public const global     : Boolean;
+        public const extended   : Boolean;  // E262-4 proposals:extend_regexps
+        public const sticky     : Boolean;  // E262-4 proposals:extend_regexps
+        public const source     : string;
+        public var   lastIndex  : double;
+
+        /* E262-4 - [[Match]] may not *have* to be public, but String
+           uses it, and if we want to model the language in the
+           language we should expose it -- it's benign. 
+        */
+        intrinsic function match(s : string, i : uint) : MatchResult
+            matcher.match(s, i);
+
+        /* E262-4 - nCapturingParens used by String.prototype.replace 
+         */
+        intrinsic function get nCapturingParens() : uint
+            matcher.nCapturingParens;
+
+        /* Internal */
+        const matcher : RegExpMatcher;      // The [[Match]] property
+
+        function get flags() : string {
+            return (multiline ? "m" : "") +
+                   (ignoreCase ? "i" : "") +
+                   (global ? "g" : "") +
+                   (extended ? "x" : "") +
+                   (sticky ? "y" : "");
+        }
+    }
+}
+
+</code>
+
+**PROPOSAL** --- Please see the [[proposals:extend_regexps|Extended regular expressions proposal page]] for more information.

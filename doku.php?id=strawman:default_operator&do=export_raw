@@ -1,0 +1,115 @@
+====== Motivation ======
+
+The short-circuiting logical-or connective ''||'' is often used as a default operator. If an expression would produce a falsy value, then appending ''||'' and another expression will fill in a default value instead.
+
+<code javascript>
+possible_value || default_value
+</code>
+
+This works well for things like text fields, where the value from an empty field is easily replaced with a default value.
+
+This is also used with parameters and object members, but there is a problem. With parameters and object members, the only falsy value of interest usually is ''undefined''. Unfortunately, the number ''0'' is also a falsy value, which can lead to an unintended replacement with the default value.
+
+====== Proposal ======
+
+We propose that a default operator ''??'' be added. It is a short-circuiting operator. If the first operand evaluates to a value other than ''undefined'', then the result is the first operand and the second operand is not evaluated. But if the result of evaluating the first operand is ''undefined'', then the second operand is evaluated and used as the result.
+
+<code javascript>
+possible_value ?? default_value
+</code>
+
+is a short form of
+
+<code javascript>
+possible_value !== undefined ? possible_value : default_value
+</code>
+
+but with ''possible_value'' evaluated exactly once.
+
+For convenience, we propose adding an ''??='' assignment operator:
+
+<code javascript>
+variable ??= default_value;  // variable = variable ?? default_value
+</code>
+
+As with the existing assignment operators, the ''Reference'' internal type instance evaluated from the left-hand side ''variable'' is evaluated once, and used via ''GetValue'' in the expansion on the right of ''=''.
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2011/02/13 00:48//
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2012/06/17 18:52//
+
+====== Semantics ======
+
+The production //ConditionalExpression// : //LogicalORExpression// ''??'' //AssignmentExpression// is evaluated as follows:
+
+  - Let lref be the result of evaluating //LogicalORExpression//.
+  - Let lval be GetValue(lref).
+  - If lval is not **undefined**, then return lval.
+  - Let rref be the result of evaluating //AssignmentExpression//.
+  - Return GetValue(rref).
+
+The production //AssignmentExpression// : //LeftHandSideExpression// ''??='' //AssignmentExpression// is evaluated as follows:
+
+  - Let lref be the result of evaluating //LeftHandSideExpression//.
+  - Throw a SyntaxError exception if the following conditions are all true:
+    * Type(lref) is Reference is true
+    * IsStrictReference(lref) is true
+    * Type(GetBase(lref)) is Environment Record
+    * GetReferencedName(lref) is either "eval" or "arguments"
+  - Let lval be GetValue(lref).
+  - If lval is not **undefined**, then return lval.
+  - Let rref be the result of evaluating //AssignmentExpression//.
+  - Let rval be GetValue(rref).
+  - Call PutValue(lref, rval).
+  - Return rval.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2012/06/17 18:52//
+
+====== Examples ======
+
+Ryan Florence provided some good examples of pain points that exist today, that could be mitigated by the default operator:
+
+[[https://mail.mozilla.org/pipermail/es-discuss/2012-June/023356.html]]
+
+<code javascript>
+var events = {
+  _callbacks: {},
+
+  on: function (topic, callback) {
+    (this._callbacks[topic] ??= []).push(callback);
+    ...
+  },
+  ...
+};
+
+</code>
+
+<code javascript>
+function ajaxWithError (settings) {
+  settings.method ??= 'POST';
+
+  settings.elementPosition ??= this._getElementPositions();
+
+  settings.somethingWithInitialization ??= (function(){
+    var thing = new Thing();
+    thing.foo = settings.foo;
+    return thing;
+  })();
+  ...
+};
+</code>
+
+ --- //[[waldron.rick@gmail.com|Rick Waldron]] 2012/06/12 17:08//
+
+
+
+
+
+====== Open Issues ======
+
+  * Does ''||='' deserve another look, even though it would be a new (Ruby-like) idiom?
+    * Pro: paves a cow-path.
+    * Pro: avoids adding a new operator.
+    * Con: leads cows down the wrong path (|| means falsy value gets overridden by default value).
+    * Con: does **not** mean //op//''='' (assignment operator) semantics, rather avoids assigning ''L = L'' in truthy-''L'' case.
+  * Should ''null'' be equated to ''undefined''? Need more source code surveys.
+    * CoffeeScript equates ''null'' and ''undefined'' in its ''?'' and when triggering [[harmony:parameter default values]].

@@ -1,0 +1,30 @@
+====== Reformed with statement ======
+(Also see the [[discussion:reformed_with|discussion page]] for this proposal)
+
+This is an attempt to restore lexical scope to the ''with'' statement, using [[is as to|type annotation syntax]], with help from [[clarification:type system|structural types]] and the [[syntax for type expressions]].  In addition to backward-compatible ''with'', ES4 shall support the following syntax:
+
+<code>
+WithStatement ::= "with" "(" Expression ":" TypeExpression ")" Statement
+</code>
+
+The ''TypeExpression'' is evaluated at compile time to an ''Object!'' subtype, structural or nominal.  Call this type ''T''.
+
+The lexical scope chain for ''Statement'' is extended to include a block containing the names of direct public members of ''T''.  Let ''O'' denote the object resulting from evaluating ''Expression'' to a value that satisfies ''T''.  For each direct public member named ''N'' in ''T'', translate all lexical references ''N'' in ''Statement'' to ''O.N''.
+
+At execution time, ''Expression'' is evaluated (it may be a comma expression, for backward compatibility) to value ''O''.  If ''O'' is ''null'' or ''undefined'', or else if ''O'' does not contain all of the members of ''T'' with exactly the same member types, then a ''TypeError'' exception is thrown.
+
+Then ''Statement'' is evaluated.
+
+If ''Statement'' contains an ''eval'' invocation or a ''with'' statement, the lexical scope chain must reflect at run-time so that the evaluated program or the nested ''with'' body sees the same set of unshadowed names for direct public members of ''T'' that were visible to the compiler.
+
+For example, to use fields ''f1'' and ''f2'' of the given types from an object denoted by ''obj'':
+
+<code javascript>
+with (obj : {f1: T1, f2: T2}) {
+     // f1 and f2 are unambiguous here ...
+}
+</code>
+
+It is required that ''obj'' have fields of the given names and exact types.  The actual field ''obj.f1'' must not be of a subtype of ''T1'', e.g., because assignments to ''f1'' in the ''with'' body could break the narrower type constraint on ''obj.f1''. And ''obj.f1'' must not be of a supertype of ''T1'', because it could hold a value that is not of that subtype.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/05/09 16:40//

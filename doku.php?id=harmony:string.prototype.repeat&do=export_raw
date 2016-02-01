@@ -1,0 +1,28 @@
+====== Proposal ======
+
+Add a ''repeat'' method to ''String.prototype'' taking an integer argument and returning a string that is repeated according to the argument. So ''"*".repeat(3)'' produces ''"***"''.
+
+Currently, the way this is commonly done is with ''new Array(4).join('*')''. There should be a better built-in alternative.
+
+<code javascript>
+(function () {
+    var ToInteger = Number.toInteger;
+
+    Object.defineProperty(String.prototype, 'repeat', {
+        value: function (count) {
+            var string = '' + this;
+            count = ToInteger(count);
+            var result = '';
+            while (--count >= 0) {
+                result += string;
+            }
+            return result;
+        }
+        configurable: true,
+        enumerable: false,
+        writable: true
+    });
+}());
+</code>
+
+This assumes [[harmony:Number.toInteger]].

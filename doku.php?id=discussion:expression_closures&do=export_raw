@@ -1,0 +1,59 @@
+This is the discussion page for [[proposals:expression closures]].
+
+====== Alternatives ======
+
+===== Shorter spelling =====
+
+We could use a different spelling for the expression form of ''function'', but then this feature wouldn't be "free." Besides, everyone feels that isn't an important use case.
+
+===== Use the let syntax =====
+
+Brendan proposed two new ''let'' forms for creating closures. The **declaration** form looks something like:
+
+<code ebnf>
+"let" Identifier Arguments Block
+</code>
+
+The declaration form binds its function name in the nearest enclosing block, as with other ''let'' declarations.
+
+And the **expression** form looks something like:
+
+<code ebnf>
+"let" Identifier Arguments Expression
+</code>
+
+The expression form only binds its function name inside the function body.
+
+==== Reactions ====
+
+**Pro**
+
+  * Allows for binding the function name purely lexically rather than on the variable object
+
+**Con**
+
+  * Even more ''let'' variants => complicated
+  * Unclear whether the ''let'' form is binding only internally or also in its context
+
+===== Shorten the name =====
+
+We could use a shorter name for ''function'' when the body is an expression, such as ''fun'' or ''\''.
+
+==== Reactions ====
+
+**Con**
+
+  * not necessary, since this proposal fits in nicely with the existing ''function'' forms
+  * "false economy" -- favor readability over writeability; the few characters' difference is not such a big deal
+
+====== Note ======
+
+The expression form still doesn't allow completely transparent refactoring from ''e'' to ''(function()e)()'', despite solving the problem for ''return''. This is because the closure has a different variable object, and for example the ''arguments'' object will be different. For example, ''arguments[0]'' is not the same as ''(function()arguments[0])()'' if it's called from another function that did receive arguments.
+
+====== Discussion ======
+
+I am in favor of this addition, I just want to note that it "solves" the return-does-not-refactor problem by completely outlawing the use of ''return''.  An alternative solution for refactoring, though not for the FP crowd, would be a labelled return statement (like we have labelled ''break'' and ''continue''); I've proposed this informally before but I seem to remember the reaction was bemusement rather than standing ovation, so I won't propose it again :-)
+
+Refactoring also breaks in the presence of "eval", BTW, which can contain statement forms, introduce variables, etc.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/09/22 04:28//

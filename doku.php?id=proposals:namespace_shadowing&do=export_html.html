@@ -1,0 +1,91 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:namespace_shadowing&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:namespace_shadowing&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:namespace_shadowing&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="namespace_shadowing"></a><h1>Namespace Shadowing</h1>
+<div class="level1">
+
+<p>
+ A namespace opened in an inner scope is preferred over a namespace opened in an outer scope when resolving ambiguous references.
+</p>
+
+<p>
+Here is a simple use case,
+</p>
+<pre class="code javascript"><span class="kw2">namespace</span> debug
+<span class="kw2">namespace</span> release
+debug <span class="kw2">function</span> trace<span class="br0">&#40;</span>s<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* print s */</span> <span class="br0">&#125;</span>
+release <span class="kw2">function</span> trace<span class="br0">&#40;</span>s<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* do nothing */</span> <span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">use</span> <span class="kw2">namespace</span> release  <span class="co1">// don't want too much trace output</span>
+<span class="kw2">function</span> f<span class="br0">&#40;</span><span class="br0">&#41;</span>
+<span class="br0">&#123;</span>
+    trace<span class="br0">&#40;</span><span class="st0">"f"</span><span class="br0">&#41;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">function</span> g<span class="br0">&#40;</span><span class="br0">&#41;</span>
+<span class="br0">&#123;</span>
+    <span class="kw2">use</span> <span class="kw2">namespace</span> debug  <span class="co1">// but want to see when this function is called</span>
+    trace<span class="br0">&#40;</span><span class="st0">"g"</span><span class="br0">&#41;</span> 
+<span class="br0">&#125;</span>
+&nbsp;
+f<span class="br0">&#40;</span><span class="br0">&#41;</span>
+g<span class="br0">&#40;</span><span class="br0">&#41;</span>
+&nbsp;</pre>
+<p>
+Explicitly opened namespaces are preferred over implicitly opened ones:
+</p>
+<pre class="code javascript">&nbsp;
+<span class="co1">// stage 1</span>
+<span class="kw2">public</span> <span class="kw2">class</span> A <span class="br0">&#123;</span>
+  <span class="kw2">public</span> <span class="kw2">function</span> foo<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw3">print</span><span class="br0">&#40;</span><span class="st0">'orig'</span><span class="br0">&#41;</span> <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+<span class="kw2">new</span> A<span class="br0">&#40;</span><span class="br0">&#41;</span>.<span class="me1">foo</span><span class="br0">&#40;</span><span class="br0">&#41;</span>  <span class="co1">// prints &quot;orig&quot;</span>
+&nbsp;
+<span class="co1">// stage 2</span>
+<span class="kw2">public</span> <span class="kw2">namespace</span> improved
+<span class="kw2">public</span> <span class="kw2">class</span> A <span class="br0">&#123;</span>
+  <span class="kw2">public</span> <span class="kw2">function</span> foo<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw3">print</span><span class="br0">&#40;</span><span class="st0">'orig'</span><span class="br0">&#41;</span> <span class="br0">&#125;</span>
+  improved <span class="kw2">function</span> foo<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw3">print</span><span class="br0">&#40;</span><span class="st0">'improved'</span><span class="br0">&#41;</span> <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+<span class="kw2">new</span> A<span class="br0">&#40;</span><span class="br0">&#41;</span>.<span class="me1">foo</span><span class="br0">&#40;</span><span class="br0">&#41;</span>  <span class="co1">// prints &quot;orig&quot;</span>
+&nbsp;
+<span class="co1">// stage 3</span>
+<span class="kw2">public</span> <span class="kw2">namespace</span> improved
+<span class="kw2">public</span> <span class="kw2">class</span> A <span class="br0">&#123;</span>
+  <span class="kw2">public</span> <span class="kw2">function</span> foo<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw3">print</span><span class="br0">&#40;</span><span class="st0">'orig'</span><span class="br0">&#41;</span> <span class="br0">&#125;</span>
+  improved <span class="kw2">function</span> foo<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw3">print</span><span class="br0">&#40;</span><span class="st0">'improved'</span><span class="br0">&#41;</span> <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+<span class="kw2">use</span> <span class="kw2">namespace</span> improved
+<span class="kw2">new</span> A<span class="br0">&#40;</span><span class="br0">&#41;</span>.<span class="me1">foo</span><span class="br0">&#40;</span><span class="br0">&#41;</span>  <span class="co1">// prints &quot;improved&quot;</span>
+&nbsp;</pre>
+<p>
+Because <code>namespace improved</code> is explicitly opened and <code>public</code> is not, the reference to <code>foo</code> resolves to <code>improved::foo</code>.
+</p>
+
+</div>
+
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/f/f226d6e3f0e5a13463b0c8914a54e1c0.xhtml used -->
+</body>
+</html>

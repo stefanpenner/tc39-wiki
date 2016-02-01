@@ -1,0 +1,238 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=harmony:concise_object_literal_extensions&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="http://wiki.ecmascript.org/feed.php?mode=list&amp;ns=harmony" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=harmony:concise_object_literal_extensions&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=harmony:concise_object_literal_extensions&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:concise_object_literal_extensions&amp;do=export_html.html#concise_object_literal_extensions" class="toc">Concise Object Literal Extensions</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:concise_object_literal_extensions&amp;do=export_html.html#motivation" class="toc">Motivation</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:concise_object_literal_extensions&amp;do=export_html.html#summary" class="toc">Summary</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:concise_object_literal_extensions&amp;do=export_html.html#non-enumerable_and_non-configurable_properties" class="toc">Non-Enumerable and Non-Configurable Properties</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:concise_object_literal_extensions&amp;do=export_html.html#examples" class="toc">Examples</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:concise_object_literal_extensions&amp;do=export_html.html#non-writable_data_properties" class="toc">Non-Writable Data Properties</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:concise_object_literal_extensions&amp;do=export_html.html#examples" class="toc">Examples</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:concise_object_literal_extensions&amp;do=export_html.html#methods" class="toc">methods</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:concise_object_literal_extensions&amp;do=export_html.html#examples" class="toc">Examples</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="concise_object_literal_extensions"></a><h1>Concise Object Literal Extensions</h1>
+<div class="level1">
+
+<p>
+ This is a set of syntactically concise extensions that cover the most common object property creation use cases that are not covered by the current  <em>ObjectLiteral</em> syntax:
+</p>
+
+<p>
+<em>These proposals are now obsolete.  Attributes prefixes have been withdrawn for considerations for ES.next. Constant properties and method properties are still part of the ES.next object literal proposals and are now covered in <a href="doku.php%3Fid=harmony:object_literals.html#object_literal_property_value_shorthand" class="wikilink1" title="harmony:object_literals" onclick="return svchk()" onkeypress="return svchk()">object literal property value shorthand</a></em>
+</p>
+
+</div>
+<!-- SECTION [1-528] -->
+<a name="motivation"></a><h2>Motivation</h2>
+<div class="level2">
+
+<p>
+All properties of objects created using object literal syntax currently have the attributes enumerable: true, configurable: true, writable: true. This limits the utility of object literals as ECMAScript&rsquo;s primary declarative form of object creation.  It is particularly problematic in the case of method properties as it is seldom desirable for such properties to be enumerable.
+</p>
+
+<p>
+ES5 permits constructions of objects with arbitrary property attribute setting using the <code>Object.create</code> function. However, this form is much more verbose and its usage is complicated by the fact that the default attribute values are different than what is used for object literals. This can be see as follow:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> obj = <span class="br0">&#123;</span>a:x, k:<span class="nu0">0</span>.<span class="nu0">5</span>, m: <span class="kw2">function</span><span class="br0">&#40;</span>z<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> z+<span class="kw1">this</span>.<span class="me1">a</span>+<span class="kw1">this</span>.<span class="me1">k</span><span class="br0">&#125;</span><span class="br0">&#125;</span>;</pre>
+<p>
+If the programmer desires for the property <code>k</code> to be non-writable, non-configurable, and non-enumberable and for the method property  <code>m</code> to be  non-enumerable, they would express like this using <code>Object.create</code>:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> obj = Object.<span class="me1">create</span><span class="br0">&#40;</span>Object.<span class="me1">prototype</span>,<span class="br0">&#123;</span>
+   a: <span class="br0">&#123;</span>value: x, writable: <span class="kw2">true</span>, enumerable: <span class="kw2">true</span>, configurable: <span class="kw2">true</span><span class="br0">&#125;</span>,
+   k: <span class="br0">&#123;</span>value: <span class="nu0">0</span>.<span class="nu0">5</span><span class="br0">&#125;</span>,  <span class="co1">//use default false values for all attributes</span>
+   m: <span class="br0">&#123;</span>value: <span class="kw2">function</span><span class="br0">&#40;</span>z<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> z+<span class="kw1">this</span>.<span class="me1">a</span>+<span class="kw1">this</span>.<span class="me1">k</span><span class="br0">&#125;</span>, writable: <span class="kw2">true</span>, enumerable: <span class="kw2">false</span>, configurable: <span class="kw2">true</span><span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;</pre>
+<p>
+or perhaps in a slightly less verbose (but arguably more obscure) form using <code>Object.defineProperties</code>: 
+</p>
+<pre class="code javascript"><span class="kw2">var</span> obj = Object.<span class="me1">defineProperties</span><span class="br0">&#40;</span>
+   <span class="br0">&#123;</span>a:x, k:<span class="nu0">0</span>.<span class="nu0">5</span>, m: <span class="kw2">function</span><span class="br0">&#40;</span>z<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> z+<span class="kw1">this</span>.<span class="me1">a</span>+<span class="kw1">this</span>.<span class="me1">k</span><span class="br0">&#125;</span><span class="br0">&#125;</span>,
+   <span class="br0">&#123;</span>k: <span class="br0">&#123;</span>writable: <span class="kw2">false</span>, enumerable: <span class="kw2">false</span>, configurable: <span class="kw2">false</span><span class="br0">&#125;</span>,
+    m:  enumerable: <span class="kw2">false</span><span class="br0">&#125;</span>
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;</pre>
+<p>
+Using the extensions in this proposal the above could be directly expressed using an object literal as: 
+</p>
+<pre class="code javascript"><span class="kw2">var</span> obj = <span class="br0">&#123;</span>a:x, ~!k:=<span class="nu0">0</span>.<span class="nu0">5</span>, m<span class="br0">&#40;</span>z<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> z+<span class="kw1">this</span>.<span class="me1">a</span>+<span class="kw1">this</span>.<span class="me1">k</span><span class="br0">&#125;</span><span class="br0">&#125;</span>;</pre>
+</div>
+<!-- SECTION [529-2393] -->
+<a name="summary"></a><h2>Summary</h2>
+<div class="level2">
+
+<p>
+This proposal extnds object literals in these four ways:
+</p>
+<ol>
+<li class="level1"><div class="li"> If a property definition (a <em>PropertyAssignment</em> in the ES grammar) is prefixed with <strong><code>~</code></strong> the property is non-enumerable</div>
+</li>
+<li class="level1"><div class="li"> If a property definition is prefixed with <strong><code>!</code></strong> the property is non-configurable</div>
+</li>
+<li class="level1"><div class="li"> If a data property definition uses <strong><code>:=</code></strong> in place of <strong><code>:</code></strong> the property is non-writable</div>
+</li>
+<li class="level1"><div class="li"> If a property definition has the form of a <em>FunctionDeclaration</em> without the keyword <code>function</code> it is a non-enumerable data property definition whose name is the function name</div>
+</li>
+</ol>
+
+</div>
+<!-- SECTION [2394-2980] -->
+<a name="non-enumerable_and_non-configurable_properties"></a><h2>Non-Enumerable and Non-Configurable Properties</h2>
+<div class="level2">
+
+<p>
+Define a property to be non-enumerable and/or non-configurable:
+</p>
+
+<p>
+<strong><em>PropertyNameAndValueList</em> :</strong><br/>
+ <em>PrefixedPropertyAssignment</em> <br/>
+ <em>PropertyNameAndValueList</em> <strong>,</strong> <em>PrefixedPropertyAssignment</em>
+</p>
+
+<p>
+<strong><em>PrefixedPropertyAssignment</em>:</strong> <br/>
+ <em>PropertyPrefix</em><sub>opt</sub> <em>PropertyAssignment</em>
+</p>
+
+<p>
+<strong><em>PropertyPrefix</em> :</strong> <br/>
+ <strong>!</strong><br/>
+ <strong>~</strong><br/>
+ <strong>~!</strong><br/>
+ <strong>!~</strong>
+</p>
+
+<p>
+Prefixing a property with <strong>!</strong> makes it non-configurable.  Prefixing a property with <strong>~</strong> makes it non-enumerable. Prefixing a property with either <strong>~!</strong> or <strong>!~</strong> makes it both non-configurable and non-enumerable.
+</p>
+
+</div>
+<!-- SECTION [2981-3622] -->
+<a name="examples"></a><h3>Examples</h3>
+<div class="level3">
+<pre class="code javascript"><span class="kw2">var</span> = <span class="br0">&#123;</span>
+   <span class="co1">//non-configurable properties</span>
+   !x : <span class="nu0">1</span>,   
+   !<span class="st0">"non identifier name"</span> : <span class="nu0">2</span>,
+   !get <span class="nu0">3</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="nu0">3</span><span class="br0">&#125;</span>,
+   !set <span class="nu0">3</span><span class="br0">&#40;</span>v<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>,    <span class="co1">//both get and set must have the same confiburablility</span>
+   <span class="co1">//non-enumerable properties</span>
+   ~y: <span class="nu0">2</span>,
+   ~<span class="nu0">0</span>: <span class="nu0">0</span>,
+   ~get <span class="st0">"a b"</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="nu0">3</span><span class="br0">&#125;</span>,
+   ~set <span class="st0">"a b"</span><span class="br0">&#40;</span>v<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>,    <span class="co1">//both get and set must have the same enumerability</span>
+   <span class="co1">//non-configurable, non-enumerable properties</span>
+   !~z : <span class="nu0">3</span>,
+   ~!a: <span class="nu0">4</span>,
+   ~!get c<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="nu0">4</span><span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [3623-4107] -->
+<a name="non-writable_data_properties"></a><h2>Non-Writable Data Properties</h2>
+<div class="level2">
+
+<p>
+Define a property to be non-writable:
+</p>
+
+<p>
+<em>ProperyAssignment</em> : <br/>
+ <em>PropertyName</em> := <em>AssignmentStatement</em>  
+</p>
+
+</div>
+<!-- SECTION [4108-4263] -->
+<a name="examples"></a><h3>Examples</h3>
+<div class="level3">
+<pre class="code javascript"><span class="kw2">var</span> obj = <span class="br0">&#123;</span>
+   <span class="co1">//constant properties</span>
+   a := <span class="nu0">1</span>,   
+   <span class="st0">"non identifier name"</span> := <span class="nu0">2</span>,
+   <span class="nu0">3</span> := <span class="nu0">3</span>,
+   <span class="co1">//constant non-enumerable property</span>
+   ~b := <span class="nu0">4</span>
+   <span class="br0">&#125;</span>;
+&nbsp;
+<span class="co1">//or more compactly:</span>
+<span class="kw2">var</span> obj=<span class="br0">&#123;</span>a:=<span class="nu0">1</span>,<span class="st0">"non identifier name"</span>:=<span class="nu0">2</span>,<span class="nu0">3</span>:=<span class="nu0">3</span>,~b<span class="st0">"=4};
+ </span></pre>
+</div>
+<!-- SECTION [4264-4535] -->
+<a name="methods"></a><h2>methods</h2>
+<div class="level2">
+
+<p>
+ As a convenience for the most common use case, the most concise forms of methods definitions define a non enumerable data property:
+</p>
+
+<p>
+<em>ProperyAssignment</em> : <br/>
+ <em>PropertyName</em> <strong>(</strong> <em>FormalParameterList</em><sub>opt</sub> <strong>)</strong> <strong>{</strong> <em>FunctionBody</em>  <strong>}</strong>  <br/>
+
+</p>
+
+<p>
+If the <em>PropertyName</em> is an <em>Identifier</em>, that <em>Identifier</em> is also treated for binding purposes as if it was the <em>Identifier</em> in a <em>FunctionExpression</em> .
+</p>
+
+<p>
+If the <em>PropertyAssignment</em> is prefixed with a <strong>!</strong> the property is made both non-configurable and non-writable.
+</p>
+
+</div>
+<!-- SECTION [4536-5102] -->
+<a name="examples"></a><h3>Examples</h3>
+<div class="level3">
+<pre class="code javascript"><span class="kw2">var</span> = <span class="br0">&#123;</span>
+   toString <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="st0">"literal"</span><span class="br0">&#125;</span>,<span class="co1">//enumerable: false, writable: true configurable: true</span>
+   !<span class="st0">"non identifier name"</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>,   /enumerable: <span class="kw2">false</span>, writable: <span class="kw2">false</span> configurable: <span class="kw2">false</span>
+   ~length <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="nu0">0</span><span class="br0">&#125;</span>,         <span class="co1">// ~ doesn't change enumerability for methods</span>
+&nbsp;
+   <span class="co1">// the following are just regular data property definitions using the ~ and := extensions defined above</span>
+   f: <span class="kw2">function</span> f<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>,    <span class="co1">//enumerable: true, writable: true configurable: true</span>
+   ~g: <span class="kw2">function</span> g<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>,   <span class="co1">//enumerable: false, writable: true configurable: true</span>
+   h := <span class="kw2">function</span> h<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>,  <span class="co1">//enumerable: true, writable: false configurable: true</span>
+   ~!hg := <span class="kw2">function</span> hh<span class="br0">&#123;</span><span class="br0">&#125;</span>   <span class="co1">//enumerable: false, writable: false configurable: false</span>
+<span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [5103-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/a/af0ea7d284e0f058547451c127677b25.xhtml used -->
+</body>
+</html>

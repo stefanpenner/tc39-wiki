@@ -1,0 +1,82 @@
+This is the discussion page for [[proposals:catchalls]].
+
+
+
+
+====== Older discussion ======
+
+One user expectation, fed and watered by E4X, is that methods are not properties, or to avoid this JS oxymoron, that methods are not in the default property namespace:
+
+  js> x = <room><width>12</width><length>16</length></room>
+  <room>
+    <width>12</width>
+    <length>16</length>
+  </room>
+  js> x.length
+  16
+  js> x.length()
+  1
+
+Another point in favor of a ''%%call *%%'' catchall is efficiency:
+
+  var o = {
+    peer: ...,
+    get *(id) {
+      return function () { return this.peer[id](this.peer, arguments) }
+    }
+  }
+
+creates a closure per get, whether or not the get result is called.  Whereas
+
+  var o = {
+    peer: ...,
+    call *(id, args) { return this.peer[id].apply(this.peer, args) }
+  }
+
+creates a generic call forwarder.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/02/02 19:57//
+
+There are some pitfalls here wrt the representation of names in E4X: these names have no obvious representations in the language.  (AnyName, AttributeName).  For eg ''QName'' the name is not a string, so ''ident'' can't be a String type in the interface.  
+
+This all seems unresolved at this point.  (Perhaps we could sidestep the issue by defining catchalls not on E4X properties?)
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/17 14:33//
+
+The specification above has been updated.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/04/21 14:33//
+
+What's the expected syntax for a super-call? e.g., if I want to do something like
+
+<code>
+function call *(ident, args)
+{
+    // intercept foo
+    if (ident == "foo") { return handle_foo(args); }
+    
+    // let parent (or intrinsic) handle everything else
+    return super.call(ident, args);
+}
+</code>
+ --- //[[stejohns@adobe.com|Steven Johnson]] 2006/11/20 17:29//
+
+OK, I understand that there is no explicit "super" call for these, but for a shallow hierarchy one can use intrinsic::call to effectively do the same thing.
+
+However, a few points to clarify to be certain I understand: say I have a class with
+
+
+<code>
+    public function set *(propertyName, value):void { ... }
+    public function set length(newLength:uint):void { ... }
+</code>
+
+Since the proposal says that catchalls are only used //when lookup of a named property fails in a particular (get, set, call) context//, I presume that:
+
+ * if I do //foo.length = 0//, we will call //set length// and not //set *// (and it is never possible for the catchall to see "length" as a value for propertyName), regardless of whether the class is dynamic of not
+
+ * if the body of //set length// contains the code //this["length"] = newLength;// we will recurse forever, rather than calling //set *//
+
+ * if the class above is dynamic, and I do //foo["0"] = 0;//, we will call //set *// the first time, but never for subsequent assignments to "0" (since the lookup of the named property will not fail)
+
+If this last assumption is correct, it will be very hard to implement the Array builtin using set*() as the implementation for %%[[Put]]%% in ECMA-262!

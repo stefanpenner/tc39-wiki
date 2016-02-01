@@ -1,0 +1,22 @@
+====== Function to String conversion ======
+
+For a function ''fn'' written in JavaScript, ''Function.prototype.toString.call(fn)'' must return source code for a FunctionDeclaration or FunctionExpression that, if ''eval()''uated in an equivalent-enough lexical context, would result in a function with the same %%[[Call]]%% behavior as the present one. Note that the new function would have a fresh identity and none of the original's properties, not even ''.prototype''. (The properties could of course be transferred by other means but the identity will remain distinct.)
+
+This returned source code must not mention freely any variables that were not mentioned freely by the original function's source code, even if these "extra" names were originally in scope. With this restriction, an equivalent-enough lexical context need only provide 
+  * Bindings for names used freely in the original source code. For purposes of this scope analysis, a use of the direct ''eval'' operator is statically considered a free usage of all variables in scope at that point.
+  * The strictness or non-strictness of the original context if relevant to the function's %%[[Call]]%% behavior. Note that, if the function is strict and its body carries its own "use strict" directive, then it may not be relevant for the context to preserve the original strictness.
+
+Allowing FunctionExpression in the spec above acknowledges reality. All major JS engines will convert an anonymous function to an anonymous FunctionExpression, even though the ES3 and ES5 specs disallow it. This behavior is useful, so we should make it official. Note that a sufficient condition for meeting this specification is to always return precisely the function's original source code.
+
+Functions not written in JavaScript remain [[strawman:function_to_string|problematic cases]] not covered by this proposed spec tightening.
+
+
+====== Acks ======
+
+Thanks to David Flanagan who [[https://mail.mozilla.org/pipermail/es5-discuss/2009-May/002474.html|first raised this]] on es-discuss.
+
+Thanks to Luke Hoban for expanding the notion of lexical context to include strictness.
+
+====== See ======
+
+Remaining [[strawman:function_to_string]] strawman.

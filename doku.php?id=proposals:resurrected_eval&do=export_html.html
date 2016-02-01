@@ -1,0 +1,164 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:resurrected_eval&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:resurrected_eval&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:resurrected_eval&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:resurrected_eval&amp;do=export_html.html#resurrected_eval" class="toc">Resurrected eval</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:resurrected_eval&amp;do=export_html.html#motivation" class="toc">Motivation</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:resurrected_eval&amp;do=export_html.html#proposal" class="toc">Proposal</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:resurrected_eval&amp;do=export_html.html#eval_as_a_function" class="toc">eval as a function</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:resurrected_eval&amp;do=export_html.html#eval_as_a_method_on_the_global_object" class="toc">eval as a method on the global object</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:resurrected_eval&amp;do=export_html.html#restrictions_on_eval" class="toc">Restrictions on eval</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:resurrected_eval&amp;do=export_html.html#notes" class="toc">Notes</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<p>
+(Also see the <a href="doku.php%3Fid=discussion:resurrected_eval.html" class="wikilink1" title="discussion:resurrected_eval" onclick="return svchk()" onkeypress="return svchk()">discussion page</a> for this proposal.)
+</p>
+
+<a name="resurrected_eval"></a><h1>Resurrected eval</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [84-115] -->
+<a name="motivation"></a><h2>Motivation</h2>
+<div class="level2">
+
+<p>
+ The situation with <code>eval</code> is that 3rd Edition allows the implementation to prohibit it in genuinely useful and unproblematic situations.  We want to fix that.
+</p>
+
+</div>
+<!-- SECTION [116-301] -->
+<a name="proposal"></a><h2>Proposal</h2>
+<div class="level2">
+
+<p>
+ As in the 3rd edition, <code>eval</code> is defined as a method on the global object.  Each global object has a distinguished <code>eval</code> function that is tied to that global object.
+</p>
+
+</div>
+<!-- SECTION [302-496] -->
+<a name="eval_as_a_function"></a><h3>eval as a function</h3>
+<div class="level3">
+
+<p>
+ If a variable reference <code>eval</code> references the <code>eval</code> property on the global object that&rsquo;s the base object for the reference, and the <code>eval</code> property has its original value, and the variable reference is used as the MemberExpression on a CallExpression, as in 
+</p>
+<pre class="code">
+    eval(s)
+</pre>
+
+<p>
+ then the result shall be that the argument s is evaluated in the normal way (ES3 15.1.2.1).
+</p>
+
+</div>
+<!-- SECTION [497-912] -->
+<a name="eval_as_a_method_on_the_global_object"></a><h3>eval as a method on the global object</h3>
+<div class="level3">
+
+<p>
+ If a property reference <code>o.eval</code> references the <code>eval</code> property on a global object <code>o</code>, and the <code>eval</code> property has its original value, and the property reference is used as the MemberExpression on a MethodCallExpression, as in 
+</p>
+<pre class="code">
+    o.eval(s)
+</pre>
+
+<p>
+ then the result shall be that the argument s is evaluated in the normal way in the context of that global object only. 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+Testing IE7 shows that it does not substitute <code>o</code> for the dynamic scope. Copy <code>javascript:x=&rdquo;global&rdquo;;(function(x,s){return window.eval(s)})(&rdquo;param&rdquo;,&rdquo;x&rdquo;)</code> into the address toolbar and you&rsquo;ll see &ldquo;param&rdquo; as the text of the generated document, not &ldquo;global&rdquo;. Removing the <code>window.</code> does not change this behavior. So <acronym title="Internet Explorer">IE</acronym> JScript is not prepending <code>window</code> to the <code>eval</code> caller&rsquo;s scope chain to get a scope chain for the <code>eval</code>ed program.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2007/05/30 16:50</em>
+</p>
+
+<p>
+Further testing with two <acronym title="HyperText Markup Language">HTML</acronym> files, one loaded in an <code>iframe</code> in the other, reveals that <acronym title="Internet Explorer">IE</acronym> does use the indirecting object to find a dynamic scope, which if nothing is active on that global object will be the object itself. Thus <code>window.eval(s)</code> in a function scoped by <code>window</code> is equivalent to <code>eval(s)</code>. <code>otherWindow.eval(s)</code> uses <code>otherWindow</code> as scope, but if this call is from a function scoped by <code>otherWindow</code>, that function&rsquo;s dynamic scope is used, as in the single-window case (that dynamic scope chain ends in <code>otherWindow</code>).
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2007/05/30 17:33</em>
+</p>
+
+</div>
+<!-- SECTION [913-2481] -->
+<a name="restrictions_on_eval"></a><h3>Restrictions on eval</h3>
+<div class="level3">
+
+<p>
+ Every other use of the original value of the <code>eval</code> property apart from just passing it around is an error, and the implementation shall throw an EvalError if the <code>eval</code> function is called in any other context than the ones that are specified above.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/09/21 09:56</em>
+</p>
+
+<p>
+We more recently agreed to make <code>use strict</code> change <code>eval</code> such that it cannot create bindings in its dynamic scope that shadow outer bindings, subverting type checking. So a program such as
+</p>
+<pre class="code">
+    use strict;
+    eval(&quot;var x = 42&quot;);
+</pre>
+
+<p>
+results in a run-time error, and so would <code>const</code> or a <code>function</code> &ndash; only <code>let</code> bindings may be used in such a restricted <code>eval</code>.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2007/05/30 16:28</em>
+</p>
+
+</div>
+<!-- SECTION [2482-3282] -->
+<a name="notes"></a><h2>Notes</h2>
+<div class="level2">
+
+<p>
+ The committee has approved this proposal but admits that a few issues remain, notably the scoping issues around <code>window.eval</code>.  These will be worked out in the spec, not here.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2007/09/11 20:02</em> 
+</p>
+
+</div>
+<!-- SECTION [3283-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/b/bb745b0ec453331e5943b73b39c62dd1.xhtml used -->
+</body>
+</html>

@@ -1,0 +1,55 @@
+====== Remove the arguments object ======
+
+
+===== Summary =====
+
+The ''arguments'' object described in section 10.1.8 of E262-3 should be relegated to an informative annex of //deprecated// features, and its essential functionality should be provided by other mechanisms: rest arguments, optional arguments, ''this function'', and ''this generator''.
+
+===== Rationale =====
+
+The essential function of the ''arguments'' object is to serve as a reflection point for entities participating in a function call: the caller, the callee, the actual arguments, and the formal arguments.  ''arguments.callee'' is the function receiving the call (ie, the function within which ''arguments'' is available); ''arguments[k]'' is the value of the //k//th actual parameter; and ''arguments[k]'' is also the location of the //k//th formal parameter.  ''arguments.caller'' is not part of E262-3 but was part of previous editions (?).
+
+But the ''arguments'' object is only a partial reflection mechanism in that the receiver object of a method call is available through the ''this'' mechanism instead.  Furthermore, it is an oddity for the properties of the ''arguments'' object to share storage with the formal parameters of the function.  Worse, though the ''arguments'' object appears to be an Array (it has a predefined ''length'' field and its properties are named by nonnegative integers) it is not---it is a plain, but unusual, object.  Finally, a practical implementation of ECMAScript must avoid creating the ''arguments'' object until it is actually needed, leading to a substantial increase in implementation complexity for little or no gain.
+
+It is proposed that the ''arguments'' object be //removed// from the specification rather than //deprecated// or kept in its current form, since there is no longer any need for it.  Implementations that need to cater to E262-3 code must continue to provide support for it (like they currently provide support for ''arguments.caller'' and ''<function>.arguments'' to cater to earlier spec editions), but pure E262-4 implementations need not.
+
+===== Facilities =====
+
+==== Rest arguments and optional arguments ====
+
+In ECMAScript 4 the rest arguments facility is available to capture the actual parameters of the function.  Furthermore, the rest parameter is a true Array object.  The rest arguments facility is in most ways better than the ''arguments'' object at capturing the parameter values.
+
+In fact, the optional arguments facility (i.e., default parameter values) handles many of the use cases for which the ''arguments'' object is used in E262-3 code; in many cases the E262-4 rest arguments facility will not need to be used at all.
+
+The sharing of ''arguments'' object properties with formal parameters does not appear to be an essential feature and no substitute for it will be provided.  [By means of a mechanism outside E262-3, namely ''<function>.arguments'', it is possible to obtain a reference to the ''arguments'' object of a function with a currently suspended activation object, and by changing properties on that object it is possible to change the values the body of that function will see when its activation becomes active again.  No doubt this is occasionally useful, but it is equally likely a security and maintenance nightmare.]
+
+==== arguments.callee ====
+
+We are left with having to provide for ''arguments.callee'', which some programmers like to use as a way of referencing the function in which the reference occurs without knowing the name of the function.
+
+We propose the following syntax as an alternative:
+
+  this function
+
+where the two keywords cannot be separated by a linebreak.
+
+
+==== arguments.generator ====
+
+A recent thread on the es4-discuss list has proposed that ''arguments.generator'', analogous to ''arguments.callee'', should be a way of obtaining a reference to the generator object in which the referencing code is executing.
+
+We propose that the following syntax is used instead:
+
+  this generator
+
+where ''generator'' is a new contextual keyword, and the two keywords cannot be separated by a linebreak.
+
+----
+
+The ''this function'' and ''this generator'' double keywords could be primary expressions, allowing ''this function.length'', e.g., instead of ''(this function).length''. Or they could be unary expressions, requiring parenthesization when accessing properties such as ''length'' (the function's expected or "ideal" number of parameters). I'm in favor of primary over unary, by analogy to ''this'' itself; also similar to ''new C().prop'', which evaluates as ''(new C()).prop''. Comments?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/05/08 15:28//
+
+I prefer the //PrimaryExpression// form as well. ''this generator'' is just a name with funny syntax.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2007/06/21 12:51//

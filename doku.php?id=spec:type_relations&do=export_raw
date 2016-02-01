@@ -1,0 +1,241 @@
+
+
+====== Type Relationships ======
+
+There are four different relations between types: //equality// (''T = U''), //subtyping// (''T <: U''), //compatibility// (''T ~: U''), and //convertibility// (''T ~~> U'').
+These are defined here.
+
+For clarity, these rules are presented more in a declarative style than algorithmic, and this presentation is focused more on being expository than complete, since we always have the reference implementation for completeness.
+
+ --- //[[cormac@soe.ucsc.edu|Cormac Flanagan]] 2007/07/10 09:48//
+
+
+===== Equality =====
+
+^Notation^Meaning^
+|''T = U''|//type ''T'' is considered identical to type ''U''//|
+
+Some types are considered to be identical to each other, even if they have slightly different syntax. These can be thought of as shorthands for one another.
+
+This includes:
+  * structural array types are nullable by default, so ''[...]'', ''[...]?'', and ''([...],null)'' are equal.
+  * structural object types are nullable by default, so ''{...}'', ''{...}?'', and ''({...},null)'' are equal.
+  * reorderings of structural object type fields
+  * flattening of unions, including singleton unions (i.e., ''T'' = ''(T)'')
+  * alpha-equivalent parameterized types
+  * no ''this'' type in a function as shorthand for ''this : *''
+  * ''T?'' (i.e., nullable ''T'') as shorthand for ''(T,null)''
+  * ''{}'' and ''Object''  (''{*}'' is different from both of these)
+  * ''[]'' and ''[*]'' and ''Array'' (a little strange, see  Ticket 96)
+
+The following are unclear:
+  * ''this'' type in a method of ''T'' is ''this : T''  (unsound, really need self types here)
+
+
+
+
+
+
+
+===== Subtyping =====
+
+^Notation^Meaning^
+|''T <: U''|//type ''T'' is a subtype of type ''U''//|
+
+Subtyping is a partial order on types that reflects the intuition of //subsumption//, i.e., when one type supports all the operations of another type (and possibly more).
+
+  * nominal subtyping according to class and interface declarations. The only subtypes of nominal types are other nominal types, not structural types, with the only exceptions being Object, Function, and Array.
+  * structural subtyping: covariant result types, contravariant args, invariant arrays and object properties ([[meetings:minutes_jan_24_2007]])
+  * reflexive, transitive
+  * anti-symmetric (if ''T != U'', they can't both be subtypes of each other. Alternatively, if two types are subtypes of each other, they must be defined as equal.)
+  * type ''*'' is the top type in the subtyping hierarchy (we previously considered designs where ''*'' was //not// the top type, but those seem semantically equivalent but less efficient, since more casts to ''*'' are required). Hence ''*'' is a supertype of everything.
+<code>
+
+ --------
+  T <: *
+</code>
+  * invariant object width subtyping:
+<code>
+
+------------------------------------------
+{l1:T1,...,ln+m:Tn+m} <: {l1:T1,...,ln:Tn}
+</code>
+  * ''{}'' (aka ''Object'') is a supertype of all structural object types via width subtyping above.
+  * invariant extensible array subtyping (can repeat last element):
+<code>
+
+----------------------------
+[T1,..,Tn,Tn] <: [T1,...,Tn]
+</code>
+  * union subtyping (based on a "set" interpretation of union types)
+<code>
+forall i in 1..m. Si <: T
+-------------------------
+(S1,...,Sm) <: T
+
+exists j in 1..n. S <: Tj
+-------------------------
+S <: (T1,...,Tn)
+</code>
+  * function subtyping (contravariant on argument types, covariant on result type, can drop rest and default arguments, can replicate rest arg):
+<code>
+U' <: U
+forall i <= n. Si' <: Si
+T <: T'
+-----------------------------------------------------------------------------------------
+function(this:U,S1,..,Sm,Sm+1=,..,Sn=):T <: function(this:U',S1',..,Sm',Sm+1'=,..,Sn=):T'
+
+U' <: U
+forall i <= n. Si' <: Si
+V' <: V
+T <: T'
+----------------------------------------------------------------------------------------------------
+function(this:U,S1,..,Sm,Sm+1=,..,Sn=,...V):T <: function(this:U',S1',..,Sm',Sm+1'=,..,Sn=,...V'):T'
+
+
+-----------------------------------------------------------------------------------------
+function(this:U,S1,..,Sm,Sm+1=,..,Sn=,...V):T <: function(this:U,S1,..,Sm,Sm+1=,..,Sn=):T
+
+------------------------------------------------------------------------------------------
+function(this:U,S1,..,Sm,Sm+1=,..,Sn=,Sn+1=):T <: function(this:U,S1,..,Sm,Sm+1=,..,Sn=):T
+
+--------------------------------------------------------------------------
+function(this:U,S1,..,Sm,...[V]):T <: function(this:U,S1,..,Sm,V,...[V]):T
+
+</code>
+  * Nominal subtyping, based on the class hierarchy
+<code>
+class C.<X1..Xn> extends D.<T1..Tm> ... 
+Ti' = Ti[X1:=S1,..,Xn:=Sn]
+-------------------------------------------
+C.<S1..Sn> <: D.<T1'..Tm'>
+
+class C.<X1..Xn> ... implements ... I.<T1..Tm> ...
+Ti' = Ti[X1:=S1,..,Xn:=Sn]
+-------------------------------------------
+C.<S1..Sn> <: I.<T1'..Tm'>
+
+interface I1.<X1..Xn> extends I1.<T1..Tm> ... 
+Ti' = Ti[X1:=S1,..,Xn:=Sn]
+-------------------------------------------
+I1.<S1..Sn> <: I2.<T1'..Tm'>
+</code>
+  * Nominal types are subtypes of corresponding structural object types
+<code>
+class C<T1..Tn> has public slots l1:S1,..lm:Sm
+----------------------------------------------
+C.<T1..Tn> <: {l1:S1,..,lm:Sm}
+</code>
+ 
+
+
+
+
+===== Compatibility =====
+
+^Notation^Meaning^
+|''T ~: U''|//type ''T'' is compatible with type ''U''//|
+
+Type compatibility formalizes the relationship between typed and untyped code. If ''T ~: U'', then it maybe the case that ''T'' is not a subtype of ''U'', but they represent a legal inter-operation between typed and untyped code.
+
+Inter-operation between typed and untyped code never involves conversions (such as ''to''-methods), so object identity is always preserved in these interactions. Using untyped code in typed code requires extra runtime checks (described in the forthcoming section on runtime checks...).
+
+Properties of ''~:'':
+
+  * not transitive (because everything is compatible with ''*'' and ''*'' is compatible with everything). Instead, we allow subtyping before and after compatibility operations, to allow various re-structuring of types (this is essentially a shorthand that allows us to avoid repeating variants of some subtyping rules as compatibility rules):
+<code>
+S <: T    T ~: U    U <: V
+--------------------------
+        S ~: V
+</code>
+  * not symmetric (because it includes subtyping)
+  * ''T ~ U'' means ''T ~: U'' and ''U ~: T''
+  * includes subtyping and universal compatibility with ''*'':
+<code>
+T <: U
+------    ------    ------
+T ~: U    T ~: *    * ~: T
+</code>
+  * includes compatibility of structural objects with the "untyped object" type ''{*}'':
+<code>
+
+------------------------      ------------------------
+{x1:S1 ... xn:Sn} ~: {*}      {*} ~: {x1:S1 ... xn:Sn}
+</code>
+  * includes compatibility with array types:
+<code>
+
+--------------------    --------------------
+Array ~: [T1,...,Tn]    [T1,...,Tn] ~: Array
+</code>
+  * lifts through function types:
+<code>
+U' ~: U
+forall i <= n. Si' ~: Si
+T ~: T'
+-----------------------------------------------------------------------------------------
+function(this:U,S1,..,Sm,Sm+1=,..,Sn=):T ~: function(this:U',S1',..,Sm',Sm+1'=,..,Sn=):T'
+
+U' ~: U
+forall i <= n. Si' ~: Si
+V' ~: V
+T ~: T'
+----------------------------------------------------------------------------------------------------
+function(this:U,S1,..,Sm,Sm+1=,..,Sn=,...V):T ~: function(this:U',S1',..,Sm',Sm+1'=,..,Sn=,...V'):T'
+</code>
+  * lifts through union types:
+<code>
+forall i in 1..n. Si ~: Ti
+--------------------------
+(S1,..,Sn) ~: (T1,..,Tn)
+</code>
+  * invariant through object types:
+<code>
+forall i in 1..n. Si ~ Ti
+--------------------------------------  
+{l1:S1 ... ln:Sn} ~: {l1:T1 ... ln:Tn}
+</code>
+  * invariant through array types:
+<code>
+forall i in 1..n. Si ~ Ti
+--------------------------
+[S1,...,Sn] ~: [T1,...,Tn]
+
+    example: [int,*] ~: [int,bool,string]
+    example: [int,bool,string] ~: [int,*]
+</code>
+  * If ''Set'' is a generic nominal type, then ''Set.<*>'' and ''Set.<int>'' could be compatible, since ''*'' and ''int'' are both compatible with each other.
+<code>
+forall i in 1..n. Si ~ Ti 
+---------------------------------------
+        C.<S1..Sn> ~: C.<T1..Tn>
+</code>
+
+
+**Note**: There are various ways to extend the compatibility relation that allow more program to pass in strict mode.
+For now, we are being a little conservative by forbidding some such extensions; they are listed here for later consideration.
+
+===== Convertibility =====
+
+^Notation^Meaning^
+|''T ~~> U''|//type ''T'' is convertible to type ''U''//|
+
+Even if ''T'' is not compatible with ''U'', it may still be //convertible// to ''U'', meaning that there is a defined ''to''-method that can perform a conversion from ''T'' to ''U''.
+
+  * such conversions do not preserve object identity
+  * includes compatibility (and therefore subtyping):
+<code>
+T ~: U
+-------
+T ~~> U
+</code>
+  * includes ''to'' methods:
+<code>
+T is a class
+static T.intrinsic::to : S' -> T
+S ~: S'
+--------------------------------
+S ~~> T
+</code>
+
+Note that class ''boolean'' has a ''meta::convert'' static method with argument type ''*'', so effectively any type is convertible to ''boolean''.

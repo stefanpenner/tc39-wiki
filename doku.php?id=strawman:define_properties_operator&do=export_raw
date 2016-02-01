@@ -1,0 +1,282 @@
+====== The := Operator ======
+
+The ECMAScript meta-model for objects has distinct semantics for modifying and adding object properties. The %%[[%%Put]] semantics, associated with the **''=''** operator, is most commonly used when a programmer intends to update the value of a property but in some situations it will also create a new own property. The %%[[%%DefineOwnProperty]] semantics is most commonly used when a programmer's intent is to create a new own property or to modify the definition of an existing own property.  %%[[%%DefineOwnProperty]] does not currently have an operator association but it may be accessed by using the Object.defineProperty built-in function. %%[[%%DefineOwnProperty]] is the semantics used to create properties defined using Object Literals.
+
+This proposal is for a new  **'':=''** operator that gives ECMAScript programmer more direct and convenient access to the %%[[%%DefineOwnProperty]] semantics. 
+
+
+===== The Problem =====
+
+Prior to ES5, the only general-purpose way to add properties to an already existing object was to use the assignment operator:
+
+<code javascript>
+var obj = {
+   a: 1,
+   b: 2
+};
+
+obj.a = -1; // change the value of an existing property
+obj.c = 3;  // add a property named 'c' to obj
+obj.toString = function () { //add a method to obj
+   var str = "{ ";
+   for (var p in this) if (typeof this[p] != "function") str += p + ": " + this[p] + " ";
+   return str+"}"
+};
+
+console.log(obj.toString());
+  // { a: -1 b: 2 c: 3 }
+</code>
+
+ES5 added the ability to define accessor properties and the ability  for ES programmers to create "read-only" properties.  It also made it easier to create objects with multi-level prototypical inheritance chains. In combination, these features make the assignment operator a less reliable way to add properties to an object.  For example:
+
+<code javascript>
+var proto = {  //define a prototype object
+   a: 1,
+   b: 2,
+   get c() {return 3}  //an accessor property
+};
+Object.defineProperty(proto,"b", {writeable: false}); //make proto.b a read-only property
+
+var obj = Object.create(proto); //obj is a new object that inherits the properties of proto
+
+obj.a = -1;  // adds an own property named 'a' to obj. It shadows the inherited proto.a property
+obj.b = -2;  // does nothing because = won't over-write or shadow a inherited read-only property
+obj.c = -3;  // does nothing because it calls the inherited (default) accessor set function which is a no-op
+</code>
+
+ES5 provides ''Object.defineProperty'' as a reliable means, that is not affected by inheritance, to define own properties of an object. However, this is a much more verbose and awkward syntax than the simple ''='' operator. Even programmers who understand the risks of using ''='' to define properties continue to do so rather than deal with the verbosity of ''Object.defineProperty''.
+
+ES6 will make it even easier to define inheritance hierarchies (using class definitions) and has other complications such as private names and super-referencing methods that will further complicate property creation by assignment and probably make it even less reliable.
+
+ECMAScript programmers generally know whether they intend  to define a new own property or to assign a value to an existing property.  The problem is that the  language doesn't provide any concise way from them to express that intent. Instead, they just use ''='' and hope they don't trip over any of the special cases where assignment is not equivalent to property definitions. ES developers need something that approaches the convenience of = for dynamically defining properties. As long as ECMAScript only have a procedural API (Object.defineProperty) for dynamic property definition developers  will frequently ignore it for the sake of convenience.  ES6 needs a concise and friendly way to dynamically define properties.  The syntax needs to approach the convenience of = but it needs to bring emphasis to the distinction between assignment and definition.  Without  it,  ES5+ES6 will have collectively resulted in a more confusing and error prone language.
+
+
+
+===== A Solution: The := Operator =====
+
+As a solution to this problem we can introduce a new operator that is looks like  '':=''
+
+This can be called  the "colon-equals" or "define properties" operator or just "define".  Both the lefthand-side and righthand-side operands must be objects (or primitive values that are ToObject convertible to objects).  The semantics of '':='' is to perform a %%[[%%DefineOwnProperty]] operation on the left operand object corresponding to each own property of the right operand object. It essentially, defines on the the left operand object a clone of each own property of the right operand object. The property kinds, values,  and attributes of the right operand's properties are replicated on the left operand object.
+
+It does this with all own properties. It includes non-enumerable properties and unique/private named properties.  It rebinds methods with RHS super bindings to new methods that are super bound to the LHS.
+
+Even though the operands may be arbitrary expressions, frequently the right operand will be expressed as an object literal containing the properties that are intended to be added to the left operand object. For example:
+
+<code javascript>
+obj := {
+   a: 1,
+   b: 2,
+   c: 3
+};
+</code>
+
+This is semantically equivalent to:
+<code javascript>
+Object.defineProperties(obj, {
+   a: {value: 1, enumerable: true, writable: true, configurable: true},
+   b: {value: 2, enumerable: true, writable: true, configurable: true},
+   c: {value: 3, enumerable: true, writable: true, configurable: true}
+};
+</code>
+Because %%[[%%DefineOwnProperty]] semantics is used, the existence of like-named properties on obj's prototype chain does not affect the definition of the properties.  The programmer gets exactly the properties that were expressed on in the right hand operand object literal, but they are defined on the left operand object.  The only time this will not occur is if the left operand object is non-extensible or has corresponding non-configurable properties.  In these cases, exceptions will be thrown, exactly as if ''Object.defineProperties'' had been used.  For example:
+
+<code javascript>
+let sealed = Object.seal({  //create a object with two readonly properties
+   a: 1,
+   b: 2
+});
+
+sealed := {            //this throws a TypeError exception
+   get c() {return -3},//can't redefine a non-configurable property 
+   d: 4,               //can't define additional property on non-extensible objects
+   toString () {return "[object Sealed Object]"} //can't add methods
+});
+
+</code>
+
+The '':='' operator is similar in intent (but not in exact semantics to the Object.extend function suggested in the [[https://docs.google.com/document/d/1JPErnYlBPG26chTuVSnJ_jqW4YkiQhvWn-FxwwsmkEo/edit#heading=h.dz7jv066aa32|recommendations]] the JSFixed community group.  Their recommended function could be easily implemented using and in terms of the '':='' operator:
+
+<code javascript>
+
+Object := {
+   extend(target, ...sources) {
+      for (let src of sources) target := src;
+};
+      
+</code>
+
+
+
+==== Some ES6 Idioms using := ====
+
+The := is a convenient syntax to use inside a class constructor to define and initialize per instance properties:
+<code javascript>
+class Point {
+   constructor(x,y) {
+      this := {x,y}  //define and initialize x and y properties of new object
+   }
+}
+</code>
+
+Such properties can include methods and accessor properties:
+
+<code javascript>
+class Point {
+   constructor(x,y) {
+      this := {
+         //define accessor properties on new object that bind to closure captured private state
+         get x() {return x},
+         set x(value) {x = value),
+         get y() {return y },
+         set y(value) {y = value},
+         moveTo(newX, newY} {
+            x = newX;
+            y = newY;
+         }
+      }  
+   }
+}
+</code>
+
+'':='' is also the easiest way to define "class-side" properties:
+<code javascript>
+Point := {
+   fromPolar(rho,theta) {
+      return new this(rho*Math.cos(theta), rho*Math.sin(theta))
+   }
+}
+</code>
+The := operator can be used to extend prototypes defined using class definitions:
+<code javascript>
+Point.prototype := {
+   plus(aPoint) {return new this.constructor(this.x+aPoint.x,this.y+aPoint.y},
+   get rho() {return Math.sqrt(this.x*this.x+this.y*this.y}
+};
+</code>
+
+===== Semi-formal Specification of := Operator =====
+
+==== Grammar Extensions ====
+
+<code ebnf>
+AssignmentExpression :
+    LeftHandSideExpression := AssignmentExpression
+    ...
+</code>
+
+==== Semantics  ====
+
+Summary: Both the LHS and RHS operands must must evaluate to ToObject convertible values.  The value of the '':='' operator is the ToObject  value of its //LeftHandSideExpression//. The semantics is to %[[%DefineOwnProperty]] on the LHS obj a property corresponding to each RHS own property.  I does this with all own properties. It includes non-enumerable own properties as well as  unique and private named properties.  It replaces methods and accessor get/set functions that have super bindings to the RHS object with equivalent functions that are super bound to the LHS object.
+
+The evaluation algorithm for '':=''is:
+  - Let //target// be ToObject(//LeftHandSideExpression//).
+  - Let //src// be ToObject(//AssignmentExpression//).
+  - Let //needToThrow// be **false**.
+  - For each own property of //src//, let //key// be the property key and //desc// be the property descriptor of the property.
+      - If //desc// describe a data property , then
+          - Let //f// be //desc//.%%[[%%Value]].
+          - If //f// is a function with a super binding that is bound to //src//, then
+            - Let //desc//.%%[[%%Value]] be a new function will all the same internal properties as //f// except that its super binding is set to //target//.
+      - If //desc// describe an accessor property and has a %%[[%%Get]] attribute, then
+          - Let //f// be //desc//.%%[[%%Get]].
+          - If //f// is a function with a super binding that is bound to //src//, then
+            - Let //desc//.%%[[%%Get]] be a new function will all the same internal properties as //f// except that its super binding is set to //target//.
+      - If //desc// describe an accessor property and has a %%[[%%Set]] attribute, then
+          - Let //f// be //desc//.%%[[%%Set]].
+          - If //f// is a function with a super binding that is bound to //src//, then
+            - Let //desc//.%%[[%%Set]] be a new function will all the same internal properties as //f// except that its super binding is set to //target//.
+      - Let //status// be the result of calling the %%[[%%DefineOwnProperty]] internal method of //target// with arguments //key//, //desc//, and **true**.
+      - If //status// is an abrupt conpletion, set //needToThrow// to **true**;
+  - If //needToThrow// is **true**, then throw a TypeError exception.
+  - Return //target//
+
+==== Optimizations ====
+Note that when the righthand operand is expressed as an object literal it is not  necessary to actually instantiated it as a distinct object.  Instead an implementation may choose to  directly create the object literal properties on the lefthand-side object.  This would save the creation on an unobservable object and the work of populating it with properties.
+===== Design Rationales =====
+
+
+==== Why was the symbol := selected? ====
+
+JavaScript programmers widely use ''='' to define new properties and we want to encourage them to change to using a more reliable property definition operator. '':='' was chosen because it is suggestive of both property definition (the use of '':'' in object literals) and of assignment (the ''='' operator).  '':='' also has a long history of use as an assignment or definitional operator in programming languages. The visual similarity of = and := should push ES programmers to think about then as situational alternatives whose semantic differences must be carefully considered.  The simple story is that one is used for assigning a value to an existing property and the other is used to define or override the definition of properties. 
+
+==== Why does := process multiple properties instead of just one? ====
+We expect '':='' to frequently be used in situations where multiple properties are being defined.  We also want it to be used to provide ''Object.extend''-like functionality for copying properties from pre-existing objects such has might be passed to library routines.
+
+Pragmatically speaking, we have no way to describe individual properties include accessors or concise methods that can be directly express on the right-hand side of an operator.
+<code javascript>
+//If := only created a single property, we would need a way to say:
+obj1 := get prop() {...};
+//and also probably this:
+obj2 := method(...args) {return this};
+</code>
+There would be a number of such new forms and many potential syntactic conflicts with existing forms. But all of these property forms already exist for object literals.  It is much less disruptive to the language to simply require that a pair of { } surrounds these single property cases:
+<code javascript>
+obj1 := {get prop() {...}};
+obj2 := {method(...args) {return this}};
+</code>
+
+==== Why are private named properties copied? ====
+The important characteristic of private names is that they are not guessable. If you don't know a private name, you can not directly access a property with that name.  One of the major motivations for restrictions on reflecting private names is to keep private name secrets secret.  The semantics of '':='' preserve this requirment.  It never reveals a secret private name.
+
+What it does do, however, is copy private property keys from one object to another without revealing the secret.  This is important because "public" methods may have encapsulated implementation dependencies upon the existence of private named properties on the same object.  These might be private data state properties or internal methods that should not be exposed for public invocation. If such methods with private named property dependencies were copied without also copying the private named properties, the methods would be broken.
+
+If it is important to an application that specific private name properties are only valid if they are associated with specific object, a WeakMaps can be used to create an identify-based registration scheme for such objects that can be used limit their use to known objects.
+
+==== Why does := rebind super? ====
+Methods that reference ''super'' carry a static binding to an object (typically one that is used as a prototype).  If such methods are directly transferred (via, for example the ''='' operator) their super binding is not modified. In most cases this is probably not what the programmer intended.  '':='' is replicating actual property definitions and has visibility of both the source and target objects.  This is enough information to recognize that a property of the source object is a method or get/set accessor function that has a super binding to the source object. In this case, the best replica of the function is going to be a algorithmically equivalent function that is super bound to the destination object.
+
+For example:
+<code javascript>
+class Foo extends Bar {
+   m(...args) {return super.m(...args)}
+}
+
+function MyConstructor() {};
+MyConstructor.prototype = Object.create(Baz);  //inherit from Bar, not Foo
+MyConstructor.prototype := Foo.prototype;  //but, otherwise borrow methods from Foo
+MyConstructor.prototype.constructor = MyConstructor;
+</code>
+
+If the '':='' operator in the second to last line did not create a new super binding for method m, it would not function as intended.
+
+
+==== Why not just provide Object.extend? ====
+The '':='' operator is similar in intent (but not in exact semantics to the Object.extend function suggested in the [[https://docs.google.com/document/d/1JPErnYlBPG26chTuVSnJ_jqW4YkiQhvWn-FxwwsmkEo/edit#heading=h.dz7jv066aa32|recommendations]] of the JSFixed community group. A major goals of := is to shift JavaScript programmer away form using = as a property definition operator. Any form of property addition that requires an explicit function call is going to be less convenient than the = operator and is unlikely to achieve this goal.
+
+The semantics proposed for Object.extend by JSFixed is different from the semantics of the Object.extend semantics used in the Prototype.js framework. Other frameworks and users either provide similar functionality under a different name or use the name "extend" (often with differing semantics) as a property of some object other than Object. The compatibility impact of a built-in Object.extend function is difficult to project.
+
+
+
+
+
+===== A possible companion function =====
+While := is a convenient way to express the transfer of all own properties from one object to another, it doesn't provide any way to be more selective about which properties to transfer.  For example, a developer might wish to only transfer properties with string keys and to ignore properties with  unique or private name keys. Such use case are where a procedural interface may be more useful than an operator.  We could support such use cases by providing a function named Object.from with a signature like:
+
+<code javascript>
+Object.from = function (
+    target,                    // the object that properties will be added to
+    src,                       // the object where properties will be copied from
+    options = {                // an optional options object
+        stringKeys: true,      // copy properties with string keys
+        nameKeys: true,        // copy properties with name valued keys
+        privateKeys:  true,    // copy properties with private name keys
+        onlyEnumerable: false, // only copy enumerable properties
+        rebindSuper: true,     // rebind functions that are super bound to src
+        inheritanceLevels:0,   // how may inheritance levels to copy, Infinity means all, 0 means own
+        filter(key,desc) {     // filter method that can translate - returning undefined skips
+            return [key,desc]  // never called for private keyed properties
+        }
+    }
+)
+{
+    // implementation elided...
+}
+ </code> 
+The name and the exact set of options to provided such a function will likely engender considerable discussion. The defaults shown above were selected to exactly match the behavior proposed for the := operator.
+
+===== History =====
+The functionality provided by := is similar to that of the [[harmony:object_literals#object extension literal]] proposal.  It differs in providing an operator that is similar to = rather than a special form using the dot operator.  := is more general in that it does not limit source properties to being provided in a literal form.
+
+
+
+ 

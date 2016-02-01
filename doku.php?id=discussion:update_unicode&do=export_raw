@@ -1,0 +1,101 @@
+====== Updated Unicode functionality ======
+
+(This is the discussion page for [[proposals:update unicode|proposals:update unicode]].)
+
+We need to add better handling for non-BMP characters. Currently, the String class supports surrogate pairs for extended characters.
+
+===== Extended Unicode character constants =====
+
+I propose to add a bracket notation to all numeric escapes in string literals:
+<code>
+\u{1AFFE}
+\x{1AFFE}
+</code>
+This notation would make \u equivalent to \x, and programmers could use any numeric escape to speficy any Unicode character. Octals should not be supported in this way.
+
+===== Changes to the String class =====
+
+The internal implementation of the String class uses code points instead of characters. The length property reflects the number of code points, and the index operator returns the value of code points. All functions treat surrogate pairs as one code point. For small systems, implementers can choose to throw a runtime error when detecting surrogate pairs.
+
+Alternative: Define a new class ''WideString'' that has the same elements as ''String'', but works with code points. Add ''String.codePointAt (n)'' that returns the code point at the given index. If the index points to the second character of a surrogate pair, throw an error.
+
+ --- //[[mdaeumli@adobe.com|Michael Daumling]] 2006/04/21 16:04//
+
+I don't see the point in ''WideString.prototype.codePointAt'', since the UTF-16 forms have been erased in wide strings.  ''charCodeAt'' and ''charAt'' should suffice, and both can throw if any surrogate pair half is seen.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/04/21 18:27//
+
+===== Comments =====
+
+The Unicode people at Opera do not believe that this proposal places a huge burden on our implementation (targeted to very small systems), ie, we can live with the larger tables, probably.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/31 04:11//
+
+
+====== Counterproposal ======
+
+The original proposal tries to attack several problems with Unicode in ECMAScript:
+
+  * ECMAScript 3 implementations are locked into a 16-bit Unicode representation by the spec.  Implementations that provide 21-bit character representations are nonconforming.
+  * There is no way to write down with a single lexeme Unicode characters outside the 16-bit range, you have to use two \u literals.  Doing so is senseless unless the character is represented internally as a surrogate pair, so it would break if the language did support wider characters.
+  * In some cases the surrounding host system uses full Unicode, but host characters must be represented using surrogate pairs in ECMAScript strings.  This is error prone for some applications, but not for all.
+
+All of these problems are worth solving.
+
+Today the major application of ECMAScript is in browsers, and at least MSIE, Firefox, and Opera all use UTF16 internally.  MS Windows has native 16-bit APIs (and other operating systems probably do as well).  Demanding that these implementations move to wider representations now will be met with resistance.  They will in any case not all do so at the same time.
+
+However, operating systems and browsers will move to wider strings eventually, and we should at the very least future-proof the language.
+
+
+===== Proposal =====
+
+ECMAScript implementations are allowed to, but not required to, support full Unicode (21-bit) characters.  
+
+An ECMAScript implementation that uses full Unicode but interacting with a host system that uses UTF16 shall never see surrogate pairs in strings; all characters shall be resolved as full Unicode characters.
+
+The proposed new syntax is added to the language and shall be used to write down all character values outside the 16-bit range.  In systems with 16-bit strings such a character value shall turn into a surrogate pair of two indexable characters in the resulting string, with the high part of the pair at the lower index.
+
+Two code points written down as \unnnn\unnnn shall be represented as individually indexable characters in all implementations, even if they form a valid UTF16 surrogate pair.
+
+(Open question: character classification, case folding in 16-bit implementations.)
+
+===== Discussion =====
+
+On the one hand, this looks like a return to the bad old days of unknown representations (eg, C, C++).  
+
+On the other hand, it does allow implementations to move to full Unicode at their leisure (including immediately), it allows implementers and programmers to understand the meaning of programs in both kinds of implementations, and it allows programmers to future-proof their programs by pretending to use full Unicode in strings and only worrying about surrogate pairs in some circumstances.
+
+A future update to the language may then require full Unicode characters everywhere; this will not change the meaning of any portable program written for ECMAScript 4.  (Non-portable programs written for 16-bit implementations may have slight behavioral changes, though.)
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/22 07:23//
+
+
+
+
+====== Format Control Proposal ======
+
+The problem was reported by [[https://bugzilla.mozilla.org/show_bug.cgi?id=274152]], with some hot-headed comments about "brain-dead ECMA" ;-).  For a cooler summary of the problem, start [[https://bugzilla.mozilla.org/show_bug.cgi?id=274152#c14|here]].  It seems that IE's JScript implementation does not follow ECMA-262 by stripping format-control characters blindly: it does not strip //any// format-control characters in string literals.
+
+This means lexer context feeds back on input character stripping, which is easy enough to implement, if a bit clunky.
+
+Does the same thing happen in ''RegExp'' literals?
+
+Whatever the case, I propose that we do as IE JScript has done.  IE has flouted ECMA-262, and established the de-facto standard here.  And from the user feedback we've received, it does more-or-less "the right thing".
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/04/26 23:33// 
+
+Opera does not strip format control characters anywhere, either.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/27 00:38//
+
+Those at the [[meetings:minutes_jan_24_2007|January face-to-face]] may recall my committing the patch to make SpiderMonkey leave format control characters alone. That seems to have regressed Yahoo! mail -- see [[https://bugzilla.mozilla.org/show_bug.cgi?id=368516|Mozilla bug 368516]]. Why does that Ajax app work in IE and Opera, if they too do not strip format control chars?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/02/03 18:38//
+
+It does //not// work in Opera.
+
+ --- //[[chrispi@opera.com|Chris Pine]] 2007/02/05 01:23//
+
+Aha!  How about IE?  I can't test at the moment.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/02/05 21:41//

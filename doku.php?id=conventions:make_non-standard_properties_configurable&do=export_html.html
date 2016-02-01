@@ -1,0 +1,80 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=conventions:make_non-standard_properties_configurable&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=conventions" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=conventions:make_non-standard_properties_configurable&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=conventions:make_non-standard_properties_configurable&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="make_non-standard_properties_configurable"></a><h1>Make non-standard properties configurable</h1>
+<div class="level1">
+
+<p>
+ Chapter 16 allows implementations to add non-standard properties to built-in native objects. Like standard native properties, it is desirable for non-standard properties to start out configurable, so that initialization scripts can replace or remove them.
+</p>
+
+<p>
+ES5.1 Chapter 15 states 
+</p>
+<pre class="code">Every other property described in this clause has the attributes 
+{ [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true } 
+unless otherwise specified. </pre>
+
+<p>
+ where &ldquo;other&rdquo; means other than the &lsquo;length&rsquo; property of functions.
+</p>
+
+<p>
+ES5.1 Chapter 16 states 
+</p>
+<pre class="code">An implementation may provide additional types, values, objects, 
+properties, and functions beyond those described in this specification.</pre>
+
+<p>
+ By omission, the Chapter 16 text allows these non-standard additional properties to be non-configurable. But consistency with Chapter 15 as well as general flexibility suggests such non-standard properties should generally respect the Chapter 15 precedent. Such default configurability gives initialization scripts great latitude in modifying their context, for example by replacing or deleting various properties, before other scripts are loaded into that context. With the introduction of <code>Object.getOwnPropertyNames</code> and <code>Object.getPrototypeOf</code>, it is now possible for an initialization script to dynamically detect the existence of properties that it had no static knowledge of and remove them &ndash; but only if they are configurable.
+</p>
+
+</div>
+<!-- SECTION [1-1491] -->
+<a name="those_nasty_caller_and_arguments_properties"></a><h2>Those nasty caller and arguments properties</h2>
+<div class="level2">
+
+<p>
+ Particulary troublesome are the <code>caller</code> and <code>arguments</code> properties on built-in native functions. Since these functions are neither strict nor non-strict, the ES5.1 spec is silent on whether these properties exist on those functions; and if they exist, on whether they are poisoned and/or configurable. If they are absent or poisoned, no encapsulation hazard is created. If they are not poisoned but are configurable, then an initialization script can repair the hazard by either removing or poisoning them. However, if they are not poisoned, have the non-standard legacy encapsulation-breaking behavior, and are not configurable, then an initialization script is unable to repair the problem. 
+</p>
+
+<p>
+So even though these are non-standard, if an implementation poisons them it need not make them configurable. Either safe option is fine.
+</p>
+
+</div>
+<!-- SECTION [1492-2386] -->
+<a name="see"></a><h1>See</h1>
+<div class="level1">
+
+<p>
+ <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=591846" class="urlextern" target="_blank" title="https://bugzilla.mozilla.org/show_bug.cgi?id=591846" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Non-std ocap-breaking properties on built-ins can't be neutered.</a>
+</p>
+
+</div>
+<!-- SECTION [2387-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/f/ff854cf583063bd90a576619f17442af.xhtml used -->
+</body>
+</html>

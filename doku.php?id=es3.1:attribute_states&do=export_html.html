@@ -1,0 +1,99 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=es3.1:attribute_states&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=es3.1" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=es3.1:attribute_states&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=es3.1:attribute_states&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="states_and_transitions_of_the_attributes_of_an_ecmascript_5_property"></a><h1>States and transitions of the attributes of an EcmaScript 5 property</h1>
+<div class="level1">
+
+<p>
+ Section 8.12.9 [[DefineOwnProperty]] of the EcmaScript 5 spec describes the defining semantic constraint of the property descriptor system introduced by EcmaScript 5. The only changes which can occur to a property&rsquo;s state are those described by this algorithm. However, since it goes on for more than a page of dense pseudocode, it obscures what these constraints actually are. The following diagram attempts to express just these constraints, abstracted away from issues of input validation and default choices.
+</p>
+
+<p>
+<a href="lib/exe/detail.php%3Fid=es3.1%253Aattribute_states&amp;cache=cache&amp;media=es3.1:es5-attr-states.png.html" class="media" title="es3.1:es5-attr-states.png" onclick="return svchk()" onkeypress="return svchk()"><img src="lib/exe/fetch.php%3Fw=500&amp;h=&amp;cache=cache&amp;media=es3.1:es5-attr-states.png" class="media" title="attributes statechart" alt="attributes statechart" width="500" /></a>
+</p>
+
+<p>
+The above diagram is an informal adaptation the <a href="http://www.wisdom.weizmann.ac.il/~harel/papers/Statecharts.pdf" class="urlextern" target="_blank" title="http://www.wisdom.weizmann.ac.il/~harel/papers/Statecharts.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Statecharts</a> notation. The rounded rectangles represent sets of states. Within a rounded rectangle, regions separated by a dashed line represent a cross product of sub-statecharts. Leaf sharp rectangles like <code>configurable:</code> represent single states. The colored arrows represent possible transitions.
+</p>
+
+<p>
+First, we read the diagram statically: An EcmaScript 5 property may be
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>configurable:</code> or non-<code>configurable:</code>,</div>
+</li>
+<li class="level1"><div class="li"> <code>enumerable:</code> or non-<code>enumerable:</code>,</div>
+</li>
+<li class="level1"><div class="li"> an <em>Accessor</em> property or a <em>Data</em> property.</div>
+<ul>
+<li class="level2"><div class="li"> If it is an <em>Accessor</em> property, then</div>
+<ul>
+<li class="level3"><div class="li"> Its <code>get:</code> attribute can be any function or undefined.</div>
+</li>
+<li class="level3"><div class="li"> Its <code>set:</code> attribute can be any function or undefined.</div>
+</li>
+</ul>
+</li>
+<li class="level2"><div class="li"> It it is a <em>Data</em> property, then it may be <code>writable:</code> or non-<code>writable:</code>.</div>
+<ul>
+<li class="level3"><div class="li"> If it is <code>writable:</code>, its <code>value:</code> attribute can be any value.</div>
+</li>
+<li class="level3"><div class="li"> If it is non-<code>writable:</code>, its <code>value:</code> attribute can be any value.</div>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ From the static perspective by itself, it seems that <code>writable:</code> vs <code>value:</code> could have been depicted as orthogonal. But the dynamic perspective treats these as non-orthogonal.
+</p>
+
+<p>
+Reading the dynamics,
+</p>
+<ul>
+<li class="level1"><div class="li"> If the property is <code>configurable:</code>, then, no matter what state its other attributes may be in, <code>defineProperty</code> may transition all the attributes to any other state.</div>
+</li>
+<li class="level1"><div class="li"> If the property is a <code>writable:</code> Data property, then, no matter what state its other attributes may be in, </div>
+<ul>
+<li class="level2"><div class="li"> <code>defineProperty</code> may transition it to being in another Data property state with a new setting for <code>writable:</code> and any <code>value:</code>, but with the remaining attributes unchanged.</div>
+</li>
+<li class="level2"><div class="li"> Assignment (<em>put</em>) may change its <code>value:</code> to any other value, but with the remaining attributes including <code>writable:</code> unchanged.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ No transitions other than those diagrammed above may occur. A <code>defineProperty</code> or <em>put</em> operation that would be allowed by the above operation may instead fail on a host object, leaving the property unaffected. 
+</p>
+
+</div>
+
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/1/12f1f3266967277f023e03e6b05868e7.xhtml used -->
+</body>
+</html>

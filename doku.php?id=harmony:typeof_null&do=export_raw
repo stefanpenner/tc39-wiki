@@ -1,0 +1,153 @@
+===== Rejected ====
+
+This proposal has been rejected. It was implemented in V8 but it turned out that it broke a lot of existing sites. In the spirit of One JavaScript this is not feasible.
+
+===== Proposal =====
+
+With opt-in to Harmony, ''typeof null === "null"''.
+
+In ES5.1, 11.4.3 "The typeof Operator", the row in Table 20 for //**Type of** val// equal to Null would become
+
+^//**Type of** val//^//**Result**//^
+|Null|''"null"''|
+
+under the Harmony version, but the //**Result**// would remain ''"object"'' under the default version. Version details TBD.
+
+===== Rationale =====
+
+Some JS on the web carefully tests both ''typeof x === "object" && x === null'' or equivalent in order to distinguish ''null'' from an object reference. Other code is less careful. The ongoing burden on JS authors, maintainers, teachers, and learners is a small but (over time) significant cost. The latent bugs won't be fixed quickly without automation.
+
+For Harmony, we want early errors for bad forms being banned or reformed in the new version of the language, but in this case, I believe that we agreed at the January, 2011 TC39 meeting to change ''typeof null''. Discussion at the meeting showed how to write code to work in both old and new versions:
+
+<code javascript>
+  switch (typeof x) {
+    case "object":
+      if (x) {
+        // handle object references here...
+      }
+      // FALL THROUGH
+    case "null":
+      // handle null here...
+    ...
+  }
+</code>
+
+The proposed "Harmonizer" tool would check using static program analysis to try to report "early errors" in the Harmonizer tool sense. Implementations would simply shift semantics based on selected language version.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/04/28 00:00//
+
+===== Discussion of older ''Object.isObject'' strawman =====
+
+''Object.isObject''
+
+It is proposed that an ''isObject'' property be added to the ''Object'' object, whose value is a function that could be implemented as
+''Code Text''
+    Object.isObject = function isObject(value) {
+        return typeof value === 'object' && value !== null;
+    }
+
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2010/12/15 20:04//
+
+This is presumably a convenience method to get around the fact that ''typeof null'' is ''"object"''. I want to explore the actual use cases to see if adding this method is actually worth the effort.
+
+It seems to me that there are two use cases for this sort of test.  The first is a "switch" over all the built-in types:
+
+<code javascript>
+var t = typeof arg;
+if (t==="number") { /*do something for numbers*/ }
+else if (t==="string") { /* do something for strings */ }
+...
+else if (t==="object" && arg===null) { /* do something for null */ }
+else if (t==="object") { /* do something for objects */ }
+else { /* do something for any types that weren't explicitly tested for */ }
+</code>
+
+To code this the programmer had to remember that they needed to explicitly test for the null case.  Adding ''isObject'' does not seem to significantly change what has to be done for this use case. (Of course the guard of the null case could be reduced to ''arg===null'' in which case ''isObject'' probably adds no improvement of readability.)  The programmer might replace the explicit ''null'' test with a call to ''isObject'':
+<code javascript>
+var t = typeof arg;
+if (t==="number") { /*do something for numbers*/ }
+else if (t==="string") { /* do something for strings */ }
+...
+else if (t==="object" && !Object.isObject(arg)) { /* do something for null */ }
+else if (t==="object") { /* do something for objects */ }
+else { /* do something for any types that weren't explicitly tested for */ }
+</code>
+or perhaps restructure the code:
+<code javascript>
+if (Object.isObject(arg)) { /* do something for objects */ }
+else switch (typeof arg) {
+   case "number":  /*do something for numbers*/  break;
+   case "string":  /*do something for strings*/ break;
+   case "object":  /*do something for null*/    break;
+   default:  /* do something for any types that weren't explicitly tested for */ 
+}
+</code>
+
+However, in both formulations the programmer still has to remember the fact that ''typeof null'' is ''"object"'' and explicitly deal with it in the code.  The only thing that has changed is the specific test that is used to discriminate the ''null'' case.
+
+The other use case is  a simple determination of whether or not a value is an object:
+<code javascript>
+if (obj && typeof obj ==="object") { /* do something for objects */ }
+else { /* do something for other types of values */ }
+</code>
+
+Using ''isObject'' this simplifies to: 
+<code javascript>
+if (Object.isObject(obj)) { /* do something for objects */ }
+else { /* do something for other types of values */ }
+</code>
+
+I would agree that both the above reformulation and the switch statement based formulation of the first use case, are clearer to read.  However, it isn't clear that ''isObject'' actually reduces the complexity burden on the programmer.  Because the ''typeof'' operator exists the programmer still needs to understand it and know about its pitfalls and when it is and isn't appropriate to use it.
+
+What does stand out, is that situations that need to dispatch on primitive types would be simplified by a function that yields a unique value for all of the built-in types. From that perspective a function such as ''Object.getTypeOf'' might be even better:
+
+<code javascript>
+switch (Object.getTypeOf(arg)) {
+   case "number":  /*do something for numbers*/ break;
+   case "string":  /*do something for strings*/ break;
+   case "object":  /*do something for objects*/ break;
+   case "null":    /*do something for null*/    break;
+   default:  /* do something for any types that weren't explicitly tested for */ 
+}
+</code>
+
+however it doesn't improve the readability of the second use case as much as ''isObject'':
+<code javascript>
+if (Object.getTypeOf(obj)==="object") { /* do something for objects */ }
+else { /* do something for other types of values */ }
+</code>
+
+I'm not sure that either of these functions add enough value to justify adding them to the core language. They could be provided in a library. However, if we were only going to add one, I would probably prefer the one that provides a switchable value.
+
+ --- //[[Allen@Wirfs-Brock.com|Allen Wirfs-Brock]] 2011/01/14 18:43//
+
+Sure, doing so adds yet another runtime meaning shift that can't be caught by early errors. But it could be worth it, compared to bloating ''Object'' with new methods.
+
+The best case of adding ''Object'' methods means we caused everyone migrating code into Harmony, or writing fresh code, to change how they would have worked if only ''typeof'' were sane in this regard. In such a best case, we would rather have just fixed ''typeof''.
+
+The worst case is that hardly anyone bothers to use the new ''Object'' method or methods, but we have bloated the spec and the language slightly.
+
+Of course, with a ''typeof null === "null"'' change, there is a bad case where programmers migrate or write fresh code but forget about the change, and only find out via testing.
+
+Realistically, auditing code moving into Harmony is required due to the lexical-global-scope change. Auditing needs tools. Tools can find and check (static analysis) or at least warn about ''typeof'' usage and any dependent potential null dereferences. We would be happy to get DoctorJS doing this, and I hope Doug can make JSLint do something too.
+
+In this light, why not fix ''typeof''?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/01/14 20:18//
+
+I would very much prefer to fix ''typeof''. We talked about this before, and decided that there is code out there that depends on ''typeof'' 's bad behavior. Are we now saying that the migration tax is acceptable?
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2011/01/19 17:17//
+
+Migration tax was an issue for ES5 (strict or not). In the context of Harmony and focused on ''typeof'', it is not clearly a showstopper.
+
+There is a non-migration tax too, with developers sticking to the old broken ''typeof'' and making mistakes or (at some grinding, minor cost that adds up over time) writing null tests carefully. This taxes the committee, too, with proposals to extend built-on objects with compensating methods such as the one proposed here: ''Object.isObject''.
+
+For me the killer argument is Allen's use-case analysis: in the best case, we've just imposed a different tax of about the same size, with cleaner partial semantics but the underlying bug in ''typeof'' unfixed. If people are to invest effort in migrating ''typeof'' code to use a new form, then fixing ''typeof'' seems strictly better.
+
+The downside of breaking code migrated without enough auditing and testing remains, but I'm proposing in [[http://brendaneich.com/2011/01/harmony-of-my-dreams/]] that we build a Harmonizer tool that can do enough static analysis to find missing null tests (not just around ''typeof'', but at least around ''typeof'').
+
+Such a Harmonizer tool may be great, but I wouldn't bet too big on it. We shouldn't change every little corner of the language that seems messy (fall-through in ''switch'', e.g. -- from C originally, and in Java). For ''typeof'', though, I'm willing to make a focused bet.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/01/19 20:56//

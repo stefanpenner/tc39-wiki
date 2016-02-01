@@ -1,0 +1,538 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:deferred_functions&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:deferred_functions&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:deferred_functions&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:deferred_functions&amp;do=export_html.html#deferred_functions" class="toc">Deferred Functions</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:deferred_functions&amp;do=export_html.html#asynchronous_programming" class="toc">Asynchronous Programming</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:deferred_functions&amp;do=export_html.html#deferred_functions" class="toc">Deferred Functions</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:deferred_functions&amp;do=export_html.html#returning_values_from_deferred_functions" class="toc">Returning Values From Deferred Functions</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:deferred_functions&amp;do=export_html.html#throwing_from_deferred_functions" class="toc">Throwing From Deferred Functions</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:deferred_functions&amp;do=export_html.html#deferred_pattern" class="toc">Deferred Pattern</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:deferred_functions&amp;do=export_html.html#syntax" class="toc">Syntax</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:deferred_functions&amp;do=export_html.html#13.2_creating_deferred_function_objects" class="toc">13.2 Creating Deferred Function Objects</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:deferred_functions&amp;do=export_html.html#13.2.1_deferred_function_call" class="toc">13.2.1 Deferred Function [[Call]]</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:deferred_functions&amp;do=export_html.html#deferred_object_continue" class="toc">Deferred Object [[Continue]]</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:deferred_functions&amp;do=export_html.html#await_expressions" class="toc">Await Expressions</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:deferred_functions&amp;do=export_html.html#deferred_object_then" class="toc">Deferred Object [[Then]]</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:deferred_functions&amp;do=export_html.html#deferred_object_cancel" class="toc">Deferred Object [[Cancel]]</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:deferred_functions&amp;do=export_html.html#deferred_object_callback" class="toc">Deferred Object [[Callback]]</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:deferred_functions&amp;do=export_html.html#deferred_object_errback" class="toc">Deferred Object [[Errback]]</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:deferred_functions&amp;do=export_html.html#deferred_object_createcallback" class="toc">Deferred Object [[CreateCallback]]</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:deferred_functions&amp;do=export_html.html#deferred_object_createerrback" class="toc">Deferred Object [[CreateErrback]]</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<p>
+See <a href="doku.php%3Fid=strawman:async_functions.html" class="wikilink1" title="strawman:async_functions" onclick="return svchk()" onkeypress="return svchk()">async_functions</a> for a revised version of this proposal implementable as a library in terms of <a href="doku.php%3Fid=strawman:concurrency.html" class="wikilink1" title="strawman:concurrency" onclick="return svchk()" onkeypress="return svchk()">concurrency</a> and <a href="doku.php%3Fid=harmony:generators.html" class="wikilink1" title="harmony:generators" onclick="return svchk()" onkeypress="return svchk()">generators</a>.
+</p>
+
+<a name="deferred_functions"></a><h1>Deferred Functions</h1>
+<div class="level1">
+
+<p>
+ Deferred functions ease the burden of asynchronous programming.
+</p>
+
+</div>
+<!-- SECTION [166-264] -->
+<a name="asynchronous_programming"></a><h2>Asynchronous Programming</h2>
+<div class="level2">
+
+<p>
+ Ecmascript programming environments typically are single threaded and pausing execution for long periods is undesirable. ES host environments use callbacks for operations which may take a long time like network IO or system timers. 
+</p>
+
+<p>
+For Example:
+</p>
+<pre class="code">
+function animate(element, callback) {
+    var i = -1;
+    function continue() {
+        i++;
+        if (i &lt; 100) {
+            element.style.left = i;
+            window.setTimeout(continue, 20);
+        } else {
+            callback();
+        }
+    }
+    continue();
+};
+animate(document.getElementById('box'), function() { alert('Done!'); });
+</pre>
+
+<p>
+Calling functions which have callback arguments does not compose easily. Many libraries include a Deferred constructor function to address this issue.
+</p>
+<pre class="code">
+function deferredTimeout(delay) {
+    var deferred = new Deferred();
+    window.setTimeout(function() {
+        deferred.callback({});
+    },
+    delay);
+    return deferred;
+}
+
+function deferredAnimate(element) {
+    var i = -1;
+    var deferred = new Deferred();
+    function continue() {
+        i++;
+        if (i &lt; 100) {
+            element.style.left = i;
+            deferredTimeout(20).then(continue);
+        } else {
+          deferred.callback();
+        }
+    }
+    continue();
+    return deferred;
+};
+deferredAnimate(document.getElementById('box')).then(function () { alert('Done!'); });
+</pre>
+
+<p>
+The Deferred <acronym title="Application Programming Interface">API</acronym> pattern improves composability of callback patterns but there are still drawbacks in programming in this style. The completion of the computation must be enclosed in a callback function passed to the &lsquo;then&rsquo; function. 
+</p>
+
+<p>
+Authoring the callback function has proved difficult for ES programmers. Control flow constructs (if, while, for, try) do not compose across function boundaries. The programmer must manually twist the control flow into continuation passing style. The callback function does not by default have the same &lsquo;this&rsquo; binding as the enclosing function which is a frequent source of programmer error.
+</p>
+
+</div>
+<!-- SECTION [265-2311] -->
+<a name="deferred_functions"></a><h2>Deferred Functions</h2>
+<div class="level2">
+
+<p>
+ Deferred functions allow asynchronous code to be written using existing control flow constructs.
+</p>
+<pre class="code">
+function deferredTimeout(delay) {
+    var deferred = new Deferred();
+    window.setTimeout(function() {
+        deferred.callback({
+            called: true
+        })
+    },
+    delay);
+    return deferred;
+}
+
+function deferredAnimate(element) {
+    for (var i = 0; i &lt; 100; ++i) {
+        element.style.left = i;
+        await deferredTimeout(20);
+    }
+};
+deferredAnimate(document.getElementById('box')).then(function () { alert('Done!'); });
+</pre>
+
+<p>
+This proposal adds &lsquo;await expression&rsquo; syntax, a new kind of expression. A function containing an &lsquo;await expression&rsquo; is a deferred function. 
+</p>
+
+<p>
+The &lsquo;await expression&rsquo; evaluates the expression. The result of evaluating the expression in an &lsquo;await expression&rsquo; is the &lsquo;awaited object&rsquo;. The expectation is that the &lsquo;awaited object&rsquo; supports the &lsquo;Deferred pattern&rsquo; common to many ES libraries. After computing the &lsquo;awaited object&rsquo; the &lsquo;await expression&rsquo; suspends execution of the current function, attaches the continuation of the current function to the &lsquo;awaited object&rsquo; by calling its <code>then</code> function, and then returns.
+</p>
+
+<p>
+The return value of a &lsquo;deferred function&rsquo; is itself a &lsquo;deferred object&rsquo;. Deferred objects support the &lsquo;deferred pattern&rsquo;. Deferred objects have a <code>then</code> function which allows registration of callbacks. When the deferred object completes its computation all callbacks registered to the <code>then</code> function are invoked.
+</p>
+
+</div>
+<!-- SECTION [2312-3842] -->
+<a name="returning_values_from_deferred_functions"></a><h2>Returning Values From Deferred Functions</h2>
+<div class="level2">
+
+<p>
+ Deferred functions may return a value. When a deferred function completes by returning a value, the returned value is passed as the argument when invoking callbacks registered to the deferred object&rsquo;s <code>then</code> function. The value of an await expression is the value of the argument passed to the callback registered on the awaited object&rsquo;s <code>then</code> function.
+</p>
+<pre class="code">
+function deferredXHR(url) {
+    var deferred = new Deferred();
+    var request = new XMLHttpRequest();
+    request.open('GET', url, true);
+    request.send();
+    request.onload = function() {
+        // call all callback's registered by deferred.then with 'request' as argument
+        deferred.callback(request);
+    };
+    request.onerror = function() {
+        // call all errbacks's registered by deferred.then with 'request' as argument
+        deferred.errback(request);
+    };
+    return deferred;
+}
+
+function deferredLoadRedirectUrl(redirectUrl) {
+    // redirectUrl contains another url
+    var urlXHR = await deferredXHR(redirectUrl);
+    var url = urlXHR.responseText;
+
+    var valueXHR = await deferredXHR(url);
+    // call all callback's registered by return value's 'then' with 'valueXHR.responseText' as argument
+    return valueXHR.responseText;
+}
+
+// alert the value of the redirected url
+deferredLoadRedirectUrl('http://lolcatz.com/redirect').then(function (value) { alert(value); });
+</pre>
+
+</div>
+<!-- SECTION [3843-5279] -->
+<a name="throwing_from_deferred_functions"></a><h2>Throwing From Deferred Functions</h2>
+<div class="level2">
+
+<p>
+ The <code>then</code> function on a deferred object takes two arguments. The first is the callback to be invoked if the deferred object completes normally. The second is the callback to be invoked if the deferred object completes erroneously. When a deferred function completes by throwing an exception the registered error callbacks are invoked with the thrown exception as the argument.
+</p>
+<pre class="code">
+// alert the value of the redirected url
+deferredLoadRedirectUrl('http://lolcatz.com/redirect').then(
+    function (value) { alert('Success: ' + value); },
+    function (err) { alert('Failure: ' + err); });
+</pre>
+
+<p>
+Similarly, when an awaited on object completes with an error - ie. its error callback is invoked - the result of the await expression is to throw the error value.
+</p>
+
+<p>
+TODO: cancelling a deferred function.
+</p>
+
+<p>
+Open Issue: chaining the return value of callbacks/errbacks.
+</p>
+
+</div>
+<!-- SECTION [5280-6198] -->
+<a name="deferred_pattern"></a><h2>Deferred Pattern</h2>
+<div class="level2">
+
+<p>
+ An object implementing the deferred pattern represents a computation which will complete at a later time. For example, the completion of an XHR. The deferred pattern contains two methods &lsquo;then&rsquo; and &lsquo;cancel&rsquo;:
+</p>
+
+<p>
+<strong>then</strong>: function(callback, errback)
+</p>
+
+<p>
+The &lsquo;then&rsquo; function adds a listener to the completion of the deferred object&rsquo;s computation. When the deferred object completes its computation it will notify all registered listeners. If the completed computation succeeds, then the &lsquo;callback&rsquo; entry of each listener will be invoked with the result of the completed computation as its argument. If the completed computation fails (throws an exception), then the &lsquo;errback&rsquo; entry of each listener will be invoked with the error of the completed computation as its argument. If the deferred object&rsquo;s computation has already completed then the &lsquo;then&rsquo; function will immediately call the &lsquo;callback&rsquo; or &lsquo;errback&rsquo; with the result of the computation.
+</p>
+
+<p>
+<strong>cancel</strong>: function()
+</p>
+
+<p>
+The &lsquo;cancel&rsquo; function attempts to cancel the computation in progress. If the computation has not completed, then all listeners will be notified as if the computation completed with a &lsquo;CancelledError&rsquo;. If the computation has already completed, then the &lsquo;cancel&rsquo; method throws an &lsquo;AlreadyCompletedError&rsquo;.
+</p>
+
+<p>
+TODO: Error names.
+</p>
+
+<p>
+TODO: Alternative Pattern: <strong>addCallback</strong>, <strong>addErrback</strong> and <strong>addCallbacks</strong> in lieu if <strong>then</strong>.
+</p>
+
+</div>
+<!-- SECTION [6199-7620] -->
+<a name="syntax"></a><h2>Syntax</h2>
+<div class="level2">
+
+<p>
+ Deferred functions adds &lsquo;await expression&rsquo; a new primary expression:
+</p>
+
+<p>
+TODO:
+</p>
+
+<p>
+Need to work the syntax. &lsquo;await&rsquo; as a keyword will likely not fly. An alternative is to add a modifier on the deferred function and make &lsquo;await&rsquo; a contextual keyword only within deferred functions.
+</p>
+<pre class="code">
+var f = function () { await(1); } // regular function. 'await' is an identifier.
+var df = deferred function () { await(1); } // deferred function. 'await is a keyword.
+</pre>
+
+<p>
+/TODO
+</p>
+<pre class="code">
+PrimaryExpression ::= ...
+                   AwaitExpression
+
+AwaitExpression ::= &quot;await&quot;  Expression
+</pre>
+
+<p>
+It is an error for an <code>AwaitExpression</code> to occur in the finally block of a try statement. It as an error for a function to be both a <code>deferred function</code> and a <a href="doku.php%3Fid=strawman:generators.html" class="wikilink1" title="strawman:generators" onclick="return svchk()" onkeypress="return svchk()">generator function</a>.
+</p>
+
+</div>
+<!-- SECTION [7621-8434] -->
+<a name="13.2_creating_deferred_function_objects"></a><h2>13.2 Creating Deferred Function Objects</h2>
+<div class="level2">
+
+<p>
+ A function containing an <code>AwaitExpression</code> is a <code>deferred function</code>. When creating a function object for a &lsquo;deferred function&rsquo; via 13.2, bullet 6 is replaced by the below.
+</p>
+
+</div>
+<!-- SECTION [8435-8665] -->
+<a name="13.2.1_deferred_function_call"></a><h2>13.2.1 Deferred Function [[Call]]</h2>
+<div class="level2">
+
+<p>
+ When the [[Call]] internal method for a Deferred Function object F is called with a this value and a list of arguments, the  following steps are taken: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let funcCtx be the result of establishing a new execution context for function code using the value of F&rsquo;s [[FormalParameters]] internal property, the passed arguments List args, and the this value as described in 10.4.3. </div>
+</li>
+<li class="level1"><div class="li"> Create a new object and let D be that object. Call D a &lsquo;Deferred Object&rsquo;.</div>
+<ol>
+<li class="level2"><div class="li"> Set the internal methods of D as described in 8.12.</div>
+</li>
+<li class="level2"><div class="li"> Set the [[Class]] internal property of D to &ldquo;Object&rdquo;</div>
+</li>
+<li class="level2"><div class="li"> Set the [[Prototype]] internal property of D to Object.prototype.</div>
+</li>
+<li class="level2"><div class="li"> Set the [[ExecutionContext]] of D to funcCtx. TODO: This includes variable environment. Does it also include, the function code and current IP? I&rsquo;m assuming yes, otherwise those need to be included in the state of a Deferred Object.</div>
+</li>
+<li class="level2"><div class="li"> Set the [[State]] internal property of D to &ldquo;newborn&rdquo;.</div>
+</li>
+<li class="level2"><div class="li"> Set the [[Listeners]] internal property of D to a new empty array.</div>
+</li>
+<li class="level2"><div class="li"> Set the [[Then]] internal property of D to as specified below.</div>
+</li>
+<li class="level2"><div class="li"> Set the [[Cancel]] internal property of D to as specified below.</div>
+</li>
+<li class="level2"><div class="li"> Set the [[Continue]] internal property of D to as specified below.</div>
+</li>
+<li class="level2"><div class="li"> Set the [[Callback]] internal property of D to as specified below.</div>
+</li>
+<li class="level2"><div class="li"> Set the [[Errback]] internal property of D to as specified below.</div>
+</li>
+<li class="level2"><div class="li"> Set the [[CreateCallback]] internal property of D to as specified below.</div>
+</li>
+<li class="level2"><div class="li"> Set the [[CreateErrback]] internal property of D to as specified below.</div>
+</li>
+<li class="level2"><div class="li"> Set D.then to the [[Then]] internal property of D.</div>
+</li>
+<li class="level2"><div class="li"> Set D.cancel to the [[Cancel]] internal property of D.</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Evaluate the [[Continue]] property of D.</div>
+</li>
+<li class="level1"><div class="li"> Return D. D is an object which satisfies the Deferred Pattern.</div>
+</li>
+</ol>
+
+</div>
+<!-- SECTION [8666-10546] -->
+<a name="deferred_object_continue"></a><h2>Deferred Object [[Continue]]</h2>
+<div class="level2">
+
+<p>
+ When the [[Continue]] internal method of deferred object D is called, the following steps are taken:
+</p>
+<ol>
+<li class="level1"><div class="li"> If the [[State]] property of D is &ldquo;running&rdquo;, or &ldquo;finished&rdquo; then throw.</div>
+</li>
+<li class="level1"><div class="li"> Set the [[State]] internal property of D to &ldquo;running&rdquo;.</div>
+</li>
+<li class="level1"><div class="li"> Set the current execution context to the [[Execution Context]] internal property of D.</div>
+</li>
+<li class="level1"><div class="li"> If the [[State]] property is &ldquo;newborn&rdquo;, then begin executing at the start of the Deferred Function.</div>
+</li>
+<li class="level1"><div class="li"> Otherwise the [[State]] property is &ldquo;suspended&rdquo;, continue execution after the point of suspension.</div>
+</li>
+<li class="level1"><div class="li"> Execution will continue until an await expression is encountered or the function terminates.</div>
+</li>
+<li class="level1"><div class="li"> If an await expression is encountered, evaluate the expression as below.</div>
+</li>
+<li class="level1"><div class="li"> Otherwise, if the function terminates with a (return, <code>value</code>, empty), then invoke the [[Callback]] internal method of D.</div>
+</li>
+<li class="level1"><div class="li"> Otherwise, the function terminates with a (throw, <code>value</code>, empty). Invoke the [[Errback]] internal method of D.</div>
+</li>
+<li class="level1"><div class="li"> Return (return, undefined, empty).</div>
+</li>
+</ol>
+
+</div>
+<!-- SECTION [10547-11615] -->
+<a name="await_expressions"></a><h2>Await Expressions</h2>
+<div class="level2">
+
+<p>
+ Await expressions may only appear in deferred functions, and can only be evaluated during the execution of a deferred object&rsquo;s [[Continue]] internal method.
+</p>
+
+<p>
+The production <code>AwaitExpression:</code> <strong>await</strong> <code>Expression</code> is evaluated as follows:
+</p>
+<ol>
+<li class="level1"><div class="li"> Let the deferred object of the [[Continue]] method be D.</div>
+</li>
+<li class="level1"><div class="li"> Let <code>e</code> be the result of evaluating <code>Expression</code>.</div>
+</li>
+<li class="level1"><div class="li"> Set the [[ExecutionContext]] internal property of D to the current execution context.</div>
+</li>
+<li class="level1"><div class="li"> Set the [[State]] internal property of D to &ldquo;suspended&rdquo;.</div>
+</li>
+<li class="level1"><div class="li"> Let <code>callback</code> be the result of invoking the [[CreateCallback]] internal method of D.</div>
+</li>
+<li class="level1"><div class="li"> Let <code>errback</code> be the result of invoking the [[CreateErrback]] internal method of D.</div>
+</li>
+<li class="level1"><div class="li"> Call the <code>then</code> method on <code>e</code> with arguments (<code>callback</code>, <code>errback</code>).</div>
+</li>
+<li class="level1"><div class="li"> Return (return, undefined, empty) from the currently executing [[Continue]] method.</div>
+</li>
+</ol>
+
+</div>
+<!-- SECTION [11616-12543] -->
+<a name="deferred_object_then"></a><h2>Deferred Object [[Then]]</h2>
+<div class="level2">
+
+<p>
+ then(callback, errback)
+</p>
+
+<p>
+errback is optional.
+</p>
+
+<p>
+If not completed:
+</p>
+
+<p>
+Adds callback to list of callbacks. Adds errback to list of errbacks.
+</p>
+
+<p>
+If completed with &lsquo;result&rsquo;:
+</p>
+
+<p>
+Invoke callback passing &lsquo;result&rsquo; as argument.
+</p>
+
+<p>
+If completed with &lsquo;error&rsquo;:
+</p>
+
+<p>
+Invoke errback passing &lsquo;error&rsquo; as argument.
+</p>
+
+</div>
+<!-- SECTION [12544-12868] -->
+<a name="deferred_object_cancel"></a><h2>Deferred Object [[Cancel]]</h2>
+<div class="level2">
+
+<p>
+ Completes the deferred object with a &lsquo;Cancelled&rsquo; error result.
+</p>
+
+</div>
+<!-- SECTION [12869-12972] -->
+<a name="deferred_object_callback"></a><h2>Deferred Object [[Callback]]</h2>
+<div class="level2">
+
+<p>
+ <a href="doku.php%3Fid=strawman:callback.html" class="wikilink2" title="strawman:callback" onclick="return svchk()" onkeypress="return svchk()">Callback</a>(result)
+</p>
+
+<p>
+Mark the deferred object as completed with value of &lsquo;result&rsquo;. For each callback, registered via then, invoke the callback passing &lsquo;result&rsquo; as the argument and discarding the result of the invokation.
+</p>
+
+</div>
+<!-- SECTION [12973-13238] -->
+<a name="deferred_object_errback"></a><h2>Deferred Object [[Errback]]</h2>
+<div class="level2">
+
+<p>
+ <a href="doku.php%3Fid=strawman:errback.html" class="wikilink2" title="strawman:errback" onclick="return svchk()" onkeypress="return svchk()">Errback</a>(error)
+</p>
+
+<p>
+Mark the deferred object as completed with error result of &lsquo;error&rsquo;. For each errback, registered via then, invoke the errback passing &lsquo;error&rsquo; as the argument and discarding the result.
+</p>
+
+</div>
+<!-- SECTION [13239-13486] -->
+<a name="deferred_object_createcallback"></a><h2>Deferred Object [[CreateCallback]]</h2>
+<div class="level2">
+
+<p>
+ Called from the expansion of await expressions.
+</p>
+
+<p>
+Returns a function which, when called continues the deferred function after an await. The argument to the return function accepts the result of the await expression.
+</p>
+
+<p>
+The result of <a href="doku.php%3Fid=strawman:createcallback.html" class="wikilink2" title="strawman:createcallback" onclick="return svchk()" onkeypress="return svchk()">CreateCallback</a> is passed as the first argument to the &lsquo;then&rsquo; method of the awaited on object.
+</p>
+
+</div>
+<!-- SECTION [13487-13864] -->
+<a name="deferred_object_createerrback"></a><h2>Deferred Object [[CreateErrback]]</h2>
+<div class="level2">
+
+<p>
+ Called from the expansion of await expressions.
+</p>
+
+<p>
+Returns a function which, when called continues the deferred function after an await by throwing an exception. The argument to the returned function accepts the value to throw.
+</p>
+
+<p>
+The result of <a href="doku.php%3Fid=strawman:errback.html" class="wikilink2" title="strawman:errback" onclick="return svchk()" onkeypress="return svchk()">Errback</a> is passed as the second argument to the &lsquo;then&rsquo; method of the awaited on object. 
+</p>
+
+</div>
+<!-- SECTION [13865-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/f/f828de44b1b120863153108e68ed4c4b.xhtml used -->
+</body>
+</html>

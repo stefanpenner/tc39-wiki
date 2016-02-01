@@ -1,0 +1,125 @@
+====== Program Units ======
+
+A proposed pragma for managing compilation units.
+
+===== Design Goals & Constraints =====
+
+  * Provide standard way of declaring dependencies between compilation units, to encourage a library ecosystem.
+  * Provide standard way of "loading a file once", both to speed loading and permit unique "one-time evaluation" of programs within a host environment
+  * Permit bundling of multiple compilation units into a single source file, such as by pre-combining source files on a busy web server
+
+
+
+
+===== Syntax =====
+
+The pragma has two forms: **unresolved** and **resolved**. 
+
+An unresolved unit pragma looks like this:
+
+<code>
+use unit UnitName "locator";
+</code>
+
+A resolved unit pragma looks like this:
+<code>
+unit UnitName { ... fragment* ... }
+</code>
+
+Where a fragment can be either of:
+
+  - A package block
+  - A directive (including, possibly, further unit pragmas)
+
+
+
+
+===== Semantics =====
+
+
+==== Requirements ====
+
+The proposal requires 3 additions to each execution context:
+  - A set of **resolved unit names** . This set is initially empty. 
+  - A **current top-level unit** name. This is initially a sentinel or ''null'' value.
+  - A table or mapping from unit names to saved snapshots of the top-level lexical environment, called the **saved top-ribs** table. This table is initially empty.
+
+
+
+==== Interpretation ====
+
+Like all pragmas, ''use unit'' is interpreted during the definition phase. 
+
+The semantics of an **unresolved** unit pragma is:
+  - If the //unit name// is present in the **resolved unit names** set, ignore the pragma.
+  - Attempt to open the //unit name// for input using implementation-specific interpretation of the //locator// (and the meaning of "input"). 
+  - If the unit cannot be opened using //locator// fail with a definition error.
+  - Read the the referenced unit as text.
+  - Proceed as though interpreting a **resolved** unit pragma, with the same //unit name//, containing the text of the referenced unit between the resolved pragma's braces.
+
+The semantics of a **resolved** unit pragma is:
+  - If the //unit name// is present in the **resolved unit names** set, ignore the pragma.
+  - Add the //unit name// into the **resolved unit names** set.
+  - Save the current value of the **current top-level unit**.
+  - If the **current top-level unit** is ''null'', set it to the //unit name//.
+  - Parse and define the text between the begin and end braces as a program fragment.
+  - Restore the **current top-level unit** to the saved value from step #3.
+  - Save a snapshot of the top level rib into the **saved top-rib table** under //unit name//.
+
+
+==== Interaction with type system ====
+
+While the definition phase is defining a type term, the **current top-level unit name** is captured in the defined type term, along with the non-top-level ribs. Thus for each type term there is a **captured top-level unit name**, as well as a chain of captured non-top-level ribs.
+
+While the verification phase is verifying a type term, type names are looked up in a type environment called the **completed environment** of the type. The **completed environment** of a type is formed by appending the captured non-top-level ribs of the type term to a term-specific top-level rib. The top-level rib used depends on the **captured top-level unit name**. If it is ''null'', the top-level rib used in the **completed environment** is the "current" top-level rib present at the start of the verification phase. If the **captured top-level unit name** is not ''null'', it is used as a key into the **saved top-level ribs** table to look up a top-level rib, and this saved rib is used instead.
+
+If normalization of a type term fails to resolve a type name within a **completed environment** formed from a saved top-level rib, the normalization failure is treated as a verification error. Otherwise the normalization failure is considered a temporary failure due to types that may not presently be defined, but may become defined in the future, after further code is loaded.
+
+The purpose of these rules is to give definite scope to forward references of type names in type terms, and permit the use of definite points in each unit at which unknown type names should be reported as verification errors. A mnemonic for the rules is: by the closing brace of a top-level unit, all the type names used inside it must be defined.
+
+For type terms without captured top-level unit names, type name resolution failures are delayed (possibly indefinitely) until the latest possible moment of the type term's requirements for use, during evaluation.
+
+
+
+==== TBD ====
+
+Reconcile any conflicts with [[clarification:multiple_compilation_units]].
+
+Decide if "open" and "read" have sufficiently concrete meanings, and/or whether we need language about encoding rules or similar business.
+
+The anonymous unit syntax ''unit { ... }'' may be sufficiently useful to support as well (for saying "this chunk of code should verify without undefined type names").
+
+===== Discussion =====
+
+==== Rationale ====
+
+It may be valid for a pre-processor to transform a source file by replacing all unresolved units with resolved units, as described by these rules. The validity of this transformation depends on whether the pre-processor resolves locators to units the same way a later execution context does. Part of the rationale for this proposal rests in formulating and 
+encouraging a standard strategy for such pre-processors.
+
+Earlier there was some thought that a unit name might imply the existence of a similarly-named package (perhaps a shortened version of a full unit path). This thinking unfortunately leads to an odd situation in which, upon resolving a unit, the definer is looking at such code:
+
+<code>
+unit Foo { 
+ unit Foo { ... }
+}
+</code>
+
+The modifications to the proposal required to support this are more complex than necessary. Rather than support such situations, this proposal is simpler and more orthogonal: packages and units are formally unrelated. The //defining// unit places "package Foo { ... }" around its code, and the unit //using// the defining unit employs a unit pragma, resulting in code for the definer that looks like this:
+
+<code>
+unit Foo {
+  package Foo {...}
+  package Bar { ... }
+  package AnythingElse { ... }
+  ...
+}
+</code>
+==== Implementation notes ====
+
+Implementations should support, but are not required to support, resolving locators that appear to be URLs.
+
+
+
+
+
+

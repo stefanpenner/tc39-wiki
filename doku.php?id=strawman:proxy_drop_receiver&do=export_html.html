@@ -1,0 +1,106 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:proxy_drop_receiver&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:proxy_drop_receiver&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:proxy_drop_receiver&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="dropping_receiver_from_get_and_set_traps"></a><h2>Dropping receiver from get and set traps</h2>
+<div class="level2">
+
+<p>
+ As noted by Sean Eagan on es-discuss, the <code>receiver</code> parameter to the <code>get</code> and <code>set</code> traps of Proxy handlers is not strictly necessary.
+</p>
+
+<p>
+The purpose of this parameter was to allow proxy handlers to refer to the original receiver of a property access/assignment operation, in the case where the proxy acts as a prototype:
+</p>
+<pre class="code javascript"><span class="co1">// according to the current Proxy spec:</span>
+<span class="kw2">var</span> p = Proxy.<span class="me1">create</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+  get: <span class="kw2">function</span><span class="br0">&#40;</span>receiver, <span class="kw3">name</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> ... <span class="br0">&#125;</span>
+<span class="br0">&#125;</span><span class="br0">&#41;</span>;
+<span class="kw2">var</span> o = Object.<span class="me1">create</span><span class="br0">&#40;</span>p<span class="br0">&#41;</span>;
+o.<span class="me1">foo</span>; <span class="co1">// triggers p's get trap with receiver === o and name === &quot;foo&quot;</span></pre>
+<p>
+However, according to the ES5 [[Get]] algorithm (section 8.12.3), this is not how inherited property lookup will occur. The algorithm calls [[GetProperty]] (section 8.12.2), which in turn walks the prototype chain to look up a <em>property descriptor</em>. This will trigger <code>p</code>&lsquo;s <code>getPropertyDescriptor</code> trap, not its <code>get</code> trap:
+</p>
+<pre class="code javascript"><span class="co1">// according to the current ES5 semantics:</span>
+<span class="kw2">var</span> p = Proxy.<span class="me1">create</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+  getPropertyDescriptor: <span class="kw2">function</span><span class="br0">&#40;</span><span class="kw3">name</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    ...
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span><span class="br0">&#41;</span>;
+<span class="kw2">var</span> o = Object.<span class="me1">create</span><span class="br0">&#40;</span>p<span class="br0">&#41;</span>;
+o.<span class="me1">foo</span>; <span class="co1">// triggers p's getPropertyDescriptor trap with name === &quot;foo&quot;</span></pre>
+<p>
+Under this semantics, the <code>get</code> trap will only ever be invoked for direct invocations on <code>p</code>, in which case <code>receiver</code> will always be equal to <code>p</code>. Pending the acceptance of the <a href="doku.php%3Fid=strawman:handler_access_to_proxy.html" class="wikilink1" title="strawman:handler_access_to_proxy" onclick="return svchk()" onkeypress="return svchk()">strawman</a> that adds a <code>proxy</code> argument to each trap, <code>receiver</code> becomes unnecessary.
+</p>
+
+<p>
+Note: the same reasoning applies to the <code>set</code> trap: ES5 [[Put]] (section 8.12.5) also calls [[GetProperty]] to find the appropriate property descriptor when it is not found on the receiver object itself.
+</p>
+
+<p>
+Note: it is still possible for a proxy handler to get hold of the receiver object when its proxy is used as a prototype, via the <code>this</code>-binding of a function data property or getter/setter:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> p = Proxy.<span class="me1">create</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+  getPropertyDescriptor: <span class="kw2">function</span><span class="br0">&#40;</span><span class="kw3">name</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> <span class="br0">&#123;</span> value: <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* this === receiver */</span> <span class="br0">&#125;</span> <span class="br0">&#125;</span>;
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span><span class="br0">&#41;</span>;
+<span class="kw2">var</span> o = Object.<span class="me1">create</span><span class="br0">&#40;</span>p<span class="br0">&#41;</span>;
+o.<span class="me1">foo</span><span class="br0">&#40;</span><span class="br0">&#41;</span>; <span class="co1">// calls the above nested function with this === o</span></pre>
+<p>
+The above also works for accessor properties.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x74%3B%26%23x6f%3B%26%23x6d%3B%26%23x76%3B%26%23x63%3B%26%23x2e%3B%26%23x62%3B%26%23x65%3B%26%23x40%3B%26%23x67%3B%26%23x6d%3B%26%23x61%3B%26%23x69%3B%26%23x6c%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x74;&#x6f;&#x6d;&#x76;&#x63;&#x2e;&#x62;&#x65;&#x40;&#x67;&#x6d;&#x61;&#x69;&#x6c;&#x2e;&#x63;&#x6f;&#x6d;">Tom Van Cutsem</a> 2011/05/04 11:55</em>
+</p>
+
+</div>
+<!-- SECTION [1-2282] -->
+<a name="consequences"></a><h2>Consequences</h2>
+<div class="level2">
+
+<p>
+ Dropping <code>receiver</code> as the first argument to <code>get</code> and <code>set</code> traps is not backwards-compatible with the current <acronym title="Application Programming Interface">API</acronym>. Under this strawman, the first argument to <code>get</code> and <code>set</code> would be <code>name</code> (a string), not <code>receiver</code> (an object/proxy).
+</p>
+
+</div>
+<!-- SECTION [2283-2561] -->
+<a name="references"></a><h2>References</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="https://mail.mozilla.org/pipermail/es-discuss/2011-April/013916.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2011-April/013916.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">discussion on es-discuss</a></div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [2562-2688] -->
+<a name="feedback"></a><h2>Feedback</h2>
+<div class="level2">
+
+</div>
+<!-- SECTION [2689-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/2/2d3c89ef8f926de541f8ef8d239ffaa6.xhtml used -->
+</body>
+</html>

@@ -1,0 +1,66 @@
+DO NOT EXPORT
+
+**Questions for approval:**
+  * does this proposal go far enough?
+  * is it too costly to execute for engines that want it?
+  * is it too costly to implement for engines that don't want it?
+  * what are the alternative designs?
+
+====== Security Wrappers ======
+
+The proposal entails adding one standard interface
+
+<code>
+interface SecurityPolicy { 
+    function checkGet(obj: Object, prop: String): SecurityPolicy;
+    function checkSet(obj: Object, prop: String, val: *): SecurityPolicy;
+    function checkMethodCall(obj: Object, meth: String, args: [*]): SecurityPolicy;
+    function checkCall(obj: Object, args: [*]): SecurityPolicy;
+}
+</code>
+
+and one host function
+
+  * ''native intrinsic function wrap.<T>(val: T, p: SecurityPolicy): T;''
+
+and two host object types
+
+  * ''native class SecurityException;''
+  * ''native class SecurityToken;''
+
+===== Wrapping accesses by policy =====
+
+Calling the function ''intrinsic::wrap(e, p)'' produces a value ''v'' with "the same" type as ''e'', but with slightly different behavior:
+
+  * If ''e'' is of primitive type, ''v'' is ''e'' (in the sense of ''==='': ''v'' is not a wrapper, it's the same primitive value ''e'' passed to ''intrinsic::wrap'').
+  * If ''e'' is a structure, function, or object type:
+    * A property-get expression ''v.x'' returns ''wrap(e.x, p.checkGet(e, "x"))''.
+    * A property-set expression ''v.x = y'' returns ''e.x = wrap(y, p.checkSet(e, "x", y))''.
+    * A method-call expression ''v.x(args)'' returns ''wrap(v.x(args), p.checkMethodCall(v, "x", args))''. 
+    * A function-call expression ''v(args)'' returns ''wrap(v(args), p.checkCall(v, args))''.
+
+If a security policy wishes to deny a call, it should throw ''SecurityException''.
+
+If a security policy wishes to alter the policy in force on subsequent accesses, it can return a different policy from the check; otherwise each check should ''return this''.
+
+===== Use of tokens and the mark stack =====
+
+One family of security checks that a ''SecurityPolicy'' might reasonably wish to perform involves inspecting the dynamic call context leading up to the check; this model is employed in the Java 2 security model. 
+
+We can reuse our [[proposals:stack inspection]] mechanism for this, but that mechanism permits user code to push //any// value they like onto the mark stack. To make this into a //security// device, we require an unforgeable value type, such that no user code can lie about some identifying aspect of its dynamic call context. This unforgeable type is ''SecurityToken''. 
+
+Every ''SecurityToken'' constructed by an executing instance of a host environment (a process, say) must compare non-equal (''!=='') to //every other// ''SecurityToken'' constructed by that instance.
+
+====== Discussion ======
+
+Re: the burden on implementations that don't need it:  we could state that implementations that do not need this (but wish to run generic library code written with security in mind) can allow ''intrinsic::wrap(e,p)'' to evaluate to just ''(p, e)'', and make it plain that methods of the security policy will never be called in such an implementation.  Implementations that do support the mechanism must support it fully.
+
+I doubt the implementation burden for implementations that do need this is very great, though it does seem to introduce privileged ''get'', ''set'', and ''call'' methods on objects that are in addition to the ones we already have.  I'm guessing that this will in fact require some extra bits or multiple tests on property getting and setting, and these will always be required (like the special unwrapping for ''==='').  Implementations already do much of this and manage to live with it, so it's probably OK.
+
+What I'm less sure about is whether this proposal solves a real problem, and I think before I can decide that I need to see some statements about precisely which problems it is intended to solve, and then at least it will be possible to discuss whether those are problems we should be solving and whether this proposal in fact solves them.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/09/22 04:47//
+
+Some discussion at the Sept 21 F2F lead us to the conclusion that this proposal is insufficient for the code-mixing use cases we have in mind on the web, so we have retracted it. Furthermore, the security issues facing browser providers are more pressing than the ES4 adoption timetable would permit; it is probably more appropriate to address the issue of portable security APIs at an auxiliary meeting among browser providers, in the nearer future, outside the ES4 standardization process.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/09/26 15:02//

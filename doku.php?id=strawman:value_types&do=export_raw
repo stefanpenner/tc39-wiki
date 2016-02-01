@@ -1,0 +1,140 @@
+====== Notes from October 2009 meeting ======
+
+This is a dump of my notes from the meeting, with Mark Miller, Jason Orendorff, Sam Ruby, and myself attending, unedited. I'll work to turn it into something more coherent. Comments here or in es-discuss welcome.  --- //[[brendan@mozilla.org|Brendan Eich]] 2010/01/28 19:26//
+
+Jason [[https://mail.mozilla.org/pipermail/es-discuss/2009-October/010068.html|posted]] to es-discuss on which operators should be overloadable. This post does not get into dispatch at all, and is helpful in addressing what I hope are less controversial aspects of the design of any likely value types proposal.  --- //[[brendan@mozilla.org|Brendan Eich]] 2010/05/26 22:45//
+
+===== Dispatch Designs =====
+
+Jason: three approaches:
+
+  - double dispatch
+  - declared multimethods
+  - dynamic multimethods
+
+trade-offs with double dispatch:
+
+  - compareTo vs. lt/gt/etc.
+  - implementor has to call reverse-method
+  - subclass/subtype requires specializing to narrower operand type first, even if right-hand
+
+Mark's problem with double dispatch:
+
+Suppose you have rational.js, written without knowledge of complex.js.
+Likewise for complex.js, written without knowledge of rational.js.
+No common type to widen their operands to can make this work.
+
+Claim is that a third module can compose Rational and Complex -- is this plausible?
+
+  * Alice imports rational.js and complex.js.
+  * Bob imports all three of rational.js, complex.js, ratplex.js.
+  * This should not affect Alice seeing failure trying to add a Rational to a Complex.
+
+Everyone agrees.
+
+[[https://mail.mozilla.org/pipermail/es-discuss/2009-June/009603.html|Christian Hansen's proposal]] violates this if Alice and Bob really share prototypes.
+Or in Christian's proposal, ratplex.js implies mutation of frozen prototypes.
+
+Brendan pointed to his es-discuss [[https://mail.mozilla.org/pipermail/es-discuss/2009-June/009613.html|reply]] to Christian that another way to do multimethods does not mutate types (prototypes), rather it uses a lexically scoped matrix mapping types to sets of methods. When you pass a first-class multimethod somewhere, it carries via lexical scope its matrix.
+
+Sam joins call, asks if we are looking to extend hardcoded ES semantics only if one or both operands are value types, or try to recast all operators in terms of value types?
+
+Not sure, see below after "literal syntax" section for more.
+
+Jason asks why unary operators need multimethod dispatch -- why not turn abs(x) into x.abs()? Sam points out that abs for Decimal would want to work differently from Math.abs today.
+
+Is Math.abs a counter-example? Not if lexical binding is the same, then it's mutating Math.abs. Whereas operators can be rewritten as lexically scoped functions.
+
+Jason: change Math.abs(x) to test
+
+  if (x is ValueType) return x.absMe();
+
+Mark: could split our approach and use this single-dispatch for unary operators and functions. But Sam wants Math.abs *and* Math.atan2 to work when Decimal is imported.
+
+Therefore Mark wants uniform mechanism over arity.
+
+Jason agrees and goes on to say this favors double dispatch in his view, as multimethods for unaries do not seem justified.
+
+Brendan: the implementor burden with double-dispatch still seems strictly higher than with multimethods, due to the obligation to call the reverse method (or not, as in Python), and the subtype specialization requiring reverse first.
+
+Another trade-off: wrappers are required to compose //a priori// types with double dispatch. This has costs in runtime, space, and possibly abstraction leaks (even [[strawman:proxies]] leaks via certain meta-programming APIs).
+
+
+===== Literal Syntax =====
+
+Waldemar's Units proposal:
+
+[[http://web.archive.org/web/20110216074628/http://www.mozilla.org/js/language/js20-2002-04/core/expressions.html#unit-expression]]
+
+Mark: no need for ParenListExpression String -- do want String or Number literal followed by unit suffix. The unit maps to a function called with a *string* value of the literal to the left.
+
+Mark: Does this brings up stage separation? Brendan: Is separate compilation enough? Agreement that separate compilation seems sufficient if we mangle unit suffix to function name in a well-known way.
+
+m mangles to MakeLiteral_m for Decimal
+
+Later, Mark suggests general operator_literal_m to match operator_add for +, operator_unary_minus for (-x).
+
+This reminded Brendan of ES4-era ''function +(a,b){...}'', etc. proposals, which allowed funarg refs (details in [[proposals:operators]] -- but the funarg form required the defunct ES4 ''intrinsic::+'' namespace).
+
+===== Hard Cases =====
+
+Is Number still special, or can it be recast in the extensible Value Type system?
+
+Not sure, Number may be special in some corner cases we don't care to make extensible.
+
+The user-visible Decimal cohort issue for === rears its head. Only -0 === 0 and NaN !== NaN are exceptions from identity. What about 1.1m and 1.10m? Sam wants to renegotiate the Sept. 2008 compromise on this point, since it did not cause Decimal to "stick" in ES5.
+
+Jason: === must be overloadable. Mark: no, Value Types mean === can do a recursive, cycle-tolerant structural comparison. Jason: not convinced that complexity is warranted.
+
+Mark would want == overloadable -- everyone agrees.
+
+Issue seems to be in part the lack of "egal" (SameValue) operator. But even if we add "egal", letting === be overridden may degrade real-world integrity. Right now people use === often to avoid implicit conversions or other such hook calls.
+
+Decision logic:
+
+<code javascript>
+if (=== is overloadable) {
+   The need for egal goes up;
+   if (egal is added (it is not overloadable))
+       {0, -0} and NaN issues go away;
+} else {
+   The need for egal goes down,
+   because === is well-defined as structural recursive etc. comparison;
+}
+</code>
+
+Value Type means "shallow frozen".
+
+Do membranes motivate overriding ===? If two membranes are equivalent? Mark's answer: they should be Value Types then, so === (and egal) do the right thing.
+
+The user-visible Decimal cohort issue again: does MakeLiteral_m("1.1") === MakeLiteral_m("1.10")? If === does structural recursive etc. comparison, the answer depends on how MakeLiteral_m works. It's up to the library author.
+
+Jason points out that !o does not call o.valueOf() -- ToBoolean(Object) -> true so !o -> false.
+
+Value Types changes things so !v  for Value Type instance v may need to be true, e.g. v = 0m.
+
+Brendan: Waldemar reserved ! and ===/!== to preserve logical equality.
+
+Jason: this brings up (a == b && typeof a == typeof b) <=> a === b. If == can be overridden with logical equality only on the "honor system", then this cannot be assumed.
+
+Sam: 0 == 0m but 0 !== 0m.
+
+
+===== Which Operators =====
+
+Detailed operators list precedents:
+
+  * Waldemar's JS2 [[http://www.mozilla.org/js/language/js20-2002-04/core/operators.html|operators]]
+  * ES4's [[proposals:operators]]
+
+Should array-like accessing be overloadable? Jason: this would be really nice.
+
+Mark: given x with [] overloaded, does x.foo turn into x['foo']? If yes, then deoptimizing; if no then a primal JS equivalence has been broken. Could we allow overloading x[v] only when v is a Value Type? This could avoid name conflicts. Also may help Names. Addresses age-old desire for an arbitrary value index (no forced stringification).
+
+De-facto DOMs want call overloading. Yikes.
+
+Defining operators is an open issue. ''function +(a, b) { ... }'' or something mangled.
+
+(After the meeting Mark suggested ''function operator+(a, b) { ... }'' for defining, ''operator+'' for referencing, and for literals, ''operator m''. No mangling, if you will -- new syntax!)
+
+Defining value types is an open issue. Sam previously mentioned C++ struct (also in Scala). We think any class in Harmony must by default make reference types, so something new would be needed for value types.

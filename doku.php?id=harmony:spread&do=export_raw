@@ -1,0 +1,162 @@
+**This proposal has progressed to the Draft ECMAScript 6 Specification, which is available for review here: [[harmony:specification_drafts]]. Any new issues relating to them should be filed as bugs at [[http://bugs.ecmascript.org]]. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.**
+
+
+
+
+===== Background =====
+
+  * [[harmony:rest parameters]]
+
+
+
+===== Requirements/Goals =====
+
+  * Replace an array or array-like actual parameter value with its elements as positional parameters
+  * Let ''new'' compose with a ''this''-free form of ''apply''
+  * Remove (some day, and in similar future methods) automagic (and half-the-time wrong) array flattening, e.g. in ''Array.prototype.concat''
+
+
+===== Sketch =====
+
+  * Let ''...'' be special prefix syntax called //spread//.
+  * The ''...'' syntax is legal only as a prefix to these list elements:
+    * an actual parameter //AssignmentExpression// within an //ArgumentList//
+    * an element initialiser //AssignmentExpression// within an //ElementList// in an //ArrayLiteral//
+  * Evaluate ''...'' //arg// in such a list by evaluating //arg// and then replacing it with //arg//''[0]'' through //arg//''[''//arg//''.length - 1]''.
+
+<code>
+// Expand an array as element-wise positional parameters
+function q(x, a, b, c) {
+    return a * x * x + b * x + c;
+}
+var a = read_triple();
+var x = read_value();
+print(q(x, ...a));
+
+// Compose new with this-free apply:
+var date_fields = read_date_fields(database);
+var d = new Date(...date_fields);
+</code>
+
+
+
+===== Syntax =====
+
+<code>
+ArgumentList :
+  AssignmentOrSpreadExpression
+  ArgumentList , AssignmentOrSpreadExpression
+
+AssignmentOrSpreadExpression :
+  ... AssignmentExpression
+  AssignmentExpression  
+
+</code>
+
+<code>
+ElementList :
+  Elisionopt AssignmentOrSpreadExpression
+  ElementList , Elisionopt AssignmentOrSpreadExpression
+</code>
+
+===== Semantics =====
+
+
+==== 11.2.4 Argument Lists ====
+
+
+The evaluation of an argument list produces a List of values (see 8.8).
+
+
+
+The production ArgumentList : AssignmentOrSpreadExpression is evaluated as follows:
+
+  - Return the result of evaluating AssignmentOrSpreadExpression
+
+
+
+The production AssignmentOrSpreadExpression : AssignmentExpression
+
+  - Let ref be the result of evaluating AssignmentExpression.
+  - Let arg be GetValue(ref).
+  - Return a List whose sole item is arg.
+
+
+
+The production AssignmentOrSpreadExpression : ... AssignmentExpression
+
+  - Let ref be the result of evaluating AssignmentExpression.
+  - Let argArray be GetValue(ref).
+  - If argArray is null or undefined, then
+    - Return an empty list
+  - If Type(argArray) is not Object, then throw a TypeError exception.
+  - Let len be the result of calling the <nowiki>[[Get]]</nowiki> internal method of argArray with argument "length".
+  - Let n be ToUint32(len).
+  - Let argList be an empty List.
+  - Let index be 0.
+  - Repeat while index < n
+    - Let indexName be ToString(index).
+    - Let nextArg be the result of calling the <nowiki>[[Get]]</nowiki> internal method of argArray with indexName as the argument.
+    - Append nextArg as the last element of argList.
+    - Set index to index + 1.
+  - Return argList
+
+
+
+The production ArgumentList : ArgumentList , AssignmentOrSpreadExpression is evaluated as follows:
+
+  - Let precedingArgs be the result of evaluating ArgumentList.
+  - Let ref be the result of evaluating AssignmentOrSpreadExpression.
+  - Let arg be GetValue(ref).
+  - Return a List whose length is the length of precedingArgs plus the length of arg and whose items are the items of precedingArgs, in order, followed by the items of arg, in order.
+
+
+==== 11.1.4 Array Initialiser ====
+
+...
+
+The production ElementList : Elisionopt AssignmentOrSpreadExpression is evaluated as follows:
+
+  - Let array be the result of creating a new object as if by the expression new Array() where Array is the standard built-in constructor with that name.
+  - Let pad be the result of evaluating Elision; if not present, use the numeric value zero.
+  - Let initList be the result of evaluating AssignmentOrSpreadExpression.
+  - Let index be pad.
+  - Iterate over the values in initList.
+    - Let indexName be ToString(index).
+    - Let value be the current value of initList.
+    - Call the <nowiki>[[DefineOwnProperty]]</nowiki> internal method of array with arguments indexName, the Property Descriptor { <nowiki>[[Value]]</nowiki>: value, <nowiki>[[Writable]]</nowiki>: true, <nowiki>[[Enumerable]]</nowiki>: true, <nowiki>[[Configurable]]</nowiki>: true}, and false.
+    - Set index to index + 1.
+  - Return array.
+
+
+The production ElementList : ElementList , Elisionopt AssignmentOrSpreadExpression is evaluated as follows:
+
+  - Let array be the result of evaluating ElementList.
+  - Let pad be the result of evaluating Elision; if not present, use the numeric value zero.
+  - Let initList be the result of evaluating AssignmentOrSpreadExpression.
+  - Let len be the result of calling the <nowiki>[[Get]]</nowiki> internal method of array with argument "length".
+  - Let index be pad + len.
+  - Iterate over the values in initList.
+    - Let indexName be ToString(index).
+    - Let value be the current value of initList.
+    - Call the <nowiki>[[DefineOwnProperty]]</nowiki> internal method of array with arguments indexName, the Property Descriptor { <nowiki>[[Value]]</nowiki>: value, <nowiki>[[Writable]]</nowiki>: true, <nowiki>[[Enumerable]]</nowiki>: true, <nowiki>[[Configurable]]</nowiki>: true}, and false.
+    - Set index to index + 1.
+  - Return array.
+
+...
+
+
+
+
+===== Discussion =====
+
+We should also support spread in [[harmony:destructuring]].
+
+<code javascript>
+let a = [0, 1, 2];
+let [x, ...xs] = a;
+// x = 0
+// xs = [1, 2]
+</code>
+ --- //[[arv@google.com|Erik Arvidsson]] 2010/11/04 00:30//
+

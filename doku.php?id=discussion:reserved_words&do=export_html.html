@@ -1,0 +1,98 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=discussion:reserved_words&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=discussion" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=discussion:reserved_words&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=discussion:reserved_words&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<p>
+(this is the discussion page for <a href="doku.php%3Fid=proposals:reserved_words.html" class="wikilink1" title="proposals:reserved_words" onclick="return svchk()" onkeypress="return svchk()">reserved_words</a>)
+</p>
+
+<a name="discussion"></a><h2>Discussion</h2>
+<div class="level2">
+
+<p>
+ At <a href="doku.php%3Fid=meetings:minutes_apr_21_2006.html" class="wikilink1" title="meetings:minutes_apr_21_2006" onclick="return svchk()" onkeypress="return svchk()">the Redmond meeting on April 21</a> we discussed doing away with reserved words, on (as I understand it) Douglas Crockford&rsquo;s recommendation (See <a href="http://www.crockford.com/javascript/recommend.html" class="urlextern" target="_blank" title="http://www.crockford.com/javascript/recommend.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://www.crockford.com/javascript/recommend.html</a>.)
+</p>
+
+<p>
+I don&rsquo;t think we should do that, but I don&rsquo;t want to change the minutes this late, so I&rsquo;ll argue the case here.  Consider this an anti-proposal, then.
+</p>
+
+<p>
+Crockford suggests:
+</p>
+<ul>
+<li class="level1"><div class="li"> Allowing reserved words without restriction in object initializers and following <code>.</code></div>
+</li>
+<li class="level1"><div class="li"> Allowing reserved words as function argument names, effectively shadowing the meaning of the keywords in that lexical scope (and we would probably extend this to <code>let</code> blocks and expressions as well, though not to <code>let</code>-as-<code>var</code>)</div>
+</li>
+<li class="level1"><div class="li"> Allowing reserved words as variable names inside functions, effectively shadowing the meaning of the keywords in that lexical scope</div>
+</li>
+</ul>
+
+<p>
+ I don&rsquo;t feel like arguing against the first point, it seems benign enough.
+</p>
+
+<p>
+The third point is probably unimplementable as it stands: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Consider two <code>var</code> statements that both define <code>var</code> as a variable.  By normal semantics both are legal (they define the same variable).  By the definition proposed, one must be illegal, since the other redefines the meaning of <code>var</code>.</div>
+</li>
+<li class="level1"><div class="li"> You have to parse an entire function before knowing the meaning of any phrase; redefining <code>if</code> anywhere means that anything that previously looked like <code>if</code> statements is actually function calls. </div>
+</li>
+</ul>
+
+<p>
+ These problems may be fixable (eg require that a keyword-redefining <code>var</code> is the first statement in the function body, say, though it seems like a crock).  If we assume it can be fixed, the counterarguments will be the same as for the second point.  If they can&rsquo;t be fixed, however, then the value of future-proofing by not reserving words is probably severely limited (most names are bound as local variables, not as parameters).
+</p>
+
+<p>
+As for the second point.  It certainly breaks <code>eval</code>, consider:
+</p>
+<pre class="code">
+  function f(var, s1) {
+    eval(s1)
+    eval(&quot;this.x=var&quot;)
+  }
+  f(37, &quot;var y=10&quot;)
+</pre>
+
+<p>
+If the parameter is not called <code>var</code> but something else then that is legal Edition 3 code.  However one of the two eval calls must fail if <code>var</code> is introduced as a parameter name: either the first string causes a syntax error (because <code>var</code> is visible as a variable name in the evaluated program) or the second does (because <code>var</code> is not visible).  Allowing functions to override keywords thus breaks modularity for eval.
+</p>
+
+<p>
+One could &ldquo;fix&rdquo; this by stating that programs should be compiled in one environment and evaluated in another (thus <code>var</code> is a reserved word always in a Program phrase passed to <code>eval</code>), which is fine, except it feels absurd that some lexical variables can&rsquo;t be accessed from the program while others can.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/05/19 01:28</em> 
+</p>
+
+</div>
+<!-- SECTION [65-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/3/3507aeb498150c89ce1266f3ea202ad1.xhtml used -->
+</body>
+</html>

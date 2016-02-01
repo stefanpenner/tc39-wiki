@@ -1,0 +1,115 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:line_terminator_normalization&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:line_terminator_normalization&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:line_terminator_normalization&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="motivation"></a><h1>Motivation</h1>
+<div class="level1">
+
+<p>
+ When using multiline string literals (either with triple-quotes or with backslash-newline), CRLF should only contribute one character to the string (so strlen works the same on all platforms, for example).  Also, backslash-CRLF needs to do the right thing on all platforms.
+</p>
+
+</div>
+<!-- SECTION [2-303] -->
+<a name="proposal"></a><h1>Proposal</h1>
+<div class="level1">
+
+<p>
+ We should interpret CRLF and CR in the source text as a single LF.  (The other line terminators, U+2028 and U+2029, are treated as in ES262.)
+</p>
+
+<p>
+Thus, the following is a string of length 1, consisting of a single U+000A character, regardless of platform: 
+</p>
+<pre class="code">
+&quot;&quot;&quot;
+&quot;&quot;&quot;
+</pre>
+
+<p>
+Similarly, the follow is always the empty string: 
+</p>
+<pre class="code">
+&quot;\
+&quot;
+</pre>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x63%3B%26%23x68%3B%26%23x72%3B%26%23x69%3B%26%23x73%3B%26%23x70%3B%26%23x69%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x63;&#x68;&#x72;&#x69;&#x73;&#x70;&#x69;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Chris Pine</a> 2007/05/23 06:10</em>
+</p>
+<pre class="code">
+&quot;\
+&quot;
+</pre>
+
+</div>
+<!-- SECTION [304-757] -->
+<a name="discussion"></a><h1>Discussion</h1>
+<div class="level1">
+
+<p>
+ It isn&rsquo;t possible to look at the text and determine what the language processor is going to do. That makes it a dangerous construction. I would like to make \ followed by whitespace be an error. 
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x40%3B%26%23x79%3B%26%23x61%3B%26%23x68%3B%26%23x6f%3B%26%23x6f%3B%26%23x2d%3B%26%23x69%3B%26%23x6e%3B%26%23x63%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x63;&#x72;&#x6f;&#x63;&#x6b;&#x40;&#x79;&#x61;&#x68;&#x6f;&#x6f;&#x2d;&#x69;&#x6e;&#x63;&#x2e;&#x63;&#x6f;&#x6d;">Douglas Crockford</a> 2007/05/24 04:53</em>
+</p>
+
+<p>
+As discussed in the May face to face, \ followed by horizontal whitespace followed by newline in a single- or double-quoted string is an error already. But \ followed by newline is an escaped newline, a continuation line indicator. That&rsquo;s a <em>de facto</em> standard we&rsquo;re codifying, required by web content.
+</p>
+
+<p>
+Does whitespace mean horizontal whitespace above?
+</p>
+
+<p>
+The discussion led to a proposal that \ followed by horizontal whitespace be treated as a continuation indicator (that the horizontal whitespace be discarded). We could do that in single- and double-quoted strings, but there&rsquo;s not much call for it AFAICT, and it makes for an interoperation hazard until the existing ES3 implementations go away.
+</p>
+
+<p>
+Triple-quoted strings don&rsquo;t want or need continuation marks, so \ followed by one horizontal whitespace character should mean just that character, and \ at end of line in a triple-quoted string should escape the newline.
+</p>
+
+<p>
+<acronym title="In other words">IOW</acronym> \ as literal-next when there isn&rsquo;t a special interpretation (as for <code>\u</code>) seems like the right rule to conserve. Adding more rules based on horizontal whitespace being hard to see probably just makes for confusion and interoperation problems.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2007/05/24 06:58</em>
+</p>
+
+<p>
+This discussion is resolved by the agreement that \ &lt;ws&gt; always translates to a &lt;ws&gt; character.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6a%3B%26%23x6f%3B%26%23x64%3B%26%23x79%3B%26%23x65%3B%26%23x72%3B%26%23x40%3B%26%23x61%3B%26%23x64%3B%26%23x6f%3B%26%23x62%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6a;&#x6f;&#x64;&#x79;&#x65;&#x72;&#x40;&#x61;&#x64;&#x6f;&#x62;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Jeff Dyer</a> 2007/05/25 04:01</em>
+</p>
+
+</div>
+<!-- SECTION [758-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/a/a75b7a46faea56131252adad6fcd7358.xhtml used -->
+</body>
+</html>

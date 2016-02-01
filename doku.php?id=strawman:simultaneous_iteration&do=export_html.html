@@ -1,0 +1,118 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:simultaneous_iteration&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:simultaneous_iteration&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:simultaneous_iteration&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:simultaneous_iteration&amp;do=export_html.html#example" class="toc">Example</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:simultaneous_iteration&amp;do=export_html.html#syntax" class="toc">Syntax</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:simultaneous_iteration&amp;do=export_html.html#semantics" class="toc">Semantics</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:simultaneous_iteration&amp;do=export_html.html#discussion" class="toc">Discussion</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:simultaneous_iteration&amp;do=export_html.html#bug" class="toc">Bug</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="example"></a><h1>Example</h1>
+<div class="level1">
+
+<p>
+ It&rsquo;s often necessary to loop over a few iterations at the same time. For example:
+</p>
+<pre class="code javascript"><span class="kw1">for</span> <span class="br0">&#40;</span>let <span class="kw3">name</span> of names, email of emails<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    console.<span class="me1">log</span><span class="br0">&#40;</span><span class="st0">'&quot;'</span> + <span class="kw3">name</span> + <span class="st0">'&quot; &lt;'</span> + email + <span class="st0">'&gt;'</span><span class="br0">&#41;</span>;
+<span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [1-229] -->
+<a name="syntax"></a><h1>Syntax</h1>
+<div class="level1">
+
+<p>
+ Change the syntax of <code>for</code>-<code>of</code> to take an <em>AssignmentExpression</em> on the righthand side of <code>of</code> instead of an <em>Expression</em>, and allow multiple comma-separated clauses:
+</p>
+<pre class="code">
+ForOfStatement ::= &quot;for&quot; &quot;(&quot; (&quot;let&quot;|&quot;var&quot;) LHSExpression &quot;of&quot; AssignmentExpression (&quot;,&quot; LHSExpression &quot;of&quot; AssignmentExpression)* &quot;)&quot; Statement
+</pre>
+
+</div>
+<!-- SECTION [230-590] -->
+<a name="semantics"></a><h1>Semantics</h1>
+<div class="level1">
+
+<p>
+ Evaluate each expression and save the result of each. For each iteration of the loop: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Call <code>.next()</code> on each iterator and save the result of each call.</div>
+</li>
+<li class="level1"><div class="li"> Bind each left-hand-side to each result of the <code>.next()</code> calls.</div>
+</li>
+</ul>
+
+<p>
+ The loop exits whenever an exception is thrown.
+</p>
+
+</div>
+<!-- SECTION [591-895] -->
+<a name="discussion"></a><h1>Discussion</h1>
+<div class="level1">
+
+<p>
+ Note that whatever iterator finishes first causes the loop to end.
+</p>
+
+<p>
+Alternatives: 
+</p>
+<ul>
+<li class="level1"><div class="li"> always call <code>.next()</code> on each but rethrow the first exception that was thrown.</div>
+</li>
+<li class="level1"><div class="li"> forcibly call <code>.close()</code> and swallow any exceptions</div>
+</li>
+</ul>
+
+<p>
+ Also note that this is expressible without custom syntax by using a <code>zip</code> iterator utility. But it&rsquo;s such a common phenomenon that it deserves syntax, and may be more efficient.
+</p>
+
+<p>
+This also generalizes to work in comprehension syntax, too.
+</p>
+
+</div>
+<!-- SECTION [896-1390] -->
+<a name="bug"></a><h1>Bug</h1>
+<div class="level1">
+
+<p>
+ See <a href="https://bugs.ecmascript.org/show_bug.cgi?id=1163" class="urlextern" target="_blank" title="https://bugs.ecmascript.org/show_bug.cgi?id=1163" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">bug 1163</a>. 
+</p>
+
+</div>
+<!-- SECTION [1391-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/6/651b381619c5d4fbec40ac70c325aac4.xhtml used -->
+</body>
+</html>

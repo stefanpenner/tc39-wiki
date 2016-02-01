@@ -1,0 +1,73 @@
+====== Rationale ======
+
+Programs often need to catch exceptions conditionally. In portable ES, they have to write it like so:
+<code javascript>
+try {
+    ...
+} catch (e) {
+    if (p(e)) {
+        ...
+    } else {
+        throw e;
+    }
+}
+</code>
+where ''p(e)'' is any predicate.
+
+SpiderMonkey supports a simple syntax for //catch guards//, which abstract over this pattern. With catch guards the above could be rewritten:
+<code javascript>
+try {
+    ...
+} catch (e if p(e)) {
+    ...
+}
+</code>
+This is simpler, more readable, and less error-prone (no forgetting to rethrow). It also means that if implementations choose to attach meta-data at ''throw'' points, there's no danger in overwriting this metadata by explicit rethrows.
+
+This strawman exploits the [[strawman:pattern matching]] extensions to generalize catch blocks even further to use //refutable pattern matching//. Each catch clause takes a pattern and attempts to match it; if the match fails, the catch clause is not chosen and exception propagates, either to the next clause or, if there aren't any more, to continue throwing.
+
+
+
+====== Syntax ======
+
+The syntax of ''try''-''catch''[-''finally''] statements changes to:
+
+<code javascript>
+TryStatement ::= "try" Block Finally
+              |  "try" Block Catch+ Finally?
+
+Catch        ::= "catch" "(" Pattern(true) ")" Block
+Finally      ::= "finally" Block
+</code>
+
+
+====== Restrictions ======
+
+A pattern is treated as a //catchall// if it is of the form ''"*"'' or ''Identifier''. It is a compile-time error for a catch clause with a catchall pattern to be followed by more clauses.
+
+
+====== Translation ======
+
+The translations in this section assume an invisible identifier ''$tmp'' that is not visible even to direct ''eval''.
+
+A statement of the form:
+<code javascript>
+try B0
+catch (P1) B1
+...
+catch (Pn) Bn
+[finally BB]
+</code>
+translates to:
+<code javascript>
+try B0
+catch ($tmp) {
+    case P1 B1
+    ...
+    case Pn Bn
+    default { throw $tmp; }
+}
+[finally BB]
+</code>
+
+where, of course, the resulting ''catch'' is ES5 ''catch'' (i.e., the translation doesn't recur!).

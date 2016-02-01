@@ -1,0 +1,116 @@
+====== Class-Defined Operators ======
+
+NOTE: this proposal is superseded by [[generic functions]]. It is no longer linked from [[proposals:proposals]].
+
+(Also see the [[discussion:operators|discussion page]] for this proposal)
+
+The proposal is based on [[http://www.mozilla.org/js/language/js20-2002-04/core/operators.html|Waldemar Horwat's proposal]]. Argument type based function dispatch has not been selected because this concept has not yet been introduced to ECMAScript in general. 
+
+
+===== Syntax =====
+
+A class definition may contain static methods that define how to interpret primitive operators applied to instances of the class.  Such a method is defined using the following syntax:
+
+<code javascript>
+  public static function <operator> (lhs : *, rhs : *) : *
+</code>
+
+where the term //operator// defines the operator to be redefined; it is a standard operator token from the list below, eg, ''+''.
+
+The following operators are overridable:
+
+Unary operators:
+  + - ~
+
+Binary operators:
+  + - * / % ^ < > <= >= == << >> >>> & | === != !==
+
+Compound assignment operators:
+  += -= *= /= %= ^= <<= >>= >>>= &= |=
+
+No other operators are overridable.
+
+Operator methods must be ''public'' and ''static''.
+
+Both argument types and result type can be defined more narrowly than ''*''.
+
+===== Dispatch =====
+
+The dispatch rule for ''E1 op E2'':
+  * Evaluate E1 yielding a non-reference value V1
+  * Evaluate E2 yielding a non-reference value V2
+  * If the concrete class of V1 has a static operator function ''op'', call it on V1 and V2.
+  * Else if the concrete class of V2 has a static operator function ''op'', call it on V1 and V2.
+  * Else call ''intrinsic::op(V1,V2)''
+
+The dispatch rule for ''E1 op= E2'' is:
+  * Evaluate E1 yielding a reference value R1
+  * Read the reference of R1 yielding a non-reference value V1
+  * Evaluate E2 yielding a non-reference value V2
+  * If the concrete class of V1 has a static operator function ''op='', call it on V1 and V2, yielding a value V
+  * Else call ''intrinsic::op(V1,V2)'' yielding a value V
+  * Write the reference R1 with the value V
+
+The dispatch rule for ''op E'' is:
+  * Evaluate E yielding a non-reference value V
+  * If the concrete class of V has a static operator function ''op'', call it on V and null
+  * Else call ''intrinsic::op(V,null)''
+
+
+===== Result =====
+
+The return value from the operator method becomes the result of the operation.
+
+
+
+===== Type checking =====
+
+The arguments and result types are subject to static and dynamic type checking, as appropriate.
+
+//Note//: This can sometimes lead to surprising results; this program will fail:
+
+<code>
+    class C {
+        public static operator +(a:C, b:Number): Number { ... }
+    }
+    + new C;
+</code>
+
+The application of unary ''+'' to an instance of ''C'' will call the operator function with ''null'' for the second argument; however, Number is a non-nullable type, so this is a type error.  One would wish to use ''Number?'' for the type of the second argument.
+
+
+===== Operator substitution =====
+
+It is possible to perform a partial override of comparison operators <, >, %%<=%%, >=, ==, ===, !=, and !==.  If it is possible to substitute the override of a comparison operator with the Boolean negation of the result of an overridden operator, this operation will be performed.
+
+^ If this operator is not defined ^ But this operator is defined ^ Perform this operation ^
+| < | >= | ! >= |
+| > | %%<=%% | ! %%<=%% |
+| %%<=%% | > | ! > |
+| >= | < | ! < |
+| != | == | ! == |
+| !== | === | ! === |
+| == | != | ! != |
+| === | !== | ! !== |
+
+===== Default behavior =====
+
+If the override function decides not to implement functionality for certain argument types, default behavior can be invoked by calling the predefined operator override in the [[intrinsic namespace|intrinsic namespace]].
+
+
+===== Inheritence and overriding =====
+
+User-defined operators are not inheritable along the nominal type hierarchy. There is only the simple dispatch rule above. If an operator is not declared on the concrete types involved in an expression, the intrinsic operator is called.
+
+===== Examples =====
+
+  class A 
+  {
+    public static function +(lhs: Object, rhs: Object):Object { ... }
+    public static function /(lhs: Object, rhs: Object):Object { ... }
+  }
+  var a:A = new A()
+  a / 5  //   A::/ (a, 5)
+  5 / a  //   A::/ (5, a)
+  a + 5  //   A::+ (a, 5)
+  +a     //   A::+ (a, null)

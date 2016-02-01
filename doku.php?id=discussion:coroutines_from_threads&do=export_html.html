@@ -1,0 +1,224 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=discussion:coroutines_from_threads&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=discussion" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=discussion:coroutines_from_threads&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=discussion:coroutines_from_threads&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<p>
+This page contains a sketch of how to implement coroutines (generators) using threads in Concurrent ML (CML). The code repository contains a much more complete and up-to-date version, so this is just here for historical purposes.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x64%3B%26%23x68%3B%26%23x65%3B%26%23x72%3B%26%23x6d%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x63%3B%26%23x63%3B%26%23x73%3B%26%23x2e%3B%26%23x6e%3B%26%23x65%3B%26%23x75%3B%26%23x2e%3B%26%23x65%3B%26%23x64%3B%26%23x75%3B" class="mail" title="&#x64;&#x68;&#x65;&#x72;&#x6d;&#x61;&#x6e;&#x40;&#x63;&#x63;&#x73;&#x2e;&#x6e;&#x65;&#x75;&#x2e;&#x65;&#x64;&#x75;">Dave Herman</a> 2006/10/28 17:28</em>
+</p>
+
+<a name="code_sketch_obsolete"></a><h1>Code sketch (obsolete)</h1>
+<div class="level1">
+
+<p>
+ Here&rsquo;s a relatively simple implementation of generators using threads.
+</p>
+
+<p>
+The first module, <strong>value.sml</strong>, defines some simple datatypes for modeling basic ES values and exceptions. This would be beefed up in the full version, of course.
+</p>
+<pre class="code sml">structure Value =
+    struct
+
+        (* sufficient for the purposes of this example *)
+        datatype value = Undefined
+                       | Null
+                       | String of string
+                       | Number of int
+                       | StopIteration
+
+        (* we model ES exceptions as ML exceptions *)
+        exception Thrown of value
+
+        fun print x =
+            let val s = case x of
+                             Undefined =&gt; &quot;undefined&quot;
+                           | Null =&gt; &quot;null&quot;
+                           | String s =&gt; s
+                           | Number i =&gt; Int.toString i
+                           | StopIteration =&gt; &quot;StopIteration&quot;
+            in
+                TextIO.print(s);
+                TextIO.print(&quot;\n&quot;)
+            end
+
+    end
+</pre>
+<p>
+The next module, <strong>generator.sml</strong>, models generators. The <code>signal</code> datatype models different kinds of messages sent back and forth between a generator and its client. The datatype <code>generator</code> models the actual internal data structure of a generator, which in this case is just a <em>channel</em> of communication between the generator and the client. The symmetric <code>send</code> and <code>recv</code> operations are CML primitives that block on a channel: <code>send</code> waits for a listener to receive the data it sends, and <code>recv</code> waits to listen for a sender&rsquo;s information.
+</p>
+
+<p>
+The <code>spawnGenerator</code> function creates a new generator channel and spawns a separate thread for the generator code to run in. I probably got the details of the actual protocol wrong, but I think this gives the basic idea.
+</p>
+
+<p>
+The three communication operations <code>yieldFromGen</code>, <code>sendToGen</code>, and <code>throwToGen</code> force generators to be synchronous: they each send a signal from one coroutine to another, and then block waiting to receive a new signal.
+</p>
+<pre class="code sml">structure Generator =
+    struct
+        open CML
+        open Value
+
+        datatype signal = Yield of value (* client &lt;=  producer *)
+                        | Throw of value (* client &lt;=&gt; producer *)
+                        | Send of value  (* client  =&gt; producer *)
+                        | Close          (* client  =&gt; producer *)
+
+        (* internal error: signal sent in the wrong direction *)
+        exception WrongDirection
+
+        type generator = signal chan
+
+        fun makeGenerator () : generator = channel ()
+
+        val spawnGenerator : (generator -&gt; unit) -&gt; generator =
+            fn body =&gt;
+                let val g = makeGenerator ()
+                    val thread = fn () =&gt;
+                                 (
+                                     recv g; (* XXX: who receives first? *)
+                                     (body (g); send (g, Throw StopIteration))
+                                         handle Thrown v =&gt; send (g, Throw v) (* XXX: then throw StopIteration? *)
+                                 )
+                in
+                    spawn (thread);
+                    g
+                end
+
+        (* implements yield v *)
+        fun yieldFromGen (g, v) =
+        (
+            send (g, Yield v);
+            case (recv g) of
+                 Send v =&gt; v
+               | Throw e =&gt; raise (Thrown e)
+               | _ =&gt; raise WrongDirection
+        )
+
+        (* implements gen.send(v) *)
+        fun sendToGen (g, v) =
+        (
+            send (g, Send v);
+            case (recv g) of
+                 Yield v' =&gt; v'
+               | Throw e =&gt; raise (Thrown e)
+               | _ =&gt; raise WrongDirection
+        )
+
+        (* implements gen.throw(v) *)
+        fun throwToGen (g, v) =
+        (
+            send (g, Throw v);
+            case (recv g) of
+                 Yield v' =&gt; v'
+               | Throw e =&gt; raise (Thrown e)
+               | _ =&gt; raise WrongDirection
+        )
+
+    end
+</pre>
+<p>
+Here&rsquo;s the Fibonacci example from <a href="doku.php%3Fid=proposals:iterators_and_generators.html" class="wikilink1" title="proposals:iterators_and_generators" onclick="return svchk()" onkeypress="return svchk()">iterators and generators</a>.
+</p>
+<pre class="code sml">structure Main =
+    struct
+        open CML       (* Concurrent ML primitives *)
+        open Value     (* data model for ES values *)
+        open Generator (* generator operations     *)
+
+        fun fib () =
+            spawnGenerator (fn (g) =&gt;
+                                let val rec fib = fn (i,j) =&gt;
+                                                  (
+                                                      yieldFromGen (g, Number i);
+                                                      fib (j, i+j)
+                                                  )
+                                in
+                                    fib (0,1)
+                                end)
+
+        fun main () =
+            RunCML.doit(fn () =&gt;
+                            let val g = fib()
+                                val rec loop = fn i =&gt;
+                                                   if i &lt; 10
+                                                   then (print (sendToGen (g, Undefined));
+                                                         loop (i+1))
+                                                   else ()
+                            in
+                                loop 0
+                            end,
+                        NONE)
+
+    end
+</pre>
+<p>
+To actually run the code, put each of the above files into the same directory, and then create one more file in that directory called <strong>generator_example.cm</strong> with the contents:
+</p>
+<pre class="code sml">Library
+	structure Main
+        structure Value
+        structure Generator
+is
+	main.sml
+        value.sml
+        generator.sml
+	$cml/cml.cm
+	$/basis.cm
+</pre>
+<p>
+Then you can try it out:
+</p>
+<pre class="code sml">% sml.bat cml_test.cm
+Standard ML of New Jersey v110.59 [built: Mon Jun 05 13:26:49 2006]
+[scanning cml_test.cm]
+[parsing (cml_test.cm):cml_test.sml]
+[library $cml/cml.cm is stable]
+[library $cml/cml-internal.cm is stable]
+[library $cml/core-cml.cm is stable]
+[library $SMLNJ-BASIS/basis.cm is stable]
+- Main.main();
+[autoloading]
+[autoloading done]
+0
+1
+1
+2
+3
+5
+8
+13
+21
+34
+val it = 0wx1 : Word32.word
+</pre>
+</div>
+<!-- SECTION [295-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/d/d505a8e20c56eb7968a44599abee5a5f.xhtml used -->
+</body>
+</html>

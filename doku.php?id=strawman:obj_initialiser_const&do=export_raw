@@ -1,0 +1,98 @@
+====== Other Object Initialiser Property Modifiers ======
+
+//This is one of several related [[strawman:object_initialiser_extensions|Object Initialiser Extensions]].//\\
+//This extension builds upon concepts introduced in [[strawman:Obj_initialiser_meta|Object Initialiser Meta Properties]] and [[strawman:Obj_initialiser_methods|Method Properties]].//
+
+Given the proposed Meta properties and method properties  object literal extensions it is reasonable to imagine easily writing a factory function that creates, for example, fixed sized objects that have array-like behavior plus some additional methods. For example: 
+<code javascript>
+function tripleFactory(a,b,c) {
+  return {
+	<proto: Array.prototype, sealed>,
+	0: a,
+	1: b,
+	2: c,
+	length: 3,
+	method toString(){
+		return "triple("+this[0]+","+this[1]+","+this[2]+")"},
+	method sum(){return this[0]+this[1]+this[2]} 
+	}
+  }
+</code>
+
+Using the ''**method**'' keyword ensures that the ''toString'' and ''sum'' methods are not enumerable; however, there are still at least two problems with the above definition. First such object should always have three numerically indexed properties and because the object is sealed it is indeed the case that none can be added or deleted. However, the value of the ''length'' property could still be externally modified to be some value other than 3. The other problem is that if a for-in statement is used to enumerate the properties of the object, the ''length'' property will show up in the enumeration. Without additional extensions, these problems can only be addressed by making explicit calls to Object reflection methods and that only works if sealed is not specified as a meta property.
+
+These problems can be resolved by usiing the ''**var**'' and ''**const**'' keyword when defining the ''length'' property. For example:
+
+<code javascript>
+function tripleFactory(a,b,c) {
+  return {
+	<proto: Array.prototype, sealed>,
+	0: a,
+	1: b,
+	2: c,
+	var length const: 3,
+	method toString(){
+		return "triple("+this[0]+","+this[1]+","+this[2]+")"},
+	method sum(){return this[0]+this[1]+this[2]} 
+	}
+  }
+</code>
+
+When a property is preceded by the keyword ''**var**'', the property is non-enumerable.  (Perhaps it may be useful to thing of "var" as meaning "instance variable" in this context.) ''**var**'' can also precede ''**get**''/''**set**'' property definitions to declare accessor properties that are non-enumerable.  ''**var**'' may not preceded ''**method**'' as ''**method**'' already implies non-enumerable.
+
+When the colon  of  a //PropertyAssignment// is preceded by the keyword ''**const**'', the property is a non-writable data property  whose value is the value of the expression part of the a //PropertyAssignment//.
+
+In the above example, all of the properties are non-configurable because it used the ''**sealed**'' meta-property. In some situation it may be desirable to only make some of the properties defined in an object initialiser non-configurable.  This is accomplished by  prefixing individual //PropertyAssignments// with the ''**sealed**'' keyword.  For example:
+
+<code javascript>
+function tripleFactory(a,b,c) {
+  return {
+	<proto: Array.prototype>,
+	0: a,
+	1: b,
+	2: c,
+	sealed var length: 3,
+	sealed method toString(){
+		return "triple("+this[0]+","+this[1]+","+this[2]+")"},
+	sealed method sum(){return this[0]+this[1]+this[2]} 
+	}
+  }
+</code>
+
+Note that the declarations of ''length'', ''toString'', and ''sum'' are preceded by ''**sealed**'' and that ''**sealed**'' is not included as a meta-property. Thus only ''length'' will be non-configurable. 
+
+''**var**'', ''**const**'', and ''**sealed**'' keywords in a //PropertyAssignment// correspond respective to the enumerable, writable, and configurable property attributes.  They can be combined orthogonally to produce all possible attribute combinations:
+
+<code javascript>
+  return {
+	p7: 7,                 //configurable: true,  enumerable: true,  writable: true
+	p6 const:  6,           //configurable: true,  enumerable: true,  writable: false
+	var p5: 5,             //configurable: true,  enumerable: false, writable: true
+	var p4 const: 4,       //configurable: true,  enumerable: false, writable: false
+	sealed p3: 3,          //configurable: false, enumerable: true,  writable: true
+	sealed p2 const: 2,    //configurable: false, enumerable: true,  writable: false
+	sealed var p1: 1,      //configurable: false, enumerable: false, writable: true
+	sealed var p0 const: 0,//configurable: false, enumerable: false, writable: false
+
+        method m4 () {},       //configurable: true,  enumerable: false, writable: false
+        sealed method m0 () {},//configurable: false,  enumerable: false, writable: false
+
+	set a3 (v) {},          //configurable: true,  enumerable: true
+	var get a2 () {},       //configurable: true,  enumerable: false
+	sealed put a1 (v) {},   //configurable: false, enumerable: true	
+	sealed var get a2 () {} //configurable: false, enumerable: false
+  }
+</code>
+
+
+===== SYNTAX =====
+//PropertyAssignment// :\\
+**sealed**<sub>opt</sub> //PropertyName// **const**<sub>opt</sub> **:** //AssignmentExpression//\\
+**sealed**<sub>opt</sub> **var** //PropertyName// **const**<sub>opt</sub> **:** //AssignmentExpression//\\
+**sealed**<sub>opt</sub> **get** //PropertyName// **( ) {** //FunctionBody// **}**\\
+**sealed**<sub>opt</sub> **set** //PropertyName// **(** //PropertySetParameterList// **) {** //FunctionBody// **}**\\
+**sealed**<sub>opt</sub> **method** //PropertyName// **(** //FormalParameterListopt// **) {** //FunctionBody// **}**
+
+----
+ --- //[[Allen@Wirfs-Brock|Allen Wirfs-Brock]] 2011/03/08 02:47//
+Update based upon feedback from Sept. 2010 TC39 meeting

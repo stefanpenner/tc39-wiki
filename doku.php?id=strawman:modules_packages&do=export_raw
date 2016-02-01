@@ -1,0 +1,216 @@
+====== Introduction ======
+
+This proposal describes a manner of packaging and referring to ECMAScript code. It is intended to satisfy the //Uniform location and retrieval// goal of [[strawman:modules_emaker_style]].
+
+The goals of this proposal are similar to what [[http://www.osgi.org/|OSGi]] tries to do for Java. However, we have deliberately narrowed the scope (//e.g.//, not including a spec for "services") and have taken advantage of ECMAScript's dynamic nature (functions are first class values, so there is no need for the ''ClassLoader'' namespace hygiene worries of OSGi).
+
+We assume that the open exchange format for ECMAScript programs is always textual code, not some compiled form. That said, our proposal imagines packages as a //target// of any compilation steps that a developer may use; a package is not a "tarball of source code with a Makefile" that contains all information required to reproduce its runnable form.
+
+====== Goals ======
+
+__Security.__ We must permit the construction of unambiguous references between code such that important correctness properties can be maintained.
+
+__No global namespace.__ Our standard must allow decentralized naming and identification of code.
+
+__Accommodate simple cases.__ We should be able to trivially support the common, casual cases such as linking directly to some code by specifying its URL; linking to files on a local filesystem by specifying their full location; or fetching code from a ''PATH'' variable.
+
+__Zero-admin provisioning.__ Since ECMAScript is primarily deployed within Web browsers, and often in consumer devices, the mechanism for locating and fetching code must be able to reproduce a predictable software environment in the absence of a local "system administrator" in charge of software installation. This property also helps with the reliability -- and, ultimately, security -- of the deployed software.
+
+====== Proposal ======
+
+Note that many implementation details are deliberately left out of this proposal, //e.g.//, ZIP //vs.// ''tar.gz''; format of ancillary metadata files; whether some fields are required or optional; choice of crypto algorithms; //etc.// Our intent is to agree on a general direction before spending time nailing down these details.
+
+===== Packages =====
+
+A //package// is an archive file containing:
+
+  * A file ''package.json'' containing metadata and a catalog;
+  * A file ''hashes.json'' containing cryptographic hashes;
+  * A file ''signatures.json'' containing digital signatures; and
+  * Zero or more content files, arranged a directory hierarchy.
+
+The following shows a simple package containing some ECMAScript code:
+
+{{strawman:packagecontents_003.png}}
+
+===== Secure package references =====
+
+A //secure package reference// is a piece of data used to securely refer to a remote package. In [[http://www.skyhunter.com/marcs/petnames/IntroPetNames.html|Marc Stiegler]]'s terminology, it is a //key// -- securely unique and decentralized, but not memorable to humans. A secure reference consists of the following components
+
+  * Zero or more URLs at which the package file may be retrieved by HTTP or HTTPS;
+  * An optional cryptographic hash representing the root checksum of the package (to be described below); and
+  * Signature verification key fingerprints for zero or more signers who must have signed the contents of the package (according to a scheme described below).
+
+An example of a secure package reference represented in JSON is as follows:
+
+<code javascript>{
+  locations: [
+    'https://foosoft.example.com/releases/stringUtils/stringUtils-1.3.7a.zip',
+    'http://syndicatedpackages.example.org/df2a391b3ddfab49.zip'
+  ],
+  signers: [
+    // Fingerprint for Alice's public signature verification key
+    '74:63:08:82:95:75:e1:7c:33:31:bb:cb:00:c0:89:8b',
+    // Fingerprint for Bob's public signature verification key
+    '22:c3:68:3b:09:41:36:c3:39:83:91:ae:71:b2:0f:04'
+  ],
+  hash: {
+    algorithm: 'sha1',
+    value: 'd111175e022c19f447895ad6b72ff259552d1b38'
+  }
+}</code>
+
+===== Catalogs =====
+
+A //catalog// is a structure that maps //local names// to secure package references. The local names are unique in the context of a given catalog, and are therefore //lambda names// in [[http://www.skyhunter.com/marcs/petnames/IntroPetNames.html|Marc Stiegler]]'s terminology.
+
+As a simple example in JSON, imagine that catalog ''X'' contains:
+
+<code javascript>{
+  names: {
+    fooStrUtils: /* a secure package reference */,
+    barMailUtils: /* a secure package reference */
+  }
+}</code>
+
+where the reader can substitute examples based on the previous section for the secure package references. In this catalog, there is only one occurrence of ''fooStrUtils'' and ''barMailUtils'', though these names may be used without restriction by other catalogs to refer to the same or different secure package references.
+
+Catalogs may refer to other catalogs, in which case the referring
+catalog imports the names from the referred catalog. (We imagine for
+the time being that catalogs are //themselves// stored //as//
+packages; we will elaborate on this below.) We may extend ''X'' to
+contain:
+
+<code javascript>{
+  names: {
+    fooStrUtils: /* a secure package reference */,
+    barMailUtils: /* a secure package reference */
+  },
+  direct: [
+    /* a secure package reference to catalog Y */
+  ],
+  namespaced: {
+    "theZ": /* a secure package reference to catalog Z */
+  }
+}</code>
+
+where catalog ''Y'' contains:
+
+<code javascript>{
+  names: {
+    fooStrUtils: /* a secure package reference */,
+    otherUtils: /* a secure package reference */
+  }
+}</code>
+
+and catalog ''Z'' contains:
+
+<code javascript>{
+  names: {
+    fooStrUtils: /* a secure package reference */
+  }
+}</code>
+
+Catalog ''Y'' will cause catalog ''X'' to fail to validate, since it multiply defines the symbol ''fooStrUtils''. However, the similar symbol in catalog ''Z'' will be known to a user of ''X'' as ''theZ/fooStrUtils'' and will hence not be ambiguous.
+
+The exchange format for catalogs is as a package file, allowing secure package references to be used to link them. We will describe this further below.
+
+We imagine that much of the work of cataloging will be accomplished by dedicated librarian sites, analogously to Linux RPM repositories and CPAN.
+
+===== The package.json file =====
+
+The ''package.json'' file contains two components:
+
+  * Metadata describing the package; and
+  * The root catalog for the package, which might refer to other catalogs.
+
+The package's root catalog defines the short names whereby the package
+can refer to other packages. The simplest form of this is a direct
+reference to some external catalog. For example, a minimal catalog
+would be one that refers insecurely to a CPAN-like curated repository,
+for example:
+
+<code javascript>{ direct: [ { locations: [ 'http://cjan.example.com/catalog.zip' ] } ] }</code>
+
+===== The hashes.json file =====
+
+The ''hashes.json'' file contains a Merkle tree of hashes of the
+entire tree of the package contents, but //not// including
+''hashes.json'' and ''signatures.json''.
+
+This design allows a platform to verify the checksum for a specific
+file from a package without having to compute a hash over the entire
+package.
+
+===== The signatures.json file =====
+
+The ''signatures.json'' file contains a list of signatures. Each of
+these is generated when a principal signs the root checksum from
+''hashes.json'' with their private key.
+
+===== Physical format of catalogs =====
+
+Catalogs are distributed as packages containing only ''package.json'', ''hashes.json'' and ''signatures.json''. The actual catalog data is stored in the catalog section of the ''package.json'' file. As a corollary, the catalog of any package can be used by another package by specifying that package //as// the catalog.
+
+**TODO** Can a secure package reference refer to a file within the current package? If so, can it be used to "refactor" catalogs so that the ''package.json'' file does not get too big?
+
+===== Use in import =====
+
+The ''import'' special form, as described in
+[[strawman:modules_emaker_style]], when invoked from within a package,
+refers to files within that package relative to the current
+module. For example, the following:
+
+<code javascript>import '../baz/B'</code>
+
+imports a module ''../baz/B.js'' from the current package in a path //relative// to the current module.
+
+We augment ''import'' to accept a second argument representing the package from which an imported module is retrieved. The first argument is therefore the path in the package's archive at which to retrieve the module. In its most basic form, the programmer specifies a secure package reference as a direct JSON value in the ''import'':
+
+<code javascript>import 'foo/bar/A' from {
+  locations: [
+    'https://foosoft.example.com/releases/stringUtils/stringUtils-1.3.7a.zip',
+    'http://syndicatedpackages.example.org/df2a391b3ddfab49.zip'
+  ],
+  signers: [
+   '74:63:08:82:95:75:e1:7c:33:31:bb:cb:00:c0:89:8b',
+   '22:c3:68:3b:09:41:36:c3:39:83:91:ae:71:b2:0f:04'
+  ],
+  checksum: {
+    algorithm: 'sha1',
+    value: 'd111175e022c19f447895ad6b72ff259552d1b38'
+  }
+}</code>
+
+This example imports ''foo/bar/A.js'' from the package identified by the secure package reference. Most usages, however, will involve local names defined by the root catalog of the module from which ''import'' is being invoked. With that in mind, in the typical case, ''import'' will accept as its second argument a catalog local name, for example:
+
+<code javascript>import 'foo/bar/A' from 'fooStrUtils'</code>
+
+====== Variants ======
+
+===== Casual development =====
+
+For casual development, the packaging format may be too
+heavyweight. We may also want to support an option where:
+
+  * A package reference is simply a URL to a directory of files; and
+  * A catalog reference is simply a URL to a single JSON file.
+
+====== Open issues ======
+
+This whole proposal is a design sketch for discussion. As noted earlier, even assuming this proposal is accepted in its entirety, much detail design needs to be done.
+
+====== References ======
+
+  * [[http://wiki.commonjs.org/wiki/Packages/1.0]] -- CommonJS packages specification.
+  * [[http://wiki.commonjs.org/wiki/Packages/A]] -- Background on packaging at CommonJS wiki.
+  * [[http://www.skyhunter.com/marcs/petnames/IntroPetNames.html]] -- //An Introduction to Petname Systems// by Marc Stiegler.
+  * [[http://www.eros-os.org/pipermail/e-lang/2009-April/013075.html]] -- A thread on "Module naming and identification" on the ''e-lang@eros-os.org'' mailing list.
+  * [[https://groups.google.com/group/commonjs/browse_thread/thread/17442874b369da5d/e86182c110497ceba]] -- A thread on the CommonJS mailing list which Christoph Dorn introduced the idea of catalogs.
+  * [[http://www.osgi.org/]] -- The OSGi alliance.
+  * [[http://jcp.org/en/jsr/detail?id=291]] -- JSR 291, the Java Community Process codification of OSGi.
+
+====== Comments ======
+
+One nit - terminology wise, it seems confusing for a package to contain a file called package.json, as you have two different 'packages' floating around.
+ --- //[[cormac@soe.ucsc.edu|Cormac Flanagan]] 2010/01/27 00:26//

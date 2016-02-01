@@ -1,0 +1,300 @@
+This is the discussion page for [[proposals:extend regexps]].
+
+====== Discussion ======
+
+===== Intersection and subtraction =====
+
+Russ Cox raised the issue on es4-discuss that the current intersection and subtraction operators ''\&'' and ''\-'' have two problems:
+  * precedence: what does ''[a-z\-g-j\-z]'' mean, precisely (depends on associativity)
+  * breaks tradition: the current syntax allows punctuation always to be escaped in a charset with the guarantee that the punctuation then stands for itself; this works even if the punctuation has no special meaning.  Thus code that currently hedges its bets by using ''\&'' in a charset rather than plain ''&'' loses.
+
+In addition, there is prior work that's being ignored, Java regexes provide for intersection, and for subtraction by complementation and intersection.
+
+The Java solution is to allow for nested character sets and operations involving them.  If they are preceded by a doubled ampersand the operation is intersection, otherwise union.  Processing is left-to-right, and nested sets can be complemented.
+
+<code>
+  [abc[def]ghi]     ==  [abcdefgi]
+  [c-t&&[aeiouy]]   ==  [eio]
+  [a-z&&[^aeiouy]]  ==  <the set of ASCII consonants>
+  [c-t&&[aeiouy]w]  ==  [eiow]
+</code>
+
+This solution fixes both of Cox's problems, and reuses prior art.  However, it requires that program-level lexing of RegExp literals will need to use a full context-free grammar because it needs to keep track of nested character sets -- because we adopted the MSIE-compatible fix of allowing / to be unescaped inside character sets in RegExp literals.  This puts a slight additional burden on the implementation.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/05/08 05:06//
+
+Code that allows you to play with Java regular expressions:
+
+<code language=java>
+import java.util.regex.*;
+
+class Main {
+    static public void main(String[] args) {
+        try {
+            Pattern p = Pattern.compile(args[0]);
+            System.out.println("Compilation succeeded...");
+            if (args.length > 1) {
+                Matcher m = p.matcher(args[1]);
+                System.out.println(m.matches() ? "Matched" : "Did not match");
+            }
+        }
+        catch (PatternSyntaxException e) {
+            System.out.println("Compilation failed!");
+            System.out.println(e);
+        }
+    }
+}
+</code>
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/05/08 05:20//
+
+----
+
+At the May 8 phone conference it was suggested I go look for other prior art than Java.  Here's what I found:
+  * Perl 5 does not support intersection and subtraction
+  * PCRE explicitly maintains the rule that ''\<c>'' for any punctuation char ''<c>'' means "literally ''c''", it is never an operator.
+  * The pertinent note from the Unicode consortium [[http://www.unicode.org/unicode/reports/tr18/#Subtraction_and_Intersection|here]] suggests that ''&'' and ''-'' be used as operators inside sets, but their meaning depends on their operands: for single characters, ''x-y'' means range, but if ''x'' or ''y'' is itself a set then it means intersection.  They propose some precedence rules.
+  * A CPAN implementation of the Unicode idea [[http://www.unicode.org/unicode/reports/tr18/#Subtraction_and_Intersection|here]] refines this and requires the operators to be enclosed in spaces, ie, ''[a-z - g-h]'' or %%[[a-z] - [g-h]]%% is set difference.
+  * The Boost C++ libraries manual observes that positive and negative lookahead and character classes can express this already, leading to this beautiful syntax for intersection of sets: ''(?=[...])[...]'', and ditto for subtraction: ''(?![...])[...]''
+  * Jeffrey Friedl, who wrote the O'Reilly book on regexes, credits Sun with the innovation in this area.
+  * Basically, Java syntax seems to dominate on sourceforge and other places where I've looked.
+
+My opinion: the only serious prior art is in Java; the Unicode syntax is probably more error-prone and adding space delimiters for clarity interacts poorly with our new ''/x'' flag.
+
+We should go with Java.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/05/11 10:47//
+
+
+===== Lexing and parsing issues =====
+
+The following section outlines some problems with lexing/parsing regular expressions; a final section proposes how to fix the problems.  Some of these problems pertain primarily to ''/.../'' style literals because the flags are not known until the literal has been scanned and therefore can't be used by the scanner; some pertain also to the ''new RegExp("...")'' form.
+
+
+
+
+==== Mixing the /x flag, comments, and unescaped / with separated lexing/parsing ====
+
+The 3rd Ed specifies that regular expression literals can be lexed without considering their internal structure except for escaped characters.  This is nice because (a) a separate (typically third-party) regexp parser can be used without being integrated with the lexer and (b) regexp-less implementations can skip literals reliably.
+
+Then begins the fun:
+
+We decided (see the section "RegExp scanning" in [[proposals:extend regexps]]) that for 4th Ed we will allow an unescaped ''/'' character inside character sets:  it is useful, MSIE supports it, the web uses it, and it does not add much complexity: the lexer need only keep track of whether it's inside a charset or not -- charsets do not nest and are syntactically distinct.
+
+We then decided to add the ''/x'' flag which allows the expression the use of linebreaks, spaces, and comments in most contexts.  However, for literals the flag is not visible until after the regular expression has been scanned, so the lexer must allow linebreaks to be present in the literal; if the ''/x'' flag turns out not to be present but a linebreak is present, then an error is signalled by the lexer.
+
+We decided to allow two comment forms in regular expressions: ''(?# text )'' patterns are always allowed in //Atom// contexts; ''# text'' comments are allowed everywhere if the ''/x'' flag is present.  These interact poorly with character sets, the expression ''/a[d-o # Range (c,o]<newline>/]/x'' can't be lexed because the '']'' in the comment terminates the character set prematurely, meaning the ''/'' that should have been in the character set terminates the expression instead.
+
+Our "fix" for this was to say "don't do that", which is poor UI, but as the problem is not much worse than people using ''x/*q'' inadvertently in C or puts ''*/'' inside a comment, we could live with it. 
+
+Ditto, the comment mustn't contain an unmatched ''['', and comments can't contain ''/'' characters either.  This might not seem so bad, but expressions needing to use regular expression literals, linebreaks, and comments are the big ones where rules like these are most likely to be broken.
+
+So we have managed to preserve the simple scanner -- thus allowing the use of a separate regexp parser -- but at some slight complexity and a couple of rules the programmer must remember.
+
+
+==== Java-style regex unions and 3rd Ed compatibility ====
+
+The Java union syntax -- nested character sets -- is not backwards compatible with 3rd Edition: ''[abc[d]'', ''[[/]]'', and ''[abc[d]]'' are valid 3rd Ed regular expressions and should remain so, but with nested charsets the former is ill-formed and the latter two take on different meanings.  Can/should we/do we need to support unions?  Their actual utility is questionable (though probably not zero).  The alternative is to support nested charsets only following the ''&&'' operator, ie, it is the token sequence ''&&'' ''['' inside a charset that is special.
+
+It's not clear we can support unions in general while remaining backwards compatible.  In 3rd Ed, ''[abc[d]]'' is a valid regular expression meaning ''(?:a|b|c|\[|d)\]'' and it would take on a new meaning, ''(?:a|b|c|d)''.
+
+We could stipulate that unions (and intersection and subraction, probably) are only available with the ''/x'' flag present.  This seems a little hackish; the ''/x'' flag so far has only controlled whitespace and comment interpretation.
+
+
+
+==== Java-style intersection and subtraction ====
+
+The Java-style intersection and subtraction operators do not have the same compatibility problems as the union syntax, because the token ''&&'' inside a character set signals new behavior.  However, the character set that follows ''&&'' must be treated as a properly nested set for the purposes of looking for ''/''; the scanner must at a minimum keep track of the levels of nesting.  That is, ''[ab[c]d]'' and ''[ab&&[c]d]'' must be handled differently by the scanner, as must ''[ab[c]d]'' and ''[ab&&#this is a comment<newline>[c]d #another comment<newline>]''.
+
+
+
+
+
+
+==== Conclusion, recommendation ====
+
+IMO:
+  * We should not allow nested-charsets-as-unions a la Java.  We would need hackarounds to be backwards compatible, even if the risk of breaking existing regexes is probably slight.  By not allowing them now we do not close the door on allowing them later.
+  * We should adopt Java-style intersection and subtraction; this behavior is triggered by the token ''&&'' inside a character set, it must be followed by a nested character set.  Intersection and subtraction may be further nested.
+  * We will retain separated regexp lexing and regexp parsing, like in 3rd Edition, with these semantics:
+    * Any line terminator characters are scanned as part of the regexp literal (unlike 3rd Ed).
+    * If line terminators were consumed but the ''x'' flag was not present, then throw a SyntaxError.
+    * The lexer needs to count charset nesting.  The lexer has a state variable "depth", initially zero.  
+      * If depth==0 then an unescaped ''['' increments depth.
+      * If depth>0 then an unescaped '']'' decrements depth.
+      * If depth>0 and the three consecutive characters ''&&['' appear, increment depth.
+      * If depth>0 then an unescaped ''/'' is allowed.
+    * Regexp literal scanning does //not// take into account comments.  Thus ''/'', ''['', or '']'' characters inside comments may throw the lexer off.  The user will just have to deal with it.
+
+
+==== Intriguing idea that won't work ====
+
+The alternative is to use the regular expression parser to scan regular expressions.  The parser would first be invoked on the rest of the input with the ''x'' flag on.  If this parse succeeds, and the ''x'' flag is actually present, then use the consumed input for the regexp literal.  Otherwise, try to parse the rest of the input with the ''x'' flag off.  If this parse succeeds, then use the consumed input for the regexp literal.  Otherwise fail.
+
+The regular expressions that can't be parsed as extended include those containing an ''#'' that does not start a comment: ''/ab#c/g'', for example.
+
+The reason I do not recommend using the parser for lexing regular expressions is that it isn't safe; consider the input ''/ab#c/g;<newline>z=1/x'' which really is not a regular expression.
+
+On the other hand, if one tries parsing non-extended first, slashes in comments will still throw the parser off, so that doesn't solve anything.
+
+IMO it is better to have the simple rule suggested above (avoid ''/'', ''['', and '']'' in comments) than these kinds of complexities.
+
+===== Extending RegExps for Unicode Ranges =====
+
+At the Sep 27 TG1 phone meeting, it was suggested that RegExps should be extended to take better advantage of full Unicode ranges (e.g., our \w flag is barely useful even for ASCII). The Unicode Consortium has a specific set of suggestions for how to extend RegExp usage for Unicode (http://www.unicode.org/reports/tr18/index.html), but even their "Level 1" support may be too heavy-duty for us. 
+
+The specific recommendation that concerns me is that they suggest allowing \p{NAME} to match a category of characters, where NAME is one of the many Unicode Character Properties. This is a useful capability which is provided by current versions of Perl and Java (I think, and possibly other languages too)... but supporting the full set of Unicode Character Properties may require a large amount of table data. Current PCRE implementations have roughly 90k of static data dedicated to this, which is likely more than some implementations would want to dedicate to this feature. (The Unicode spec claims that clever table construction can allow these to be stored in "only 7 or 8 Kbytes", but provides no code to back up this claim, so I am assuming that PCRE is a reasonable implementation in the absence of proof to the contrary...)
+
+ --- //[[stejohns@adobe.com|Steven Johnson]] 2006/10/03 18:27//
+
+So, to dive into this a bit more, here are the  specific requirements for Unicode Consortium Level 1 Support, along with comparisons with the Java 5, Perl 5.8, and PCRE 6.x capabilities. 
+
+  - Hex notation
+    * //The Unicode spec says:// To meet this requirement, an implementation shall supply a mechanism for specifying any Unicode code point (from U+0000 to U+10FFFF).
+    * //The possible issues:// None; we already have an acceptable way to do this, via the [[update_unicode]] proposal.
+  - Properties
+    * //The Unicode spec says:// To meet this requirement, an implementation shall provide at least a minimal list of properties, consisting of (list omitted, please see the full spec for details)
+    * //The rationale:// Unicode is a huge set, and hand-rolling specific patterns tends to be error-prone and incomplete. Providing categories that are baked from the official spec makes it easier for typical users to make Unicode-savvy RegExps.
+    * //The possible issues:// It would appear that the existing Unicode-savvy RegExp implementations mentioned above provide this level of support (more or less... PCRE doesn't implement everything that the Unicode spec asks for, but is fairly close and probably an acceptable subset); however, as mentioned earlier in this discussion, it may take a large about of static table data to implement this. It seems likely that compact implementations will be unwilling to dedicate even the 8k that the Unicode spec claims is necessary, so this may have to be an optional part of the implementation. 
+  - Subtraction and Intersection
+    * //The Unicode spec says:// To meet this requirement, an implementation shall supply mechanisms for both intersection and set-difference of Unicode sets.
+    * //The rationale:// Unicode Properties aren't nearly as useful without these.
+    * //The possible issues:// We don't currently have them. They were proposed in an earlier draft of the JavaScript 2.0 spec, but apparently didn't ever make it into the ECMA spec. Though Java5 supports union and intersection, it doesn't support set-difference. Perl/PCRE don't appear to support either. I don't know how hard it is to add such support; I'm assuming it's probably nontrivial, since Perl/PCRE don't have them.
+    * //Compatibility:// Using ''-'' and ''&'' as operators for difference and intersection breaks backward compatibility, so we'd have to invent strange backward-compatible syntax or require flags to allow the operators, neither of which seem good.   --- //[[lth@opera.com|Lars T Hansen]] 2006/10/11 08:16//
+    * //Implementation burden:// Modulo syntactic issues I can't quite see why these should be hard, you just end up with sparse-ish character sets.   --- //[[lth@opera.com|Lars T Hansen]] 2006/10/11 08:16//
+  - Simple Word Boundaries
+    * //The Unicode spec says:// To meet this requirement, an implementation shall extend the word boundary mechanism so that:
+      - The class of <word_character> includes all the Alphabetic values from the Unicode character database, from UnicodeData.txt [UData], plus the U+200C ZERO WIDTH NON-JOINER and U+200D ZERO WIDTH JOINER. See also Annex C: Compatibility Properties.
+      - Nonspacing marks are never divided from their base characters, and otherwise ignored in locating boundaries.
+    * //The possible issues:// This should be achievable, though there will be performance implications -- apparently PCRE doesn't implement this for \w, \b, etc., for just this reason -- and recommends that explicit Unicode property tests be used instead.
+  - Simple Loose Matches
+    * //The Unicode spec says:// 
+      - To meet this requirement, if an implementation provides for case-insensitive matching, then it shall provide at least the simple, default Unicode case-insensitive matching. 
+      - To meet this requirement, if an implementation provides for case conversions, then it shall provide at least the simple, default Unicode case conversion.
+    * //The possible issues:// We do provide case-insensitive matching, but not conversions. This boils down to yet another big table of data we need to have available at runtime. 
+  - Line Boundaries
+    * //The Unicode spec says:// To meet this requirement, if an implementation provides for line-boundary testing, it shall recognize not only CRLF, LF, CR, but also NEL (U+0085), PS (U+2029) and LS (U+2028).
+    * //The possible issues:// Implementation should be simple, but the possibility of backwards-compatibility issues is present
+    * //Discussion:// PS and LS are already line separators in 3rd Edition (15.10.2.6), NEL is new.  I'm not sure  what CRLF means today -- I suspect it means two end-of-line characters, ie, an empty line.   --- //[[lth@opera.com|Lars T Hansen]] 2006/10/11 08:24//
+  - Code Points
+    * //The Unicode spec says:// To meet this requirement, an implementation shall handle the full range of Unicode code points, including values from U+FFFF to U+10FFFF. In particular, where UTF-16 is used, a sequence consisting of a leading surrogate followed by a trailing surrogate shall be handled as a single code point in matching.
+    * //The possible issues:// Just a question of adapting implementations to work on code points rather than bytes or words; many implementations (e.g., PCRE) already have this available as a compile-time option.
+    * //Incompatible:// Actually this is entirely incompatible with the [[proposals:extend regexps]] proposal, which requires that a surrogate pair never shall be treated as a single code point.   --- //[[lth@opera.com|Lars T Hansen]] 2006/10/11 08:44//
+
+In sum, the proposal is certainly doable, but at a size cost in an implementation that is probably unacceptable for compact implementations -- the Properties and Loose Matches requirements being the most costly. PCRE implements a substantial subset of these, but disabled (at compile-time) by default; I did a quick test case of compiling with and without this support, and it amounts to about 92k of data + code (Intel, MSVC7, optimized). 
+
+ --- //[[stejohns@adobe.com|Steven Johnson]] 2006/10/03 18:27// (?)
+
+Regarding table sizes, I agree there are open issues.  The suggestions for table layout are in section 5.1 of the Unicode 4 spec, it's a simple trie structure with shared substructure and default values.  For a two-level table the first table maps the high byte and the second table maps the low byte of a UTF16 character.  After that it gets tricky.  Even a 256-element table containing pointers uses 1KB (soon: 2KB), so we can't have one of these tables per property name, for example.  Perhaps an 8-bit offset encoding can be used instead?  'twould be neat. Anyway, presumably the lower level tables contain bitsets describing the characters and there just happens to be a great deal of reuse among the second-level tables.  If we imagine eg 8-bit values on level 2 there is space in 6KB for 24 of these.  This still seems very low, and doesn't even account for the names of the character classes.  
+
+So, the 8KB figure seems unreasonably low for this level of support.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/10/11 08:45//
+
+
+===== Issues with the "/x" flag =====
+
+Brendan, wrt stripping format control characters from regexes, I have proposed in [[update unicode]] that the /x flag has this effect.  Thus programmers who want to use format control characters for readability will be forced to use this flag.  This seems reasonable to me.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/27 08:40//
+
+Are whitespace and comments stripped in a pre-pass or as part of parsing?  If a pre-pass is used then a literal # must be represented as \x23 in the regexp, it can't appear literally anywhere; (?#...) comments will be impossible, because they are most reasonably handled as part of parsing.  
+
+If a pre-pass is not used, then exactly where is whitespace stripped?  Is it stripped even in backslash sequences?
+
+I suspect I would favor integrating stripping with parsing, and only stripping whitespace and comments in atom and charset contexts, ie, not as part of escape sequences.  Thus the three character sequence ''\ s'' turns into two atoms: a space character and a single ''s''.
+
+There's also the question of what stripped whitespace means -- does it turn into nothing or an empty pattern?  Once again, stripped whitespace should probably have some sort of separator function, and that favors integrated stripping, not a prepass.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/06/09 02:13//
+
+Resolved in the proposal in favor of format control stripping, integrated comment handling, and limited contexts for ignored whitespace and line comments.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/06/13 03:17//
+
+
+
+===== Issues with /y flag =====
+
+Brendan writes re: the old name "noSearch" for what is now "anchored":
+
+Suggest camelCaps for ''noSearch'', or a better name.  Not obvious what's better, but avoiding a negative seems to help (ruling out "no" and "don't" spellings).  We could invert the sense and avoid colliding on "search".  "Match at current position or fail" is what "search" more precisely means, vs. "find first match" for "nosearch".  "Anchored" would be good if it weren't taken.  Hmm... how about ''findMatch'' defaulting to ''true''?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/12/13 12:18//
+
+Re "nosearch" vs "noSearch", I figured "ignoreCase" was an anomaly :-P.  I agree negatives should be avoided, but I also think these properties should all be true if the flag is present and false if the flag is absent, so "findMatch" does not work for me.  Calling the property "yylex" (from which "/y" comes) is way obscure.
+
+In which sense is "anchored" taken?  The word does not appear in E262-3 at all.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2006/12/14 10:57//
+
+If we can use ''anchored'', I'm happy.  In regular expression docs and books going back to grep (at least), an "anchored" regex is one starting with ''^'' or ending in ''$''.  If no one is likely to be confused, then let's use ''anchored''.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/12/14 14:49//
+
+Inspiration: ''sticky'' for ''/y'' rather than ''anchored'' -- avoids double meaning for latter, connotes regex being stuck at current offset in target string.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/01/09 11:05//
+
+Agreed.  I've made the change throughout.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/01/16 08:19//
+
+====== Older discussion ======
+
+Need more time.  I'd like an extension.  I won't propose anything radical, I promise! ;-)  One item other than bug-fixing and ''/x'': named groups after [[http://docs.python.org/lib/re-syntax.html|Python]]:
+
+  * ''(?P<name>...)''
+    * Similar to regular capturing parentheses, but the substring matched by the group is accessible via the symbolic group name ''name''.
+    * Group names must be valid lexical identifiers, and each group name must be defined only once within a regular expression.
+    * A symbolic group is also a numbered group, just as if the group were not named. So the group named ''id'' in the example below can also be referenced as the numbered group 1.
+    * For example, if the pattern is ''(?P<id>[a-zA-Z_]\w*)'', the group can be referenced by its name in ''String.prototype.match'' result objects, such as ''m.id'', and also by name in pattern text (for example, ''(?P=id)'') and replacement text (such as ''\g<id>'').
+
+  * ''(?P=name)''
+    * Matches whatever text was matched by the earlier group named ''name''.
+
+We will fix the [[proposals:bug_fixes|bug]] where a ''RegExp'' literal evaluates to a singleton, not a new object per evaluation.
+
+Also, based on SpiderMonkey precedent, I propose we allow ''RegExp'' instances to be called.  This invokes ''RegExp.prototype.exec''.  We should revisit the ''typeof'' operator to agree on whether callable ''x'' implies ''typeof x === "function"''.  Our testing shows no browsers save Mozilla ones following the letter of ECMA-262 Edition 3 here, so we should probably codify majority practice.  I'm adding a [[proposals:bug fixes|bug fix]] item on ''typeof''.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/01 00:45//
+
+One thing that's been on my to-do list for a long time is a qualifier tentatively named ''/c'' that says "try to match the regexp at lastIndex, and if that fails, don't search forward but return null".  The use case for this is to be able to use regexes to write simple reasonably efficient lexers for embedded languages.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/17 14:09//
+
+====== Proposal amendments (retracted) ======
+
+===== Textual inclusion =====
+
+A regular expression literal can reference a program variable at construction time.  The string value of the variable is textually inserted into the regular expression, wrapped in a single ''(?: ... )'' group.
+
+**Syntax**: The pattern ''(?I=id)'' references the program variable ''id'' and obtains its current value as a string.
+
+**Example**: A readable regular expression for a typical number datum:
+
+<code>
+    const intpart  : RegExp = / (?: [0-9]+ ) /x;
+    const decimals : RegExp = / (?: \. [0-9]+ ) /x;
+    const exponent : RegExp = / (?: [Ee] [+-]? [0-9]+ ) /x;
+    const fracpart : RegExp = / (?I=decimals)? (?I=exponent) 
+                              | (?I=decimals) (?I=exponent)? 
+                              /x;
+    const number   : RegExp = / (?I=intpart)? (?I=fracpart)
+                              | (?I=intpart) (?I=fracpart)?
+                              /x;
+</code>
+
+**Interactions with the strict language**: If we wanted to get fancy, the strict language could require that the referenced names have static types that are ''String'' or ''RegExp''.
+
+**Constants**: a regular expression literal referencing program variables is a compile-time constant expression iff the referenced variables are themselves compile-time constant expressions.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/06/05 00:46//
+
+Come to think of it, there's no particular reason why it has to be textual inclusion, if the identifier references a regular expression then that regexp could be included "by reference".  This could be observable in a couple of ways: space use, for one (no exponential blowup in space use if using by-reference inclusion), and in some of the flags being preserved through the referencing, something I did not envision happening initially.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/06/06 07:25//
+
+This seems to offer relatively little, in practice.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/06/12 06:52//

@@ -1,0 +1,90 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=harmony:extended_object_api&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="http://wiki.ecmascript.org/feed.php?mode=list&amp;ns=harmony" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=harmony:extended_object_api&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=harmony:extended_object_api&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="the_content_on_this_page_is_obsolete"></a><h1>The content on this page is OBSOLETE</h1>
+<div class="level1">
+
+<p>
+ Standardize some useful but missing built-in methods on Object: 
+</p>
+<pre class="code javascript">Object.<span class="me1">getPropertyDescriptor</span><span class="br0">&#40;</span>obj, <span class="kw3">name</span><span class="br0">&#41;</span> -&gt; pd
+Object.<span class="me1">getPropertyNames</span><span class="br0">&#40;</span>obj<span class="br0">&#41;</span> -&gt; <span class="br0">&#91;</span> string <span class="br0">&#93;</span></pre>
+<p>
+<code>Object.getPropertyDescriptor</code> behaves like <code>Object.getOwnPropertyDescriptor</code>, except that it also takes the object&rsquo;s prototype chain into account. The same holds true for <code>getPropertyNames</code>, which combines all own with all inherited property names (removing duplicates in the process).
+</p>
+
+</div>
+<!-- SECTION [1-530] -->
+<a name="non-normative_implementation"></a><h2>Non-normative Implementation</h2>
+<div class="level2">
+<pre class="code javascript">Object.<span class="me1">getPropertyDescriptor</span> = <span class="kw2">function</span><span class="br0">&#40;</span>subject, <span class="kw3">name</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw2">var</span> pd = Object.<span class="me1">getOwnPropertyDescriptor</span><span class="br0">&#40;</span>subject, <span class="kw3">name</span><span class="br0">&#41;</span>;
+  <span class="kw2">var</span> proto = Object.<span class="me1">getPrototypeOf</span><span class="br0">&#40;</span>subject<span class="br0">&#41;</span>;
+  <span class="kw1">while</span> <span class="br0">&#40;</span>pd === undefined &amp;&amp; proto !== <span class="kw2">null</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    pd = Object.<span class="me1">getOwnPropertyDescriptor</span><span class="br0">&#40;</span>proto, <span class="kw3">name</span><span class="br0">&#41;</span>;
+    proto = Object.<span class="me1">getPrototypeOf</span><span class="br0">&#40;</span>proto<span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span>
+  <span class="kw1">return</span> pd;
+<span class="br0">&#125;</span>
+&nbsp;
+Object.<span class="me1">getPropertyNames</span> = <span class="kw2">function</span><span class="br0">&#40;</span>subject, <span class="kw3">name</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw2">var</span> props = Object.<span class="me1">getOwnPropertyNames</span><span class="br0">&#40;</span>subject<span class="br0">&#41;</span>;
+  <span class="kw2">var</span> proto = Object.<span class="me1">getPrototypeOf</span><span class="br0">&#40;</span>subject<span class="br0">&#41;</span>;
+  <span class="kw1">while</span> <span class="br0">&#40;</span>proto !== <span class="kw2">null</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    props = props.<span class="me1">concat</span><span class="br0">&#40;</span>Object.<span class="me1">getOwnPropertyNames</span><span class="br0">&#40;</span>proto<span class="br0">&#41;</span><span class="br0">&#41;</span>;
+    proto = Object.<span class="me1">getPrototypeOf</span><span class="br0">&#40;</span>proto<span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span>
+  <span class="co1">// FIXME: remove duplicate property names from props</span>
+  <span class="kw1">return</span> props;
+<span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [531-1281] -->
+<a name="interaction_with_proxies"></a><h2>Interaction with Proxies</h2>
+<div class="level2">
+
+<p>
+ Under the new <a href="doku.php%3Fid=harmony:direct_proxies.html" class="wikilink1" title="harmony:direct_proxies" onclick="return svchk()" onkeypress="return svchk()">direct proxies</a> <acronym title="Application Programming Interface">API</acronym>, these methods would _not_ trigger a corresponding trap on the handler. Instead, these methods trigger the <code>getOwnPropertyDescriptor</code> or <code>getOwnPropertyNames</code> traps of a proxy in the prototype chain.
+</p>
+
+<p>
+Under the old <a href="doku.php%3Fid=harmony:proxies.html" class="wikilink1" title="harmony:proxies" onclick="return svchk()" onkeypress="return svchk()">proxies</a> <acronym title="Application Programming Interface">API</acronym>, these methods would trigger a corresponding trap, so that proxies could emulate inherited properties. At the November 2011 TC39 meeting, we decided that proxies don&rsquo;t necessarily need to be able to do this kind of emulation, since any new proto-climbing algorithms written by end-users will also not have a chance to &ldquo;delegate&rdquo; the proto-walking to an encountered proxy. Instead, these algorithms climb the proto chain themselves, interacting only with the &ldquo;own&rdquo; properties at each level of the proto chain.
+</p>
+
+</div>
+<!-- SECTION [1282-2117] -->
+<a name="see_also"></a><h2>See also</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="doku.php%3Fid=strawman:extended_object_api.html" class="wikilink1" title="strawman:extended_object_api" onclick="return svchk()" onkeypress="return svchk()">extended object api strawman</a> for further static methods whose design remains controversial.</div>
+</li>
+<li class="level1"><div class="li"> <a href="doku.php%3Fid=strawman:proxy_derived_traps.html" class="wikilink1" title="strawman:proxy_derived_traps" onclick="return svchk()" onkeypress="return svchk()">proxy derived traps</a>, a discussion on the interaction between <code>getPropertyDescriptor</code>/<code>getPropertyNames</code> and the old <a href="doku.php%3Fid=harmony:proxies.html" class="wikilink1" title="harmony:proxies" onclick="return svchk()" onkeypress="return svchk()">proxies</a> <acronym title="Application Programming Interface">API</acronym>.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [2118-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/f/f9a6751759ed10a65c06ded1b068ba94.xhtml used -->
+</body>
+</html>

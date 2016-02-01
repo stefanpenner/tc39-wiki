@@ -1,0 +1,203 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:array_fill_and_move&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:array_fill_and_move&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:array_fill_and_move&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:array_fill_and_move&amp;do=export_html.html#proposal" class="toc">Proposal</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:array_fill_and_move&amp;do=export_html.html#array.prototype.fill_method" class="toc">Array.prototype.fill Method</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:array_fill_and_move&amp;do=export_html.html#informal_spec" class="toc">Informal Spec</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:array_fill_and_move&amp;do=export_html.html#examples" class="toc">Examples</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:array_fill_and_move&amp;do=export_html.html#design_rationale" class="toc">Design Rationale</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:array_fill_and_move&amp;do=export_html.html#array.prototype.copyslice_method" class="toc">Array.prototype.copySlice Method</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:array_fill_and_move&amp;do=export_html.html#informal_spec" class="toc">Informal Spec</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:array_fill_and_move&amp;do=export_html.html#examples" class="toc">Examples</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:array_fill_and_move&amp;do=export_html.html#design_rationale" class="toc">Design Rationale</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:array_fill_and_move&amp;do=export_html.html#discussion" class="toc">Discussion</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="proposal"></a><h1>Proposal</h1>
+<div class="level1">
+
+<p>
+The Khronos group want to add Typed Array methods for setting a range of elements in a Typed Array Elements and for internally copying a range of elements to a new position within the array.
+</p>
+
+<p>
+ES6 is trying to better integrate Typed Array into ECMAScript including making most Array.prototype methods available on TypedArrays. In that spirit, rather than adding these new methods solely for TypedArrays it makes more sense to define them as Array.prototype methods.
+</p>
+
+</div>
+<!-- SECTION [1-489] -->
+<a name="array.prototype.fill_method"></a><h1>Array.prototype.fill Method</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [490-533] -->
+<a name="informal_spec"></a><h2>Informal Spec</h2>
+<div class="level2">
+<pre class="code">
+Array.prototype.fill = function fill(value, start=0, end=this.length) {
+  /*
+    Every element of array from start up to but not including end is assigned value.
+    start and end are coerced to Number and truncated to integer values.
+    Negative start and end values are converted to positive indices relative to the length of the array:
+
+       if (start &lt; 0) start = this.length-start
+
+    Reference to start and count below assume that conversion has already been applied
+           
+    If end &lt;= start no elements are modified.
+    If end &gt; this.length and this.length is read-only a Range error is thrown and no elements are modified.
+    If end &gt; this.length and this.length is not read-only, this.length is set to end
+    Array elements are set sequentially starting with the start index.
+    If an element is encountered that cannot be assigned, a TypeError is thrown.
+    Element values are assigned using [[Set]]
+
+    The array is returned as the value of this method
+  */
+}
+</pre>
+
+</div>
+<!-- SECTION [534-1568] -->
+<a name="examples"></a><h2>Examples</h2>
+<div class="level2">
+<pre class="code">
+ aFloatArray.fill(Infinity);  // Fill all elements with Infinity
+ aFloatArray.fill(-1, 6);     // Fill all elements starting at index 6 with -1
+ aFloatArray(1.5, 0, 5);      // Fill the first five elements with 1.5
+ aUint8Array(0xff, -2);       // Place 0xff in the last two elements
+ [ ].fill(&quot;abc&quot;, 0, 12)
+    .fill(&quot;xyz&quot;, 12, 24);     // Create a regular array, fill its first dozen
+                              // elements with &quot;abc&quot;, and its 2nd dozen elements
+                              // with &quot;xyz&quot;
+</pre>
+
+</div>
+<!-- SECTION [1569-2117] -->
+<a name="design_rationale"></a><h2>Design Rationale</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Placing the fill value first means no indices need to be specified when filling all elements of an array.</div>
+</li>
+<li class="level1"><div class="li"> Works with both fixed-sized (eg, Typed Arrays) and variable sized (eg, Array and &ldquo;Array-like&rdquo;) object</div>
+</li>
+<li class="level1"><div class="li"> The start/end argument pattern is consistent with  Array splice and allows both start and end to be specified relative to the end of the array.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [2118-2513] -->
+<a name="array.prototype.copyslice_method"></a><h1>Array.prototype.copySlice Method</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [2514-2561] -->
+<a name="informal_spec"></a><h2>Informal Spec</h2>
+<div class="level2">
+<pre class="code">
+Array.prototype.copySlice = function copySlice(target = 0,start = 0, end = this.length ) {
+/*
+  The sequence of array elements from start index up to but not including end index are copied within 
+  the array to the span of elements starting at the target index. 
+
+    target, start, and end are coerced to Number and truncated to integer values.
+    Negative indices are converted to positive indices relative to the length of the array.
+    If end &lt;= start no elements are modified.
+    If end &gt; this.length a Range error is thrown and no elements are modified.
+    If target + (end-start) &gt; this.length and this.length is read-only a Range error is thrown and no elements are modified.
+    If target + (end-start) &gt; this.length and this.length is not read-only, this.length is set to target+(end-start).
+ 
+   The transfers takes into account the possibility that the source and target ranges overlap. Array elements are
+   sequentially transferred in a manner appropriate to avoid overlap conflicts. If target &lt;= start a left to right
+   transfer is performed.  If target&gt;start a right to left transfer is performed.
+ 
+   If a target element is encountered that cannot be assigned, a type error is thrown and no additional elements are modified.
+   Sparse array &quot;holes&quot; are transferred just like for other array functions.
+
+   The array is returned as the value of this method
+*/
+}
+</pre>
+
+</div>
+<!-- SECTION [2562-3991] -->
+<a name="examples"></a><h2>Examples</h2>
+<div class="level2">
+<pre class="code">
+ [0,1,2,3,4].copySlice(0,2);    //[2,3,4,3,4]
+ [0,1,2,3,4].copySlice(2,0,2);  //[0,1,0,1,4]
+ [0,1,2].copySlice(1);          // [0,0,1,2]
+ Int8Array.from([0,1,2]).copySlice(1);      //RangeError
+ Int8Array.from([0,1,2]).copySlice(1,0,2);  //   Int8Array 0,0,1
+ Int8Array.from([0,1,2]).copySlice(0,1,2);  //   Int8Array 1,2,2
+</pre>
+
+</div>
+<!-- SECTION [3992-4352] -->
+<a name="design_rationale"></a><h2>Design Rationale</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Other names considered include &ldquo;copy&rdquo;, &ldquo;move&rdquo;,  &ldquo;transfer&rdquo;, &ldquo;copyElements&rdquo; and &ldquo;copyRange&rdquo;. copySlice was the consensus choice of an esdiscuss thread.</div>
+</li>
+<li class="level1"><div class="li"> &ldquo;copyElements&rdquo; and &ldquo;copyRange&rdquo; were also suggested as possible names.</div>
+</li>
+<li class="level1"><div class="li"> I considered a final optional &ldquo;fill&rdquo; parameter which would provide a value to put into each source element after it was copied (and taking overlap into account).  This would make it more like a true &ldquo;move&rdquo; operation.  However, I couldn&rsquo;t convince myself that there was enough utility in the embellishment to justify the added complexity.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [4353-4960] -->
+<a name="discussion"></a><h1>Discussion</h1>
+<div class="level1">
+
+<p>
+ Q: Does anyone know of a rationale for why (start, end) might be a better design pattern than (start, count) for such operation?
+</p>
+
+<p>
+A: Array.prototype.slice uses (start, end) where end is a fencepost to facilitate looping over half-open ranges within a larger range. Spec&rsquo;ing count requires subtracting next_start - end, gratuitously. Also, consistency with slice and range APIs matters. This should be considered carefully in the design.
+</p>
+
+<p>
+Furthermore, as Tab Atkins reminds on es-discuss, (start, end) supports negative indexes for both arguments (measured from length).
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2013/06/24 01:38</em> 
+</p>
+
+</div>
+<!-- SECTION [4961-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/1/1e1b44d06f6e9143f970e248af3fbe4f.xhtml used -->
+</body>
+</html>

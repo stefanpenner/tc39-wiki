@@ -1,0 +1,315 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=harmony:proto_operator&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="http://wiki.ecmascript.org/feed.php?mode=list&amp;ns=harmony" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=harmony:proto_operator&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=harmony:proto_operator&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:proto_operator&amp;do=export_html.html#set_literal_prototype_operator" class="toc">Set Literal [[Prototype]] operator</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:proto_operator&amp;do=export_html.html#overview" class="toc">Overview</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:proto_operator&amp;do=export_html.html#usage_examples" class="toc">Usage Examples</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:proto_operator&amp;do=export_html.html#es5_compatability" class="toc">ES5 Compatability</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:proto_operator&amp;do=export_html.html#relationship_to_other_proposals" class="toc">Relationship to Other Proposals</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:proto_operator&amp;do=export_html.html#commentary_and_rationales" class="toc">Commentary and rationales</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:proto_operator&amp;do=export_html.html#suggestion_to_replace_with" class="toc">Suggestion to replace &lt;| with -&gt;</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="set_literal_prototype_operator"></a><h1>Set Literal [[Prototype]] operator</h1>
+<div class="level1">
+
+<p>
+ The <code>&lt;|</code> operator (pronounced &ldquo;prototype for&rdquo;) is used in conjunction with a literal to create a new object whose [[Prototype]] is set to an explicitly specified value.  It can be used to address several distinct use cases for which separate solutions have been proposed.  Use cases include:
+</p>
+<ul>
+<li class="level1"><div class="li">  Specifying an explicit [[Prototype]] for object literals</div>
+</li>
+<li class="level1"><div class="li">  Specifying an explicit [[Prototype]] for array literals</div>
+</li>
+<li class="level1"><div class="li">  &ldquo;Subclassing&rdquo; arrays</div>
+</li>
+<li class="level1"><div class="li">  Setting the prototype of a function to something other than Function.prototype</div>
+</li>
+<li class="level1"><div class="li">  Implementing class-like parallel constructor and instance prototype inheritance chains.</div>
+</li>
+<li class="level1"><div class="li">  Setting the prototype of RegExp and other built-in objects.</div>
+</li>
+<li class="level1"><div class="li">  Replace the most common uses of the mutable __proto__ extension</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1-841] -->
+<a name="overview"></a><h2>Overview</h2>
+<div class="level2">
+
+<p>
+ The <code>&lt;|</code> operator may appears within a <em>MemberExpression</em>.  Its basic syntax is:
+</p>
+
+<p>
+<em>MemberExpression</em> : ...<br/>
+  <em>MemberExpression</em> <code><strong>&lt;|</strong></code> <em>ProtoLiteral</em>
+</p>
+
+<p>
+<em>ProtoLiteral</em> : <br/>
+ <em>LiteralObject</em>  <br/>
+ <em>LiteralValue</em> <br/>
+ <br/>
+ <em>LiteralObject</em> : <br/>
+ <em>RegularExpressionLiteral</em> <br/>
+ <em>ArrayLiteral</em> <br/>
+ <em>ObjectLiteral</em> <br/>
+ <em>FunctionExpression</em> <br/>
+ <br/>
+ <em>LiteralValue</em> : <br/>
+ <em>NumberLiteral</em> <br/>
+ <em>StringLiteral</em> <br/>
+ <em>BooleanLiteral</em> <br/>
+
+</p>
+
+<p>
+This basic semantics is to create a new object exactly as would normally be created by the <em>ProtoLiteral</em> except for the value of the object&rsquo;s [[Prototype]] internal property.  If the <em>ProtoLiteral</em> is a <em>LiteralValue</em> the new Object is created as if by ToObject except for the value of for the value of the object&rsquo;s [[Prototype]] internal property.
+</p>
+
+<p>
+The [[Prototype]] internal property of the new object is set to the value of the <em>MemberExpression</em>.  The value of the <em>MemberExpression</em> must be <code><strong>typeof</strong></code> &ldquo;object&rdquo;. The value may be <strong>null</strong>.  A <code>TypeError</code> exception is thrown if <code><strong>typeof</strong></code> the <em>MemberExpression</em> is not &ldquo;object&rdquo;.
+</p>
+
+<p>
+If the LHS operand has a property named <code>prototype</code> and the RHS operand is a function expression then the [[Prototype]] of the function object is set to the  LHS object and the <code>prototype</code> property of the new function is set to a new object whose [[Prototype]] is the value of the LHS&rsquo;s <code>prototype</code> property. Here&rsquo;s a picture of what happens in this case: <a href="lib/exe/fetch.php%3Fid=harmony%253Aproto_operator&amp;cache=cache&amp;media=harmony:triangleupdate.pdf" class="urlextern" title="harmony:triangleupdate.pdf" style="background-image: url(lib/images/fileicons/pdf.png)" onclick="return svchk()" onkeypress="return svchk()"> function &quot;subclassing&quot; UML diagram</a>
+</p>
+
+</div>
+<!-- SECTION [842-2437] -->
+<a name="usage_examples"></a><h2>Usage Examples</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li">  Specifying an explicit [[Prototype]] for object literals</div>
+</li>
+</ul>
+<pre class="code javascript">  MyObject.<span class="me1">prototype</span> &lt;| <span class="br0">&#123;</span>a:<span class="nu0">1</span>,b:<span class="nu0">2</span><span class="br0">&#125;</span></pre><ul>
+<li class="level1"><div class="li">  Specifying an explicit [[Prototype]] for array literals</div>
+</li>
+</ul>
+<pre class="code javascript">  appBehavior &lt;| <span class="br0">&#91;</span><span class="nu0">0</span>,<span class="nu0">1</span>,<span class="nu0">2</span>,<span class="nu0">3</span>,<span class="nu0">4</span>,<span class="nu0">5</span><span class="br0">&#93;</span></pre><ul>
+<li class="level1"><div class="li">  &ldquo;Subclassing&rdquo; arrays</div>
+</li>
+</ul>
+<pre class="code javascript">  Array.<span class="me1">create</span>=<span class="kw2">function</span><span class="br0">&#40;</span>proto,props<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> Object.<span class="me1">defineProperties</span><span class="br0">&#40;</span>proto &lt;| <span class="br0">&#91;</span> <span class="br0">&#93;</span>, props<span class="br0">&#41;</span><span class="br0">&#125;</span>;</pre><ul>
+<li class="level1"><div class="li">  Setting the prototype of a function to something other than Function.prototype</div>
+</li>
+</ul>
+<pre class="code javascript">  let f = EnhancedFunctionPrototype &lt;| <span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span></pre><ul>
+<li class="level1"><div class="li">  Parrallel constructor/instance prototype chains</div>
+</li>
+</ul>
+<pre class="code javascript">  let superclass = <span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>;
+  <span class="co1">//define a constructor method</span>
+  superclass.<span class="kw2">new</span> = <span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="br0">&#40;</span><span class="kw2">new</span> <span class="kw1">this</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>.<span class="me1">initialize</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#125;</span>;
+  <span class="co1">//define a instance method</span>
+  superclass.<span class="me1">prototype</span>.<span class="me1">initialize</span> = <span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw1">this</span><span class="br0">&#125;</span>;
+&nbsp;
+  let subclass = superclass &lt;| <span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>;
+  let instance = subclass.<span class="kw2">new</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+    <span class="co1">//subclass.new executes a method inherited from superclass which invokes</span>
+    <span class="co1">//initialize on a new subclass instance.  The initialize method is </span>
+    <span class="co1">//inherited from superclass.prototype</span>
+&nbsp;</pre><ul>
+<li class="level1"><div class="li">  Setting the prototype of RegExp and other built-in objects.</div>
+</li>
+</ul>
+<pre class="code javascript">  <span class="kw2">var</span> p = newRegExpMethods &lt;| <span class="re0">/<span class="br0">&#91;</span>a-m<span class="br0">&#93;</span><span class="br0">&#91;</span><span class="nu0">3</span>-<span class="nu0">7</span><span class="br0">&#93;</span>/</span></pre><ul>
+<li class="level1"><div class="li">  Replace the most common uses of the mutable __proto__ extension </div>
+</li>
+</ul>
+
+<p>
+ Replace:  
+</p>
+<pre class="code javascript">  <span class="kw2">var</span>  o = <span class="br0">&#123;</span>
+       __proto__ : myProto,
+       a:<span class="nu0">0</span>,
+       b: <span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>
+  <span class="br0">&#125;</span></pre>
+<p>
+  With:  
+</p>
+<pre class="code javascript">  <span class="kw2">var</span>  o = myProto &lt;| <span class="br0">&#123;</span>
+       a:<span class="nu0">0</span>,
+       b: <span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>
+  <span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [2438-4036] -->
+<a name="es5_compatability"></a><h2>ES5 Compatability</h2>
+<div class="level2">
+
+<p>
+We may still want to define Array.create, RegExp.create, and Function.create so they can be used in non-Harmony implementations and contexts.  In that case they should be defined in terms of the semantics of the <code><strong>&lt;|</strong></code> operator.
+</p>
+
+</div>
+<!-- SECTION [4037-4301] -->
+<a name="relationship_to_other_proposals"></a><h2>Relationship to Other Proposals</h2>
+<div class="level2">
+
+<p>
+This proposal is an alternative to the <a href="doku.php%3Fid=strawman:array_subtypes.html" class="wikilink1" title="strawman:array_subtypes" onclick="return svchk()" onkeypress="return svchk()">array_subtypes</a> and <a href="doku.php%3Fid=strawman:array_create.html" class="wikilink1" title="strawman:array_create" onclick="return svchk()" onkeypress="return svchk()">array_create</a> proposals.
+</p>
+
+<p>
+It is also an alternative to the [[Prototye]] functionality of the <a href="doku.php%3Fid=strawman:obj_initialiser_meta.html" class="wikilink1" title="strawman:obj_initialiser_meta" onclick="return svchk()" onkeypress="return svchk()">Object Initialiser Meta Properties</a> proposal.
+</p>
+
+<p>
+ The function proposed in <a href="doku.php%3Fid=strawman:array_subtypes.html" class="wikilink1" title="strawman:array_subtypes" onclick="return svchk()" onkeypress="return svchk()">array_subtypes</a> can be implemented in terms of <code>&lt;|</code> as: 
+</p>
+<pre class="code javascript">Array.<span class="me1">createConstructor</span> = <span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    let constructor = <span class="kw2">function</span> c<span class="br0">&#40;</span>...<span class="me1">args</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">if</span> <span class="br0">&#40;</span>args.<span class="me1">length</span>!==<span class="nu0">1</span> || <span class="kw1">typeof</span> args<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span> !== <span class="st0">'number'</span><span class="br0">&#41;</span> 
+            <span class="kw1">return</span> c.<span class="me1">prototype</span> &lt;| <span class="br0">&#91;</span>...<span class="me1">args</span><span class="br0">&#93;</span>;
+        let len = args<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>;
+        <span class="kw1">if</span> <span class="br0">&#40;</span>len !== len&gt;&gt;&gt;<span class="nu0">0</span><span class="br0">&#41;</span> <span class="kw1">throw</span> <span class="kw2">new</span> RangeError;
+        let a = c.<span class="me1">prototype</span> &lt;|<span class="br0">&#91;</span><span class="br0">&#93;</span>;
+        a.<span class="me1">length</span> = len;
+        <span class="kw1">return</span> a;
+     <span class="br0">&#125;</span>
+    constructor.<span class="me1">prototype</span>.<span class="me1">constructor</span> = constructor;
+    <span class="kw1">return</span> constructor;
+<span class="br0">&#125;</span></pre>
+<p>
+The function in the original <a href="doku.php%3Fid=strawman:array_create.html" class="wikilink1" title="strawman:array_create" onclick="return svchk()" onkeypress="return svchk()">array_create</a> proposals can be implemented as: 
+</p>
+<pre class="code javascript">   Array.<span class="me1">create</span> = <span class="kw2">function</span><span class="br0">&#40;</span>proto, args <span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">if</span> <span class="br0">&#40;</span>args!==undefined<span class="br0">&#41;</span> <span class="kw1">return</span> proto &lt;| <span class="br0">&#91;</span>...<span class="me1">args</span><span class="br0">&#93;</span>;
+      <span class="kw1">return</span> proto &lt;| <span class="br0">&#91;</span> <span class="br0">&#93;</span>;
+   <span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [4302-5410] -->
+<a name="commentary_and_rationales"></a><h2>Commentary and rationales</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> The right hand side could potentially be extended to be any object value if we were define a generalized object clone operator. In that case, we would be setting the [[Prototype]] on a clone of the RHS.  This would maintain the immutability of [[Prototype]].</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> The contextual keyword  <code><strong>proto</strong></code> was originally proposed as this operator symbol.  Experimentation suggested that a keyword operator was harder to read and might commonly result in awkward code phrasing such as:</div>
+</li>
+</ul>
+<pre class="code javaScript"><span class="kw2">function</span> <span class="br0">&#40;</span>proto<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+   <span class="kw1">return</span> proto proto <span class="br0">&#123;</span>a:<span class="nu0">1</span>, b:<span class="nu0">2</span><span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre><ul>
+<li class="level1"><div class="li"> The prototype value is placed on the left of the operator because object literals, array literals, and function expressions often span multiple source lines.  Placing the prototype value to the right operator would mean that it would occur at the end of such multi-line sequences where it is likely to go unnoticed. The explicitly setting the prototype of a literal object is significant enough that it should be expressed in a manner that is likely to be noticed by code readers. Compare:</div>
+</li>
+</ul>
+<pre class="code javascript"><span class="kw2">var</span> obj = someProto &lt;| <span class="br0">&#123;</span>
+  prop1: expr,
+  get prop2 <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> computeSomeValue<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span>,
+  method: <span class="kw2">function</span> <span class="br0">&#40;</span>a,b,c<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+     <span class="kw1">return</span> <span class="kw1">this</span>.<span class="me1">prop2</span>+a+b+c;
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;</pre>
+<p>
+and 
+</p>
+<pre class="code javascript"><span class="kw2">var</span> obj = <span class="br0">&#123;</span>
+  prop1: expr,
+  get prop2 <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> computeSomeValue<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span>,
+  method: <span class="kw2">function</span> <span class="br0">&#40;</span>a,b,c<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+     <span class="kw1">return</span> <span class="kw1">this</span>.<span class="me1">prop2</span>+a+b+c;
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span> |&gt; someProto;</pre><ul>
+<li class="level1"><div class="li"> There are many other possible special character alternates to <strong><code>&lt;|</code></strong>.  For example, <strong><code>&lt;:</code></strong>, <strong><code>:&gt;</code></strong>, <strong><code>|&gt;</code></strong>, <strong><code>^^</code></strong>, <strong><code>*&gt;</code></strong>, <strong><code>&amp;&gt;</code></strong>, <strong><code>^|</code></strong>, <strong><code>&lt;|-</code></strong>, etc. It isn&rsquo;t clear that any of these is more meaningful or mnemonic than <strong><code>&lt;|</code></strong>.</div>
+</li>
+<li class="level1"><div class="li"> The <strong><code>&lt;|</code></strong> symbol is somewhat suggestive of the <a href="http://edn.embarcadero.com/article/31863#classdiagrams" class="urlextern" target="_blank" title="http://edn.embarcadero.com/article/31863#classdiagrams" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow"> UML Generalization arrow</a> which is the way inheritance is represented in UML class diagrams. </div>
+</li>
+<li class="level1"><div class="li"> <em>BooleanLiterals</em> are included for completeness.  Specifying the prototype of a Boolean wrapper object is unlikely to be of little practical value. </div>
+</li>
+<li class="level1"><div class="li"> Earlier proposals proposed used <a href="doku.php%3Fid=strawman:obj_initialiser_meta.html" class="wikilink1" title="strawman:obj_initialiser_meta" onclick="return svchk()" onkeypress="return svchk()">Object Initialiser Meta Properties</a> within object and array literals to specify a [[Prototype]] value.  That approach did not extend to other literal forms such as <em>FunctionExpressions</em> and <em>RegularExpressionLiterals</em>.</div>
+</li>
+<li class="level1"><div class="li"> &lt;| doesn&rsquo;t allow for &ldquo;subclasses&rdquo; built-ins such as Date that don&rsquo;t have literal forms but are specified to have special internal state.  The solution is to respecify those methods so they use private names for their internal state.  Then such built-ins can be extended using forms such as:</div>
+</li>
+</ul>
+<pre class="code javascript"><span class="kw2">var</span> ExtendedDate = Date &lt;| <span class="kw2">function</span> <span class="br0">&#40;</span>...<span class="me1">args</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+   <span class="kw2">super</span>.<span class="me1">constructor</span><span class="br0">&#40;</span>...<span class="me1">args</span><span class="br0">&#41;</span>;
+ExtendedDate.<span class="me1">prototype</span>.<span class="me1">extendedMethod</span> = <span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>...<span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+&nbsp;</pre>
+</div>
+<!-- SECTION [5411-8322] -->
+<a name="suggestion_to_replace_with"></a><h3>Suggestion to replace &lt;| with -&gt;</h3>
+<div class="level3">
+
+<p>
+ &lt;| has been a controversial choice as the symbol for the prototype-of operator.  Some people like it and other don&rsquo;t.  Some people feel the it &ldquo;points&rdquo; in the wrong direction.  Some people don&rsquo;t like the visual appearance of of how the &lt; and | align, particularly in certain fonts.
+</p>
+
+<p>
+An alternative that wasn&rsquo;t previously seriously considered is to use -&gt; as the prototype-of operator symbol.  This usage had not been considered because -&gt; was a candidate  function expression shorthand symbol.  More recently it appears that the function usage is an unlikely outcome given other alternatives and mounting interest in block lambda expressions.  In that case, -&gt; becomes available as an reasonable alternative  for &lt;|
+</p>
+
+<p>
+For visual comparison purposes, the following shows many of the above examples, re-expressed using -&gt;
+</p>
+<pre class="code javascript">  MyObject.<span class="me1">prototype</span> -&gt; <span class="br0">&#123;</span>a:<span class="nu0">1</span>,b:<span class="nu0">2</span><span class="br0">&#125;</span>
+&nbsp;
+  appBehavior -&gt; <span class="br0">&#91;</span><span class="nu0">0</span>,<span class="nu0">1</span>,<span class="nu0">2</span>,<span class="nu0">3</span>,<span class="nu0">4</span>,<span class="nu0">5</span><span class="br0">&#93;</span>
+&nbsp;
+  Array.<span class="me1">create</span>=<span class="kw2">function</span><span class="br0">&#40;</span>proto,props<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> Object.<span class="me1">defineProperties</span><span class="br0">&#40;</span>proto -&gt; <span class="br0">&#91;</span> <span class="br0">&#93;</span>, props<span class="br0">&#41;</span><span class="br0">&#125;</span>;
+&nbsp;
+  let f = EnhancedFunctionPrototype -&gt; <span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>
+&nbsp;
+  let superclass = <span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>;
+  <span class="co1">//define a constructor method</span>
+  superclass.<span class="kw2">new</span> = <span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="br0">&#40;</span><span class="kw2">new</span> <span class="kw1">this</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>.<span class="me1">initialize</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#125;</span>;
+  <span class="co1">//define a instance method</span>
+  superclass.<span class="me1">prototype</span>.<span class="me1">initialize</span> = <span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw1">this</span><span class="br0">&#125;</span>;
+  let subclass = superclass -&gt; <span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>;
+  let instance = subclass.<span class="kw2">new</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+    <span class="co1">//subclass.new executes a method inherited from superclass which invokes</span>
+    <span class="co1">//initialize on a new subclass instance.  The initialize method is </span>
+    <span class="co1">//inherited from superclass.prototype</span>
+&nbsp;
+  <span class="kw2">var</span> p = newRegExpMethods -&gt; <span class="re0">/<span class="br0">&#91;</span>a-m<span class="br0">&#93;</span><span class="br0">&#91;</span><span class="nu0">3</span>-<span class="nu0">7</span><span class="br0">&#93;</span>/</span>
+&nbsp;
+  <span class="kw2">var</span>  o = myProto -&gt; <span class="br0">&#123;</span>
+       a:<span class="nu0">0</span>,
+       b: <span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>
+  <span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [8323-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/5/5d314224cc0f46d1bac39913f71657dc.xhtml used -->
+</body>
+</html>

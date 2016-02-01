@@ -1,0 +1,126 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:semantics&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:semantics&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:semantics&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="semantics_notation"></a><h2>Semantics notation</h2>
+<div class="level2">
+
+<p>
+ (Also see the <a href="doku.php%3Fid=discussion:reference_evaluator.html" class="wikilink1" title="discussion:reference_evaluator" onclick="return svchk()" onkeypress="return svchk()">discussion page</a> for this proposal) 
+</p>
+
+</div>
+<!-- SECTION [1-118] -->
+<a name="proposal"></a><h2>Proposal</h2>
+<div class="level2">
+
+<p>
+ The semantics of the verification and evaluation phases will each be defined by a Standard ML program that takes an abstract syntax tree as input and may produce a value as output. The verifier will produce a boolean result, and the evaluator might produce an ECMAScript value result, throw an exception or never terminate.
+</p>
+
+</div>
+<!-- SECTION [119-466] -->
+<a name="rationale"></a><h2>Rationale</h2>
+<div class="level2">
+
+<p>
+ We want a notation that is precise and readable. We toyed with inventing our own notation, but our invention looked strikingly like ML. We settled on Standard ML because it is more stable than other ML dialects and is formally defined.
+</p>
+
+</div>
+<!-- SECTION [467-726] -->
+<a name="sample_text"></a><h2>Sample text</h2>
+<div class="level2">
+
+<p>
+ Here is a sketch of part of the evaluator (not actually valid SML).
+</p>
+<pre class="code">
+
+type expr = 
+    LetExpr of letExpr
+  | VarExpr of varExpr
+  | ObjectLiteral of nameAndValue list
+	
+let evalExpr = function 
+    env LetExpr e -&gt; evalLetExpr env e.let_ds e.let_body
+  | env VarExpr e -&gt; evalVarExpr env e.var_id
+	
+and evalLetExpr env ds body =
+  let bindings = makeObject Types.objectT in
+  let newenv = extendEnvironment env bindings in 
+  createBndings bindings ds env;
+  evalExpr newenv body
+
+and createBindings bindings env ds =
+  List.iter (createBinding bindings env) ds
+
+and createBinding = function
+
+    bindings env Plain { plain_id = id;  
+			 plain_init = None }
+    -&gt; setPropertyValue bindings id Values.undefined
+
+  | bindings env Plain { plain_id = id;
+			 plain_init = Some e }
+    -&gt; setPropertyValue bindings id (evalExpr env e)
+
+  | bindings env Destructuring { destructuring_pattern = pattern;
+				 destructuring_init = e }
+    -&gt; destructureAndBind bindings pattern (evalExpr env e)
+
+and destructureAndBind = function 
+    bindings (ObjectLiteral pat) e -&gt; use pat
+  | bindings (Array pat) e -&gt; use pat
+
+and evalVarExpr env id =
+  match lookupInEnv env (makeMultiName env id) with
+    None -&gt; raise referenceeError id
+  | Some v -&gt; v
+
+and lookupInEnv env multiname =
+  match env with 
+    [] -&gt; None
+  | r::rs -&gt; 
+      (match getValueProtocol r multiname with
+	None -&gt; lookupInEnv env multiname
+      | result -&gt; result)
+
+and getValueProtocol obj multiname =
+  match getPropertyValue obj multiname with    
+    None -&gt; 
+      (match getPrototype obj with
+	None -&gt; None
+      | Some proto -&gt; getValueProtocol proto multiname)
+  | result -&gt; result
+
+and getPropertyValue obj multiname = (* IMPLEMENTME *)
+
+</pre>
+
+</div>
+<!-- SECTION [727-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/1/1d29c3d33a0c3a68537119b1c34a7f70.xhtml used -->
+</body>
+</html>

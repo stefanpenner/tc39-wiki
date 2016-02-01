@@ -1,0 +1,132 @@
+====== Proper Tail Calls ======
+
+We need to define when a call is in //possible tail position// for safety purposes, and //proper tail position// for liveness purposes. An implementation MAY implement a call in possible tail position as a proper tail call (PTC) and MUST implement a call in proper tail position as a PTC. (Loosely speaking, implementing a call as a PTC is also known as //tail call optimization//.) The old [[proposals:proper_tail_calls|ES4 proposal for proper tail calls]] should be adapted to provide these definitions for ES-Harmony.
+
+Since ES5/strict and ES-Harmony 
+  * poisons ''<function>.caller'' and ''<function>.arguments'',
+  * prohibits ''<non-strict-function>.caller'' from revealing a strict function,
+  * poisons ''arguments.callee'' and ''arguments.caller'', and
+  * does not join ''arguments'' with parameters
+all calls in possible tail position MAY safely be implemented as PTC by our [[strawman:gc semantics]] safety rule. 
+
+When calculating the asymptotic space complexity of an algorithm, we are concerned with GC liveness, in which case we may assume that all calls in proper tail position are implemented as PTC. To support such assumptions, implementers MUST implement such calls as PTC. We model the call stack as a //gc root//. All active stack frames are strongly reachable from the call stack. All active local variables within a stack frame are strongly reachable from a stack frame. Once stack frame X initiates a PTC, X is no longer active, and so X's stack frame is no longer reachable from the call stack. X, and any objects which were transitively reachable only from X's local variables are thus no longer transitively reachable from roots, and so MUST eventually be collected, if needed to avoid failure from memory exhaustion.
+
+----
+
+Just a note after some offline conversation with Mark: he wants a distinction between the classic notion of tail position and what he calls "possible tail position," but I am skeptical that the latter concept makes sense. I also don't think the distinction matters.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2010/05/18 23:56//
+
+===== Lost Opportunity =====
+
+ES3 had reserved the identifier ''goto''. ES4 had proposed that a call in tail-call position be considered a proper tail call only if preceded by ''goto'', in which case the programmer could expect the PTC implementation implied by our liveness constraint above. If the programmer used ''goto'' on a call that cannot be implemented as PTC, this would be a static error. As a result, the programmer's PTC assumptions when reasoning about the asymptotic space complexity of their programs would be maintainable. A subtle change to a function call that preserved its normal semantics but lost its assumed PTC nature would also cause a static error.
+
+Unfortunately, ES5 unreserved ''goto''. Once unreserved, it would be too costly to reclaim it. None of the remaining reserved words are a plausible substitute.
+
+====== Tail position ======
+
+Part of specifying proper tail calls requires a specification of what are the //proper tail positions// of the language. In the [[proposals:proper tail calls|ES4 proposal]], Lars and I made an initial attempt, but it was pretty buggy. Here's an updated spec. It will still need more scrutiny, but this is a start.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2010/05/18 00:03//
+
+
+===== Attribute grammar =====
+
+The spec is written as an //attribute grammar//. Attributes are properties of nodes in the abstract syntax tree. In general, attributes are either //synthesized// (computed bottom-up) or //inherited// (computed top-down). In this spec, there are only inherited attributes. (This is particularly pleasant for implementations, since it can easily be computed in any pass of a compiler or interpreter, with no need for an additional pass.)
+
+^ Attribute   ^ Directionality ^ Node type   ^ Meaning                                                                     ^
+| ''tail''    | inherited      | expression  | if **true**, the node is in tail position                                   |
+| ''wrapped'' | inherited      | all         | if **true**, no child expressions in the same function are in tail position |
+
+===== Expressions =====
+
+<code javascript>
+    E -> E1 , E2                             E1.tail = false
+                                             E2.tail = E.tail
+                                             E1.wrapped = E2.wrapped = E.wrapped
+    E -> E1 ? E2 : E3                        E2.tail = E3.tail = E.tail
+                                             E1.wrapped = E2.wrapped = E3.wrapped
+
+    /* from the "let expressions" proposal */
+    E -> let (V1 = E1, ..., Vn = En) {       E1.tail = ... = En.tail = false
+             S1 ... Sm                       E{n+1}.tail = E.tail
+         }                                   S1.wrapped = ... = Sn.wrapped = S1.wrapped = ... = Sm.wrapped = E.wrapped
+    E -> let (V1 = E1, ..., Vn = En) {       E1.tail = ... = En.tail = false
+             S1 ... Sm => E{n+1}             E{n+1}.tail = E.tail
+         }                                   S1.wrapped = ... = Sn.wrapped = S1.wrapped = ... = Sm.wrapped = E{n+1}.wrapped = E.wrapped
+</code>
+
+===== Statements =====
+
+<code javascript>
+    S -> { S1 ... Sn }                       S1.wrapped = ... = Sn.wrapped = S.wrapped
+    S -> E;                                  E.tail = false
+    S -> do S1 while (E)                     S1.wrapped = S.wrapped
+                                             E.tail = false
+    S -> while (E) S1                        S1.wrapped = S.wrapped
+                                             E.tail = false
+    S -> for (E1; E2; E3) S1                 E1.tail = E2.tail = E3.tail = false
+                                             S1.wrapped = S.wrapped
+    S -> for (E1 in E2) S1                   E1.tail = E2.tail = false
+                                             S1.wrapped = S.wrapped
+    S -> if (E) S1 else S2                   S1.wrapped = S2.wrapped = S.wrapped
+                                             E.tail = false
+    S -> L: S1                               S1.wrapped = S.wrapped
+    S -> with (E) S1                         S1.wrapped = S.wrapped
+                                             E.tail = false
+
+    /* tail unless wrapped by try */
+    S -> return E;                           E.tail = !s.wrapped
+
+    /* no tail positions inside */
+    S -> try S1 K                            S1.wrapped = true
+                                             K1.wrapped = ... = Kn.wrapped = S.wrapped
+    S -> try S1 K finally S2                 S1.wrapped = true
+                                             K1.wrapped = ... = Kn.wrapped = true
+                                             S2.wrapped = false
+
+    S -> throw E;                            E.tail = false
+    S -> switch (E) C1 ... Cn                E.tail = false
+                                             C1.wrapped = ... = Cn.wrapped = S.wrapped
+</code>
+
+===== Clauses =====
+
+<code javascript>
+    K -> catch (V) S                         S.wrapped = K.wrapped
+    C -> case E: S1 ... Sn                   E.tail = false
+                                             S1.wrapped = ... = Sn.wrapped = C.wrapped
+    C -> default: S1 ... Sn                  E.tail = false
+                                             S1.wrapped = ... = Sn.wrapped = C.wrapped
+</code>
+
+===== Functions =====
+
+<code javascript>
+    F -> function f(x1,...,xn) S             S.wrapped = false
+</code>
+
+===== Declarations =====
+
+<code javascript>
+    D -> var x1 = E1, ..., xn = En;          E1.tail = ... = En.tail = false
+    D -> let x1 = E1, ..., xn = En;          E1.tail = ... = En.tail = false
+    D -> const x1 = E1, ..., xn = En;        E1.tail = ... = En.tail = false
+</code>
+
+
+====== References ======
+
+[[proposals:proper_tail_calls|ES4 proposal for proper tail calls]] and [[discussion:proper_tail_calls|discussion of that page]].
+
+[[http://bugs.ecmascript.org/ticket/323|Trac ticket 323]], on implicit vs. explicit ''goto'' syntax, tail position assertion, etc.
+
+[[http://www.schemers.org/Documents/Standards/R5RS/HTML/r5rs-Z-H-6.html#%_idx_78|Proper tail calls in Scheme]].
+
+[[http://calculist.blogspot.com/2006/03/proper-tail-recursion-and-space.html|Dave Herman's blog on Clinger's proper tail calls]].
+
+[[https://bugzilla.mozilla.org/show_bug.cgi?id=445363#c20|Brendan discovers that ES5/strict enables TCO]].
+
+[[http://projectfortress.sun.com/Projects/Community/blog/ObjectOrientedTailRecursion|Guy Steele says OO requires tail call optimization]]
+
+[[http://gbracha.blogspot.com/2009/12/chased-by-ones-own-tail.html|Gilad Bracha on "Steele's brilliant post"]]

@@ -1,0 +1,44 @@
+====== Example ======
+
+It's often necessary to loop over a few iterations at the same time. For example:
+
+<code javascript>
+for (let name of names, email of emails) {
+    console.log('"' + name + '" <' + email + '>');
+}
+</code>
+
+====== Syntax ======
+
+Change the syntax of ''for''-''of'' to take an //AssignmentExpression// on the righthand side of ''of'' instead of an //Expression//, and allow multiple comma-separated clauses:
+
+<code>
+ForOfStatement ::= "for" "(" ("let"|"var") LHSExpression "of" AssignmentExpression ("," LHSExpression "of" AssignmentExpression)* ")" Statement
+</code>
+
+====== Semantics ======
+
+Evaluate each expression and save the result of each. For each iteration of the loop:
+
+  * Call ''.next()'' on each iterator and save the result of each call.
+  * Bind each left-hand-side to each result of the ''.next()'' calls.
+
+The loop exits whenever an exception is thrown.
+
+
+====== Discussion ======
+
+Note that whatever iterator finishes first causes the loop to end.
+
+Alternatives:
+
+  * always call ''.next()'' on each but rethrow the first exception that was thrown.
+  * forcibly call ''.close()'' and swallow any exceptions
+
+Also note that this is expressible without custom syntax by using a ''zip'' iterator utility. But it's such a common phenomenon that it deserves syntax, and may be more efficient.
+
+This also generalizes to work in comprehension syntax, too.
+
+====== Bug ======
+
+See [[https://bugs.ecmascript.org/show_bug.cgi?id=1163|bug 1163]].

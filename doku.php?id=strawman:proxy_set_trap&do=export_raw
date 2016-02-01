@@ -1,0 +1,77 @@
+====== Proxy set trap ======
+
+The default implementation of the derived ''set'' trap of Proxies was written to be consistent with the ES5 %%[[Put]]%% algorithm (ES5 section 8.12.5). As noted by David Bruant, the accessor case for own properties should only be considered after the call to ''this.getPropertyDescriptor(name);'', but not before, so as to exhibit the same side-effects as the original algorithm.
+
+We have two ways of fixing this discrepancy:
+  - Update the ''set'' implementation at [[harmony:proxies#trap_defaults]] to be consistent with ES5.
+  - Changing ES-harmony's %%[[Put]]%% to match the current default proxy ''set'' behavior.
+
+Below is one way to fix the current default behavior of ''set'':
+
+<code javascript>
+ set: function(receiver, name, val) {
+    var desc = this.getOwnPropertyDescriptor(name);
+    if (desc) {
+      if ('writable' in desc) {
+        if (desc.writable) {
+          desc.value = val;
+          this.defineProperty(name, desc);
+          return true;
+        } else {
+          return false;
+        }
+      } else { // accessor
+        this.getPropertyDescriptor(name); // !! line added just for side-effect of triggering the trap, to be consistent with ES5 [[Put]]
+        if (desc.set) {
+          desc.set.call(receiver, val);
+          return true;
+        } else {
+          return false;
+        }
+      }
+    }
+    desc = this.getPropertyDescriptor(name);
+    if (desc) {
+      if ('writable' in desc) {
+        if (desc.writable) {
+          // fall through
+        } else {
+          return false;
+        }
+      } else { // accessor
+        if (desc.set) {
+          desc.set.call(receiver, val);
+          return true;
+        } else {
+          return false;
+        }
+      }
+    }
+    this.defineProperty(name, {
+      value: val, 
+      writable: true, 
+      enumerable: true, 
+      configurable: true});
+    return true;
+  }
+</code>
+
+Without proxies, the difference between both algorithms would have been unobservable. With proxies, it becomes observable, since using the ES5
+algorithm, a default ''set'' on an own accessor property would trigger //both// the ''getOwnPropertyDescriptor'' and the ''getPropertyDescriptor'' traps. With the current default implementation, the ''getOwnPropertyDescriptor'' trap only gets called once, which seems to be more desirable. The current default ''set'' trap avoids this artifact at the expense of code duplication.
+
+Allen is taking action to reconcile the ES5 internal "MOP" with the proxy "MOP", which will clarify issues like this.
+
+--- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2011/02/28 07:37//
+
+====== References ======
+  * [[https://mail.mozilla.org/pipermail/es-discuss/2011-January/012622.html|Discussion thread]] on es-discuss.
+
+====== Feedback ======
+
+Discussed at the March 2011 TC39 meeting. ES-next spec should avoid the redundant trap invocation.
+
+--- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2011/03/30 13:05//
+
+MarkM would like to bundle the changes proposed by this strawman with the discussion on providing a new %%[[Set]]%% built-in method, cf. the open issues in [[harmony:proxy_defaulthandler#open_issues|the default forwarding handler]] proposal.
+
+--- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2011/05/04 12:30//

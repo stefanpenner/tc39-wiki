@@ -1,0 +1,151 @@
+====== Proposal: Self Types ======
+
+This proposal suggests adding a "Self" type to EcmaScript. 
+The key idea is that each structural object type implicitly binds the
+type variable "Self" to the **exact** type of the current object.
+The type "Self" can be used inside any structural object type,
+inside any structural object expression, and inside a class or interface body.
+It always denotes the exact (ie, allocated) type of the current object.
+Since the exact type of the current object is always known at run-time,
+it is  straightforward to enforce these Self types via dynamic checks.
+Static checking in strict mode is discussed below.
+
+**Syntax:** The exact name is TBD.
+
+
+
+
+
+
+
+====== Use-cases ======
+
+  - [ThisSelf] Object expressions bind "Self", as in: <code javascript>
+let x = { f: function(this : Self) : R { .... },   ... } : T;
+</code> The general use-case is "structural object methods", where the poor alternatives in the absence of ''Self'' are ''*'' and hard-coded type names (''T'').
+  - [ReturnSelf] Self types thus allow us to assign a precise type to the ''this'' parameter of a function in a structural object, as in a more precise ''IteratorType'' (see [[iterators and generators]]): <code javascript>
+type IteratorType.<T> = {
+  iterator::get: function (boolean=) : Self,
+  next: function () : T
+};
+</code> A similar use-case is a ''Cloneable'' interface, which can precisely type a clone method that returns an object of exactly the same allocated type: <code>
+interface Cloneable {
+   public function clone() : Self;
+}
+</code>
+  - [ArgumentSelf] We can also give precise types to binary methods: <code javascript>
+class MyNum {
+   function equals(other : Self) : boolean { ... }
+}
+</code> See the [[proposals:dictionary#the_objectidentity_interface|ObjectIdentity]] interface for a specific application of this use-case related to the [[proposals:dictionary|Map]] type.
+
+----
+
+The last example appears to fail in the presence of class hierarchies, as outlined in a comment further down on this page.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/09/05 09:45//
+
+In the counter-example below, the right type (as Cormac notes) is ''B'', not ''Self''. Would it be better to define argument-''Self'' as used in ''equals'' and other binary methods, not as the exact (most-derived) type of the ''this'' object receiving the binary method call, but as the nominal type in which the binary method being called was defined? I'm assuming that neither ''D1'' nor ''D2'' overrides ''equals''. Cormac, what does this break?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/09/06 07:53//
+
+====== Static Checking in Strict Mode ======
+
+Type checking is a little subtle, because of how "Self" interacts with object subtyping.
+Consider:
+<code javascript>
+type T1 = { f:function(this:Self, z:Self):Self, w:int}
+var x:T1 = { ... }:T1
+
+type T2 = { f:function(this:Self, z:Self):Self }
+var y:T2 = x;
+</code>
+T1 is a subtype of T2, and so the object "x" of type T1 can be viewed
+as having type T2, via the assignment to "y", but still 
+the "Self" inside T2 refers to the exact type T1 of the
+underlying object. Thus, in general, an occurrence of "Self" in an object type means
+"some unknown subtype of this object type".
+
+What type should "y.f" have? 
+Not "function(this:Self, z:Self):Self", since Self is out of scope.
+We could replace "Self" by T2 (the type of y), giving
+"function(this:T2, z:T2):T2", but the underlying function
+might expect z to be of type "T1" and in particular to have a "w:int" field, so this is unsafe. The return type T2 is ok, even if the function returns a T1 instead.
+
+Hence, the rule is as follows:
+
+  * covariant occurrences of Self (eg in the result type) are replaced by T2
+  * contravariant occurrences of Self (eg in the argument types) are replaced by "*" (we could forbid them instead, but that seems harsh)
+
+and so y.f has type "function(this:*, z:*):T2".
+
+(We could assign "y.f" the type "function(this:*, z:*):*" instead, but that seems strictly weaker.)
+
+Conversely, for an update "y.f = e", e should have type "function(this:T2, z:T2):*",
+because if the function can handle "T2" objects, it will be fine if given T1 objects instead. 
+
+The use of "*" here implies that we will use run-time checks in various places. 
+
+
+
+
+====== Motivation: Structural Object methods ======
+
+Assigning a precise type to the "this" parameter of a function in a structural object is tricky. Currently, we can write structural object types such as
+
+<code javascript>
+type T = { f:function(this:S,...):R, ...}
+</code>
+
+What type "S" should we put on the "this" argument of the function f?
+We could use "*", as in:
+<code javascript>
+type T = { f:function(this:*,...):R, ...}
+</code>
+but this is rather weak.
+We could try to put in the type "T" itself for "S", but this leads to a circularity.
+Self types solve this problem nicely:
+<code javascript>
+type T = { f:function(this:Self,...):R, ...}
+</code>
+
+----
+One thought that came up in discussions already: use ''this'' in type expression context as the name of the "Self" type. Avoids shadowing a user-defined ''Self'' in object initialisers and object structural types. Similar to how ''null'' and ''undefined'' are their own type names.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/05/08 15:35//
+
+I withdrew this in a face-to-face meeting, since ''this'' means something other than "the nearest containing object initialiser" in value expression syntax, so should not mean "the nearest enclosing object type" in type expression syntax.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/08/24 06:35//
+
+----
+Consider the interface ''Eq'' and some classes implementing it:
+
+<code>
+  interface Eq {
+      function equals(other: Self): boolean;
+  }
+
+  class B implements Eq {
+      public function equals(other: Self) { return id === other.id }
+
+      var id = globalId++;
+  }
+
+  class D1 extends B { ... }
+  class D2 extends B { ... }
+</code>
+
+In my fevered mind I then choose to believe that I should be able to ask ''(new D1).equals(new D2)'' but that appears not to be the case in the proposal, since inside the ''equals'' method of ''D1'' the value of ''other'' will be a ''D2'', which is not a ''Self'' (ie a ''D1'').
+
+Obviously the problem here is that this is not a use of ''Self'' that is covered by the proposal so the fault is mine, but I just want to point out that ''Self'' appears to have some problems with nontrivial class hierarchies and I'm not yet convinced about its utility for interfaces and classes.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/08/22 09:47//
+
+Yes, ''B'' would work here better than ''Self'', since the specific meaning of ''Self'' is the type of the current object, not class. It has some use cases, but may take users a little while to wrap their head around it.
+
+ --- //[[cormac@soe.ucsc.edu|Cormac Flanagan]] 2007/08/24 22:29//
+
+I've mailed Cormac about this, but I'm willing to show my ignorance here: why should ''Self'' be the dynamic (allocated) type when used in methods of nominal types? Why should it not be the enclosing nominal type? That would address Lars's objection, and it would satisfy OOP theoretical requirements as I understand them.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/09/07 20:14//

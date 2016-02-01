@@ -1,0 +1,66 @@
+====== Scopes for directives and definitions ======
+
+This is about the compile-time meaning of certain phrases in the language, where the spec is currently unclear.  These phrases all introduce names.  (For completeness I've listed also those cases where the spec is clear.)
+
+Updated with resolutions / clarifications from 2006-03-31 phone meeting.   --- //[[lth@opera.com|Lars T Hansen]] 2006/04/07 05:39//
+
+===== Packages =====
+
+  * Package names are visible in the package definition and lexically following the package definition.  (2006-03-31 mtg).
+  * Packages do not nest
+
+
+===== Classes and interfaces =====
+
+  * Class and interface names are visible in the entire program/package, however inheritance clauses can't have forward references (2006-03-31 mtg).
+  * Classes and interfaces can occur only on the global level or on the package level
+
+===== Namespaces =====
+
+  * The draft spec says that "a NamespaceDefinition may be used whereever a Directive or AnnotatableDirective may be used".  It goes on to say that the definition introduces a new namespace into the block scope.  Thus presumably NS1 is visible at location Y, but not at locations A or B below.
+  * NS1 is also visible at location X (lexically before the definition, but in the same scope) -- namespaces are scoped like ''let'' (2006-03-31 mtg).
+
+<code>
+    // A
+    if (blah) {
+        // X
+        namespace NS1;
+        // Y
+    }
+    // B
+</code>
+
+===== ''use'' directive =====
+
+  * The draft spec says that "a UseDirective may be used whereever a Directive or AnnotatableDirective may be used".  It goes on to say that the use directive is block-scoped, so in the example below, this presumably means that the code at location Y will see NS1::foo if it exists, but code at locations A and B will not see NS1::foo.
+
+  * Code at location X (lexically before "use" but in the block scope) is not intended to see NS1::foo -- ''use'' is visible only below its lexical occurence, to the end of the scope (2006-03-31 mtg).  However, we seemed to want to consider restricting ''use'' to appearing only at the beginning of its scoping unit (program, package, class, function, block).
+
+<code>
+    foo; // A
+    if (blah) {
+        foo; // X
+        use NS1;
+        foo; // Y
+    }
+    foo; // B
+</code>
+
+
+===== ''import'' directive =====
+
+  * The draft spec says that "ImportDirective may be used whereever a Directive or AnnotatableDirective can be used", but then goes on to say that "An ImportDirective causes the simple and fully qualified names of one or more public definitions of the specified package to be introduced into the current package."
+  * ''import'' has scoping like ''use'' (2006-03-31 mtg).
+  * Apparently, definitions can be imported at run-time, depending on control flow.  However, like for ''use'' we could consider restricting it to appearing at the beginning of the scopes in which it appears, which solves that problem (2006-03-31 mtg).
+
+
+===== ''function'' =====
+
+  * Outside of classes or other functions, functions are scoped in the entire package/global scope (Edition 3 rule)
+  * Inside functions, local function definitions are scoped in the entire function
+  * Methods are presumably in the entire class (ie visible to all other methods, though not to class initializer code) (2006-03-31 mtg)
+
+===== ''var'' and ''const'' =====
+
+  * ''var'' is scoped in the global object, in the class, or in the function (Edition 3 compatibility)
+  * ''const'' is scoped like ''var'' (JS 1.5 and JScript compatibility)

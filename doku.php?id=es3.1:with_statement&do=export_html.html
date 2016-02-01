@@ -1,0 +1,153 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=es3.1:with_statement&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=es3.1" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=es3.1:with_statement&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=es3.1:with_statement&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<p>
+<code>with</code> must be deprecated.
+</p>
+
+<p>
+Description:  The <code>with</code> statement allow a “shorthand” form for writing recurring access to objects. Instead of writing: 
+</p>
+<pre class="code">
+a.b.val = true;
+a.b.val2 = true;
+</pre>
+
+<p>
+one can write:
+</p>
+<pre class="code">
+with (a.b) {
+  val = true;
+  val2 = true;
+}
+</pre>
+
+<p>
+This looks concise but what happens in the following case:
+</p>
+<pre class="code">
+function foo() {
+  var val;
+
+  with (a.b) {
+    val = true;
+  }
+}
+</pre>
+
+<p>
+Is that a reference to the local <code>val</code> or to <code>a.b.val</code>? Because of the potential of expando properties the compiler cannot tell. And just by looking at this piece of code, nor can the programmer tell. The compiler has to generate a by-name lookup of the entire scope chain - this is expensive.
+</p>
+
+<p>
+Additionally, there is no safe way to add a property, say <code>cost</code>, to <code>a.b</code>; every user of the object who put it in a <code>with block</code> and who has a local or global variable called <code>cost</code> used in that <code>with block</code> is going to suddenly break.  Every time we add/remove a property, we risk changing the variable lookup semantics of an existing program. Similarly, every time we use a with block, we risk accidentally binding to the wrong thing when someone changes the object properties.
+</p>
+
+<p>
+If we can’t read a program and be confident that we know what it is going to do, we can’t have confidence that it is going to work correctly.
+</p>
+
+<p>
+ Relevant Goal: <a href="doku.php%3Fid=es3.1:es3.1_goals.html" class="wikilink1" title="es3.1:es3.1_goals" onclick="return svchk()" onkeypress="return svchk()">1, 5</a><br/>
+ Relevant Design Principle: <a href="doku.php%3Fid=es3.1:design_principles.html" class="wikilink1" title="es3.1:design_principles" onclick="return svchk()" onkeypress="return svchk()">2a, 2b</a><br/>
+ Relevant ES4 proposal: none
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x70%3B%26%23x72%3B%26%23x61%3B%26%23x74%3B%26%23x61%3B%26%23x70%3B%26%23x6c%3B%26%23x40%3B%26%23x6d%3B%26%23x69%3B%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x73%3B%26%23x6f%3B%26%23x66%3B%26%23x74%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x70;&#x72;&#x61;&#x74;&#x61;&#x70;&#x6c;&#x40;&#x6d;&#x69;&#x63;&#x72;&#x6f;&#x73;&#x6f;&#x66;&#x74;&#x2e;&#x63;&#x6f;&#x6d;">Pratap Lakshman</a> 2007/04/15 03:29</em>
+</p>
+
+<p>
+Pratap writes that the compiler has to generate a by-name lookup of the entire scope chain.  That is not correct.  The compiler needs to generate by-name lookups in the with-bound object, but not elsewhere.  Consider this code:
+</p>
+<pre class="code language="javascript"">   function f(x) {
+      with (o)
+         return function (n) { return n+x }
+   }
+</pre>
+<p>
+The lookup for &lsquo;n&rsquo; can be by lexical index, as it shadows any <code>with</code> binding.  The lookup for <code>x</code> must probe <code>o</code> by name, but if the property is not found it can access the outer <code>x</code> by lexical index.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2008/05/05 21:35</em>
+</p>
+
+<p>
+Lars is correct (I meant in the with-bound object; my explanation was not clear).
+</p>
+
+<p>
+It may be difficult to tighten spec language to fix &lsquo;with&rsquo;, but I still feel that if there is some way in which we can deprecate/ban &lsquo;with&rsquo; we should consider it.
+</p>
+
+<p>
+For e.g. &lsquo;with&rsquo; interacts with other language features in surprising ways. Consider the following (contrived) case:
+</p>
+<pre class="code language="javascript"">var a = 1;
+function foo() {
+    var o = {a : 2};
+
+    with (o) {
+        var a = 3;
+    }
+
+    print (a);
+    print(o.a);
+}
+foo();
+print(a);
+</pre>
+<p>
+While it would look like the variable declaration from within ‘with’ should create a variable at foo scope and set its value to 3, that’s not what’s supposed to happen. Rules for variable instantiation (§10.1.3), variable declaration grammar (§12.2), identifier reference (§11.1.2), and scope chain and identifier resolution (§10.1.4) result in the above code being evaluated as if it were the following:
+</p>
+<pre class="code language="javascript"">var a = 1;
+function foo() {
+    var o = {a : 2};
+
+    var a = undefined;
+
+    with (o) {
+        a = 3;
+    }
+
+    print(a);
+    print(o.a);
+}
+foo();
+print(a);
+</pre>
+<p>
+Notice that “var a = 3” ends up creating the variable in one scope and setting the value on an element in another scope. How can that be intentional? It may be difficult to tighten spec language to fix this, but I do believe we should consider deprecating &lsquo;with&rsquo; in an opt-in &lsquo;strict&rsquo; mode (or &lsquo;subset&rsquo; mode).
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x70%3B%26%23x72%3B%26%23x61%3B%26%23x74%3B%26%23x61%3B%26%23x70%3B%26%23x6c%3B%26%23x40%3B%26%23x6d%3B%26%23x69%3B%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x73%3B%26%23x6f%3B%26%23x66%3B%26%23x74%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x70;&#x72;&#x61;&#x74;&#x61;&#x70;&#x6c;&#x40;&#x6d;&#x69;&#x63;&#x72;&#x6f;&#x73;&#x6f;&#x66;&#x74;&#x2e;&#x63;&#x6f;&#x6d;">Pratap Lakshman</a> 2008/06/27 13:31</em>
+</p>
+
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/8/81250f9d6885f74f71f67e8c7d7263e7.xhtml used -->
+</body>
+</html>

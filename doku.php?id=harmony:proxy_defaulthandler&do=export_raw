@@ -1,0 +1,250 @@
+====== The content on this page is OBSOLETE ======
+
+====== Default Proxy forwarding handler ======
+
+| **This API is superseded by [[harmony:direct proxies]] and the [[harmony:reflect api]]** |
+
+Goal: to standardize a default forwarding handler that delegates all meta-level operations applied to a proxy to a given target object, as exemplified [[harmony:proxies#examplea_no-op_forwarding_proxy|here]].
+
+Rationale: this is a common handler, required as a starting point by most abstractions that wrap existing JS objects. The default forwarding handler is also required in the [[harmony:proxies#transparent_chains_of_no-op_proxies|double lifting]] pattern.
+
+Advantages of standardizing a default forwarding handler:
+  * Wrapper proxies don't need to define this handler over and over again,
+  * The code for the default handler doesn't need to be downloaded over and over again,
+  * The default handler evolves in sync with potential changes to the Proxy API,
+  * A built-in implementation is likely to be faster than a no-op forwarding handler defined in JS itself
+
+
+
+==== Forwarding Handler constructor ====
+
+The following is a revised API based on the standard Javascript constructor pattern.
+
+<code javascript>
+Proxy.Handler = function(target) {
+  this.target = target;
+};
+
+Proxy.Handler.prototype = {
+
+  // == fundamental traps ==
+
+  // Object.getOwnPropertyDescriptor(proxy, name) -> pd | undefined
+  getOwnPropertyDescriptor: function(name) {
+    var desc = Object.getOwnPropertyDescriptor(this.target, name);
+    if (desc !== undefined) { desc.configurable = true; }
+    return desc;
+  },
+
+  // Object.getPropertyDescriptor(proxy, name) -> pd | undefined
+  getPropertyDescriptor: function(name) {
+    var desc = Object.getPropertyDescriptor(this.target, name);
+    if (desc !== undefined) { desc.configurable = true; }
+    return desc;
+  },
+
+  // Object.getOwnPropertyNames(proxy) -> [ string ]
+  getOwnPropertyNames: function() {
+    return Object.getOwnPropertyNames(this.target);
+  },
+
+  // Object.getPropertyNames(proxy) -> [ string ]
+  getPropertyNames: function() {
+    return Object.getPropertyNames(this.target);
+  },
+
+  // Object.defineProperty(proxy, name, pd) -> undefined
+  defineProperty: function(name, desc) {
+    return Object.defineProperty(this.target, name, desc);
+  },
+
+  // delete proxy[name] -> boolean
+  delete: function(name) { return delete this.target[name]; },
+
+  // Object.{freeze|seal|preventExtensions}(proxy) -> proxy
+  fix: function() {
+    // As long as target is not frozen, the proxy won't allow itself to be fixed
+    if (!Object.isFrozen(this.target)) {
+      return undefined;
+    }
+    var props = {};
+    Object.getOwnPropertyNames(this.target).forEach(function(name) {
+      props[name] = Object.getOwnPropertyDescriptor(this.target, name);
+    }.bind(this));
+    return props;
+  },
+
+  // == derived traps ==
+
+  // name in proxy -> boolean
+  has: function(name) { return name in this.target; },
+
+  // ({}).hasOwnProperty.call(proxy, name) -> boolean
+  hasOwn: function(name) { return ({}).hasOwnProperty.call(this.target, name); },
+
+  // proxy[name] -> any
+  get: function(receiver, name) { return this.target[name]; },
+
+  // proxy[name] = value
+  set: function(receiver, name, value) {
+   if (canPut(this.target, name)) { // canPut as defined in ES5 8.12.4 [[CanPut]]
+     this.target[name] = value;
+     return true;
+   }
+   return false; // causes proxy to throw in strict mode, ignore otherwise
+  },
+
+  // for (var name in proxy) { ... }
+  enumerate: function() {
+    var result = [];
+    for (var name in this.target) { result.push(name); };
+    return result;
+  },
+
+  /*
+  // if iterators would be supported:
+  // for (var name in proxy) { ... }
+  iterate: function() {
+    var props = this.enumerate();
+    var i = 0;
+    return {
+      next: function() {
+        if (i === props.length) throw StopIteration;
+        return props[i++];
+      }
+    };
+  },*/
+
+  // Object.keys(proxy) -> [ string ]
+  keys: function() { return Object.keys(this.target); }
+};
+</code>
+
+To create a default forwarding proxy to an object ''obj'', one would write:
+
+<code javascript>
+var h = new Proxy.Handler(obj);
+var p = Proxy.create(h);
+</code>
+
+To modify one of the default traps, one can either override traps on a default handler or use prototype inheritance. For example:
+
+<code javascript>
+// using assignment
+var h = new Proxy.Handler(obj);
+h.get = function(rcvr, name) { ... };
+var p = Proxy.create(h);
+
+// using inheritance
+function MyHandler(target) {
+  Proxy.Handler.call(this, target); // constructor chaining
+}
+MyHandler.prototype = Object.create(Proxy.Handler.prototype);
+MyHandler.prototype.get = function(rcvr, name) { ... };
+
+var h2 = new MyHandler(obj);
+var p2 = Proxy.create(h2);
+</code>
+
+Pros of this API:
+  * Familiarity to Javascript developers.
+  * Handler inheritance is straightforward.
+  * All default traps are shared among all default handler instances.
+
+Cons of this API:
+  * The constructor pattern is subject to the bug of forgetting ''new'', in which case ''Proxy.Handler(obj)'' will set a ''target'' property on ''Proxy''.
+  * It's awkward that handlers are created using constructor functions (requiring ''new'') whereas proxies are created using a factory method (not requiring ''new''). This makes the API feel a little inconsistent.
+
+ --- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2010/12/14 3:10//
+
+
+===== Open Issues =====
+
+=== Alternative names ===
+
+We can debate about alternative names for ''Handler'' and ''target''.
+
+If the Proxy API would be contained in a Harmony module, it may make sense to introduce ''Handler'' as an exported variable, next to ''Proxy'', instead of making it a property on ''Proxy''.
+
+It was [[https://mail.mozilla.org/pipermail/es-discuss/2011-April/013854.html|noted]] that calling the default forwarding handler ''Handler'' is potentially confusing (not all handlers are forwarding handlers). Possible alternative: ''Forwarder''.
+
+//--- [[tomvc.be@gmail.com|Tom Van Cutsem]] 2011/05/04 12:15//
+
+=== Alternative implementation for default set trap ===
+
+As currently defined, the default ''set'' trap's behavior is counter-intuitive in the case of a "chain" of proxies (a proxy forwarding to another proxy):
+
+<code javascript>
+  set: function(receiver, name, value) {
+   if (canPut(this.target, name)) { // canPut as defined in ES5 8.12.4 [[CanPut]]
+     this.target[name] = value;
+     return true;
+   }
+   return false; // causes proxy to throw in strict mode, ignore otherwise
+  },
+</code>
+
+If ''this.target'' is a proxy, the ''canPut'' auxiliary function will trigger that proxy's ''getOwnPropertyDescriptor'' and ''getPropertyDescriptor'' traps to determine whether the property can be set. Only then is the assignment performed on ''this.target'' and is that proxy's ''set'' trap invoked.
+
+Part of the awkwardness lies in the fact that the "inner" ''set'' returns its own boolean to indicate success, but that boolean isn't accessible to the "outer" ''set''. Instead each proxy in the chain tests the boolean and either throws or ignores it. MarkM suggests the following refactoring of the internal spec methods which would make this chaining of ''set'' calls more intuitive:
+
+Since the system itself will provide the default traps, the default ''set'' trap could call a new internal 
+%%[[Set]](P,V)%% method which returns a boolean, such that %%[[Put]]%% would be redefined as:
+
+<code>
+8.12.5 [[Put]](P,V,Throw)
+
+  If the result of calling [[Set]](P,V) is true, return.
+  Else if Throw is true, throw a TypeError exception.
+  else return.
+</code>
+
+The %%[[Set]]%% method on regular objects would be defined as is the current %%[[Put]]%% but returning a boolean rather than conditionally throwing. The %%[[Set]]%% method on proxies would call the ''set'' trap. The default ''set'' trap would call %%[[Set]]%% on ''this.target''. So this default ''set'' trap is the primitive by which the ability to call %%[[Set]]%% is exposed.
+
+The one problem with this plan is %%[[Set]]%% on an object that inherits from a proxy. This plan would still go through the %%[[CanPut]]%% logic on the derived object which would still trigger the %%[[GetProperty]]%% and %%[[GetOwnProperty]]%% traps on the proxy. So there's not much difference in the inherited case. But the direct chaining case is more direct and intuitive.
+
+ --- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2011/01/12 3:10//
+
+=== Default implementation of fix() ===
+
+The above implementation of ''fix()'' was written without giving much thought to the consequences. On second thought, the above default implementation is potentially unsafe: if a proxy handler inherits from the default forwarding handler, but does not override ''fix()'', and it forwards to a frozen object, then freezing the proxy will fix it by fully bypassing the handler. This would mean that any intercepting behavior (e.g. for access control, logging, ...) that the handler specified would no longer be called, which can be surprising. A  more conservative and safer default implementation of the ''fix'' trap would just be to always return ''undefined''. This implies that default forwarding proxies can't be fixed unless ''fix'' is explicitly overridden.
+
+ --- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2011/05/04 12:20//
+
+===== Feedback and History =====
+
+TC39 January 2011 meeting:
+
+From Waldemar's notes:
+
+Proxy default handler:
+Some trivial bugs in the code:  Calling getOwnPropertyDescriptor etc.
+with only one argument.  desc in "desc.configurable = true" can be
+undefined.
+
+set/put/canPut problem discussion.
+Allen:  Clean up the list of primitive methods and handlers.
+MarkM:  All existing uses of put can be written in terms of %%[[Set]]%%.
+Waldemar:  Would want a more generic way of invoking %%[[Set]]%% rather
+than having to instantiate a new default proxy.
+Brendan:  Issue remains with prototype chain.
+
+Agreed to move this to proposal stage, with some open issues.
+
+ --- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2011/01/24 10:39//
+
+TC39 November 2010 meeting: agreement that a default forwarding handler should become part of the spec.
+
+A first iteration of this API required handlers to be created using a factory method:
+
+<code javascript>
+var handler = Proxy.handlerFor(target);
+</code>
+
+Drawback of this API: one cannot inherit from a shared handler prototype. Waldemar: why not define an API based on prototypes and constructor functions? The revised API was formulated in response to this.
+
+ --- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2010/12/15 2:53//
+
+===== References =====
+
+An implementation of this API that works using proxies in Firefox 4 is available [[http://code.google.com/p/es-lab/source/browse/trunk/src/proxies/forwardingHandler.js|here]].

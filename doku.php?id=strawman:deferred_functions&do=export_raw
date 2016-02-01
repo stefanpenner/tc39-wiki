@@ -1,0 +1,316 @@
+See [[strawman:async_functions]] for a revised version of this proposal implementable as a library in terms of [[strawman:concurrency]] and [[harmony:generators]].
+
+====== Deferred Functions ======
+
+Deferred functions ease the burden of asynchronous programming.
+
+===== Asynchronous Programming =====
+
+Ecmascript programming environments typically are single threaded and pausing execution for long periods is undesirable. ES host environments use callbacks for operations which may take a long time like network IO or system timers. 
+
+For Example:
+
+<code>
+function animate(element, callback) {
+    var i = -1;
+    function continue() {
+        i++;
+        if (i < 100) {
+            element.style.left = i;
+            window.setTimeout(continue, 20);
+        } else {
+            callback();
+        }
+    }
+    continue();
+};
+animate(document.getElementById('box'), function() { alert('Done!'); });
+</code>
+
+Calling functions which have callback arguments does not compose easily. Many libraries include a Deferred constructor function to address this issue.
+
+<code>
+function deferredTimeout(delay) {
+    var deferred = new Deferred();
+    window.setTimeout(function() {
+        deferred.callback({});
+    },
+    delay);
+    return deferred;
+}
+
+function deferredAnimate(element) {
+    var i = -1;
+    var deferred = new Deferred();
+    function continue() {
+        i++;
+        if (i < 100) {
+            element.style.left = i;
+            deferredTimeout(20).then(continue);
+        } else {
+          deferred.callback();
+        }
+    }
+    continue();
+    return deferred;
+};
+deferredAnimate(document.getElementById('box')).then(function () { alert('Done!'); });
+</code>
+
+The Deferred API pattern improves composability of callback patterns but there are still drawbacks in programming in this style. The completion of the computation must be enclosed in a callback function passed to the 'then' function. 
+
+Authoring the callback function has proved difficult for ES programmers. Control flow constructs (if, while, for, try) do not compose across function boundaries. The programmer must manually twist the control flow into continuation passing style. The callback function does not by default have the same 'this' binding as the enclosing function which is a frequent source of programmer error.
+
+===== Deferred Functions =====
+
+Deferred functions allow asynchronous code to be written using existing control flow constructs.
+
+<code>
+function deferredTimeout(delay) {
+    var deferred = new Deferred();
+    window.setTimeout(function() {
+        deferred.callback({
+            called: true
+        })
+    },
+    delay);
+    return deferred;
+}
+
+function deferredAnimate(element) {
+    for (var i = 0; i < 100; ++i) {
+        element.style.left = i;
+        await deferredTimeout(20);
+    }
+};
+deferredAnimate(document.getElementById('box')).then(function () { alert('Done!'); });
+</code>
+
+This proposal adds 'await expression' syntax, a new kind of expression. A function containing an 'await expression' is a deferred function. 
+
+The 'await expression' evaluates the expression. The result of evaluating the expression in an 'await expression' is the 'awaited object'. The expectation is that the 'awaited object' supports the 'Deferred pattern' common to many ES libraries. After computing the 'awaited object' the 'await expression' suspends execution of the current function, attaches the continuation of the current function to the 'awaited object' by calling its ''then'' function, and then returns.
+
+The return value of a 'deferred function' is itself a 'deferred object'. Deferred objects support the 'deferred pattern'. Deferred objects have a ''then'' function which allows registration of callbacks. When the deferred object completes its computation all callbacks registered to the ''then'' function are invoked.
+
+
+
+===== Returning Values From Deferred Functions =====
+
+Deferred functions may return a value. When a deferred function completes by returning a value, the returned value is passed as the argument when invoking callbacks registered to the deferred object's ''then'' function. The value of an await expression is the value of the argument passed to the callback registered on the awaited object's ''then'' function.
+
+<code>
+function deferredXHR(url) {
+    var deferred = new Deferred();
+    var request = new XMLHttpRequest();
+    request.open('GET', url, true);
+    request.send();
+    request.onload = function() {
+        // call all callback's registered by deferred.then with 'request' as argument
+        deferred.callback(request);
+    };
+    request.onerror = function() {
+        // call all errbacks's registered by deferred.then with 'request' as argument
+        deferred.errback(request);
+    };
+    return deferred;
+}
+
+function deferredLoadRedirectUrl(redirectUrl) {
+    // redirectUrl contains another url
+    var urlXHR = await deferredXHR(redirectUrl);
+    var url = urlXHR.responseText;
+
+    var valueXHR = await deferredXHR(url);
+    // call all callback's registered by return value's 'then' with 'valueXHR.responseText' as argument
+    return valueXHR.responseText;
+}
+
+// alert the value of the redirected url
+deferredLoadRedirectUrl('http://lolcatz.com/redirect').then(function (value) { alert(value); });
+</code>
+
+
+
+
+===== Throwing From Deferred Functions =====
+
+The ''then'' function on a deferred object takes two arguments. The first is the callback to be invoked if the deferred object completes normally. The second is the callback to be invoked if the deferred object completes erroneously. When a deferred function completes by throwing an exception the registered error callbacks are invoked with the thrown exception as the argument.
+
+<code>
+// alert the value of the redirected url
+deferredLoadRedirectUrl('http://lolcatz.com/redirect').then(
+    function (value) { alert('Success: ' + value); },
+    function (err) { alert('Failure: ' + err); });
+</code>
+
+Similarly, when an awaited on object completes with an error - ie. its error callback is invoked - the result of the await expression is to throw the error value.
+
+TODO: cancelling a deferred function.
+
+Open Issue: chaining the return value of callbacks/errbacks.
+
+
+
+
+
+===== Deferred Pattern =====
+
+An object implementing the deferred pattern represents a computation which will complete at a later time. For example, the completion of an XHR. The deferred pattern contains two methods 'then' and 'cancel':
+
+**then**: function(callback, errback)
+
+The 'then' function adds a listener to the completion of the deferred object's computation. When the deferred object completes its computation it will notify all registered listeners. If the completed computation succeeds, then the 'callback' entry of each listener will be invoked with the result of the completed computation as its argument. If the completed computation fails (throws an exception), then the 'errback' entry of each listener will be invoked with the error of the completed computation as its argument. If the deferred object's computation has already completed then the 'then' function will immediately call the 'callback' or 'errback' with the result of the computation.
+
+**cancel**: function()
+
+The 'cancel' function attempts to cancel the computation in progress. If the computation has not completed, then all listeners will be notified as if the computation completed with a 'CancelledError'. If the computation has already completed, then the 'cancel' method throws an 'AlreadyCompletedError'.
+
+TODO: Error names.
+
+TODO: Alternative Pattern: **addCallback**, **addErrback** and **addCallbacks** in lieu if **then**.
+
+
+
+===== Syntax =====
+
+Deferred functions adds 'await expression' a new primary expression:
+
+TODO:
+
+Need to work the syntax. 'await' as a keyword will likely not fly. An alternative is to add a modifier on the deferred function and make 'await' a contextual keyword only within deferred functions.
+
+<code>
+var f = function () { await(1); } // regular function. 'await' is an identifier.
+var df = deferred function () { await(1); } // deferred function. 'await is a keyword.
+</code>
+
+/TODO
+
+
+<code>
+PrimaryExpression ::= ...
+                   AwaitExpression
+
+AwaitExpression ::= "await"  Expression
+</code>
+
+It is an error for an ''AwaitExpression'' to occur in the finally block of a try statement.
+It as an error for a function to be both a ''deferred function'' and a [[strawman:generators|generator function]].
+
+===== 13.2 Creating Deferred Function Objects =====
+
+A function containing an ''AwaitExpression'' is a ''deferred function''. When creating a function object for a 'deferred function' via 13.2, bullet 6 is replaced by the below.
+
+
+===== 13.2.1 Deferred Function [[Call]] =====
+
+When the %%[[Call]]%% internal method for a Deferred Function object F is called with a this value and a list of arguments, the 
+following steps are taken: 
+  - Let funcCtx be the result of establishing a new execution context for function code using the value of F's %%[[FormalParameters]]%% internal property, the passed arguments List args, and the this value as described in 10.4.3. 
+  - Create a new object and let D be that object. Call D a 'Deferred Object'.
+    - Set the internal methods of D as described in 8.12.
+    - Set the %%[[Class]]%% internal property of D to "Object"
+    - Set the %%[[Prototype]]%% internal property of D to Object.prototype.
+    - Set the %%[[ExecutionContext]]%% of D to funcCtx. TODO: This includes variable environment. Does it also include, the function code and current IP? I'm assuming yes, otherwise those need to be included in the state of a Deferred Object.
+    - Set the %%[[State]]%% internal property of D to "newborn".
+    - Set the %%[[Listeners]]%% internal property of D to a new empty array.
+    - Set the %%[[Then]]%% internal property of D to as specified below.
+    - Set the %%[[Cancel]]%% internal property of D to as specified below.
+    - Set the %%[[Continue]]%% internal property of D to as specified below.
+    - Set the %%[[Callback]]%% internal property of D to as specified below.
+    - Set the %%[[Errback]]%% internal property of D to as specified below.
+    - Set the %%[[CreateCallback]]%% internal property of D to as specified below.
+    - Set the %%[[CreateErrback]]%% internal property of D to as specified below.
+    - Set D.then to the %%[[Then]]%% internal property of D.
+    - Set D.cancel to the %%[[Cancel]]%% internal property of D.
+  - Evaluate the %%[[Continue]]%% property of D.
+  - Return D. D is an object which satisfies the Deferred Pattern.
+
+===== Deferred Object [[Continue]] =====
+
+When the %%[[Continue]]%% internal method of deferred object D is called, the following steps are taken:
+  - If the %%[[State]]%% property of D is "running", or "finished" then throw.
+  - Set the %%[[State]]%% internal property of D to "running".
+  - Set the current execution context to the %%[[Execution Context]]%% internal property of D.
+  - If the %%[[State]]%% property is "newborn", then begin executing at the start of the Deferred Function.
+  - Otherwise the %%[[State]]%% property is "suspended", continue execution after the point of suspension.
+  - Execution will continue until an await expression is encountered or the function terminates.
+  - If an await expression is encountered, evaluate the expression as below.
+  - Otherwise, if the function terminates with a (return, ''value'', empty), then invoke the %%[[Callback]]%% internal method of D.
+  - Otherwise, the function terminates with a (throw, ''value'', empty). Invoke the %%[[Errback]]%% internal method of D.
+  - Return (return, undefined, empty).
+
+
+
+===== Await Expressions =====
+
+Await expressions may only appear in deferred functions, and can only be evaluated during the execution of a deferred object's %%[[Continue]]%% internal method.
+
+The production ''AwaitExpression:'' **await** ''Expression'' is evaluated as follows:
+  - Let the deferred object of the %%[[Continue]]%% method be D.
+  - Let ''e'' be the result of evaluating ''Expression''.
+  - Set the %%[[ExecutionContext]]%% internal property of D to the current execution context.
+  - Set the %%[[State]]%% internal property of D to "suspended".
+  - Let ''callback'' be the result of invoking the %%[[CreateCallback]]%% internal method of D.
+  - Let ''errback'' be the result of invoking the %%[[CreateErrback]]%% internal method of D.
+  - Call the ''then'' method on ''e'' with arguments (''callback'', ''errback'').
+  - Return (return, undefined, empty) from the currently executing %%[[Continue]]%% method.
+
+
+
+===== Deferred Object [[Then]] =====
+
+then(callback, errback)
+
+errback is optional.
+
+If not completed:
+
+Adds callback to list of callbacks.
+Adds errback to list of errbacks.
+
+If completed with 'result':
+
+Invoke callback passing 'result' as argument.
+
+If completed with 'error':
+
+Invoke errback passing 'error' as argument.
+
+
+===== Deferred Object [[Cancel]] =====
+
+Completes the deferred object with a 'Cancelled' error result.
+
+===== Deferred Object [[Callback]] =====
+
+[[Callback]](result)
+
+Mark the deferred object as completed with value of 'result'.
+For each callback, registered via then, invoke the callback passing 'result' as the argument and discarding the result of the invokation.
+
+
+===== Deferred Object [[Errback]] =====
+
+[[Errback]](error)
+
+Mark the deferred object as completed with error result of 'error'.
+For each errback, registered via then, invoke the errback passing 'error' as the argument and discarding the result.
+
+
+===== Deferred Object [[CreateCallback]] =====
+
+Called from the expansion of await expressions.
+
+Returns a function which, when called continues the deferred function after an await. The argument to the return function accepts the result of the await expression.
+
+The result of [[CreateCallback]] is passed as the first argument to the 'then' method of the awaited on object.
+
+
+===== Deferred Object [[CreateErrback]] =====
+
+Called from the expansion of await expressions.
+
+Returns a function which, when called continues the deferred function after an await by throwing an exception. The argument to the returned function accepts the value to throw.
+
+The result of [[Errback]] is passed as the second argument to the 'then' method of the awaited on object.

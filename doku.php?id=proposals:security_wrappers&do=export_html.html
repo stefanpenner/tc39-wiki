@@ -1,0 +1,160 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:security_wrappers&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:security_wrappers&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:security_wrappers&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<p>
+DO NOT EXPORT
+</p>
+
+<p>
+<strong>Questions for approval:</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> does this proposal go far enough?</div>
+</li>
+<li class="level1"><div class="li"> is it too costly to execute for engines that want it?</div>
+</li>
+<li class="level1"><div class="li"> is it too costly to implement for engines that don&rsquo;t want it?</div>
+</li>
+<li class="level1"><div class="li"> what are the alternative designs?</div>
+</li>
+</ul>
+
+<a name="security_wrappers"></a><h1>Security Wrappers</h1>
+<div class="level1">
+
+<p>
+ The proposal entails adding one standard interface
+</p>
+<pre class="code">
+interface SecurityPolicy { 
+    function checkGet(obj: Object, prop: String): SecurityPolicy;
+    function checkSet(obj: Object, prop: String, val: *): SecurityPolicy;
+    function checkMethodCall(obj: Object, meth: String, args: [*]): SecurityPolicy;
+    function checkCall(obj: Object, args: [*]): SecurityPolicy;
+}
+</pre>
+
+<p>
+and one host function 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>native intrinsic function wrap.&lt;T&gt;(val: T, p: SecurityPolicy): T;</code></div>
+</li>
+</ul>
+
+<p>
+ and two host object types 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>native class SecurityException;</code></div>
+</li>
+<li class="level1"><div class="li"> <code>native class SecurityToken;</code></div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [245-865] -->
+<a name="wrapping_accesses_by_policy"></a><h2>Wrapping accesses by policy</h2>
+<div class="level2">
+
+<p>
+ Calling the function <code>intrinsic::wrap(e, p)</code> produces a value <code>v</code> with &ldquo;the same&rdquo; type as <code>e</code>, but with slightly different behavior: 
+</p>
+<ul>
+<li class="level1"><div class="li"> If <code>e</code> is of primitive type, <code>v</code> is <code>e</code> (in the sense of <code>===</code>: <code>v</code> is not a wrapper, it&rsquo;s the same primitive value <code>e</code> passed to <code>intrinsic::wrap</code>).</div>
+</li>
+<li class="level1"><div class="li"> If <code>e</code> is a structure, function, or object type:</div>
+<ul>
+<li class="level2"><div class="li"> A property-get expression <code>v.x</code> returns <code>wrap(e.x, p.checkGet(e, &ldquo;x&rdquo;))</code>.</div>
+</li>
+<li class="level2"><div class="li"> A property-set expression <code>v.x = y</code> returns <code>e.x = wrap(y, p.checkSet(e, &ldquo;x&rdquo;, y))</code>.</div>
+</li>
+<li class="level2"><div class="li"> A method-call expression <code>v.x(args)</code> returns <code>wrap(v.x(args), p.checkMethodCall(v, &ldquo;x&rdquo;, args))</code>. </div>
+</li>
+<li class="level2"><div class="li"> A function-call expression <code>v(args)</code> returns <code>wrap(v(args), p.checkCall(v, args))</code>.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ If a security policy wishes to deny a call, it should throw <code>SecurityException</code>.
+</p>
+
+<p>
+If a security policy wishes to alter the policy in force on subsequent accesses, it can return a different policy from the check; otherwise each check should <code>return this</code>.
+</p>
+
+</div>
+<!-- SECTION [866-1909] -->
+<a name="use_of_tokens_and_the_mark_stack"></a><h2>Use of tokens and the mark stack</h2>
+<div class="level2">
+
+<p>
+ One family of security checks that a <code>SecurityPolicy</code> might reasonably wish to perform involves inspecting the dynamic call context leading up to the check; this model is employed in the Java 2 security model. 
+</p>
+
+<p>
+We can reuse our <a href="doku.php%3Fid=proposals:stack_inspection.html" class="wikilink1" title="proposals:stack_inspection" onclick="return svchk()" onkeypress="return svchk()">stack inspection</a> mechanism for this, but that mechanism permits user code to push <em>any</em> value they like onto the mark stack. To make this into a <em>security</em> device, we require an unforgeable value type, such that no user code can lie about some identifying aspect of its dynamic call context. This unforgeable type is <code>SecurityToken</code>. 
+</p>
+
+<p>
+Every <code>SecurityToken</code> constructed by an executing instance of a host environment (a process, say) must compare non-equal (<code>!==</code>) to <em>every other</em> <code>SecurityToken</code> constructed by that instance.
+</p>
+
+</div>
+<!-- SECTION [1910-2743] -->
+<a name="discussion"></a><h1>Discussion</h1>
+<div class="level1">
+
+<p>
+ Re: the burden on implementations that don&rsquo;t need it:  we could state that implementations that do not need this (but wish to run generic library code written with security in mind) can allow <code>intrinsic::wrap(e,p)</code> to evaluate to just <code>(p, e)</code>, and make it plain that methods of the security policy will never be called in such an implementation.  Implementations that do support the mechanism must support it fully.
+</p>
+
+<p>
+I doubt the implementation burden for implementations that do need this is very great, though it does seem to introduce privileged <code>get</code>, <code>set</code>, and <code>call</code> methods on objects that are in addition to the ones we already have.  I&rsquo;m guessing that this will in fact require some extra bits or multiple tests on property getting and setting, and these will always be required (like the special unwrapping for <code>===</code>).  Implementations already do much of this and manage to live with it, so it&rsquo;s probably OK.
+</p>
+
+<p>
+What I&rsquo;m less sure about is whether this proposal solves a real problem, and I think before I can decide that I need to see some statements about precisely which problems it is intended to solve, and then at least it will be possible to discuss whether those are problems we should be solving and whether this proposal in fact solves them.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/09/22 04:47</em>
+</p>
+
+<p>
+Some discussion at the Sept 21 F2F lead us to the conclusion that this proposal is insufficient for the code-mixing use cases we have in mind on the web, so we have retracted it. Furthermore, the security issues facing browser providers are more pressing than the ES4 adoption timetable would permit; it is probably more appropriate to address the issue of portable security APIs at an auxiliary meeting among browser providers, in the nearer future, outside the ES4 standardization process.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x67%3B%26%23x72%3B%26%23x61%3B%26%23x79%3B%26%23x64%3B%26%23x6f%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x67;&#x72;&#x61;&#x79;&#x64;&#x6f;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">graydon</a> 2006/09/26 15:02</em> 
+</p>
+
+</div>
+<!-- SECTION [2744-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/0/08a2dddeaf12ae2c1f9627001fd99ddf.xhtml used -->
+</body>
+</html>

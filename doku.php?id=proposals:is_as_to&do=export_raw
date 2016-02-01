@@ -1,0 +1,45 @@
+
+(Also see the [[discussion:is_as_to|discussion page]] for this proposal)
+
+
+**Tickets:** [[http://bugs.ecmascript.org/ticket/244|#244 -- 'like' as an operator]]
+
+====== Proposed change ======
+
+The proposal is to adjust the meaning of two of the ''is'' and ''to'' operators, replace the ''as'' operator with a ''cast'' operator, and adopt a single syntactic type annotation '':''. So we would have:
+
+  * Operator ''cast T(x)'' which returns ''x'' if ''x is T'', else throws (subsuming and renaming operator ''as''). This operator might use some more C-like notation. The important point is that it throws when the cast fails.
+  * Operator ''to'' which calls a user-provided conversion operator if it exists, else calls ''cast''.
+    * syntax: ''x to T''
+  * Operator ''is'' which is still a boolean predicate.
+  * Annotations such as '' v : T '' only have meaning in the //surface syntax// of the language. 
+  * Writing ''var v : T = x'' in the surface language produces identical runtime behavior to having written ''var v = x to T'', with two qualifications:
+    * The slot ''v'' carries runtime type information indicating that it is constrained to ''T''; further assignments to ''v'' also perform the ''to T'' conversion.
+    * If the surface syntax is processed in the static translation path, the typechecker is obliged to prove that ''x'' has a type which is assignment compatible with ''T''. 
+
+====== Strict mode ======
+
+In strict mode, the annotation ''x : T = y'' represents an error unless one of the following holds:
+
+  * ''y'' is of type ''U'' and ''T'' defines a ''to'' operator that has an operand type of ''V'' and ''U <: V''
+  * ''y'' is of type ''U'' and ''U <: T''
+  * ''y'' is of the top "unconstrained" type
+  * ''T'' is ''Boolean'' (which always gets an implicit conversion)
+  * ''y'' is of type ''U'' and both ''U <: Number'' and ''T <: Number''
+
+This is "static typechecking with some implicit conversions". User-provided ''to'' operators are used to determine type compatibility for assignment.
+
+
+====== Syntax ======
+
+The ''to'', ''cast'' and ''is'' operators are infix binary "type" operators that take ordinary expression on the left side and a type expression on the right side. Here are some examples,
+
+<code>
+x to t
+x is t
+x cast t
+</code>
+
+where ''t'' is a type expression.
+
+An earlier version of this proposal had a prefix forms for computing types from type expressions, and infix forms for computing types from ordinary expressions. This was deemed overly general and redundant and so was simplified to have the current binary forms that compute types from a type expression.

@@ -1,0 +1,162 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:paren_free&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:paren_free&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:paren_free&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="motivation"></a><h2>Motivation</h2>
+<div class="level2">
+
+<p>
+ Syntax matters, keystrokes count. Both readability and writability can be impaired by too much punctuation and unnecessary bracketing. Some languages even prefer indentation-based block structure to bracing, and their fans report read and write (including keystroke and RSI avoidance) wins.
+</p>
+
+<p>
+<acronym title="JavaScript">JS</acronym> has a number of statement forms with mandatory parentheses around the head. Can we relax syntax without introducing ambiguity or bad human read/write factors? This proposal makes an attempt, first described <a href="http://brendaneich.com/2010/11/paren-free/" class="urlextern" target="_blank" title="http://brendaneich.com/2010/11/paren-free/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">here</a> and prototyped in <a href="https://github.com/mozilla/narcissus/" class="urlextern" target="_blank" title="https://github.com/mozilla/narcissus/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Narcissus</a> via the &ndash;paren-free option.
+</p>
+
+<p>
+A specific motivation for this proposal is the irredeemable <code>for-in</code> loop, whose semantics have been underspecified forever, with ongoing divergence among implementations, and where <a href="doku.php%3Fid=strawman:array_comprehensions.html" class="wikilink1" title="strawman:array_comprehensions" onclick="return svchk()" onkeypress="return svchk()">array comprehensions</a> and <a href="doku.php%3Fid=strawman:generator_expressions.html" class="wikilink1" title="strawman:generator_expressions" onclick="return svchk()" onkeypress="return svchk()">generator expressions</a> do not want parenthesized <code>for-in</code> heads, yet where users <em>do</em> want better semantics for all <code>for-in</code> variants.
+</p>
+
+</div>
+<!-- SECTION [1-1054] -->
+<a name="history"></a><h2>History</h2>
+<div class="level2">
+
+<p>
+ <acronym title="JavaScript">JS</acronym> derives from Java from C++ from <a href="http://plan9.bell-labs.com/who/dmr/chist.html" class="urlextern" target="_blank" title="http://plan9.bell-labs.com/who/dmr/chist.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">C (via early C and B)</a>, from <a href="http://cm.bell-labs.com/cm/cs/who/dmr/bcpl.html" class="urlextern" target="_blank" title="http://cm.bell-labs.com/cm/cs/who/dmr/bcpl.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">BCPL</a>. BCPL had paren-free <code>if</code>, etc., heads disambiguated via <code>do</code> reserved words to separate an expression consequent, avoiding ambiguity.
+</p>
+
+<p>
+<acronym title="JavaScript">JS</acronym> style guides often favor mandatory bracing of <code>if </code> consequents and other sub-statement bodies, which also suffice to avoid ambiguity about where the condition or head expression ends and the dependent sub-statement starts.
+</p>
+
+</div>
+<!-- SECTION [1055-1625] -->
+<a name="proposal"></a><h2>Proposal</h2>
+<div class="level2">
+
+<p>
+ Consider ES5 12.5, &ldquo;The <code>if</code> Statement&rdquo;, modified as follows:
+</p>
+<pre class="code ebnf">IfStatement :
+    if Expression SubStatement else SubStatement
+    if Expression SubStatement
+    if ( Expression ) OtherStatement else Statement
+    if ( Expression ) OtherStatement
+</pre>
+<p>
+Where <em>SubStatement</em> is
+</p>
+<pre class="code ebnf">SubStatement :
+    Block
+    KeywordStatement
+</pre>
+<p>
+and <em>KeywordStatement</em> is
+</p>
+<pre class="code ebnf">KeywordStatement :
+    IfStatement
+    IterationStatement
+    ContinueStatement
+    BreakStatement
+    ReturnStatement
+    SwitchStatement
+    ThrowStatement
+    TryStatement
+    DebuggerStatement
+</pre>
+<p>
+This leaves
+</p>
+<pre class="code ebnf">OtherStatement :
+    EmptyStatement
+    ExpressionStatement
+    VariableStatement
+    LabelledStatement
+</pre>
+<p>
+and
+</p>
+<pre class="code ebnf">Statement :
+    Block
+    KeywordStatement
+    OtherStatement
+</pre>
+<p>
+The same pattern applied to <em>IfStatement</em> above applies to <em>IterationStatement</em>, <em>SwitchStatement</em>, and <code>catch</code> clauses in <em>TryStatement</em> &ndash; except <code>catch</code> blocks must still be braced (as with <code>try</code> and <code>finally</code> since their introduction in ES3), so no <em>OtherStatement</em> <code>catch</code> body production.
+</p>
+
+<p>
+TODO: expand these all into a complete sub-grammar.
+</p>
+
+<p>
+We allow single sub-statements starting with unconditionally reserved keywords to be unbraced after a paren-free head, since the keyword acts as BCPL&rsquo;s <code>DO</code> separator to disambiguate head from body expression.
+</p>
+
+<p>
+Notice how this relaxation from requiring braces around the body allows <code>if-else-if</code> chains (idiomatic since K&amp;R C and unproblematic as far as dangling-else goes) without a special case:
+</p>
+<pre class="code javascript">  <span class="kw1">if</span> x &lt; y <span class="br0">&#123;</span>
+  <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="kw1">if</span> x &lt; z <span class="br0">&#123;</span>
+  <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="kw1">if</span> x &lt; w <span class="br0">&#123;</span>
+  <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="br0">&#123;</span>
+  <span class="br0">&#125;</span></pre>
+<p>
+instead of the perfidious rightward drift of:
+</p>
+<pre class="code javascript">  <span class="kw1">if</span> x &lt; y <span class="br0">&#123;</span>
+  <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="br0">&#123;</span>
+    <span class="kw1">if</span> x &lt; z <span class="br0">&#123;</span>
+    <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="br0">&#123;</span>
+      <span class="kw1">if</span> x &lt; w <span class="br0">&#123;</span>
+      <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="br0">&#123;</span>
+      <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span></pre>
+<p>
+This keyword-or-brace refinement also matches some popular style guides that recommend braced bodies except where the body is a short keyword-prefixed statement starting with <code>break</code>, <code>continue</code>, <code>throw</code>, or <code>return</code>.
+</p>
+
+<p>
+Note that the paren-free <code>if-else</code> production requires the <code>else</code> clause to be a <em>SubStatement</em>. You cannot write <code>if x &gt; y { alert(&rdquo;win&rdquo;); } else alert(&rdquo;lose&rdquo;)</code>.
+</p>
+
+<p>
+For backward compatibility, we support parenthesized heads with any sub-statement. To preserve the LR(1) grammar this requires factoring out <em>OtherStatement</em>.
+</p>
+
+<p>
+Thus, this proposal is intended to make no backward-incompatible syntactic or semantic changes to ES5. &ldquo;Paren-free&rdquo; is now purely a relaxation of syntax rules.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2011/06/05 21:06</em> 
+</p>
+
+</div>
+<!-- SECTION [1626-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/7/7f16530253b930ad7f281ef1fd3823c1.xhtml used -->
+</body>
+</html>

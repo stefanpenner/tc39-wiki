@@ -1,0 +1,42 @@
+====== Function to String conversion ======
+
+For functions written in JavaScript, see the Harmony [[harmony:function_to_string]] proposal. This strawman discusses only the remaining problematic cases.
+
+===== Problematic cases: =====
+
+==== Built-in functions ====
+
+As of this writing, most JS engines convert these to, for example, "''function join() { [native code] }''". As a widespread convention this will be hard to displace. However, it is unpleasant on several grounds:
+
+   * It does not parse as a FunctionDeclaration (violating the de-jure spec) nor as a FunctionExpression (violating the rest of the de-facto spec).
+   * It does not parse as any valid JavaScript production, making it useless as input to ''eval()''.
+   * It conflicts with the spec's use of the term "native", which includes all function written in JavaScript. Rather, it is probably derived from the Java meaning of "native" which ES5 and ES3 call "built ins". (Another way to resolve this conflict is to change our terminology to conform to the rest of the world's meaning of "native".)
+
+If this behavior could be displaced, for primordial built ins, an alternative with some virtues is to have it print as a FunctionExpression that calls whatever is at the conventional location at which this built-in is normally found. For example: "''function(...args) { return Array.prototype.join.apply(this, args); }''". 
+
+For the non-primordial built ins, or perhaps for all built ins, we could convert them to a FunctionExpression that uses freely a conventional name that represents the "actual" built-in function, so that ''eval()''ing the FunctionExpression in an environment in which ''original'' was bound to that built in would preserve call behavior. For example: "''function(...args) { return original.apply(this, args); }''"
+
+==== Callable non functions, including callable host objects ====
+
+Solutions for built ins should apply to these as well, since all we're trying to preserve is %%[[Call]]%% behavior.
+
+==== Bound functions ====
+
+Applying the same trick, "''f.bind(self, a, b)''" might print as "''function(...args) { return original.call(p1, p2, ...args); }''". The ''eval()''uates to a function with the same %%[[Call]]%% behavior if evaluated in an environment in which ''original'' is bound to the original function and ''p''//N// is bound to each of the arguments originally provided to that call to ''bind()''.
+ 
+
+==== Function proxies ====
+
+
+If ''fp'' is a [[harmony:proxies#api|function proxy]] with ''ct'' as its //call trap//, then ''Function.prototype.toString.call(fp)'' is already specified to return whatever ''Function.prototype.toString.call(ct)'' would return. Since function proxies have precisely the %%[[Call]]%% behavior of their call trap, both before and after fixing, this works.
+
+====== Discussion ======
+
+
+The goal assumed here -- that ''eval()''uating the string in an equivalent enough environment would preserve %%[[Call]]%% behavior -- to be useful, we would need to be able to construct an equivalent enough environment. For many reasons, this seems impossible in the general case, so it is questionable whether it's worth much trouble to provide this feature. Alternatively, we could make current reality official and mandate that built ins must convert to a string that does //not// parse as any valid JavaScript production. The current de-facto behavior already satisfies that spec.
+
+Going in the other direction, various useful [[https://mail.mozilla.org/pipermail/es-discuss/2010-September/011858.html|recognition tricks]] need a stronger spec. Preserving equivalence under ''eval()'' doesn't help these. Preserving exactly the original source code, or preserving ASTs, or some abstraction over equivalent ASTs such as alpha renaming of non-free variables, would all enable these recognition tricks. Are we willing to go that far?
+
+====== See ======
+
+Harmony [[harmony:function_to_string]] proposal.

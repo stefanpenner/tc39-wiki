@@ -1,0 +1,695 @@
+====== Proxy Handler APIs ======
+
+The goal of the below API is to help developers write correct Proxy abstractions.
+
+==== The Problem ====
+
+The direct proxies API makes it easy to define lightweight handlers because all traps are optional: if a proxy handler does not define a trap, the default is to simply forward the intercepted operation to the target object.
+
+While this is a convenient and simple default, it requires quite a bit more attention to write handlers that remain "self-consistent". This is because many operations in JavaScript have subtle dependencies on each other. For example:
+
+<code javascript>
+var obj = {foo:42};
+var desc = Object.getOwnPropertyDescriptor(obj,"foo") // desc = {value:42,...}
+obj.foo // 42
+"foo" in obj // true
+</code>
+
+In other words, for any normal ECMAScript object ''obj'', if ''Object.getOwnPropertyDescriptor(obj,"foo")'' returns ''{value:42}'', then:
+
+  * ''obj.foo'' returns ''42'', the value of the data property.
+  * ''"foo" in obj'' returns ''true'', because "foo" exists as an "own" data property.
+
+Now consider the following proxy:
+
+<code javascript>
+var target = {};
+var proxy = new Proxy(target, {
+  getOwnPropertyDescriptor: function(target, name) {
+    return { value: 42 };
+  }
+});
+
+var desc = Object.getOwnPropertyDescriptor(proxy,"foo"); // desc = {value:42,...}
+proxy.foo // undefined!?
+"foo" in proxy // false!?
+</code>
+
+In this case, since the proxy handler only implements the ''getOwnPropertyDescriptor'' trap, ''Object.getOwnPropertyDescriptor(proxy,"foo")'' will return a descriptor with ''{value:42}'' but:
+
+  * ''proxy.foo'' will return ''undefined'', because the ''get'' trap was not overridden in a consistent way. Instead, ''get'' by default forwards to target, and ''target.foo'' is ''undefined''.
+  * ''"foo" in proxy'' will return ''false'', because the ''has'' trap was not overridden in a consistent way. Instead, ''has'' by default forwards to target, and ''"foo" in target'' is ''false''.
+
+We therefore propose a number of standard proxy handler classes that users can subclass to inherit more sensible default implementations of all traps:
+
+<code javascript>
+import DelegatingHandler from std.reflect;
+
+var target = {};
+var proxy = new Proxy(target, new class extends DelegatingHandler {
+  getOwnPropertyDescriptor(target, name) {
+    return { value: 42 };
+  }
+});
+
+var desc = Object.getOwnPropertyDescriptor(proxy,"foo"); // desc = {value:42,...}
+proxy.foo // 42
+"foo" in proxy // true
+</code>
+
+By having the proxy handler inherit from a class called ''DelegatingHandler'', the handler inherits more sensible default implementations:
+
+  * ''proxy.foo'' will return ''42'' because the ''get'' trap inherited from ''DelegatingHandler'' is implemented in terms of the (overridden) ''getOwnPropertyDescriptor'' trap.
+  * ''"foo" in proxy'' will return ''true'' because the ''has'' trap inherited from ''DelegatingHandler'' is likewise implemented in terms of the (overridden) ''getOwnPropertyDescriptor'' trap.
+
+Finally, the ''DelegatingHandler'' class defines a static factory method that makes it slightly less verbose to create a proxy with a ''DelegatingHandler'' instance:
+
+<code javascript>
+class MyHandler extends DelegatingHandler {
+  // override some traps
+}
+var target = {};
+
+// normally, we would write:
+//  proxy = new Proxy(target, new MyHandler());
+
+// we can also write the shorter form:
+var proxy = MyHandler.proxyFor(target);
+</code>
+
+==== Handler class hierarchy ====
+
+We propose three standard proxy handler classes:
+
+  * **DelegatingHandler**: subclass this handler if your proxy wraps a target object, and you want your proxy to be able to serve as a prototype for other objects. Intercepted property gets, sets and method invocations are forwarded to the target with ''this'' bound to the original "receiver" object (which may be the proxy object).
+  * **ForwardingHandler**: subclass this handler if your proxy wraps a target object, and you want to ensure that ''this'' is always bound to the target object inside forwarded method calls or accessors, never to the proxy object. Proxies using this handler should not be used as prototypes, as they ignore the initial receiver object upon forwarding.
+  * **VirtualHandler**: subclass this handler if your proxy does not actually wrap a target object. In other words, your proxy represents a "virtual object" that does not have a useful backing ''target'' object. A ''VirtualHandler'' never forwards operations to its target.
+
+These handler classes are related in a simple inheritance hierarchy. Below is a class diagram of the hierarchy. Details about the methods defined on each handler are explained in the next section.
+
+{{ proposals:handlerapi.jpg?400 }}
+
+We will refer to a proxy handler that does //not// subclass any of these three handlers a //raw// handler (e.g. using an object literal as a handler counts as a raw handler). The behavior of an empty raw handler corresponds most closely to the behavior of the ''DelegatingHandler'', which is why this one forms the "root" of the handler class hierarchy.
+
+==== DelegatingHandler ====
+
+
+=== Example ===
+
+<code javascript>
+class Logger extends DelegatingHandler {
+  defineProperty(target, name, desc) {
+    console.log("updated: "+name); // log the update
+    return super.defineProperty(target, name, desc); // perform update on wrapped target
+  }
+}
+
+var p = Logger.proxyFor({
+  foo: 42,
+  bar: function(v) { this.foo = v; }
+});
+
+// triggers "defineProperty" trap, logs the update:
+Object.defineProperty(p, "foo", {value:43}); // updated: "foo"
+
+// triggers the "set" trap, which in turn calls "defineProperty",
+// so this update is logged as well:
+p.foo = 44; // updated: "foo"
+
+// DelegatingHandler binds |this| inside the bar() method to p,
+// so the property update inside that method is logged as well:
+p.bar(45); // updated: "foo"
+</code>
+
+=== Details ===
+
+Below is the class definition for ''DelegatingHandler''. We show only the signature of the methods. We also cluster the methods of ''DelegatingHandler'' into two groups:
+
+  * Fundamental traps: these are traps that do not depend on any other trap. Their default behavior is simply to forward the operation to the target object (exactly as if you would have used a raw handler with a missing trap).
+  * Derived traps: these are traps that //do// depend on one or more other traps. Their default behavior is to call back on the fundamental traps (via self-sends) to implement the operation.
+ 
+The intent is for clients to subclass ''DelegatingHandler'', override just the fundamental traps, and inherit all or most of the derived trap implementations "for free". The benefit is that all derived operations will remain consistent with the fundamental operations. There is less chance of forgetting to implement a trap, and also less chance in overriding two or more dependent traps in an inconsistent way. Clients are still free to override the derived traps as well (usually to provide a more efficient implementation).
+
+<code javascript>
+class DelegatingHandler {
+  // static factory methods
+  static proxyFor(target, ...args);
+  static revocableProxyFor(target, ...args);
+
+  // fundamental traps (forward to target)
+  getOwnPropertyDescriptor(target, name);
+  getOwnPropertyNames(target);
+  getOwnPropertyKeys(target);
+  getPrototypeOf(target);
+  setPrototypeOf(target, newProto);
+  defineProperty(target, name, desc);
+  deleteProperty(target, name);
+  preventExtensions(target);
+  isExtensible(target);
+  apply(target, thisBinding, args);
+ 
+  // derived traps
+  has(target, name); // depends on: getOwnPropertyDescriptor, getPrototypeOf
+  hasOwn(target, name); // depends on: getOwnPropertyDescriptor
+  get(target, name, receiver); // depends on: getOwnPropertyDescriptor, getPrototypeOf
+  set(target, name, value, receiver); // depends on: getOwnPropertyDescriptor, getPrototypeOf, defineProperty
+  invoke(target, name, args, receiver); // depends on: get
+  enumerate(target); // depends on: getOwnPropertyNames, getOwnPropertyDescriptor, getPrototypeOf
+  keys(target); // depends on: getOwnPropertyNames, getOwnPropertyDescriptor
+
+  // potentially deprecated
+  construct(target, args); // depends on: apply, get
+
+  // deprecated traps
+  //seal(target); // depends on: preventExtensions, getOwnPropertyNames, defineProperty
+  //freeze(target); // depends on: preventExtensions, getOwnPropertyNames, getOwnPropertyDescriptor, defineProperty
+  //isSealed(target); // depends on: isExtensible, getOwnPropertyNames, getOwnPropertyDescriptor
+  //isFrozen(target); // depends on: isExtensible, getOwnPropertyNames, getOwnPropertyDescriptor
+}
+</code>
+
+In the case of the ''get'', ''set'' and ''invoke'' traps, there is a choice to be made when forwarding the property get/set or the invoked method: should the value of ''this'' in a target's accessor or method be set to the proxy object or to the target object? Either choice can be sensible, depending on your application.
+
+The ''DelegatingHandler'' implements ''get'', ''set'' and ''invoke'' in such a way that ''this'' inside forwarded accessors or method invocations remains bound to the ''receiver'' argument. Proxies using the ''DelegatingHandler'' can thus be used as prototypes for other objects: they leave the ''this''-binding intact upon forwarding.
+
+==== ForwardingHandler ====
+
+=== Example ===
+
+<code javascript>
+class Logger extends ForwardingHandler {
+  defineProperty(target, name, desc) {
+    console.log("updated: "+name); // log the update
+    return super.defineProperty(target, name, desc); // perform update on wrapped target
+  }
+}
+
+var p = Logger.proxyFor({
+  foo: 42,
+  bar: function(v) { this.foo = v; }
+});
+
+// triggers "defineProperty" trap, logs the update:
+Object.defineProperty(p, "foo", {value:43}); // updated: "foo"
+
+// triggers the "set" trap, which in turn calls "defineProperty",
+// so this update is logged as well:
+p.foo = 44; // updated: "foo"
+
+// ForwardingHandler binds |this| inside the bar() method to the target,
+// so the property update inside that method will not be logged:
+p.bar(45); // update not logged
+</code>
+
+=== Details ===
+
+As mentioned above, when forwarding intercepted property gets/sets or method calls, there is a choice to be made whether to bind ''this'' to the proxy object or to the target object inside forwarded methods or accessors. When using the ''DelegatingHandler'' class, the default is to leave the ''this'' value unmodified, which means that ''this'' will often be bound to the proxy object.
+
+This can sometimes lead to awkward behavior, for instance:
+
+<code javascript>
+var target = new Date();
+var proxy = new Proxy(target, {}); // or new Proxy(target,new DelegatingHandler())
+proxy.getFullYear() // error: not a Date
+</code>
+
+What's going on here? The proxy by default forwards the intercepted method call to its target, i.e. it will call ''Date.prototype.getFullYear'' method on the target ''Date'' object. When this function is subsequently called, the default is to provide the proxy itself as the ''this''-binding of the function. This is where things go wrong: the ''Date.prototype.getFullYear'' method is not generic and expects its ''this''-binding to be a genuine ''Date'' object, which the proxy is not.
+
+What this example shows is that sometimes it is useful to always re-bind ''this'' to the target object. The ''ForwardingHandler'' class defined below caters to exactly this use case:
+
+<code javascript>
+var target = new Date();
+var proxy = new Proxy(target, new class extends ForwardingHandler {});
+proxy.getFullYear() // returns 2013
+</code>
+
+Note that ''ForwardingHandler'' does not automatically bind function-valued data properties on extraction, so the following pattern will not work (as is the case for normal objects):
+
+<code javascript>
+var target = new Date();
+var proxy = new Proxy(target, new class extends ForwardingHandler {});
+proxy.getFullYear() // returns 2013
+var getFullYear = proxy.getFullYear;
+getFullYear() // error: undefined is not a Date (in strict mode)
+</code>
+
+''ForwardingHandler'' is itself a subclass of ''DelegatingHandler'' (so it comes with an appropriate default implementation for all Proxy traps). It overrides the ''get'', ''set'' and ''invoke'' traps so that forwarded accessors or method calls get run with ''this'' set to the target object:
+
+<code javascript>
+class ForwardingHandler extends DelegatingHandler {
+  get(target, name, receiver); // depends on: getOwnPropertyDescriptor, getPrototypeOf
+  set(target, name, value, receiver); // depends on: getOwnPropertyDescriptor, getPrototypeOf, defineProperty
+  invoke(target, name, args, receiver); // depends on: get
+}
+</code>
+
+==== VirtualHandler ====
+
+
+
+=== Example ===
+
+Say we want to develop a "LazyObject" abstraction that only instantiates an object the first time it is accessed:
+
+<code javascript>
+// thunk will be called to initialize the object the first
+// time it is accessed:
+var thunk = function() { return {foo:42}; };
+
+// create a LazyObject proxy with the thunk, and an empty target object
+// (the target object is irrelevant for this abstraction):
+var dummyTarget = {};
+var p = LazyObject.proxyFor(dummyTarget, thunk);
+
+p.foo // calls thunk() to initialize the object, then returns 42
+</code>
+
+We might implement the ''LazyObject'' handler as a simple subclass of ''DelegatingHandler'':
+
+<code javascript>
+class LazyObject extends DelegatingHandler {
+  constructor(thunk) {
+    this.thunk = thunk;
+    this.val = undefined;
+  }
+
+  force() {
+    if (this.thunk !== null) {
+      this.val = this.thunk.call(undefined);
+      this.thunk = null;
+    }
+  }
+
+  getOwnPropertyDescriptor(target, name) {
+    this.force(); // ensure the object is initialized
+    // forward the operation not to the dummy target, but to the
+    // initialized object stored in this.val:
+    return Reflect.getOwnPropertyDescriptor(this.val, name);
+  }
+}
+</code>
+
+This code works fine for property accesses, which are internally based on ''getOwnPropertyDescriptor''.
+However, to our surprise, property update appears broken:
+
+<code javascript>
+var thunk = function() { return {foo:42}; };
+var dummyTarget = {};
+var p = LazyObject.proxyFor(dummyTarget, thunk);
+
+p.foo = 43;
+p.foo // 42 !?
+
+dummyTarget.foo // 43 !?
+</code>
+
+What happened? The expression ''p.foo = 43'' triggered the proxy's ''set'' trap. Since ''LazyObject'' is a subclass of ''DelegatingHandler'', it inherits that handler's default implementation for ''set'', which is defined in terms of ''defineProperty''. Since ''defineProperty'' was not overridden by our ''LazyObject'' class, the default implementation is used, which is to forward to the target. Hence, the "foo" property will be defined on ''dummyTarget'' and our lazy object does not even get initialized. When we subsequently ask what the value of ''p.foo'' is, the proxy does initialize the object and returns ''42'', because ''getOwnPropertyDescriptor'' was correctly overridden and reroutes the request to the initialized object.
+
+The ''VirtualHandler'' exists to prevent subtle bugs such as these. ''VirtualHandler'' is basically a subclass of ''DelegatingHandler'' that overrides all fundamental traps such that they don't forward by default, but instead throw an error, signaling to the programmer that he or she probably forgot to override a method:
+
+<code javascript>
+class LazyObject extends VirtualHandler {
+  // as before
+}
+
+var thunk = function() { return {foo:42}; };
+var dummyTarget = {};
+var p = LazyObject.proxyFor(dummyTarget, thunk);
+
+p.foo = 43; // error: "getPrototypeOf"/"defineProperty" not implemented
+</code>
+
+To make the ''LazyObject'' abstraction work reliably, the author must override all fundamental traps and make sure they are all "rerouted" to the initialized object instead of the dummy target:
+
+<code javascript>
+class LazyObject extends VirtualHandler {
+  constructor(thunk) { ... } // as before
+  force() { ... } // as before
+
+  getOwnPropertyDescriptor(target, name) {
+    this.force();
+    return Reflect.getOwnPropertyDescriptor(this.val, name);
+  }
+  defineProperty(target, name, desc) {
+    this.force();
+    return Reflect.defineProperty(this.val, name, desc);
+  }
+  getPrototypeOf(target) {
+    this.force();
+    return Reflect.getPrototypeOf(this.val);
+  }
+  ... // and so on for all other fundamental traps
+}
+</code>
+
+=== Details ===
+
+The direct proxies API is tailored at writing proxies that wrap existing target objects, and somehow augment or adapt the behavior of the wrapped object. For instance, think about a logger or an access control proxy.
+
+Sometimes, it may be useful to define proxies that do not really wrap an existing target object, i.e. whose state is not derived from an existing JavaScript object. Think about a test mock-up object, or a promise/future/delay-like abstraction that represents a value that is not yet computed. There is no value to "wrap". We call such abstractions "virtual objects".
+
+It is possible to create virtual objects using [[harmony:direct_proxies]], by using an empty object as the target of a proxy and by consistently overriding *all* traps so that none of them defaults to forwarding to the target. As long as the proxy does not expose non-configurable properties or becomes non-extensible, the target object will then be fully ignored (except to acquire internal properties such as %%[[Class]]%%).
+
+The ''VirtualHandler'' class helps programmers to implement virtual objects because it never simply forwards an operation to the target object. In fact, it tries to ignore the target object as much as possible. It does so by overriding all fundamental traps such that they throw an error rather than forward to the target. In other words, it turns all fundamental traps into "abstract" operations that subclasses must implement.
+
+<code javascript>
+class VirtualHandler extends DelegatingHandler {
+  // overrides all fundamental traps and makes them abstract (throw on error)
+  getOwnPropertyDescriptor(target, name);
+  getOwnPropertyNames(target);
+  getOwnPropertyKeys(target);
+  getPrototypeOf(target);
+  setPrototypeOf(target, newProto);
+  defineProperty(target, name, desc);
+  deleteProperty(target, name);
+  preventExtensions(target);
+  isExtensible(target);
+  apply(target, thisBinding, args);
+}
+</code>
+
+==== Why isn't this just a JavaScript library? ====
+
+All three handler classes can be implemented entirely in JavaScript itself without magic (as we demonstrate below by providing a non-normative self-hosted implementation).
+
+By providing these APIs as part of the spec however, we can update these APIs in sync with the Proxy API in future editions of the language. If a later edition of ECMAScript supports a new operation on objects and proxies (e.g. ''Object.observe'' is slated for inclusion in ES7), then we will add a sensible default implementation to the ''DelegatingHandler'' class. If your proxy handler inherits from the ''DelegatingHandler'' class, it will automatically benefit from this sensible default implementation.
+
+===== Non-normative implementation =====
+
+Below are non-normative self-hosted implementations of all three handler classes. Any references to methods defined on ''Object'', ''Function.prototype'' or ''Array.prototype'' are assumed to refer to the built-in implementations). The function ''normalizeAndCompletePropertyDescriptor'' is defined [[harmony:proxies_semantics#utilities|here]].
+
+=== DelegatingHandler ===
+
+<code javascript>
+function forward(name) {
+  return function(...args) {
+    return Reflect[name](...args);
+  };
+}
+
+function DelegatingHandler() { };
+DelegatingHandler.proxyFor = function(target,...args) {
+  return new Proxy(target, new this(...args));
+};
+DelegatingHandler.revocableProxyFor = function(target,...args) {
+  return Proxy.revocable(target, new this(...args));
+};
+
+DelegatingHandler.prototype = {
+  // fundamental traps
+  getOwnPropertyDescriptor: forward("getOwnPropertyDescriptor"),
+  getOwnPropertyNames:      forward("getOwnPropertyNames"),
+  getOwnPropertyKeys:       forward("getOwnPropertyKeys"),
+  getPrototypeOf:           forward("getPrototypeOf"),
+  setPrototypeOf:           forward("setPrototypeOf"),
+  defineProperty:           forward("defineProperty"),
+  deleteProperty:           forward("deleteProperty"),
+  preventExtensions:        forward("preventExtensions"),
+  apply:                    forward("apply"),
+
+  // derived traps
+  has: function(target, name) {
+    var desc = this.getOwnPropertyDescriptor(target, name);
+    desc = normalizeAndCompletePropertyDescriptor(desc);
+    if (desc !== undefined) {
+      return true;
+    }
+    var proto = this.getPrototypeOf(target);
+    if (proto === null) {
+      return false;
+    }
+    return Reflect.has(proto, name);
+  },
+  hasOwn: function(target,name) {
+    var desc = this.getOwnPropertyDescriptor(target,name);
+    desc = normalizeAndCompletePropertyDescriptor(desc);
+    return desc !== undefined;
+  },
+  get: function(target, name, receiver) {
+    var desc = this.getOwnPropertyDescriptor(target, name);
+    desc = normalizeAndCompletePropertyDescriptor(desc);
+    if (desc === undefined) {
+      var proto = this.getPrototypeOf(target);
+      if (proto === null) {
+        return undefined;
+      }
+      return Reflect.get(proto, name, receiver);
+    }
+    if (isDataDescriptor(desc)) {
+      return desc.value;
+    }
+    var getter = desc.get;
+    if (getter === undefined) {
+      return undefined;
+    }
+    return desc.get.call(receiver);
+  },
+  set: function(target, name, value, receiver) {
+    var ownDesc = this.getOwnPropertyDescriptor(target, name);
+    ownDesc = normalizeAndCompletePropertyDescriptor(ownDesc);
+    if (isDataDescriptor(ownDesc)) {
+      if (!ownDesc.writable) return false;
+    }
+    if (isAccessorDescriptor(ownDesc)) {
+      if(ownDesc.set === undefined) return false;
+      ownDesc.set.call(receiver, value);
+      return true;
+    }
+    var proto = this.getPrototypeOf(target);
+    if (proto === null) {
+      var receiverDesc = Object.getOwnPropertyDescriptor(receiver, name);
+      if (isAccessorDescriptor(receiverDesc)) {
+        if(receiverDesc.set === undefined) return false;
+        receiverDesc.set.call(receiver, value);
+        return true;
+      }
+      if (isDataDescriptor(receiverDesc)) {
+        if (!receiverDesc.writable) return false;
+        Object.defineProperty(receiver, name, {value: value});
+        return true;
+      }
+      if (!Object.isExtensible(receiver)) return false;
+      Object.defineProperty(receiver, name,
+        { value: value,
+          writable: true,
+          enumerable: true,
+          configurable: true });
+      return true;
+    } else {
+      return Reflect.set(proto, name, value, receiver);
+    }
+  },
+  invoke: function(target, name, args, receiver) {
+    var callable = this.get(target, name, receiver);
+    return Function.prototype.apply.call(callable, receiver, args);
+  },
+  enumerate: function* (target) {
+    var trapResult = this.getOwnPropertyNames(target);
+    var l = +trapResult.length;
+    var result = [];
+    for (var i = 0; i < l; i++) {
+      var name = String(trapResult[i]);
+      var desc = this.getOwnPropertyDescriptor(name);
+      desc = normalizeAndCompletePropertyDescriptor(desc);
+      if (desc !== undefined && desc.enumerable) {
+        yield name;
+      }
+    }
+    var proto = this.getPrototypeOf(target);
+    if (proto === null) {
+      return;
+    }
+    yield* Reflect.enumerate(proto);
+  },
+  keys: function(target) {
+    var trapResult = this.getOwnPropertyNames(target);
+    var l = +trapResult.length;
+    var result = [];
+    for (var i = 0; i < l; i++) {
+      var name = String(trapResult[i]);
+      var desc = this.getOwnPropertyDescriptor(name);
+      desc = normalizeAndCompletePropertyDescriptor(desc);
+      if (desc !== undefined && desc.enumerable) {
+        result.push(name);
+      }
+    }
+    return result;
+  },
+  construct: function(target, args) {
+    var proto = this.get(target, 'prototype', target);
+    var instance;
+    if (Object(proto) === proto) {
+      instance = Object.create(proto);        
+    } else {
+      instance = {};
+    }
+    var res = this.apply(target, instance, args);
+    if (Object(res) === res) {
+      return res;
+    }
+    return instance;
+  },
+
+  // deprecated traps:
+
+  seal: function(target) {
+    var success = this.preventExtensions(target);
+    success = !!success; // coerce to Boolean
+    if (success) {
+      var props = this.getOwnPropertyNames(target);
+      var l = +props.length;
+      for (var i = 0; i < l; i++) {
+        var name = props[i];
+        success = success && this.defineProperty(target,name,{configurable:false});
+      }
+    }
+    return success;
+  },
+  freeze: function(target) {
+    var success = this.preventExtensions(target);
+    success = !!success; // coerce to Boolean
+    if (success) {
+      var props = this.getOwnPropertyNames(target);
+      var l = +props.length;
+      for (var i = 0; i < l; i++) {
+        var name = props[i];
+        var desc = this.getOwnPropertyDescriptor(target,name);
+        desc = normalizeAndCompletePropertyDescriptor(desc);
+        if (IsAccessorDescriptor(desc)) {
+          success = success &&
+            this.defineProperty(target,name,{writable:false,configurable:false});
+        } else if (desc !== undefined) {
+          success = success &&
+            this.defineProperty(target,name,{configurable:false});
+        }
+      }
+    }
+    return success;
+  },
+  isSealed: function(target) {
+    if (this.isExtensible(target)) {
+      return false;
+    }
+    var props = this.getOwnPropertyNames(target);
+    return props.every(function(name) {
+      return !this.getOwnPropertyDescriptor(target,name).configurable;
+    }, this);
+  },
+  isFrozen: function(target) {
+    if (this.isExtensible(target)) {
+      return false;
+    }
+    var props = this.getOwnPropertyNames(target);
+    return props.every(function(name) {
+      var desc = this.getOwnPropertyDescriptor(target,name);
+      return !desc.configurable && ("writable" in desc ? !desc.writable : true);
+    }, this);
+  },
+}
+</code>
+
+=== ForwardingHandler ===
+
+The ''ForwardingHandler'' overrides ''get'', ''set'' and ''invoke'' to ignore the ''receiver'' argument, instead always passing ''target'' as the ''this''-binding:
+
+<code javascript>
+function ForwardingHandler() {
+  DelegatingHandler.call(this); // not strictly necessary
+}
+ForwardingHandler.prototype = Object.create(DelegatingHandler.prototype);
+ForwardingHandler.prototype.get = function(target, name, receiver) {
+  var desc = this.getOwnPropertyDescriptor(target, name);
+  desc = normalizeAndCompletePropertyDescriptor(desc);
+  if (desc === undefined) {
+    var proto = this.getPrototypeOf(target);
+    if (proto === null) {
+      return undefined;
+    }
+    return Reflect.get(proto, name, receiver); // leave receiver unchanged for proto-climbing
+  }
+  if (isDataDescriptor(desc)) {
+    return desc.value;
+  }
+  var getter = desc.get;
+  if (getter === undefined) {
+    return undefined;
+  }
+  return desc.get.call(target); // note: target instead of receiver
+};
+ForwardingHandler.prototype.set = function(target, name, value, receiver) {
+  var ownDesc = this.getOwnPropertyDescriptor(target, name);
+  ownDesc = normalizeAndCompletePropertyDescriptor(ownDesc);
+  if (isDataDescriptor(ownDesc)) {
+    if (!ownDesc.writable) return false;
+  }
+  if (isAccessorDescriptor(ownDesc)) {
+    if(ownDesc.set === undefined) return false;
+    ownDesc.set.call(target, value); // note: target instead of receiver
+    return true;
+  }
+  var proto = this.getPrototypeOf(target);
+  if (proto === null) {
+    var receiverDesc = Object.getOwnPropertyDescriptor(receiver, name);
+    if (isAccessorDescriptor(receiverDesc)) {
+      if(receiverDesc.set === undefined) return false;
+      receiverDesc.set.call(target, value); // note: target instead of receiver
+      return true;
+    }
+    if (isDataDescriptor(receiverDesc)) {
+      if (!receiverDesc.writable) return false;
+      Object.defineProperty(receiver, name, {value: value});
+      return true;
+    }
+    if (!Object.isExtensible(receiver)) return false;
+    Object.defineProperty(receiver, name,
+      { value: value,
+        writable: true,
+        enumerable: true,
+        configurable: true });
+    return true;
+  } else {
+    return Reflect.set(proto, name, value, receiver); // note: leave receiver unmodified for proto lookup
+  }
+};
+ForwardingHandler.prototype.invoke = function(target, name, args, receiver) {
+  var callable = this.get(target, name, receiver);
+  return Function.prototype.apply.call(callable, target, args);
+};
+</code>
+
+=== VirtualHandler ===
+
+The ''VirtualHandler'' overrides all fundamental traps so that they don't forward to the ''target'' object anymore. Since there is no other sensible default behavior, the traps simply throw an error. Hence, think of these traps as "abstract" methods that must be overridden by subclasses.
+
+<code javascript>
+function abstract(name) {
+  return function(...args) {
+    throw new TypeError(name + " not implemented");
+  };
+}
+function VirtualHandler() {
+  DelegatingHandler.call(this); // not strictly necessary
+}
+VirtualHandler.prototype = {
+  __proto__: DelegatingHandler.prototype,
+  getOwnPropertyDescriptor: abstract("getOwnPropertyDescriptor"),
+  getOwnPropertyNames:      abstract("getOwnPropertyNames"),
+  getOwnPropertyKeys:       abstract("getOwnPropertyKeys"),
+  getPrototypeOf:           abstract("getPrototypeOf"),
+  setPrototypeOf:           abstract("setPrototypeOf"),
+  defineProperty:           abstract("defineProperty"),
+  deleteProperty:           abstract("deleteProperty"),
+  preventExtensions:        abstract("preventExtensions"),
+  apply:                    abstract("apply")
+};
+</code>
+
+===== Prototype implementations =====
+
+All the code and examples on this wiki were tested using [[https://github.com/tvcutsem/harmony-reflect|reflect.js]]. A prototype [[https://github.com/tvcutsem/harmony-reflect/blob/master/handlers.js|implementation]] is available, as well as a [[https://github.com/tvcutsem/harmony-reflect/blob/master/test/testHandlers.js|test suite]] covering the examples.
+
+===== History =====
+
+  * Originally the ''DelegatingHandler'' was called ''VirtualHandler'' and it was the only of three proposed handler classes. The fundamental traps of the ''VirtualHandler'' were "abstract" methods that threw an exception when called. At the July '12 TC39 Meeting TomVC proposed to change the fundamental traps into forwarding methods, the advantage being that "subclasses" can then just override those fundamental traps they are interested in. All derived traps will then use the overridden version. Non-overridden fundamental traps keep doing the same thing as on a normal handler that doesn't inherit from ''Handler.prototype''.
+  * ''VirtualHandler'' was then renamed to just ''Handler''.
+  * At the May '13 TC39 meeting it was decided to add an additional handler class to deal with the problem of ''this''-binding when wrapping objects with private state (such as in the ''Date'' example above). TomVC and AllenWB eventually came up with the hierarchy proposed on the current page (DelegatingHandler, ForwardingHandler, VirtualHandler).

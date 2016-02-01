@@ -1,0 +1,22 @@
+====== Proposal ======
+
+The regular expression literal flag "y" shall be permitted.
+
+The flag states that the regular expression peforms sticky matching in the target string by attempting to match starting at ''lastIndex''. If matching at that location fails then null is returned, i.e., no forward "anchoring" search is performed.  If matching succeeds, then ''lastIndex'' is updated as for the flag "g".
+
+===== Rationale =====
+
+This flag makes it easier to write simple and efficient lexical analyzers for embedded languages using ECMAScript regular expressions.  The current language has quadratic complexity because each match may potentially search to the end of the input for a match.  (That can be worked around in a couple of ways, e.g., by slicing successive tail substrings at quadratic space complexity, but they are cumbersome.)
+
+===== Compatibility =====
+
+The flag is illegal in 3rd Edition, and the matching behavior is a subset of existing behavior, so 
+this flag should not cause trouble for any implementation.
+
+===== Reflection =====
+
+The state of the flag would show up as a property ''sticky'' on RegExp objects, which value ''true'' if "y" was supplied, ''false'' otherwise.
+
+====== Precedent ======
+
+The "y" flag was implemented in [[https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/RegExp|JavaScript 1.8]] in Firefox 3

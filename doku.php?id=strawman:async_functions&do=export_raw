@@ -1,0 +1,448 @@
+====== Async Functions ======
+
+[Note - this proposal is also on https://github.com/lukehoban/ecmascript-asyncawait which may be more up to date] 
+
+The introduction of Promises and Generators in ECMAScript presents an opportunity to dramatically improve the language - level model for writing asynchronous code in ECMAScript.
+
+A similar proposal was made with [Defered Functions](http://wiki.ecmascript.org/doku.php?id=strawman:deferred_functions) during ES6 discussions.  The proposal here supports the same use cases, using similar or the same syntax, but directly building upong generators and promises instead of defining custom mechanisms.
+
+===== Example =====
+
+Take the following example, first written using Promises.This code chains a set of animations on an element, stopping when there is an exceptionin an animation, and returning the value produced by the final successfully executed animation.
+
+<code javascript>
+function chainAnimationsPromise(elem, animations) {
+    var ret = null;
+    var p = currentPromise;
+    for (var anim in animations) {
+        p = p.then(function (val) {
+            ret = val;
+            return anim(elem);
+        })
+    }
+    return p.catch(function (e) {
+        /* ignore and keep going */
+    }).then(function () {
+        return ret;
+    });
+}
+</code>
+
+Already with promises, the code is much improved from a straight callback style, where this sort of looping and exception handling is challenging.
+
+[Task.js](http://taskjs.org/) and similar libraries offer a way to use generators to further simplify the code maintaining the same meaning:
+
+<code javascript>
+function chainAnimationsGenerator(elem, animations) {
+        return spawn(function *() {
+        var ret = null;
+        try {
+            for (var anim in animations) {
+                ret = yield anim(elem);
+            }
+        } catch (e) { /* ignore and keep going */ }
+        return ret;
+    });
+}
+</code>
+
+This is a marked improvement.All of the promise boilerplate above and beyond the semantic content of the code is removed, and the body of the inner function represents user intent.However, there is an outer layer of boilerplate to wrap the code in an additional generator function and pass it to a library to convert to a promise.This layer needs to be repeated in every function that uses this mechanism to produce a promise.This is so common in typical async Javascript code, that there is value in removing the need for the remaining boilerplate.
+
+With async functions, all the remaining boiler plate is removed, leaving only the semantically meaningfully code in the program text:
+
+<code javascript>
+async function chainAnimationsAsync(elem, animations) {
+    var ret = null;
+    try {
+        for (var anim in animations) {
+            ret = await anim(elem);
+        }
+    } catch (e) { /* ignore and keep going */ }
+    return ret;
+}
+</code>
+
+This is morally similar to generators, which are a function form that produces a Generator object.This new async function form prduces a Promise object.
+
+===== Details =====
+
+Async functions are a thin sugar over generators and a `spawn` function which converts generators into promise objects.The internal generator object is never exposed directly to user code, so the rewrite below can be optimized significantly.
+
+==== Rewrite ====
+
+<code>
+async function <name>?<argumentlist><body>
+
+=>
+
+function <name>? <argumentlist>{ return spawn(function *() < body>); }
+</code>
+
+==== Spawning ====
+
+The `spawn` used in the above desugaring is a call to the following algorithm.This algorithm does not need to be exposed directly as an API to user code, it is part of the semantics of async functions.
+
+<code javascript>
+function spawn(genF) {
+    return new Promise(function (resovle, reject) {
+        var gen = genF();
+        function step(nextF) {
+            var next;
+            try {
+                next = nextF();
+            } catch (e) {
+                // finished with failure, reject the promise
+                reject(next);
+                return;
+            }
+            if (next.done) {
+                // finished with success, resolve the promise
+                resolve(next.value);
+                return;
+            }
+            // not finished, chain off the yielded promise and `step` again
+            Promise.cast(next.value).then(function (v) {
+                step(function () { return gen.next(v); });
+            }, function (e) {
+                    step(function () { return gen.throw(e); });
+                });
+        }
+        step(function () { return gen.next(undefined) });
+    })
+}
+</code>
+
+==== Syntax ====
+
+The set of syntax forms are the same as for generators.
+
+<code>
+AsyncMethod:
+    async PropertyName(StrictFormalParameters) { FunctionBody }
+AsyncDeclaration:
+    function async BindingIdentifier(FormalParameters) { FunctionBody }
+AsyncExpression:
+    function async BindingIdentifier? (FormalParameters) { FunctionBody }
+
+// If needed - see syntax options below
+AwaitExpression:
+    await [Lexical goal InputElementRegExp]   AssignmentExpression
+</code>
+
+==== await* ====
+
+In generators, both `yield` and `yield*` can be used.In async functions, only `await` is allowed.  `await*` does not directly have a useful meaning.It could be considered to treat `await*` as Promise.all.This would accept an value that is an array or Promises, and would(asynchronously) return an array of values returned by the promises.This is slightly inconsistent from a typing perspective though.
+
+==== Awaiting Non - Promise ====
+
+When the value passed to `await` is a Promise, the completion of the async function is scheduled on completion of the Promise.For non - promises, behaviour aligns with Promise conversation rules according to the proposed semantic polyfill.
+
+==== Surface syntax ====
+Instead of `async function`/`await`, the following are options:
+- `function^`/`await`
+- `function!`/`yield`
+- `function!`/`await`
+- `function^`/`yield`
+
+==== Arrows ====
+The same approach can apply to arrow functions.For example, assuming the `async function` syntax:   `async() => yield fetch('www.bing.com')` or `async(z) => yield z*z` or `async() => { yield 1; return 1; }`.
+
+==== Notes on Types ====
+For generators, an `Iterable < T>` is always returned, and the type of each yield argument must be `T`.  Return should not be passed any argument.
+
+For async functions, a `Promise < T>` is returned, and the type of return expressions must be `T`.  Yield's arguments are `any`.
+
+==== API ====
+
+It may make sense to make the API supporting this sugar directly available.  This could be published as `Promise.async` bound to either the spawn function above, or to  
+
+<code javascript>
+    Promise.async = function(genF) { return function(...args) { return spawn(() => genF.apply(this, args)); } }
+</code>
+
+
+===== Bigger example =====
+
+<code javascript>
+
+var http = require('http');
+var Q = require('q');
+var request = require('./request.js');
+var headers = { 'User-Agent': 'lukehoban', 'Authorization': 'token 665021d813ad67942206d94c47d7947716d27f66' };
+
+// Promise-returning asynchronous function
+async function getCollaboratorImages(full_name) {
+  // any exceptions thrown here will propogate into try/catch in callers - same as synchronous
+  var url = 'https://api.github.com/repos/' + full_name + '/collaborators';
+  // await a promise-returning async HTTP GET - same as synchronous 
+  var [response, body] = await request({url: url, headers: headers}); 
+  return JSON.parse(body).map(function(collab) {
+    return collab.avatar_url;
+  });
+}
+
+// can use a `async function` here because createServer doesn't care what this returns
+http.createServer(async function (req, res) {
+  console.log('starting...')
+  var url = 'https://api.github.com/search/repositories?per_page=100&q=' + 'tetris';
+  var items = [];
+  // write a normal 'synchronous' while loop
+  while(true) { 
+    console.log('Got ' + items.length + ' items total.  Next: ' + url);
+    // use normal exception handling
+    try { 
+      // promise-returning async HTTP GET
+      var [response, body] = await request({url: url, headers: headers});
+      var items = JSON.parse(body).items;
+      // nested parallel work is still possible with Q.all (could be future await* ?)
+      var newItems = Q.all(items.map(async (item) => ({ 
+        full_name: item.full_name, 
+        collabs_images: await getCollaboratorImages(item.full_name)
+      })));
+      items = items.concat(await newItems);
+      url = (/<(.*)>; rel="next"/.exec(response.headers.link) || [])[1];
+      // break once there is no 'next' link
+      if(!url) break; 
+    } catch(err) {
+      console.log('backing off... ' + err);
+      // backoff on any error
+      await Q.timeout(1000); 
+      // then try again
+      continue;  
+    }
+  }
+  // when done, write response - appears in the usual synchronous 'at the end' 
+  console.log('Done. Got ' + items.length + ' items total.');
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(items));    
+}).listen(process.env.port || 1337);
+console.log("Listening on http://127.0.0.1:" + (process.env.port || 1337));
+
+</code>
+
+These sweet.js macros can be prepended to the above to test today.
+
+<code javascript>
+
+// macros ----------------------------------------
+
+let async = macro {
+  case {_ function $name ($params ...) { $body ...} } => {
+    return #{ var $name = require('q').async(function * $name ($params ...) { $body ... }) }
+  }
+  case {_ function ($params ...) { $body ...} } => {
+    return #{ require('q').async(function * ($params ...) { $body ... }) }
+  }
+  case {_ ($params ...) => $body } => {
+    return #{ require('q').async(function * ($params ...) { return $body; }) }
+  }
+}
+
+macro await {
+  case {_ $e:expr } => {
+    return #{ yield $e }
+  }
+}
+
+let var = macro {
+  rule { $name:ident = $value:expr } => {
+    var $name = $value
+  }
+ 
+  rule { {$name:ident (,) ...} = $value:expr } => {
+    var object = $value
+    $(, $name = object.$name) ...
+  }
+ 
+  rule { [$name:ident (,) ...] = $value:expr } => {
+    var array = $value, index = 0
+    $(, $name = array[index++]) ...
+  }
+}
+
+</code>
+
+
+
+====== OLD - Async Functions ======
+
+TEXT BELOW IS FROM AN OLDER VARIANT OF THIS PROPOSAL - IT SPECIFIES ONLY THE API PORTION
+
+This page is a revision of [[strawman:deferred_functions]] to explain how to express it as a library in terms of the [[strawman:concurrency]] strawman and the [[harmony:generators]] proposal, and as an enhancement to the Q API from the [[strawman:concurrency]] strawman.
+
+Async functions ease the burden of asynchronous programming.
+
+
+===== Asynchronous Programming =====
+
+Ecmascript programming environments typically are single threaded and pausing execution for long periods is undesirable. ES host environments use callbacks for operations which may take a long time like network IO or system timers. 
+
+For Example:
+
+<code javascript>
+  function animate(element, callback) {
+    var i = -1;
+    function loop() {
+      i++;
+      if (i < 100) {
+        element.style.left = i;
+        window.setTimeout(loop, 20);
+      } else {
+        callback();
+      }
+    }
+    loop();
+  };
+  animate(document.getElementById('box'), 
+          function() { alert('Done!'); });
+</code>
+
+The [[strawman:concurrency]] strawman provides a Q API for defining and manipulating promises, that avoid the inversion of control necessitated by such callback-oriented programming.
+
+<code javascript>
+const delay(millis, answer = undefined) {
+    const deferredResult = Q.defer();
+    setTimeout(const() { deferredResult.resolve(answer); }, millis);
+    return deferredResult.promise;
+  }
+
+  function asyncAnimate(element) {
+    var i = -1;
+    var deferred = Q.defer();
+    function loop() {
+      i++;
+      if (i < 100) {
+        element.style.left = i;
+        Q(delay(20)).then(loop);
+      } else {
+        deferred.resolve();
+      }
+    }
+    loop();
+    return deferred.promise;
+  };
+  Q(asyncAnimate(document.getElementById('box'))).then(
+    function() { alert('Done!'); });
+</code>
+
+Programming with promises improves composability of callback patterns, but there are still drawbacks in programming in this style. The completion of the computation must be enclosed in a callback function passed to the 'Q(p).then' function. 
+
+Authoring the callback function has proved difficult for some ES programmers. Control flow constructs (if, while, for, try) do not compose across function boundaries. The programmer must manually twist the control flow into continuation passing style. The callback function does not by default have the same 'this' binding as the enclosing function which is a frequent source of programmer error.
+
+
+
+===== Async Functions =====
+
+Async functions allow asynchronous code to be written using existing control flow constructs. They are expressed by composing the ''Q.async'' method proposed by this strawman with [[harmony:generators]].
+
+<code javascript>
+  const asyncAnimate = Q.async(function*(element) {
+    for (var i = 0; i < 100; ++i) {
+      element.style.left = i;
+      yield delay(20);
+    }
+  });
+  Q(asyncAnimate(document.getElementById('box'))).then(
+    function() { alert('Done!'); });
+</code>
+
+This strawman adds the ''Q.async'' method to the ''Q'' API. When ''Q.async'' is called with a generator function, it returns an //async function//. A yield expression within the body of the generator function argument is an //await expression//.
+
+The await expression evaluates the expression after the ''yield''. The result of evaluating the expression in an await expression is a //promised value//. The promised value is either a promise or a normal value. After computing the promised value the await expression suspends execution of the current function, attaches the continuation of the current function to the promised value by calling the ''Q(p).then'' method, and then returns what that ''Q(p).then'' returns. 
+
+''Q(p).then'' queues callbacks to be called later, in a separate turn, once the promised value is resolved. If the promised value is either not a promise or is a resolved promise, then ''Q(p).then'' queues calls to these callbacks in the general event queue -- the same one used by setTimeout, etc. If the promised value is an unresolved promise, ''Q(p).then'' queues the callback within the promise, to be requeued once the promise is resolved. ''Q(p).then'' immediately returns a promise for what the queued callback will eventually return. 
+
+The value of the await expression as a whole is thus the resolution of the promised value, i.e., the value that was promised. And the return value of a call to an async function is thus a promise for the value that the completion of the function will eventually return. Callbacks to ''Q(p).then'' on that promise will eventually be called with the value that the completion of the async function eventually does return.
+
+===== Returning Values From Async Functions =====
+
+When the completion of an async function completes by returning a value, the returned value is passed as the argument when invoking callbacks registered on the promise returned by the returned function. The value of an await expression is the value of the argument passed to the callback registered on the promised value.
+
+<code javascript>
+  function asyncXHR(url) {
+    var deferred = Q.defer();
+    var request = new XMLHttpRequest();
+    request.open('GET', url, true);
+    request.send(null);
+    request.onreadystatechange = function() {
+      if (request.readyState == 4) {
+        // call all registered callbacks with 'request' as argument
+        deferred.resolve(request);
+      }
+    };
+    return deferred.promise;
+  }
+
+  const asyncLoadRedirectUrl = Q.async(function*(redirectUrl) {
+    // redirectUrl contains another url
+    var urlXHR = yield asyncXHR(redirectUrl);
+    var url = urlXHR.responseText;
+
+    var valueXHR = yield asyncXHR(url);
+    // call all registered callbacks with 'valueXHR.responseText' as argument
+    return valueXHR.responseText;
+  }):
+
+  // alert the value of the redirected url
+  Q(asyncLoadRedirectUrl('http://lolcatz.com/redirect')).then(
+    function(value) { alert(value); });
+</code>
+
+
+
+
+
+
+===== Throwing From Async Functions =====
+
+''Q(p).then'' takes two arguments. The ''p'' argument is the promised value (promise or regular value), whose resolution we're interested in. The first argument is the //callback// to be invoked if the promise becomes fulfilled with a value. The second is the //errback// to be invoked if the promise becomes broken. When an async function completes by throwing an exception, its returned promise becomes broken with the thrown exception as the //reason//, and so the registered errbacks are invoked with the thrown exception as the argument.
+
+<code javascript>
+  // alert the value of the redirected url
+  Q(asyncLoadRedirectUrl('http://lolcatz.com/redirect')).then(
+    function(value) { alert('Success: ' + value); },
+    function(err) { alert('Failure: ' + err); });
+</code>
+
+Similarly, when an awaited on expression completes with an error - ie. its errback is invoked - the result of the await expression is to throw the error value.
+
+
+
+
+
+===== Reference Implementation =====
+
+<code javascript>
+  Q.async = function(generatorFunc) {
+
+    return function asyncFunc(...args) {
+      const generator = generatorFunc.apply(this, args);
+      const callback = continuer.bind(void 0, 'send');
+      const errback = continuer.bind(void 0, 'throw');
+
+      function continuer(verb, valueOrErr) {
+        let promisedValue;
+        try {
+          promisedValue = generator[verb](valueOrErr);
+        } catch (err) {
+          if (isStopIteration(err)) { return Q(err.value); }
+          return Q.reject(err);
+        }
+        return Q(promisedValue).then(callback, errback);
+      }
+
+      return callback(void 0);
+    };
+  };
+</code>
+
+
+====== See ======
+
+[[strawman:concurrency]]
+
+[[harmony:generators]]
+
+[[strawman:deferred_functions]]
+
+[[https://gist.github.com/1040714|Tom's prototype]] using Firefox's current non-standard generators and [[https://github.com/kriskowal/q-comm/|Kris Kowal's qcomm]] implementation of ''Q''.

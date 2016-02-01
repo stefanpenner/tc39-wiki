@@ -1,0 +1,143 @@
+====== Object Literal Meta Properties ======
+
+//This is one of several related [[strawman:object_initialiser_extensions|Object Initialiser Extensions]].//
+
+//Updated to use  angle brackets, add array form, replaced parent meta property with proto, elimianted extensible meta property//
+ --- //[[Allen.Wirfs-Brock@microsoft.com|Allen Wirfs-Brock]] 2010/09/08 04:20// \\
+//Updated to use **closed** as meta property, allow **null** proto,  and Array literals with explicit proto meta properties have %%[[Class]]%% Array internal properties.//  --- //[[Allen@Wirfs-Brock.com|Allen Wirfs-Brock]] 2011/03/09 20:28//
+
+As  currently specified in ECMAScript 5 all objects created using object literal syntax always have the built-in Object.prototype as their parent. This precludes the use of object initialisers  to define objects that require some other parent. Furthermore, there is no declarative mechanism to specify other internal properties of objects such as their %%[[extensible]]%% internal property.  Such internal properties can only be set by applying Object reflection methods.
+
+This extension proposes enhancing object initialisers and array initialisers to support the specification of such internal meta properties. Meta properties are specified using an angle bracketed list as the first item within the object literal.  This syntax is upwards compatible with ES5 object and array literal syntax which does not currently permit a opening angle bracket to appear as the first token inside an object literal.
+
+Example:
+<code javascript>
+var obj = {
+    <proto: someObject, sealed>, //meta properties
+    // ES5-style property definitions
+    prop1: expr,
+    get prop2 ()  {return computeSomeValue()}
+};
+
+var arrayLike = [
+    <proto: EnhancedArray.prototype>, //meta properties
+    // ES5-style array indexed property values
+    0,
+    1
+];
+</code>
+
+In the above examples, the “proto” meta property is used set the %%[[%%prototype]] internal property, and the “sealed” meta property indicates that the object is a sealed object (the value of the configurable attribute for all properties is false and the value of object’s %%[[%%extensible]] internal property is false. Other meta properties names include “frozen” and “closed”. Specifying the ''closed'' meta property sets the object’s %%[[%%extensible%%]]%% internal property to false.
+
+When the “proto” meta property is used with an array initializer, the array that is created  is an object whose %%[[Class]]%% internal property is <del>"Object" rather than</del> "Array" and which uses Array's special versions of the %%[[%%DefineOwnProperty%%]]%% internal method. In this case, a non-configurable property named “length” is also created whose initial value is array index + 1 of the last array indexed property defined by the literal.
+
+Assuming default built-in name bindings, the above examples are semantically equivalent to:
+<code javascript>
+if (typeof someObject!=="object")
+    throw new TypeError; //null is allowed
+var obj = Object.preventExtensions(Object.create( someObject, {
+    prop1: {value: expr, writable: true, 
+            enumerable: true, configurable: false},
+    prop2: {get: function(){return computeSomeValue()},set: undefined,
+            enumerable: true, configurable: false},
+}));
+
+if (typeof Array.prototype!=="object")
+    throw new TypeError;
+var arrayLike = Array.create( Array.prototype, {
+    0: {value: 0, writable: true, 
+        enumerable: true, configurable: true},
+    1: {value: 1, writable: true,
+        enumerable: true, configurable: true},
+    length: {value: 2, writable: true,
+             enumerable: false, configurable: true},
+});
+</code>
+
+In the Array case above, ''Array.create'' is assumed to be a variant of ''Object.create'' that creates an object with in internal methods of Array instances.
+
+<del>While ECMAScript permits using Object.create to create objects whose %%[[Prototype]]%% internal property is null, this is an unusual usage that is typically only needed in special circumstances.  In typical usage,  an expression evaluating to null in this context is more likely to be  indicative of a program error than an actual programmer intent. For this reason, a null %%[[Prototype]]%% value may not be specified using object literal syntax.</del> 
+
+**null** may used as the value of **proto:** but **undefined** and other non-object values may not and their occurrence will throw an error.
+
+<del>Overall this is a pure syntactic extension to ES5 object and array initialisers.  It provides no new semantic that are not already available to the ES5 programmer. However, </del> It allows a broader range of objects to defined using the straight object literal syntax.  This means that fewer programmer will need to learn the more complex Object reflection API and allows such object to be defined in contexts where access to the Object reflection functions have been restricted. In addition, the declarative nature of object initialisers  make it easier (hence more likely) for implementations to recognize and optimize objects defined in this manner.
+
+
+===== SYNTAX =====
+
+//ObjectLiteral// :\\
+ %%      %%**%%{ }%%**\\
+**{** //MetaProperties// **}**\\
+**{** //MetaProperties// **, }**\\
+**{** //MetaProperties// **,**    //PropertyNameAndValueList// **}**\\
+**{** //MetaProperties// **,**    //PropertyNameAndValueList// **, }**\\
+**{** //PropertyNameAndValueList// **}**\\
+**{** //PropertyNameAndValueList// **, }**\\
+
+//ArrayLiteral// :\\
+**%%[%%** //Ellision<sub>opt</sub>// **]**\\
+**%%[%%** //MetaProperties// //Ellision<sub>opt</sub>// **]**\\
+**%%[%%** //MetaProperties// **,** //ElementList//  **]**\\
+**%%[%%** //MetaProperties// **,** //ElementList// **,**  //Ellision<sub>opt</sub>// **]**\\
+**%%[%%** //ElementList//  **]**\\
+**%%[%%** //ElementList// **,**  //Ellision<sub>opt</sub>// **]**\\
+
+//MetaProperties// :\\
+**%%<%%** MetaPropertyList **%%>%%**\\
+\\
+//MetaPropertyList// :\\
+//MetaProperty//\\
+//MetaPropertyList// **,** //MetaProperty//\\
+\\
+//MetaProperty// :\\
+**proto** **:** //MemberExpression//\\
+**sealed**\\
+**frozen**\\
+**closed**
+
+
+
+===== Discussion =====
+
+This is pure bikeshedding but I would prefer if these looked more like properties.
+
+<code javascript>
+var obj = {
+  @proto: someObject,
+  @sealed: true,  // or just @sealed?
+
+  // ES5-style property definitions
+  prop1: expr,
+  get prop2 () {
+    return computeSomeValue();
+  }
+};
+</code>
+
+Other options include naming even closer to the internal properties:
+
+
+<code javascript>
+var obj = {
+  [[Prototype]]: someObject,
+  [[Extensible]]: false,
+
+  // ES5-style property definitions
+  prop1: expr,
+  get prop2 () {
+    return computeSomeValue();
+  }
+};
+</code>
+
+ --- //[[arv@google.com|Erik Arvidsson]] 2011/03/11 22:50//
+
+I actually try to maintain significant separation between surface features of the language and the internal properties that happen to be used in any particular edition of the specification to define the semantics of those surface features. 
+
+That aside, either of the above would be possible alternatives but you also would need to consider how they would be applied for array initializes.
+
+ --- //[[Allen@Wirfs-Brock.com|Allen Wirfs-Brock]] 2011/03/12 16:35//
+
+I don't think the double-bracket syntax works because of array literals, and it's also awfully heavyweight. But I share Arv's reservation about the angle-bracket syntax (though I can't quite articulate it... something about it rubs me wrong). The @ syntax is appealing. FWIW, since the head of an array literal is an array position, it's competing with E4X, sadly.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2011/03/15 22:27//

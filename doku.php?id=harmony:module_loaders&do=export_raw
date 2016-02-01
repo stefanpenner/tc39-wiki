@@ -1,0 +1,275 @@
+====== THIS PAGE IS NO LONGER CURRENT ======
+
+{{harmony:warning.png?100}} **WARNING:** This page is **out of date**. Please see the ES6 [[specification drafts]] for up-to-date information. This page is here only as an archive.
+
+
+
+====== Module loaders ======
+
+This page describes a dynamic API for loading [[modules]] in **controlled and selectively isolated contexts**. Loaders also provide reflective methods for **querying information** about those contexts. Every host environment comes with a built-in **system loader**, and users can create custom loaders via the ''Loader'' constructor.
+
+The details of the semantics are being initially specified in the form of a [[https://github.com/jorendorff/js-loaders|self-hosted reference implementation]]. Once these are fully worked out, they will be added to the main ES6 specification.
+
+===== Goals =====
+
+  * Dynamic loading
+  * State isolation
+  * Global namespace isolation
+  * Compilation hooks
+  * Nested virtualization
+
+===== Loader =====
+
+All code is compiled by a specific loader, and the code is statically and permanently associated with that loader. This association is used for requiring external modules, dynamic code loading via ''eval'', and resolving global variables.
+
+Loaders encapsulate several pieces of information:
+
+  * a //global object//: this represents the global bindings for code evaluated by this loader.
+  * a //module registry//: this associates loaded module names with their loaded module instance objects.
+  * a set of //intrinsics//: these describe special, distinguished prototypes for any built-in objects created by core syntactic forms like ''[]'' and ''{}''.
+
+===== Loader objects =====
+
+The initial global environment contains a global binding ''System'', which is an object that reflects the host environment's code loading capability as a loader object. This section describes the interface of loader objects.
+
+There is a constructor ''Loader'', available via a standard module, which is a constructor for creating new loaders.
+
+<code javascript>
+Loader : function(options = {}) -> Loader
+
+options: {
+    global: Object = Object.create(null),
+    intrinsics: Loader | null = null,
+    strict: boolean = false,
+    normalize: function (see below),
+    resolve: function (see below),
+    fetch: function (see below),
+    translate: function (see below),
+    link: function (see below)
+}
+</code>
+
+<code javascript>
+Loader.prototype.global         : get Object
+Loader.prototype.strict         : get boolean
+Loader.prototype.normalize      : get/set normalize hook
+Loader.prototype.resolve        : get/set resolve hook
+Loader.prototype.fetch          : get/set fetch hook
+Loader.prototype.translate      : get/set translate hook
+Loader.prototype.link           : get/set link hook
+Loader.prototype.load           : function(string, function(any) -> any, function(any) -> any) -> void
+                                  function([string], function([any]) -> any, function(any) -> any) -> void
+Loader.prototype.import         : function(string, function(Module) -> any, function(any) -> any) -> void
+                                  function([string], function([Module]) -> any, function(any) -> any) -> void
+Loader.prototype.fetch          : function(string, function() -> any, function(any) -> any) -> void
+                                  function([string], function() -> any, function(any) -> any) -> void
+Loader.prototype.eval           : function(string) -> any
+Loader.prototype.evalAsync      : function(string, function(any) -> any, function(any) -> any) -> void
+Loader.prototype.get            : function(string) -> Module | null
+Loader.prototype.set            : function(string, Object) -> this
+Loader.prototype.has            : function(string) -> boolean
+Loader.prototype.delete         : function(string) -> void
+Loader.prototype.defineBuiltins : function(Object = this.global) -> Object
+</code>
+
+The details of this API can be found below.
+
+===== Module Objects =====
+
+Module instance objects can be created dynamically with the ''Module'' constructor function, which uses a semantic function ToModule for converting an object to a module instance object.
+
+<code javascript>
+new Module({ string: Object, ... }) -> Module
+Module({ string: Object, ... }) -> Module
+</code>
+
+A module instance object has the %%[[%%Class%%]]%% ''"Module"'' and a **null** %%[[%%Prototype%%]]%%.
+
+==== Module ====
+
+The ''Module'' constructor takes an argument //x// and produces the result of applying the semantic conversion ToModule(ToObject(//x//)).
+
+==== ToModule( obj ) ====
+
+The ToModule semantic function converts an object to a module instance object. If the object is already a module instance object, the result is the object itself. Otherwise, the result is a new module instance object whose exports are aliased to the corresponding properties of the object.
+
+
+===== Global Objects =====
+
+At the top level of a Program, ''this'' is bound to the Program's global object.
+
+After a Program is compiled, its global object contains all the bindings of the global scope as non-configurable properties. All ''var'' bindings are writable value properties. All ''let'' bindings are accessor properties that throw if they are read before being written. All ''const'' bindings are write-once accessor properties that throw if they are read before being written.
+
+===== Intrinsics =====
+
+The intrinsics of a loader are the core objects, prototypes, and constructors associated with the evaluation semantics. For example, when evaluating an array literal:
+
+<code javascript>
+let a = [1, 2, 3];
+</code>
+
+the literal causes the runtime to construct a new ''Array'' object. The intrinsics associated with the code's loader determine //which// ''Array'' constructor it uses.
+
+The intrinsics are used for a variety of semantic operations, including:
+
+  * the prototype of literals (objects, arrays, functions, and regexps)
+  * the prototype of auto-wrapped literals (strings, numbers, and booleans)
+  * the ''.constructor'' property of literals and their standard prototypes
+  * the ''.prototype'' property of the standard constructors pointed to by those prototypes
+  * the standard error objects raised by standard semantic operations
+
+The global object is not required to correspond in any particular way to the intrinsics. However, in most ordinary cases the global object of a given loader will match that loader's intrinsics. The ''defineBuiltins'' method can be used to populate the global object with the standard set of built-in objects and functions for the loader's intrinsics.
+
+==== Virtualizing intrinsics ====
+
+This API does not directly enable virtualizing intrinsics with custom implementations. However, the translation hooks make this possible indirectly via compilation. For example, array literals could be translated to ''new VirtualArray(...)'' for some custom ''VirtualArray'' constructor.
+
+==== Freezing intrinsics ====
+
+It is possible to create a locked-down loader by freezing the intrinsics. You can do this even without directly placing the intrinsics on the global object by copying them into a temporary object:
+
+<code javascript>
+let intrinsics = {};
+loader.defineBuiltins(intrinsics);
+for (key of Object.keys(intrinsics))
+    Object.freeze(intrinsics[key]);
+</code>
+
+Since it appears that the spec only talks about "the original ___" for constructors and prototypes, and the ''.prototype'' properties of all the built-in constructors are non-writable and non-configurable, the built-ins always expose the complete set of intrinsics.
+
+===== Loading and resolution =====
+
+The ''Loader'' constructor accepts five hooks that can be used for custom loading and compilation: ''normalize'', ''resolve'', ''fetch'', ''translate'', and ''link''.
+
+==== Normalization semantics ====
+
+When a module name is requested, the ''normalize'' hook is called with the requested name, and has the responsibility of performing any normalization of the name. It is provided with information about the referring module or script that requested the module. The ''normalize'' hook can also provide a metadata object that will be threaded through the remaining hooks for convenience.
+
+==== Resolution semantics ====
+
+The ''resolve'' hook translates a normalized module name to an address, which might be a URL (in the browser setting) or a filesystem path (in a server setting), or some combination thereof. This is up to the loader and the host environment. The ''resolve'' hook may indicate that the file where the module is located will be a script, in which case it can also indicate the names of other modules that will be provided by that script; this prevents additional requests from being made for those other scripts, which helps avoid unnecessary I/O requests.
+
+==== Fetching semantics ====
+
+The ''fetch'' hook takes a resolved address and performs an asynchronous fetch of the module's source code. It is provided with success and error callbacks.
+
+==== Translation semantics ====
+
+The ''translate'' hook can choose to analyze or transform source code, performing arbitrary compilation services.
+
+==== Link semantics ====
+
+The ''link'' hook can choose to provide a fully linked module or a blueprint for how to link the module lazily. This blueprint lists the module names that are the dependencies of the module, and optionally the names of the exports that the module will provide, along with a "factory" function for initializing the module. The loader then loads the dependencies before calling the factory function with its dependencies as arguments.
+
+===== Loader API =====
+
+==== new Loader( [ options ] ) ====
+
+The ''Loader'' constructor creates a new loader with a set of options.
+
+=== options.global ===
+
+The loader's global object (see below).
+
+=== options.intrinsics ===
+
+The source of the loader's intrinsics (see below). This can either be an existing loader or ''null'', the latter indicating that the loader's intrinsics should be created fresh.
+
+=== options.strict ===
+
+A flag indicating whether code evaluated in the loader should start out in strict mode.
+
+=== options.normalize( request, referer ) ===
+
+The module name normalization hook. This receives the requested module name and referer information:
+
+<code javascript>
+referer = {
+    name: string,
+    address: string
+} | null
+</code>
+
+and produces a module name or an object containing the normalized name and a metadata value:
+
+<code javascript>
+{
+    normalized: string,
+    metadata: any
+}
+</code>
+
+=== options.resolve( normalized, { referer, metadata } ) ===
+
+The resolution hook receives the normalized module name, the referer information, and the metadata. It produces either an address string or an object:
+
+<code javascript>
+{
+    address: string,
+    extra: [string]
+}
+</code>
+
+=== options.fetch( resolved, fulfill, reject, { normalized, referer, metadata } ) ===
+
+The fetch hook receives the resolved address, success and error callbacks, the normalized module name, the referer information, and the metadata. Its result is ignored; it can choose asynchronously to call one of the two callbacks.
+
+=== options.translate( source, { normalized, address, metadata, type } ) ===
+
+The translation hook receives the downloaded source code, the normalized module name (if any), the address, the metadata, and either 'module' or 'script' indicating which type of source file is being translated.
+
+=== options.link( source, { normalized, address, metadata, type } ) ===
+
+The link hook receives the translated source and all the additional accumulated context information as before, and produces either a fully initialized module instance object or a link object as described above.
+
+==== Loader.prototype.get global() ====
+
+The ''global'' accessor returns the global object encapsulated by the loader.
+
+==== Loader.prototype.load( address, callback, errback, referer = null ) ====
+
+Asynchronously load a script file or sequence of script files.
+
+==== Loader.prototype.import( name, callback, errback, referer = null ) ====
+
+Asynchronously load a module or sequence of modules by name.
+
+==== Loader.prototype.fetch( name, callback, errback, referer = null ) ====
+
+Asynchronously load and compile but do not execute a module or sequence of modules by name.
+
+==== Loader.prototype.eval( src ) ====
+
+Synchronously executes a ''Script'' non-terminal. If the compilation process results in a fetch, a ''SyntaxError'' is thrown.
+
+The compiled code is statically associated with this loader.
+
+If and when compilation succeeds, globals defined by the evaluated ''Script'' are added to the global object. If compilation fails, the global object is unchanged.
+
+==== Loader.prototype.evalAsync( src, callback, errback ) ====
+
+Asynchronously executes a ''Script'' non-terminal.
+
+The compiled code is statically associated with this loader.
+
+If and when compilation succeeds, globals defined by the evaluated ''Script'' are added to the global object. If compilation fails, the global object is unchanged.
+
+==== Loader.prototype.get( name ) ====
+
+Look up a module in the loader's registry, using a name that is assumed to be normalized. If the module is found, it first executes the module if it's never been executed, and then returns the module instance object. Otherwise, it returns ''null''.
+
+==== Loader.prototype.set( name, mod ) ====
+
+Stores (possibly overwriting) a module instance object in the loader's registry, using a name that is assumed to be normalized.
+
+==== Loader.prototype.has( name ) ====
+
+Determines whether a module is loaded, by name.
+
+==== Loader.prototype.delete ( name ) ====
+
+Removes a module from the loader's registry.
+
+==== Loader.prototype.defineBuiltins( [ obj ] ) ====
+
+The ''defineBuiltins'' method takes an object and defines all the built-in objects and functions of the ES6 standard library associated with this loader's intrinsics as properties on the object.

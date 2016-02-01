@@ -1,0 +1,122 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=globalization:numberparsing&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=globalization" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=globalization:numberparsing&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=globalization:numberparsing&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=globalization:numberparsing&amp;do=export_html.html#intl.numberformat_parse_method" class="toc">Intl.NumberFormat Parse method</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=globalization:numberparsing&amp;do=export_html.html#introduction" class="toc">Introduction</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=globalization:numberparsing&amp;do=export_html.html#goals" class="toc">Goals</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=globalization:numberparsing&amp;do=export_html.html#non-goals" class="toc">Non-goals</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=globalization:numberparsing&amp;do=export_html.html#design" class="toc">Design</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="intl.numberformat_parse_method"></a><h1>Intl.NumberFormat Parse method</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [1-46] -->
+<a name="introduction"></a><h2>Introduction</h2>
+<div class="level2">
+
+<p>
+ The existing parseInt function works well for integers, but it fails to recognize proper decimal digit delimiters or thousand separators for a given locale. It also doesn&rsquo;t recognize non-latin digits, like &lsquo;arab&rsquo;.
+</p>
+
+</div>
+<!-- SECTION [47-287] -->
+<a name="goals"></a><h2>Goals</h2>
+<div class="level2">
+
+<p>
+ Provide a function that is locale sensitive and can deal with decimal points and separators, and different numbering systems.
+</p>
+
+</div>
+<!-- SECTION [288-433] -->
+<a name="non-goals"></a><h3>Non-goals</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> Expect only digits and negative/positive signs (no alpha, like currency code) </div>
+</li>
+<li class="level1"><div class="li"> If there are grouping separators they have to be in proper positions or completely missing </div>
+</li>
+<li class="level1"><div class="li"> We are not planing support for currency and percent parsing</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [434-701] -->
+<a name="design"></a><h2>Design</h2>
+<div class="level2">
+
+<p>
+ We would add a new method to the Intl.NumberFormat object, that would accept a string and try to parse it given the rules of the formatter.
+</p>
+<pre class="code javascript"><span class="coMULTI">/**
+ * strNum {string} - required parameter, string to parse, base 10
+ * returns {number} - returns a Number if string could be parsed, or undefined otherwise
+ */</span>
+Intl.<span class="me1">NumberFormat</span>.<span class="me1">prototype</span>.<span class="me1">parse</span><span class="br0">&#40;</span>strNum<span class="br0">&#41;</span></pre>
+<p>
+Examples: 
+</p>
+<pre class="code javascript"><span class="kw2">var</span> nf = Intl.<span class="me1">NumberFormat</span><span class="br0">&#40;</span><span class="st0">'de'</span><span class="br0">&#41;</span>;
+&nbsp;
+<span class="co1">// thousand separator and decimal comma.</span>
+<span class="co1">// Grouping separators are valid and in proper place.</span>
+<span class="kw2">var</span> result1 = nf.<span class="me1">parse</span><span class="br0">&#40;</span><span class="st0">'123.345,34'</span><span class="br0">&#41;</span>;   <span class="co1">// result1 = 123345.34</span>
+&nbsp;
+<span class="co1">// thousand separator is ignored in decimal part</span>
+<span class="kw2">var</span> result2 = nf.<span class="me1">parse</span><span class="br0">&#40;</span><span class="st0">'123,345.34'</span><span class="br0">&#41;</span>;   <span class="co1">// result2 = 123.34534</span>
+&nbsp;
+<span class="co1">// no thousand separator</span>
+<span class="kw2">var</span> result3 = nf.<span class="me1">parse</span><span class="br0">&#40;</span><span class="st0">'123345,34'</span><span class="br0">&#41;</span>;    <span class="co1">// result3 = 123345.34</span>
+&nbsp;
+<span class="co1">// trailing non-digits are not ignored</span>
+<span class="kw2">var</span> result4 = nf.<span class="me1">parse</span><span class="br0">&#40;</span><span class="st0">'123,34 euro'</span><span class="br0">&#41;</span>;  <span class="co1">// result4 = undefined</span>
+&nbsp;
+<span class="co1">// preceeding non-digits are not ignored</span>
+<span class="kw2">var</span> result5 = nf.<span class="me1">parse</span><span class="br0">&#40;</span><span class="st0">'EUR123,34'</span><span class="br0">&#41;</span>;    <span class="co1">// result5 = undefined</span>
+&nbsp;
+<span class="co1">// negative numbers are supported</span>
+<span class="kw2">var</span> result7 = nf.<span class="me1">parse</span><span class="br0">&#40;</span><span class="st0">'-123.34'</span><span class="br0">&#41;</span>;      <span class="co1">// result7 = -123.34</span></pre>
+<p>
+Parsing numbers from non-latin digit set: 
+</p>
+<pre class="code javascript"><span class="kw2">var</span> nf = Intl.<span class="me1">NumberFormat</span><span class="br0">&#40;</span><span class="st0">'ar'</span><span class="br0">&#41;</span>;
+&nbsp;
+<span class="kw2">var</span> result = nf.<span class="me1">parse</span><span class="br0">&#40;</span><span class="st0">'٢١٣٫٣٢-'</span><span class="br0">&#41;</span>;  <span class="co1">// result = -213.32</span></pre>
+</div>
+<!-- SECTION [702-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/1/1f07554ecd7bd62ec8ac0255296e6e4d.xhtml used -->
+</body>
+</html>

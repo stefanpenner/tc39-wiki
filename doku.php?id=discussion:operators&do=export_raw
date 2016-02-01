@@ -1,0 +1,61 @@
+This is the discussion page for [[proposals:operators]].
+
+====== Too weak to be included? ======
+
+I think this feature is too weak to be included.  Here are some reasons why I think that:
+
+  * Uncontrollable subtleties in dispatch: Adding eg a ''=='' operator to one class and then comparing an instance ''x'' of that class to a value ''y'' of another type means that the result can easily differ depending on whether the programmer writes ''x == y'' or ''y == x''.  (If y has an operator ''=='' too then its operator will be preferred in the latter case.)  The most the author of the ''=='' operator can do about this is to add types to the operator's signature so that strict mode catches the bug or the program fails predictably at run-time.
+  * No inheritance: in almost all cases we would wish that if instances of A and B are comparable with a certain semantics then instances of their respective subclasses C and D are too.
+  * No compositionality: As the operators are tied to classes, a program that wishes to use two separately authored classes A and B cannot define their relations in terms of operators, the classes must be altered because they do not know about each other.
+
+Including operators as currently proposed would probably give us a headache if we wish to introduce a more powerful feature (probably based on some sort of ad-hoc overloading) in the future.
+
+(I propose that we introduce [[proposals:generic functions|generic functions]] instead, but even if that proposal is not accepted I still propose that we remove operators.)
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/08/09 13:49//
+
+====== Open questions ======
+
+===== Inheritance =====
+
+Are operators inherited?
+
+The draft spec states that a static property on a base class cannot be referenced through instances of its derived classes, so in a real sense a class does not "have" a static operator function inherited from a base class.
+
+//Proposed resolution//: Operators are not inherited, they must be defined on the actual concrete classes in each instance.  
+
+
+===== Direct access to operator functions =====
+
+Whether they are inherited or not, do we wish to allow for a way of referencing operators defined in a superclass or in a particular class?
+
+//Proposed resolution//: The reserved namespace ''operator'' will be available for invoking an operator function on a given class, eg C.operator::+(1,2).
+
+----
+
+Is an ''operator'' namespace necessary?  See **Syntax for field names in class definitions** at the bottom of [[proposals:syntax for type expressions]] (it needs a new home).  Is there a proposal or spec already for declaring and using property names that are not lexical identifiers?  If so, why wouldn't it suffice to name operator static methods?
+
+One reason we've discussed, which led to exposing the unquoted operator lexemes as method names: so that the lexer can sort things out up front.  But a new predefined namespace is not necessary for that.
+
+In contrast, the [[intrinsic namespace]] proposal was created in part to make global default operator functions, which operate on arguments of any type, available without polluting the global public namespace.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/04/27 09:27//
+
+The ''operator'' namespace seems to me a good idea on reflection. But it's not reflected in the proposal yet, or the referenced part of the spec.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/01/29 11:32//
+
+
+===== Overriding =====
+
+If operators are inherited, can they be overridden?
+
+//Proposed resolution//: Since they are proposed not to be inherited, this point is moot.
+
+
+
+===== Missing Relationals =====
+
+While ''%%< > <= >=%%'' are included, ''in'' and ''instanceof'' are missing. Why or why not? See also [[proposals:iterators and generators#coherence|this section]] of [[proposals:iterators and generators]].
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/01/29 19:11//

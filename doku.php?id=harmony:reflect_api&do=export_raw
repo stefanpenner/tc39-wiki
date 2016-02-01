@@ -1,0 +1,229 @@
+====== Reflect API ======
+
+**This proposal has progressed to the Draft ECMAScript 6 Specification (Section [[https://people.mozilla.org/~jorendorff/es6-draft.html#sec-reflection.|26]]), which is available for review here: [[harmony:specification_drafts]]. Any new issues relating to them should be filed as bugs at [[http://bugs.ecmascript.org]]. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.**
+
+We propose a new standard module "@reflect" that exports the following properties:
+
+<code javascript>
+module "@reflect"
+
+function Proxy(target, handler)
+function Handler()
+
+// each of the following functions corresponds
+// one-to-one with a Proxy trap from the handler API
+function getOwnPropertyDescriptor(target,name)
+function defineProperty(target,name,desc)
+function getOwnPropertyNames(target)
+function getPrototypeOf(target)
+function deleteProperty(target,name) 
+function enumerate(target)
+function freeze(target)
+function seal(target)
+function preventExtensions(target)
+function isFrozen(target)
+function isSealed(target)
+function isExtensible(target)
+function has(target,name)
+function hasOwn(target,name)
+function keys(target)
+function get(target,name,receiver)
+function set(target,name,value,receiver)
+function apply(target,thisArg,args)
+function construct(target,args)
+</code>
+
+Most of the above operations are easy to accomplish by other means in ES5. Some were previously hard to accomplish:
+  * ''get(target,name,receiver)'' can be used to lookup ''target[name]'', but if the property is an accessor, the accessor's ''this''-binding will refer to ''receiver''.
+  * ''set(target, name, value, receiver)'' can be used to set a property ''target[name] = value'', but if the property is an accessor, the accessor's ''this''-binding will refer to ''receiver''.
+  * ''construct(target, args)'' is equivalent to ''new target(...args)''. This is not trivial to accomplish in ES5 given the lack of the spread operator.
+  * ''apply(fun,thisArg,args)'' is a convenient shorthand for ''Function.prototype.apply.call(fun,thisArg,args)''
+  * ''set'', ''defineProperty'', ''freeze'', ''seal'' and ''preventExtensions'' return a boolean rather than throwing on failure, where ''true'' indicates success and ''false'' indicates failure.
+
+===== Purpose =====
+
+The "@reflect" module serves multiple purposes:
+  * Now that we have modules, a "@reflect" module is a more natural place for many of the reflection methods previously defined on Object. For backwards-compatibility purposes, it is unlikely that the static methods on ''Object'' will disappear. However, [[harmony:extended object api|new methods]] should likely be added to the "@reflect" module rather than to the ''Object'' constructor.
+  * A natural home for proxies, avoiding the need for a global ''Proxy'' binding.
+  * Most methods in this module map one-to-one onto Proxy traps. Proxy handlers need these methods to conveniently forward operations, as shown below.
+
+
+===== Forwarding =====
+
+The methods in "@reflect" make it easy for Proxy handlers to forward trapped operations, for instance:
+
+<code javascript>
+module Reflect from "@reflect";
+
+funtion makeChangeLogger(target, log) {
+  return Proxy(target, {
+    set: function(target, name, value, receiver) {
+      var success = Reflect.set(target,name, value, receiver);
+      if (success) {
+        log('property '+name+' on '+target+' set to '+value);
+      }
+      return success;
+    }
+  });
+}
+</code>
+
+This relieves the ''makeChangeLogger'' abstraction from accurately implementing the semantics of forwarding ''set''.
+
+The one-to-one correspondence between "@reflect" methods and Proxy traps enables the [[harmony:proxies#transparent_chains_of_no-op_proxies|double lifting]] pattern:
+
+<code javascript>
+module Reflect from "@reflect";
+
+var genericHandler = Proxy(target, {
+  get: function(target, trapName, receiver) {
+    // code here is run before every operation triggered on proxy
+    // note: the Reflect module instance is needed to generically
+    // forward the trap invocation
+    return Reflect[trapName];
+  }
+});
+var proxy = Proxy(target, genericHandler);
+</code>
+
+This pattern is useful to build very generic wrapper abstractions such as membranes or caretakers.
+
+Note finally that the ''Reflect'' module instance is itself a valid Proxy handler.
+
+====== Specification ======
+
+** export function Proxy(target, handler)**
+
+See [[harmony:proxies spec]].
+
+** export function Handler()**
+
+See [[harmony:virtual object api]].
+
+** export function getOwnPropertyDescriptor(target,name)**
+
+Same as ''Object.getOwnPropertyDescriptor(target,name)''
+
+** export function defineProperty(target,name,desc)**
+
+Same as ''Object.defineProperty(target,name,desc)''
+
+** export function getOwnPropertyNames(target)**
+
+Same as ''Object.getOwnPropertyNames(target)''
+
+** export function getPrototypeOf(target)**
+
+Same as ''Object.getPrototypeOf(target)''
+
+** export function deleteProperty(T, P)**
+
+When the **deleteProperty** function is called with arguments T and P, the following steps are taken:
+
+  - Let target be ToObject(T)
+  - Let name be ToString(P)
+  - Return the result of calling the %%[[Delete]]%% internal method of target providing name as the first argument and false as the second argument.
+
+** export function enumerate(T)**
+
+  - Let target be ToObject(T)
+  - Return the result of calling the %%[[Enumerate]]%% internal method of target providing no arguments.
+
+** export function freeze(target)**
+
+This algorithm should do the same as Object.freeze (ES5 15.2.3.9) except it should return a boolean instead of returning target or throwing.
+
+TODO
+
+** export function seal(target)**
+
+This algorithm should do the same as Object.seal except it should return a boolean instead of returning target or throwing.
+
+TODO
+
+** export function preventExtensions(target)**
+
+This algorithm should do the same as Object.preventExtensions except it should return a boolean instead of returning target or throwing.
+
+TODO
+
+** export function isFrozen(target)**
+
+Same as ''Object.isFrozen(target)''
+
+** export function isSealed(target)**
+
+Same as ''Object.isSealed(target)''
+
+** export function isExtensible(target)**
+
+Same as ''Object.isExtensible(target)''
+
+** export function has(T, P)**
+
+When the **has** function is called with arguments T and P, the following steps are taken:
+
+  - Let target be ToObject(T)
+  - Let name be ToString(P)
+  - Return the result of calling the %%[[HasProperty]]%% internal method of target providing name as the sole argument.
+
+** export function hasOwn(target,name)**
+
+When the **hasOwn** function is called with arguments T and P, the following steps are taken:
+
+  - Let target be ToObject(T)
+  - Let name be ToString(P)
+  - Return the result of calling the %%[[HasOwnProperty]]%% internal method of target providing name as the sole argument.
+
+** export function keys(target)**
+
+Same as ''Object.keys(target)''
+
+** export function get(T, P, R)**
+
+When the **get** function is called with arguments T, P and R the following steps are taken:
+
+  - Let target be ToObject(T)
+  - Let name be ToString(P)
+  - Let receiver be target
+  - If R is present and not undefined, set receiver to ToObject(R)
+  - Return the result of calling the %%[[GetP]]%% internal method of target providing name as the first argument and receiver as the second argument.
+
+** export function set(T, P, V, R)**
+
+When the **set** function is called with arguments T, P, V and R the following steps are taken:
+
+  - Let target be ToObject(T)
+  - Let name be ToString(P)
+  - Let receiver be target
+  - If R is present and not undefined, set receiver to ToObject(R)
+  - Return the result of calling the %%[[SetP]]%% internal method of target providing name as the first argument, V as the second argument and receiver as the third argument.
+
+** export function apply(T, thisArg, argArray)**
+
+Same as ES5 15.3.4.3 ''Function.prototype.apply'' with T as receiver (the ''func'' object).
+
+** export function construct(T, argArray)**
+
+When the **construct** function is called with arguments T and argArray the following steps are taken:
+
+  - Let target be ToObject(T)
+  - If target does not implement the %%[[Construct]]%% internal method, throw a TypeError exception.
+  - If argArray is null or undefined, then
+    * a. Return the result of calling the %%[[Construct]]%% internal method of target, providing an empty list of arguments.
+  - If Type(argArray) is not Object, then throw a TypeError exception.
+  - Let len be the result of calling the %%[[Get]]%% internal method of argArray with argument "length".
+  - Let n be ToUint32(len).
+  - Let argList be an empty List.
+  - Let index be 0.
+  - Repeat while index < n
+    * a. Let indexName be ToString(index).
+    * b. Let nextArg be the result of calling the %%[[Get]]%% internal method of argArray with indexName as the argument.
+    * c. Append nextArg as the last element of argList.
+    * d. Set index to index + 1.
+  - Return the result of calling the %%[[Construct]]%% internal method on target, providing argList as the list of arguments.
+
+
+====== References ======
+
+For a non-normative, approximate implementation of these methods, see [[https://github.com/tvcutsem/harmony-reflect|this code]].

@@ -1,0 +1,179 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=harmony:regexp_match_web_reality&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="http://wiki.ecmascript.org/feed.php?mode=list&amp;ns=harmony" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=harmony:regexp_match_web_reality&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=harmony:regexp_match_web_reality&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="make_the_regexp_specification_match_what_browsers_actually_implement"></a><h1>Make the RegExp Specification Match What Browsers Actually Implement</h1>
+<div class="level1">
+
+<p>
+The regular expressions that web browsers interoperability implement is not what is defined in the current ES5 specification.   For Harmony, the spec. should be updated to match reality.
+</p>
+
+<p>
+ <em>These changes will be in a new section that defines normatively defines optional features for browser based implementations.  This section will replace Annex B </em>
+</p>
+
+<p>
+Lasse Reichstein posted ti <a href="https://mail.mozilla.org/pipermail/es-discuss/2010-December/012289.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2010-December/012289.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">esdiscuss</a> the following summary of how browser reality differs the the current spec:
+</p>
+
+<p>
+On Wed, 08 Dec 2010 21:43:06 +0100, Gavin Barraclough   &lt;barraclough at apple.com&gt; wrote: 
+</p>
+<blockquote>
+ According to the ES5 spec a regular expression such as /[\w-_]/ should   generate a syntax error.  Unfortunately there appears to be a   significant quantity of existing code that will break if this behavior   is implemented (I have been experimenting with bringing WebKit&rsquo;s RegExp   implementation into closer conformance to the spec), and looking at   other implementations it appears common for this error to be ignored.</blockquote>
+
+<p>
+ It&rsquo;s far from the only extension to RegExp syntax that is common to most implementations. In fact, the extensions are both extensive and consistent across browsers. A quick check through the possible syntax errors show the following:
+</p>
+
+<p>
+<em> Invalid ControlEscape/IdentityEscape character treated as literal.
+   /\z/;  </em> Invalid escape, same as /z/ <em> Incomplete/Invalid ControlEscape treated as either &ldquo;\\c&rdquo; or &ldquo;c&rdquo;
+   /\c/;  </em> same as /c/ or /\\c/
+</p>
+<pre class="code"> /\c2/;  // same as /c2/ or /\\c2/</pre>
+
+<p>
+<em> Incomplete HexEscapeSequence escape treated as either &ldquo;\\x&rdquo; or &ldquo;x&rdquo;.
+   /\x/;  </em> incomplete x-escape
+</p>
+<pre class="code"> /\x1/;  // incomplete x-escape
+ /\x1z/;  // incomplete x-escape</pre>
+
+<p>
+<em> Incomplete UnicodeEscapeSequence escape treated as either &ldquo;\\u&rdquo; or &ldquo;u&rdquo;.
+   /\u/;  </em> incomplete u-escape
+</p>
+<pre class="code"> /\uz/;  // incomplete u-escape
+ /\u1/;  // incomplete u-escape
+ /\u1z/;  // incomplete u-escape
+ /\u12/;  // incomplete u-escape
+ /\u12z/;  // incomplete u-escape
+ /\u123/;  // incomplete u-escape
+ /\u123z/;  // incomplete u-escape</pre>
+
+<p>
+<em> Bad quantifier range:
+   /x{z/;  </em> same as /x\{z/
+</p>
+<pre class="code"> /x{1z/;  // same as /x\{1z/
+ /x{1,z/;  // same as /x\{1,z/
+ /x{1,2z/;  // same as /x\{1,2z/
+ /x{10000,20000z/;  // same as /x\{10000,20000z/</pre>
+
+<p>
+<em> Notice: It needs arbitrary lookahead to determine the invalidity,
+</em> except Mozilla that limits the numbers.
+</p>
+
+<p>
+<em> Zero-initialized Octal escapes.
+   /\012/;    </em> same as /\x0a/
+</p>
+
+<p>
+<em> Nonexisting back-references treated as octal escapes:
+   /\5/;  </em> same as /\x05/
+</p>
+
+<p>
+<em> Invalid PatternCharacter accepted unescaped
+   /]/;
+   /{/;
+   /}/;
+
+</em> Bad escapes also inside CharacterClass.
+</p>
+<pre class="code"> /[\z]/;
+ /[\c]/;
+ /[\c2]/;
+ /[\x]/;
+ /[\x1]/;
+ /[\x1z]/;
+ /[\u]/;
+ /[\uz]/;
+ /[\u1]/;
+ /[\u1z]/;
+ /[\u12]/;
+ /[\u12z]/;
+ /[\u123]/;
+ /[\u123z]/;
+ /[\012]/;
+ /[\5]/;</pre>
+
+<p>
+<em> And in addition:
+   /[\B]/;
+   /()()[\2]/;  </em> Valid backreference should be invalid.
+</p>
+
+<p>
+None of these RegExps cause a syntax error in any of the current &ldquo;top-5&rdquo;   browsers, even though they are (<acronym title="As far as I can see">AFAICS</acronym>) invalid syntax.
+</p>
+
+<p>
+ Most of the RegExps treat a malformed (start of a multi-character) escape   sequence as a simple identity escape or octal escape, and extends identity escapes   to all characters that doesn&rsquo;t already have another meaning (ControlEscape,   CharacterClassEscape or one of c, x, u, or b, and B outside a CharacterClass).
+</p>
+
+<p>
+To match the current behavior, IdentityEscape shouldn&rsquo;t exclude all of   IdentifierPart, but only the characters that already mean something else.
+</p>
+
+<p>
+Allowing /\c2/ to match &ldquo;c2&rdquo;, but requiring /\CB/ to match &ldquo;\x02&rdquo; seems   like it would be better explained in prose than in the BNF.
+</p>
+
+<p>
+... 
+</p>
+<blockquote>
+ I&rsquo;d like to propose a minimal change to hopefully allow implementations   to come into line with the spec, without breaking the web.  I&rsquo;d suggest   changing the first step of CharacterRange to instead read: 	1. If A does not contain exactly one character or B does not contain   exactly one character then create a CharSet AB containing the union of   the CharSets A and B, and return the union of CharSet AB and the CharSet   containing the one character -.</blockquote>
+
+<p>
+ I think this matches the current actual behavior of all the browsers, and   is short and understandable.
+</p>
+
+<p>
+/Lasse R.H. Nielsen 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+ Also note that RegExp.prototype.compile is implemented by web browsers and is probably essential for browser interoperability.  For this reason, it probably should be added to the spec.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x41%3B%26%23x6c%3B%26%23x6c%3B%26%23x65%3B%26%23x6e%3B%26%23x40%3B%26%23x57%3B%26%23x69%3B%26%23x72%3B%26%23x66%3B%26%23x73%3B%26%23x2d%3B%26%23x42%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x41;&#x6c;&#x6c;&#x65;&#x6e;&#x40;&#x57;&#x69;&#x72;&#x66;&#x73;&#x2d;&#x42;&#x72;&#x6f;&#x63;&#x6b;&#x2e;&#x63;&#x6f;&#x6d;">Allen Wirfs-Brock</a> 2011/02/01 19:54</em>
+</p>
+
+<p>
+Earlier this year I attempted to spec what IE9 implements, which in turn aims to be the ES5 + &ldquo;web reality&rdquo;.  I&rsquo;ve put that at <a href="doku.php%3Fid=strawman:match_web_reality_spec.html" class="wikilink1" title="strawman:match_web_reality_spec" onclick="return svchk()" onkeypress="return svchk()">match web reality spec</a>.   &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x75%3B%26%23x6b%3B%26%23x65%3B%26%23x68%3B%26%23x40%3B%26%23x6d%3B%26%23x69%3B%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x73%3B%26%23x6f%3B%26%23x66%3B%26%23x74%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x75;&#x6b;&#x65;&#x68;&#x40;&#x6d;&#x69;&#x63;&#x72;&#x6f;&#x73;&#x6f;&#x66;&#x74;&#x2e;&#x63;&#x6f;&#x6d;">Luke Hoban</a> 2011/05/24 07:54</em> 
+</p>
+
+</div>
+
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/c/c146e1b7379187618dd5ae14afdb8f6c.xhtml used -->
+</body>
+</html>

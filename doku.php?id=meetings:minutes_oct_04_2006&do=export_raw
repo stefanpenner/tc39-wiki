@@ -1,0 +1,86 @@
+====== Meeting 04 October ======
+
+Present:
+  * Jeff Dyer
+  * Dave Herman
+  * Brendan Eich
+  * Doug Crockford
+  * Dan Smith
+  * Michael O'Brien
+  * Cormac Flanagan
+  * Graydon Hoare
+  * Steven Johnson
+  * Francis Cheng
+  * Edwin Smith
+  * Pratap Lakshman
+
+
+
+====== Agenda ======
+
+  * Notation
+  * Review Recent Changes
+
+
+
+====== Discussion ======
+
+===== Notation =====
+
+  * Dave Herman: We can have a specification language that actually has a semantics so we can prove type soundness, but it can be high-level enough for general understanding. Similar to ES3 style, but no goto statments. It's a two-level semantics: we translate the surface language (es) into intermediate language. For example, "The meaning of the 'for' loop is the following code in the spec language...", but the spec language is in terms of operational semantics. 
+  * Benefits: 1) This approach makes the operational semantics simpler;  2) everyone can work on translation concurrently;  3) we can do it iteratively: we can sketch out basic definitions of the specification language, but as individuals are working on parts of the spec, we can revisit it and revise it; 4) We can abstract out some things like exceptions; 5) We could have 'runnable' pseudocode
+  * Rationale: A lot of the language is syntactic sugar for a few core forms in the core language. So we can have an intermediate language where we can focus on these core issues. 
+  * Jeff Dyer will work with Dave to accelerate the process.
+
+
+===== Recent Wiki Changes =====
+
+==== Multiple compilation units ====
+  * Jeff Dyer: A compilation is a program. So what happens when you have multiple programs working together. On a web page you could have several programs working on a shared host object. 
+  * Brendan: In AS3 there's no way to say that two progs can share the same glob object. 
+  * Jeff: There isn't but Ed and I don't see why we couldn't do that. 2 programs, second prog can see defs in 1st program, but this will refer to separate global. It can see it as a table of external names. 
+  * Edwin: in the scope stack, it looks at the external table before the global. Glob object is a singleton that is alive for that session. There's a difference between session global and the application global. 
+  * Pratap: so in a web page, each script is an individual compilation unit?  
+  * Brendan: Yes. We're not proposing a change to the web execution model, just want to specify what it does.
+
+==== Extending regex ====
+  * Steven Johnson: looked into Unicode issue. Level 1 recommendation looks doable, but I'm concerned about size, specifically with matching character classes. They claim you can do it in 7 to 8 k, but what I've seen in the real world is more like 90 k. Does anyone have any ideas about how to do this in less than 90k? Am I right to assume that 90k is a show stopper? 
+  * Graydon: It will be if it is a mandatory requirement, but we've had feedback that mobile developers would like to have it as an optional guideline. 
+  * Michael: Yes, it would be a non-starter if it's mandatory. 
+  * Graydon: We can still specify it, just should not make it mandatory. 
+  * Steven: others are less controversial, like supporting arbitrary code points, etc. So I need to figure out an acceptable compromise. The Unicode minimum implementation is an all-or-nothing affair. 
+  * Jeff: We should get input from Lars because he originated this proposal.
+
+==== Destructuring assignment ====
+  * Steven Johnson: Is it legal to use array literal in a var statement (e.g. var [ a:int, b:string])?  
+  * Brendan: Yes, it's legal.
+  * Steven: What about using strings in object initializers?
+  * Brendan: This is legal so that you can use odd characters (dash, etc.) in property names.
+
+
+==== Resurrecting Eval ====
+  * Lars and Doug are concerned that it isn't effective. Doug likes the approach but doesn't think it is effective, so it isn't worth doing. 
+  * Brendan: There may be cases where you want isolation apart from security. 
+  * Doug: I like what it does, just a shame that it only goes that far. 
+  * Brendan: This is a problem we need to solve, but it isn't solvable in the es4 timeframe. Brendan will work on the proposal more this week. 
+  * Pratap: is eval() commonly used? 
+  * Brendan: It is used in Mozilla. 
+  * Pratap: Jscript does support extended eval. 
+  * Doug: What's our position on deprecating? 
+  * Brendan: Indirect eval()? yes. In Es4, it won't be legal. You'll get an eval error. Otherwise we aren't doing much deprecation. 
+  * Doug: would want to deprecate global eval except when explicit scope
+  * Graydon: what you can do is use the 'use strict' pragma, which will help you root out disfavored legacy code. 
+  * Doug: would also like to deprecate unannotated 'with' statements. 
+  * Brendan: is worried about raising the migration bar too high. We should have a wiki discussion about deprecation.
+
+==== JSON encoding/decoding ====
+  * Dave: what happens when you have two elements with same name, but with different namespaces? 
+  * Doug: both included. 
+  * Dave: but order would be arbitrary in for in loop. 
+  * Doug: good point, any ideas what to do? 
+  * Dave: Could make it an array of either strings or pairs of namespaces and strings, so if they want to distinguish they can, but no one will do that. 
+  * Doug: Or should it be an error if ambiguous? 
+  * Brendan: Yes, should be an error. 
+  * Dave: That means if you have an object where anything in proto chain has anything that has same name, you wouldn't be able to call toJSONstring on it. With Filter arg, you're saying I only want prop with name foo. 
+  * Doug: I think it should take the most superficial (nearest) one when shadowing is an issue. 
+  * Brendan: Should only use default namespace when searching a proto chain level. (Call ended abruptly so this discussion was cut off)

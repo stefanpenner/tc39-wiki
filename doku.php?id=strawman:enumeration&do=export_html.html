@@ -1,0 +1,176 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:enumeration&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:enumeration&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:enumeration&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="overview"></a><h1>Overview</h1>
+<div class="level1">
+
+<p>
+ The semantics of enumeration in existing editions of ECMA-262 is very loosely specified. This strawman proposes more fully specifying the semantics of property enumeration.
+</p>
+
+</div>
+<!-- SECTION [1-198] -->
+<a name="versioning"></a><h2>Versioning</h2>
+<div class="level2">
+
+<p>
+ The semantics below is incompatible with existing web behavior, and would be enabled only through opting into Harmony. For compatibility, code run in legacy JavaScript versions may need to preserve the previous enumeration behavior.
+</p>
+
+</div>
+<!-- SECTION [199-456] -->
+<a name="for-in_loops"></a><h2>For-in loops</h2>
+<div class="level2">
+
+<p>
+ The semantics of <a href="doku.php%3Fid=strawman:iterators.html" class="wikilink1" title="strawman:iterators" onclick="return svchk()" onkeypress="return svchk()">iteration</a> uses the <code>iterate</code> proxy trap to drive iteration if it exists, but falls back to using the enumeration behavior of this proposal.
+</p>
+
+</div>
+<!-- SECTION [457-656] -->
+<a name="semantics"></a><h1>Semantics</h1>
+<div class="level1">
+
+<p>
+ The following operation produces an eagerly-computed sequence of the own-properties of an object.
+</p>
+
+<p>
+<strong>Operation</strong> <em>EnumerateProperties</em>(obj)
+</p>
+<table class="inline">
+	<tr>
+		<th class="leftalign"> Execution                                                                             </th><th class="leftalign"> Error propagation                      </th>
+	</tr>
+	<tr>
+		<td class="leftalign"> Let suppress = ∅                                                                      </td><td class="rightalign">                                        </td>
+	</tr>
+	<tr>
+		<td class="leftalign"> Let props = []                                                                        </td><td class="rightalign">                                        </td>
+	</tr>
+	<tr>
+		<td class="leftalign"> While (obj != <strong>empty</strong>)                                                              </td><td class="rightalign">                                        </td>
+	</tr>
+	<tr>
+		<td class="leftalign">     If <em>IsTrappingProxy</em>(obj)                                                       </td><td class="rightalign">                                        </td>
+	</tr>
+	<tr>
+		<td class="leftalign">         Let handler = obj.[[Handler]]                                         </td><td class="rightalign">                                        </td>
+	</tr>
+	<tr>
+		<td class="leftalign">         Let enum = handler.[[Get]](&rdquo;enumerate&rdquo;)                               </td><td class="leftalign"> If <em>IsError</em>(enum) Return enum       </td>
+	</tr>
+	<tr>
+		<td class="leftalign">         If !<em>IsCallable</em>(enum)                                                      </td><td class="rightalign">                                        </td>
+	</tr>
+	<tr>
+		<td class="leftalign">             Return (type=<strong>error</strong>, value=TypeError, target=<strong>empty</strong>)                </td><td class="rightalign">                                        </td>
+	</tr>
+	<tr>
+		<td class="leftalign">         Let rest = enum.value.[[Call]](handler, [])                           </td><td class="leftalign"> If <em>IsError</em>(rest) Return rest       </td>
+	</tr>
+	<tr>
+		<td class="leftalign">         Return [ props, ..., rest, ... ]                                              </td><td class="rightalign">                                        </td>
+	</tr>
+	<tr>
+		<td class="leftalign">     Let own = <em>OwnProperties</em>(obj)                                                  </td><td class="rightalign">                                        </td>
+	</tr>
+	<tr>
+		<td class="leftalign">     For each i in 0 ... own.length - 1                                                </td><td class="rightalign">                                        </td>
+	</tr>
+	<tr>
+		<td class="leftalign">         Let P = own[i]                                                                </td><td class="rightalign">                                        </td>
+	</tr>
+	<tr>
+		<td class="leftalign">         If P.attributes.enumerable &amp;&amp; P ∉ props &amp;&amp; P ∉ suppress                       </td><td class="rightalign">                                        </td>
+	</tr>
+	<tr>
+		<td class="leftalign">             props := [ props, ..., P.name ]                                           </td><td class="rightalign">                                        </td>
+	</tr>
+	<tr>
+		<td class="leftalign">         If !P.attributes.enumerable                                                   </td><td class="rightalign">                                        </td>
+	</tr>
+	<tr>
+		<td class="leftalign">             suppress := suppress ∪ { P }                                              </td><td class="rightalign">                                        </td>
+	</tr>
+	<tr>
+		<td class="leftalign">     obj := obj.[[Prototype]]                                                  </td><td class="rightalign">                                        </td>
+	</tr>
+	<tr>
+		<td class="leftalign"> Return props                                                                          </td><td class="rightalign">                                        </td>
+	</tr>
+</table>
+<br />
+
+<p>
+ <strong>Operation</strong> <em>OwnProperties</em>(obj)
+</p>
+
+<p>
+We could specify this in a number of different ways. Conceptually, this operation should produce a sequence of property descriptors, in the following order: 
+</p>
+<ol>
+<li class="level1"><div class="li"> index properties (see definition below) in ascending numeric order</div>
+</li>
+<li class="level1"><div class="li"> all other properties, in the order in which they were created</div>
+</li>
+</ol>
+
+<p>
+ An <em>index</em>, as defined in 15.4, is a property name P such that <em>ToString</em>(<em>ToUint32</em>(P)) is equal to P and <em>ToUint32</em>(P) is not equal to 2**32-1.
+</p>
+
+<p>
+Several specification approaches: 
+</p>
+<ul>
+<li class="level1"><div class="li"> all objects have two sequential property tables:</div>
+<ul>
+<li class="level2"><div class="li"> properties with uint32 names, kept in integer order</div>
+</li>
+<li class="level2"><div class="li"> all other properties, kept in creation order</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> objects have one sequential property table, kept in creation order; <em>OwnProperties</em> then filters out uint32 properties</div>
+</li>
+<li class="level1"><div class="li"> properties in property tables include an internal creation-order attribute</div>
+</li>
+</ul>
+<hr noshade="noshade" size="1" />
+
+<p>
+ See the thread starting at <a href="https://mail.mozilla.org/pipermail/es-discuss/2011-March/012965.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2011-March/012965.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">this message from Charles Kendrick</a> for criticisms (some aesthetic or theoretical) and compatibility concerns (these look significant to me) about enumerating own indexed properties first for non-<code>Array</code> objects.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2011/03/13 20:04</em> 
+</p>
+
+</div>
+<!-- SECTION [657-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/1/14187987abda8c75d57bfd69d2092c97.xhtml used -->
+</body>
+</html>

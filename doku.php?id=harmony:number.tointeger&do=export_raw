@@ -1,0 +1,41 @@
+====== Proposal ======
+
+Add a ''toInteger'' property be to the ''Number'' constructor, for converting values to IEEE-754 double precision integers, exactly as ECMA-262's ToInteger internal method. It could be implemented like this:
+
+<code javascript>
+(function (global) {
+    var abs = Math.abs,
+        floor = Math.floor,
+        isFinite = global.isFinite,
+        isNaN = global.isNaN;
+        
+    function sign(n) { return (n < 0) ? -1 : 1; }
+
+    Object.defineProperty(Number, 'toInteger', {
+        value: function toInteger(value) {
+            var n = +value;
+            if (isNaN(n))
+                return +0;
+            if (n === 0 || !isFinite(n))
+                return n;
+            return sign(n) * floor(abs(n));
+        },
+        configurable: true,
+        enumerable: false,
+        writable: true
+    });
+})(this);
+</code>
+
+There is currently no efficient or convenient way in the language to determine if a number is an exact integer.
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2010/12/15 20:27//
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/04/28 00:45//
+
+The blurb at the bottom seems to be about Number.isInteger, not toInteger.
+
+It is already possible to invoke ECMA-262's ToInteger function. Evaluating ''x | 0'' produces ToInteger(x).
+
+Contrary to the blurb at the top, the implementation of Number.toInteger given here is not the same as ECMA-262's ToInteger. ''ToInteger(Infinity)'' is 0, but ''Number.toInteger(Infinity)'' returns Infinity. ''ToInteger(0x100000001)'' is 1, because ToInteger truncates the result to 32 bits; but ''Number.toInteger(0x100000001)'' is 0x100000001.
+
+ --- //[[jorendorff@mozilla.com|Jason Orendorff]] 2011/12/09 18:55//

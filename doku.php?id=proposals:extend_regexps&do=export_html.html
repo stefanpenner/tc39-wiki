@@ -1,0 +1,460 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:extend_regexps&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:extend_regexps&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:extend_regexps&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:extend_regexps&amp;do=export_html.html#extended_regular_expressions" class="toc">Extended regular expressions</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:extend_regexps&amp;do=export_html.html#extending_regexps_for_unicode_ranges" class="toc">Extending RegExps for Unicode Ranges</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:extend_regexps&amp;do=export_html.html#1._hex_notation" class="toc">1. Hex notation</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:extend_regexps&amp;do=export_html.html#2._unicode_character_properties" class="toc">2. Unicode Character Properties</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:extend_regexps&amp;do=export_html.html#3._subtraction_and_intersection" class="toc">3. Subtraction and Intersection</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:extend_regexps&amp;do=export_html.html#4._simple_word_boundaries" class="toc">4. Simple Word Boundaries</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:extend_regexps&amp;do=export_html.html#5._simple_loose_matches" class="toc">5. Simple Loose Matches</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:extend_regexps&amp;do=export_html.html#6._line_boundaries" class="toc">6. Line Boundaries</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:extend_regexps&amp;do=export_html.html#7._code_points" class="toc">7. Code Points</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:extend_regexps&amp;do=export_html.html#regexp_properties" class="toc">RegExp properties</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:extend_regexps&amp;do=export_html.html#comment_patterns" class="toc">Comment patterns</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:extend_regexps&amp;do=export_html.html#x_flag" class="toc">&quot;/x&quot; flag</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:extend_regexps&amp;do=export_html.html#y_flag" class="toc">&quot;/y&quot; flag</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:extend_regexps&amp;do=export_html.html#regular_expressions_are_also_functions" class="toc">Regular expressions are also functions</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:extend_regexps&amp;do=export_html.html#named_groups" class="toc">Named groups</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:extend_regexps&amp;do=export_html.html#regexp_scanning" class="toc">RegExp scanning</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="extended_regular_expressions"></a><h1>Extended regular expressions</h1>
+<div class="level1">
+
+<p>
+ Also see <a href="doku.php%3Fid=discussion:extend_regexps.html" class="wikilink1" title="discussion:extend_regexps" onclick="return svchk()" onkeypress="return svchk()">the discussion page</a> for this proposal.
+</p>
+
+<p>
+A small group of proposals to make regular expressions easier to use.
+</p>
+
+</div>
+<!-- SECTION [1-194] -->
+<a name="extending_regexps_for_unicode_ranges"></a><h2>Extending RegExps for Unicode Ranges</h2>
+<div class="level2">
+
+<p>
+ RegExps should be extended to take better advantage of full Unicode ranges. The Unicode Consortium has a specific set of suggestions for how to extend RegExp usage for Unicode (<a href="http://www.unicode.org/reports/tr18/index.html" class="urlextern" target="_blank" title="http://www.unicode.org/reports/tr18/index.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://www.unicode.org/reports/tr18/index.html</a>); this proposal is based loosely on their &ldquo;Level 1&rdquo; recommendations. 
+</p>
+
+</div>
+<!-- SECTION [195-539] -->
+<a name="1._hex_notation"></a><h3>1. Hex notation</h3>
+<div class="level3">
+
+<p>
+ Th1e \x and \u escapes shall be extended as specified in the <a href="doku.php%3Fid=proposals:update_unicode.html" class="wikilink1" title="proposals:update_unicode" onclick="return svchk()" onkeypress="return svchk()">update_unicode</a> proposal to allow for arbitrary 21-bit code points, e.g., 
+</p>
+<pre class="code">
+\u{1AFFE}
+\x{1AFFE}
+</pre>
+
+</div>
+<!-- SECTION [540-740] -->
+<a name="2._unicode_character_properties"></a><h3>2. Unicode Character Properties</h3>
+<div class="level3">
+
+<p>
+ The \p and \P escapes shall be added to specify matching of arbitrary Unicode character properties. (The lowercase p escape is used to indicate a positive match, while the uppercase P is used to indicate a negative match.) The syntax is
+</p>
+<pre class="code">
+\p{property}	// matches a single character that has the given property
+\P{property}	// matches a single character that does not have the given property
+</pre>
+
+<p>
+Notes:
+</p>
+<ul>
+<li class="level1"><div class="li"> The curly braces are required, not optional (\p property is not acceptable syntax). </div>
+</li>
+<li class="level1"><div class="li"> property is case-sensitive: \p{N} is not the same as \p{n}.</div>
+</li>
+<li class="level1"><div class="li"> property is exact: \p{Letter} is not the same as \p{L}.</div>
+</li>
+</ul>
+
+<p>
+ All implementations are required to implement the following General Category properties, as specified in <a href="http://www.unicode.org/Public/UNIDATA/UnicodeData.txt" class="urlextern" target="_blank" title="http://www.unicode.org/Public/UNIDATA/UnicodeData.txt" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://www.unicode.org/Public/UNIDATA/UnicodeData.txt</a> :
+</p>
+<pre class="code">
+	property	description
+	---------	-----------
+	L		Letter
+	Lu  		Letter, Uppercase
+	Ll 		Letter, Lowercase
+	Lt 		Letter, Titlecase
+	Lm 		Letter, Modifier
+	Lo 		Letter, Other
+	M		Mark
+	Mn 		Mark, Nonspacing
+	Mc 		Mark, Spacing Combining
+	Me 		Mark, Enclosing
+	N		Number
+	Nd 		Number, Decimal Digit
+	Nl 		Number, Letter
+	No 		Number, Other
+	P		Punctuation
+	Pc 		Punctuation, Connector
+	Pd 		Punctuation, Dash
+	Ps 		Punctuation, Open
+	Pe 		Punctuation, Close
+	Pi 		Punctuation, Initial quote (may behave like Ps or Pe depending on usage)
+	Pf 		Punctuation, Final quote (may behave like Ps or Pe depending on usage)
+	Po 		Punctuation, Other
+	S		Symbol
+	Sm 		Symbol, Math
+	Sc 		Symbol, Currency
+	Sk 		Symbol, Modifier
+	So 		Symbol, Other
+	Z		Separator
+	Zs 		Separator, Space
+	Zl 		Separator, Line
+	Zp 		Separator, Paragraph
+	C		Other
+	Cc 		Other, Control
+	Cf 		Other, Format
+	Cs 		Other, Surrogate
+	Co 		Other, Private Use
+	Cn 		Other, Not Assigned (no characters in the file have this property)
+</pre>
+
+<p>
+It is anticipated that the properties above can be efficiently represented using a small amount (&lt; 16 kbytes) of static data when properly represented.
+</p>
+
+<p>
+Implementations are free to supply additional Unicode properties.
+</p>
+
+<p>
+Attempting to creating a RegExp (either as a RegExp literal, or via &ldquo;new RegExp&rdquo;) that specifies an unimplemented property will throw a ReferenceError. 
+</p>
+
+</div>
+<!-- SECTION [741-2957] -->
+<a name="3._subtraction_and_intersection"></a><h3>3. Subtraction and Intersection</h3>
+<div class="level3">
+
+<p>
+ To make the richness of Unicode character classes even more useful, an operator is added to express the intersection of character sets.  Coupled with complementation, this operator can also express character set subtraction.
+</p>
+
+<p>
+The syntax is borrowed from Java.  The character sequence <code>&amp;&amp;[</code> inside a character set introduces an embedded character set that is to be intersected with the surrounding set.  A <code>]</code> character terminates the nested set in the expected manner.
+</p>
+<pre class="code">
+[a-z&amp;&amp;[d-f]]		  	// matches d, e, or f
+[a-z&amp;&amp;[d-f]&amp;&amp;[f-h]]             // matches f
+[a-z&amp;&amp;[^d-f5]0-9]  		// matches any lowercase ASCII letter or 0-9 EXCEPT d, e, f, or 5 
+[\p{L}&amp;&amp;[^\P{Lu}]]		// matches all Letters that are not Uppercase
+[\p{L}\p{N}&amp;&amp;[^\u{30}]]		// match any Letter or Number, except for U+0030 (DIGIT ZERO)
+</pre>
+
+<p>
+The meaning of a set with one or more embedded intersection sets is to match one character from the set with the intersection sets removed, provided it also matches the intersection of the intersection sets.
+</p>
+
+<p>
+Compatibility with 3rd Ed:
+</p>
+<ul>
+<li class="level1"><div class="li"> Technically <code>&amp;&amp;</code> is already legal in a character set and denotes the single character <code>&amp;</code>.  Thus there is a slight incompatibility with 3rd Ed character sets.  This compatibility problem is expected to be absent in practice.</div>
+</li>
+</ul>
+
+<p>
+ Compatibility with Java:
+</p>
+<ul>
+<li class="level1"><div class="li"> Java also provides for an embedded character set unions, <code>[a-z[0-9]]</code> is the same as <code>a-z0-9</code>.  ECMAScript does not adopt this because it breaks backwards compatibility too much: unlike the <code>&amp;&amp;[</code> sequence, <code>[</code> by itself is likely to appear in existing regular expressions.</div>
+</li>
+</ul>
+
+<p>
+ See <a href="doku.php%3Fid=discussion:extend_regexps.html" class="wikilink1" title="discussion:extend_regexps" onclick="return svchk()" onkeypress="return svchk()">the discussion page</a> for a longer discussion of issues pertaining to the ECMAScript lexer when handling nested character sets.
+</p>
+
+</div>
+<!-- SECTION [2958-4757] -->
+<a name="4._simple_word_boundaries"></a><h3>4. Simple Word Boundaries</h3>
+<div class="level3">
+
+<p>
+ For reasons of backwards compatibility, the word-boundary escapes (\b and \B) and word-character escapes (\w and \W) will NOT be extended to implement the full Unicode Alphabetic range. However, the Unicode Properties above can be used to synthesize more suitable matches; for instance, a Unicode-savvy equivalent of \w could be approximated with 
+</p>
+<pre class="code">
+[\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\u{200C}\u{200D}]
+</pre>
+
+<p>
+(although this ignores the characters in the &ldquo;Other_Alphabetic&rdquo; range).
+</p>
+
+</div>
+<!-- SECTION [4758-5287] -->
+<a name="5._simple_loose_matches"></a><h3>5. Simple Loose Matches</h3>
+<div class="level3">
+
+<p>
+ Implementations are required to implement case-insensitive matching for the same range of code points that are handled by String.toLowerCase() and String.toUpperCase().
+</p>
+
+</div>
+<!-- SECTION [5288-5492] -->
+<a name="6._line_boundaries"></a><h3>6. Line Boundaries</h3>
+<div class="level3">
+
+<p>
+ Implementations will recognize NEL (U+0085) as an end-of-line character, in addition to the existing Edition 3 end-of-line characters (CR+LF, CR, LF, U+2028, U+2029).
+</p>
+
+</div>
+<!-- SECTION [5493-5690] -->
+<a name="7._code_points"></a><h3>7. Code Points</h3>
+<div class="level3">
+
+<p>
+ Implementations must perform all searches using only Unicode code points, not surrogates.
+</p>
+
+</div>
+<!-- SECTION [5691-5811] -->
+<a name="regexp_properties"></a><h2>RegExp properties</h2>
+<div class="level2">
+
+<p>
+ Instances of <code>RegExp</code> have two new properties, <code>extended</code> and <code>sticky</code>.  Both hold boolean values.  The <code>extended</code> property is true iff the &ldquo;/x&rdquo; flag was present when the expression was compiled.  The <code>sticky</code> property is true iff the &ldquo;/y&rdquo; flag was present when the expression was compiled.  Both are ReadOnly, DontDelete, DontEnum, like the other flag properties.
+</p>
+
+</div>
+<!-- SECTION [5812-6219] -->
+<a name="comment_patterns"></a><h2>Comment patterns</h2>
+<div class="level2">
+
+<p>
+ A &ldquo;comment pattern&rdquo; can be embedded in any regular expression using the syntax <code>(?# &lt;text&gt; )</code>, where the text is arbitrary except it can&rsquo;t contain <code>)</code>.  
+</p>
+
+<p>
+The comment turns into the empty pattern <code>(?:)</code>.  
+</p>
+
+<p>
+Comments do not nest.
+</p>
+
+<p>
+<strong>Rationale</strong>: comments make regular expressions more readable.
+</p>
+
+<p>
+<strong>Compatibility</strong>: There are no known problems with this syntax; it is illegal in 3rd Edition.
+</p>
+
+<p>
+<strong>Prior art</strong>: The syntax comes from <acronym title="Practical Extraction and Report Language">Perl</acronym>.
+</p>
+
+</div>
+<!-- SECTION [6220-6692] -->
+<a name="x_flag"></a><h2>&quot;/x&quot; flag</h2>
+<div class="level2">
+
+<p>
+ The flag &ldquo;x&rdquo; shall be permitted.
+</p>
+
+<p>
+The flag states that the expression is an &ldquo;extended regular expression&rdquo;.  If present, the flag affects the parsing of the regular expression: literal whitespace and all Unicode format control characters will be ignored and line comments and line breaks inside the regular expression are allowed.
+</p>
+
+<p>
+Literal whitespace, format control characters, line break, and line comments are ignored between tokens and serve as token separators.
+</p>
+
+<p>
+The multicharacter tokens of the RegExp grammar are <code>\b</code>, <code>\B</code>, /DecimalDigits/, <code>\/AtomEscape</code>, <code>(?:</code>, <code>(?=</code>, <code>(?!</code>, <code>(?#</code>, <code>(?P=</code>, <code>(?P&lt;</code>, /Identifier/, and <code>\/ClassEscape/</code>.
+</p>
+
+<p>
+Line comments start with the character <code>#</code> and extend to the end of the line or the end of the input.  Any terminating line break character is not part of the comment.
+</p>
+
+<p>
+<strong>Rationale</strong>: Regular expressions are notoriously hard to read; extended regular expressions are easier to read.
+</p>
+
+<p>
+<strong>Lexical syntax</strong>: The lexical syntax for the <em>RegularExpressionBody</em> needs to change: it should no longer make use of the <em>NonTerminator</em> nonterminal.
+</p>
+
+<p>
+<strong>Compatibility</strong>: As defined above, both implementations that lex a regular expression according to <em>RegularExpressionLiteral</em> before parsing it as well as implementations that parse regular expressions as part of program lexing can be accomodated.  However, comments in the regexp must not contain unmatched <code>[</code> characters; see section on &ldquo;RegExp scanning&rdquo; below.
+</p>
+
+<p>
+<strong>Prior art</strong>: The flag comes from <acronym title="Practical Extraction and Report Language">Perl</acronym>.
+</p>
+
+<p>
+<strong>RegExp objects</strong>: The state of the flag would show up as a property <code>extended</code> on RegExp objects.
+</p>
+
+</div>
+<!-- SECTION [6693-8342] -->
+<a name="y_flag"></a><h2>&quot;/y&quot; flag</h2>
+<div class="level2">
+
+<p>
+ The flag &ldquo;y&rdquo; shall be permitted.
+</p>
+
+<p>
+The flag states that the regular expression peforms sticky matching in the target string by attempting to match at <code>lastIndex</code>: if matching at that location fails then null is returned, ie, no forward searching is performed.  If matching succeeds, then <code>lastIndex</code> is updated as for the flag &ldquo;g&rdquo;.
+</p>
+
+<p>
+<strong>Rationale</strong>: This flag will make it easier to write simple and efficient lexical analyzers for embedded languages using ECMAScript regular expressions.  The current language has quadratic complexity because each match may potentially search to the end of the input for a match.  (That can be worked around in a couple of ways but it&rsquo;s cumbersome.)
+</p>
+
+<p>
+<strong>Compatibility</strong>: The flag is illegal in 3rd Edition, and the matching behavior is a subset of existing behavior, so  this flag should not cause trouble for any implementation.
+</p>
+
+<p>
+<strong>RegExp objects</strong>: The state of the flag would show up as a property <code>sticky</code> on RegExp objects.
+</p>
+
+</div>
+<!-- SECTION [8343-9332] -->
+<a name="regular_expressions_are_also_functions"></a><h2>Regular expressions are also functions</h2>
+<div class="level2">
+
+<p>
+ A regular expression object can be called as a function on a single string argument.
+</p>
+
+<p>
+The value returned is exactly the same value that would be returned if the <code>RegExp.prototype.exec</code> method were invoked on the regular expression object with the string for an argument.
+</p>
+
+<p>
+<strong>Rationale</strong>: Compatibility with existing implementation; handy shorthand.
+</p>
+
+<p>
+<strong>Compatibility</strong>: RegExp instances are not callable in 3rd Edition; it is unlikely to be a hardship to make them callable in 4th Edition.
+</p>
+
+<p>
+<strong>Prior art</strong>: Netscape/Mozilla support this behavior.
+</p>
+
+<p>
+<strong>typeof</strong>: The value of &ldquo;typeof /x/&rdquo; is &ldquo;object&rdquo; (backwards compatible)?
+</p>
+
+</div>
+<!-- SECTION [9333-10006] -->
+<a name="named_groups"></a><h2>Named groups</h2>
+<div class="level2">
+
+<p>
+ Regular expression submatches can be named, and back-references can reference these names.
+</p>
+
+<p>
+Creating a named group: 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>(?P&lt;name&gt;...)</code></div>
+<ul>
+<li class="level2"><div class="li"> Similar to regular capturing parentheses, but the substring matched by the group is accessible via the symbolic group name <code>name</code>.</div>
+</li>
+<li class="level2"><div class="li"> Group names must be valid lexical identifiers, and each group name must be defined only once within a regular expression.</div>
+</li>
+<li class="level2"><div class="li"> A symbolic group is also a numbered group, just as if the group were not named. So the group named <code>id</code> in the example below can also be referenced as the numbered group 1.</div>
+</li>
+<li class="level2"><div class="li"> For example, if the pattern is <code>(?P&lt;id&gt;[a-zA-Z_]\w*)</code>, the group can be referenced by its name in <code>String.prototype.match</code> result objects, such as <code>m.id</code>, and also by name in pattern text (for example, <code>(?P=id)</code>) and replacement text (such as <code>\g&lt;id&gt;</code>).</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ Referencing a named group: 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>(?P=name)</code></div>
+<ul>
+<li class="level2"><div class="li"> Matches whatever text was matched by the earlier group named <code>name</code>.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ <strong>Rationale</strong>: Regular expressions are hard to read.  This will make them easier to read (and therefore use).
+</p>
+
+<p>
+<strong>Compatibility</strong>: The syntax is illegal today and has no compatibility issues.  The implementation burden is expected to be moderate.
+</p>
+
+<p>
+<strong>Prior art</strong>: comes from <a href="http://docs.python.org/lib/re-syntax.html" class="urlextern" target="_blank" title="http://docs.python.org/lib/re-syntax.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Python</a>
+</p>
+
+</div>
+<!-- SECTION [10007-11341] -->
+<a name="regexp_scanning"></a><h2>RegExp scanning</h2>
+<div class="level2">
+
+<p>
+ Following MSIE we propose that an unescaped <code>/</code> character inside a character set should stand for itself, it should not terminate scanning of the expression.
+</p>
+
+<p>
+<strong>Compatibility</strong>: The consequence of allowing this is that regular expressions that contain line comments with unmatched <code>[</code> characters will throw the regular expression scanner off track; it will not recognize the terminating <code>/</code> properly.  The scanner can&rsquo;t know if the <code>/x</code> flag is in effect, it must blindly scan the expression and will fall prey to this.  Therefore comments must not contain unmatched <code>[</code> characters.  This is not incompatible, it&rsquo;s just surprising.
+</p>
+
+</div>
+<!-- SECTION [11342-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/5/5a547eceda928835097211e83d264e8c.xhtml used -->
+</body>
+</html>

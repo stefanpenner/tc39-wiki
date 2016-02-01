@@ -1,0 +1,168 @@
+===== Venue =====
+
+  * Host: Adobe System, Newton Office
+  * Location: 275 Grove Street Newton, MA 02466 (617) 219-2000
+  * Tel: 866 705 2554 (us), 913 227 1201 (int’l); Passcode: 914008
+  * Dinner: www.stellinarestaurant.com, 6:30, Thursday
+
+
+
+
+
+===== Date & Time =====
+
+  * Date: April 17th and 18th
+  * Time: 10AM – 5PM
+
+
+
+
+
+
+
+
+
+===== Attendees =====
+
+  * David Boloker, IBM
+  * Mike Cowlishaw, IBM (phone)
+  * Jeff Dyer, Adobe
+  * Brendan Eich, Mozilla
+  * Lars Hansen, Adobe
+  * Dave Herman, Northeastern University
+  * Graydon Hoare, Mozilla
+  * Waldemar Horwat, Google (phone)
+  * John Neumann, TC39 Chairman
+  * Adam Peller, IBM
+  * Chris Pine, Opera
+  * John Resig, Mozilla
+  * Rob Sayre, Mozilla
+  * Mike Shaver, Mozilla
+  * Scott Unterberg, Adobe
+  * Allen Wirfs-Brock, Microsoft
+  * John Zeppieri, Guest
+
+
+
+
+===== Agenda =====
+
+  * Discussion of open design issues
+    * Decimal
+    * Names
+    * Packages
+    * other
+  * Review of spec schedule
+  * Review of features specs
+
+
+===== Notes =====
+
+
+
+
+==== Decimal ====
+
+**ES3.1, current position**
+
+  * decimal data type
+  * no overloaded operators
+  * the ES31 proposal is to allow vendors to chose which type to use as a number type: "if implementations are allowed to support decimal, then some might to do so"
+    * several people expressed concern that this proposal will not be viable on the web, and may not even be implemented by any browser. It was suggested that this should be tested by through implementation before standardization
+
+**ES4, current position**
+
+  * decimal data type
+  * operators to be overloaded to handle decimal in addition to current data types
+  * operators will use full precision and a default rounding mode (HalfEven)
+  * quantize and round methods added to handle custom manipulations
+  * methods for operators (if ES3.1 needs them)
+  
+Proposals for decimal in both editions are to be posted to the relevant email distribution lists. 
+
+==== Names ====
+
+<code javascript>
+namespace A
+namespace B
+use namespace A, namespace B
+A namespace ns
+
+... ns::x ...
+</code>
+
+  * What is the meaning of ''ns''?
+  * So far, it is ''A::ns''
+  * But what if another namespace ns is introduced
+
+<code javascript>
+B namespace ns
+</code>
+
+  * now ''ns::x'' above is ambiguous
+  * we want to make sure this is caught early
+  * what is proposed is that potential namespace (and type) names are reserved in subsequently loaded programs
+  * this ensures the reference to ''ns::x'' doesn't change meaning
+  * units might give programmers more control over the checking of collisions
+  * but what about
+
+<code javascript>
+var v = ns
+</code>
+
+  * this should also reserve unseen names with identifier ''ns''
+  * what about using ''const'' as a binding for namespaces? open issue
+
+
+
+
+
+
+
+
+
+==== Packages ====
+
+  * Adobe proposes that pacakges must go (see message sent to es4-discuss)
+  * ''internal'' provides a way to introduce names that are not accessible outside of a file
+  * It is defined thus:
+
+<code javascript>
+<unique#N> namespace internal = <unique#N>
+use namespace <unique#N>
+
+internal var x = ...
+</code>
+
+  * System namespaces that span compilation units are defined thus:
+
+<code javascript>
+<unique#U> namespace public = <unique#P>
+use default namespace <unique#P>
+use namespace <unique#P>
+<unique#P> namespace __ES4__ = <unique#U>
+
+</code>
+
+==== Special Namespace Identifiers ====
+
+
+  * There are certain namespaces (''meta'', ''intrinsic'', ''reflect'', ''iterator'') that might be best be reserved for future proofing.
+
+
+
+==== Spec Schedule ====
+
+  * CC meeting October 14th
+  * October 3rd 2008 is the deadline for draft to the CC and then GA
+  * July draft posted to the Ecma web site, and forwarded to ISO
+  * May 16th is the first relatively complete draft
+  * May draft should include:
+    * Core concepts: Names, Values, Types
+    * Surface and abstract syntax, with translation
+    * Evaluation semantics for full AST
+  * and probably exclude:
+    * Unicode
+    * Prose for semantics covered by the RI
+    * Parts of the library spec
+

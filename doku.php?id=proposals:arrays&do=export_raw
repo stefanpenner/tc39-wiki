@@ -1,0 +1,127 @@
+====== Arrays ======
+
+Status: complete draft (rev 2).
+
+Also see [[discussion:arrays|the discussion page]] for this proposal.
+
+Note, this proposal is somewhat outdated, it is superseded by approved proposal tickets that handle various aspects of it.  We've approved type syntax like ''[t]'' for arrays and ''[t1,t2]'' for tuples; creation syntax like ''new [t]'', and a separate ''Vector'' proposal to handle boundedness, fixedness, and denseness.  The ''[t]'' and ''[t1,t2]'' arrays are entirely compatible with ''Array'', apart from type constraints on slots (that persist even if slots are deleted).
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/09/26 20:52//
+
+===== Summary ===== 
+
+Arrays are poorly supported in ES3 and just a little better supported in draft-ES4, yet are among the most versatile data structures in programming.  We should do better.
+
+Various topics that will or may be discussed here eventually include:
+  * the nature of typed arrays (ticket 66)
+  * natural syntax for creating typed arrays (ticket 68)
+  * array boundedness (ticket 69)
+  * syntax for array types (ticket 120)
+  * the problem of iterating conveniently over numbered elements of arrays without regarding the prototype (ie pulling the teeth on ''for-in''; this may already be covered in part by the iteration proposal but I want to make sure we have a credible story here; the thing I do most with arrays is iterating over the numbered elements of dense arrays and I assume others are in a similar situation, and no, ''forEach'' and ''map'' are not the solution we're looking for)
+  * elbow room for the implementation for optimized array representations, eg, invariant iteration order over dense arrays (removes the need for any sort of index or creation order map)
+  * multi-dimensional arrays
+
+What we're looking for are powerful proposals that are not a huge burden on the language or implementation at this point.
+
+
+
+
+===== Use cases for arrays in ES4 =====
+
+I suspect there are three major use cases for array-like structures in ES4: tuples, true arrays, and ES3 array-like aggregates.
+
+  - Tuples
+    * Used for ad-hoc aggregation of small amounts of data; multiple return values; destructuring; boxes for by-reference parameters
+    * Short
+    * Can usefully be considered to have a fixed length
+    * Can usefully be typed
+    * Different properties have different types
+    * Are usually dense (no holes, so ''in'' is trivial / unimportant)
+    * Can't delete elements
+    * Insertion order is not important
+    * Iteration order is not important, though most users probably expect iteration from low indices toward higher
+    * Prototype properties in the index range are not visible in the object
+    * Creation is almost always by typed or untyped array initializer: ''[1,x,3]:t'' or ''[1,x,3]''
+    * The natural type expression for one of these is ''[p,q,r]''
+  - True arrays
+    * Used for aggregates of similar data
+    * Are always dense (no holes)
+    * Can be large
+    * Performance and storage consumption are important
+    * Can usefully be typed
+    * Different properties have the same type
+    * Can usefully have an upper bound / fixed length
+    * Can usefully have variable length
+    * Can't delete elements except at the end
+    * Not obvious that a lower bound is useful
+    * Insertion order is not important
+    * Iteration order is not important
+    * Prototype properties in the index range are not visible in the object
+    * Creation is almost always by typed empty array initializer: ''[]:t''
+    * The natural type expression for one of these is ''[p]''
+  - Array-like aggregates
+    * ES3 compatible
+    * Often have holes
+    * Variable length
+    * Prototype properties are always visible
+    * Can probably be typed, but hard to say something about how types would be used
+    * Based on the ''Array'' class
+    * Insertion order is important
+    * Iteration order is important
+    * Can delete arbitrary elements
+    * Model/hook for array-like operations on arbitrary objects
+    * Creation is almost always by ''new Array'' or untyped empty array initializer ''[]''
+
+Minor use cases might include:
+
+  * Multi-dimensional arrays.  These are not currently fashionable since it's easier for the implementation to reference certain subarrays if multi-dimensional arrays are actually allocated as vectors of vectors, but that's really a cop-out, and a richer multi-dimensional array type should not need to go that route.  We might consider future-proofing so as not to close the door on multi-dimensional arrays.  See [[discussion:arrays|the discussion page]].
+  * One-element tuples.  These are not unthinkable (they make nice boxes) but probably not that common; multiple return values also reduces the needs for boxes substantially.  See [[discussion:arrays|the discussion page]].
+
+
+
+
+===== Proposals =====
+
+The intent here is to add useful type annotations and behavior to go with them, but to preserve ''Array'' semantics reasonably well.
+
+The proposal can be summed up in six points:
+  * a structural type syntax for arrays
+  * a natural creation syntax for typed arrays 
+  * array elements can be constrained to have a particular type
+  * arrays with type constraints are flat (the prototypes are not visible for uint-named elements)
+  * operations on typed arrays are redefined to use the type information
+  * [[proposals:vector|A separate vector proposal]] implements FORTRAN-like semantics
+
+
+==== Tuple types vs array types: natural syntax ====
+
+We finesse the structural type syntax a little bit:
+
+  * The type ''[]'' means ''[*]''
+  * The type ''[t]'' means "variable-length flat array of t".  All elements are constrained to ''t''.
+  * The type ''[t1, t2, ..., tn]'' means "variable-length flat array of ''t1'', ..., ''tn''.  Element 0 is constrained to ''t1'', element 1 to ''t2'', and so on.
+
+These type expressions can be used to annotate array initializers and in the proposed ''new'' syntax (see next section).  They can also be used in type text expressions like ''is''.  Typed ''Array'' objects have the following properties:
+
+  * The prototype of typed arrays is the initial or current ''Array'' prototype, as per the usual rules.
+  * The prototype is not considered for finding uint-named properties (hence the use of "flat" above).
+  * If the array has a hole, or an element beyond ''length-1'' is read, then a default value appropriate to the type is returned when the hole is read.  If the constraining type for the field is non-nullable and there is no default value then an exception is thrown when the element is read (creating a hole does not cause an exception to be thrown).
+  * The ''length'' property is writable as normal.
+  * The type is a property of the array object, not of each individual element.  If an element is deleted and recreated or read then its type is still constrained by the array type.
+  * All array methods may be used on these arrays, but may fail if type constraints are violated.  For example, an array of type ''[Date,RegExp]'' can only be ''shift''ed if element 1 is null.
+
+==== Creating various kinds of arrays ====
+
+Arrays can be created through ''new Array'', ''[...]'', ''new <arraytype>'', and ''[...] : <arraytype>''.  The former two create unconstrained arrays; the latter create flat type-constrained arrays.
+
+  * Arrays created through the use of ''new Array'' and unannotated array initializers (eg ''[1,2,3]'' and ''[]'') create untyped dynamic array-like aggregates (use case 3).  This is fully compatible with ES3.
+  * Arrays created through the use of ''new <arraytype>'' and annotated array initializers (eg ''[1,2,3]: t'' and ''[]: t'') create dense typed arrays (use cases 1 and 2), essentially compatible with ''Array'' but with differences in how element access is performed (the prototype is not considered) and how missing values are returned (constrained by the type).
+
+The initial length of an array created with ''new <arraytype>'' is zero, even if the type is of the form ''[t1, t2, ..., tn]''.
+
+==== Vectors ====
+
+A separate [[proposals:vector|vector proposal]] provides for arrays with FORTRAN-like semantics.  After the extensive discussion at the July 2007 f2f I felt that co-opting the ''[T]'' type syntax for FORTRAN-like arrays, and then making them very different from -- essentially not interoperable with -- ''Array'' for performance and other optimization reasons, was not the right thing for the language.  See [[discussion:arrays|the discussion page]].
+
+
+

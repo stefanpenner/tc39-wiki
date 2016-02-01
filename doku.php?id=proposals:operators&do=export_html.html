@@ -1,0 +1,262 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:operators&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:operators&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:operators&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:operators&amp;do=export_html.html#class-defined_operators" class="toc">Class-Defined Operators</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:operators&amp;do=export_html.html#syntax" class="toc">Syntax</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:operators&amp;do=export_html.html#dispatch" class="toc">Dispatch</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:operators&amp;do=export_html.html#result" class="toc">Result</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:operators&amp;do=export_html.html#type_checking" class="toc">Type checking</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:operators&amp;do=export_html.html#operator_substitution" class="toc">Operator substitution</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:operators&amp;do=export_html.html#default_behavior" class="toc">Default behavior</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:operators&amp;do=export_html.html#inheritence_and_overriding" class="toc">Inheritence and overriding</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:operators&amp;do=export_html.html#examples" class="toc">Examples</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="class-defined_operators"></a><h1>Class-Defined Operators</h1>
+<div class="level1">
+
+<p>
+ NOTE: this proposal is superseded by <a href="doku.php%3Fid=proposals:generic_functions.html" class="wikilink1" title="proposals:generic_functions" onclick="return svchk()" onkeypress="return svchk()">generic functions</a>. It is no longer linked from <a href="doku.php%3Fid=proposals:proposals.html" class="wikilink1" title="proposals:proposals" onclick="return svchk()" onkeypress="return svchk()">proposals</a>.
+</p>
+
+<p>
+(Also see the <a href="doku.php%3Fid=discussion:operators.html" class="wikilink1" title="discussion:operators" onclick="return svchk()" onkeypress="return svchk()">discussion page</a> for this proposal)
+</p>
+
+<p>
+The proposal is based on <a href="http://www.mozilla.org/js/language/js20-2002-04/core/operators.html" class="urlextern" target="_blank" title="http://www.mozilla.org/js/language/js20-2002-04/core/operators.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Waldemar Horwat's proposal</a>. Argument type based function dispatch has not been selected because this concept has not yet been introduced to ECMAScript in general. 
+</p>
+
+</div>
+<!-- SECTION [1-491] -->
+<a name="syntax"></a><h2>Syntax</h2>
+<div class="level2">
+
+<p>
+ A class definition may contain static methods that define how to interpret primitive operators applied to instances of the class.  Such a method is defined using the following syntax:
+</p>
+<pre class="code javascript">  <span class="kw2">public</span> static <span class="kw2">function</span> &lt;operator&gt; <span class="br0">&#40;</span>lhs : *, rhs : *<span class="br0">&#41;</span> : *</pre>
+<p>
+where the term <em>operator</em> defines the operator to be redefined; it is a standard operator token from the list below, eg, <code>+</code>.
+</p>
+
+<p>
+The following operators are overridable:
+</p>
+
+<p>
+Unary operators:
+</p>
+<pre class="code">+ - ~</pre>
+
+<p>
+ Binary operators:
+</p>
+<pre class="code">+ - * / % ^ &lt; &gt; &lt;= &gt;= == &lt;&lt; &gt;&gt; &gt;&gt;&gt; &amp; | === != !==</pre>
+
+<p>
+ Compound assignment operators:
+</p>
+<pre class="code">+= -= *= /= %= ^= &lt;&lt;= &gt;&gt;= &gt;&gt;&gt;= &amp;= |=</pre>
+
+<p>
+ No other operators are overridable.
+</p>
+
+<p>
+Operator methods must be <code>public</code> and <code>static</code>.
+</p>
+
+<p>
+Both argument types and result type can be defined more narrowly than <code>*</code>.
+</p>
+
+</div>
+<!-- SECTION [492-1291] -->
+<a name="dispatch"></a><h2>Dispatch</h2>
+<div class="level2">
+
+<p>
+ The dispatch rule for <code>E1 op E2</code>:
+</p>
+<ul>
+<li class="level1"><div class="li"> Evaluate E1 yielding a non-reference value V1</div>
+</li>
+<li class="level1"><div class="li"> Evaluate E2 yielding a non-reference value V2</div>
+</li>
+<li class="level1"><div class="li"> If the concrete class of V1 has a static operator function <code>op</code>, call it on V1 and V2.</div>
+</li>
+<li class="level1"><div class="li"> Else if the concrete class of V2 has a static operator function <code>op</code>, call it on V1 and V2.</div>
+</li>
+<li class="level1"><div class="li"> Else call <code>intrinsic::op(V1,V2)</code></div>
+</li>
+</ul>
+
+<p>
+ The dispatch rule for <code>E1 op= E2</code> is:
+</p>
+<ul>
+<li class="level1"><div class="li"> Evaluate E1 yielding a reference value R1</div>
+</li>
+<li class="level1"><div class="li"> Read the reference of R1 yielding a non-reference value V1</div>
+</li>
+<li class="level1"><div class="li"> Evaluate E2 yielding a non-reference value V2</div>
+</li>
+<li class="level1"><div class="li"> If the concrete class of V1 has a static operator function <code>op=</code>, call it on V1 and V2, yielding a value V</div>
+</li>
+<li class="level1"><div class="li"> Else call <code>intrinsic::op(V1,V2)</code> yielding a value V</div>
+</li>
+<li class="level1"><div class="li"> Write the reference R1 with the value V</div>
+</li>
+</ul>
+
+<p>
+ The dispatch rule for <code>op E</code> is:
+</p>
+<ul>
+<li class="level1"><div class="li"> Evaluate E yielding a non-reference value V</div>
+</li>
+<li class="level1"><div class="li"> If the concrete class of V has a static operator function <code>op</code>, call it on V and null</div>
+</li>
+<li class="level1"><div class="li"> Else call <code>intrinsic::op(V,null)</code></div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1292-2312] -->
+<a name="result"></a><h2>Result</h2>
+<div class="level2">
+
+<p>
+ The return value from the operator method becomes the result of the operation.
+</p>
+
+</div>
+<!-- SECTION [2313-2414] -->
+<a name="type_checking"></a><h2>Type checking</h2>
+<div class="level2">
+
+<p>
+ The arguments and result types are subject to static and dynamic type checking, as appropriate.
+</p>
+
+<p>
+<em>Note</em>: This can sometimes lead to surprising results; this program will fail:
+</p>
+<pre class="code">
+    class C {
+        public static operator +(a:C, b:Number): Number { ... }
+    }
+    + new C;
+</pre>
+
+<p>
+The application of unary <code>+</code> to an instance of <code>C</code> will call the operator function with <code>null</code> for the second argument; however, Number is a non-nullable type, so this is a type error.  One would wish to use <code>Number?</code> for the type of the second argument.
+</p>
+
+</div>
+<!-- SECTION [2415-2998] -->
+<a name="operator_substitution"></a><h2>Operator substitution</h2>
+<div class="level2">
+
+<p>
+ It is possible to perform a partial override of comparison operators &lt;, &gt;, &lt;=, &gt;=, ==, ===, !=, and !==.  If it is possible to substitute the override of a comparison operator with the Boolean negation of the result of an overridden operator, this operation will be performed. 
+</p>
+<table class="inline">
+	<tr>
+		<th> If this operator is not defined </th><th> But this operator is defined </th><th> Perform this operation </th>
+	</tr>
+	<tr>
+		<td> &lt; </td><td> &gt;= </td><td> ! &gt;= </td>
+	</tr>
+	<tr>
+		<td> &gt; </td><td>&lt;=</td><td> ! &lt;=</td>
+	</tr>
+	<tr>
+		<td>&lt;=</td><td> &gt; </td><td> ! &gt; </td>
+	</tr>
+	<tr>
+		<td> &gt;= </td><td> &lt; </td><td> ! &lt; </td>
+	</tr>
+	<tr>
+		<td> != </td><td> == </td><td> ! == </td>
+	</tr>
+	<tr>
+		<td> !== </td><td> === </td><td> ! === </td>
+	</tr>
+	<tr>
+		<td> == </td><td> != </td><td> ! != </td>
+	</tr>
+	<tr>
+		<td> === </td><td> !== </td><td> ! !== </td>
+	</tr>
+</table>
+<br />
+
+</div>
+<!-- SECTION [2999-3572] -->
+<a name="default_behavior"></a><h2>Default behavior</h2>
+<div class="level2">
+
+<p>
+ If the override function decides not to implement functionality for certain argument types, default behavior can be invoked by calling the predefined operator override in the <a href="doku.php%3Fid=proposals:intrinsic_namespace.html" class="wikilink1" title="proposals:intrinsic_namespace" onclick="return svchk()" onkeypress="return svchk()">intrinsic namespace</a>.
+</p>
+
+</div>
+<!-- SECTION [3573-3824] -->
+<a name="inheritence_and_overriding"></a><h2>Inheritence and overriding</h2>
+<div class="level2">
+
+<p>
+ User-defined operators are not inheritable along the nominal type hierarchy. There is only the simple dispatch rule above. If an operator is not declared on the concrete types involved in an expression, the intrinsic operator is called.
+</p>
+
+</div>
+<!-- SECTION [3825-4102] -->
+<a name="examples"></a><h2>Examples</h2>
+<div class="level2">
+<pre class="code">class A 
+{
+  public static function +(lhs: Object, rhs: Object):Object { ... }
+  public static function /(lhs: Object, rhs: Object):Object { ... }
+}
+var a:A = new A()
+a / 5  //   A::/ (a, 5)
+5 / a  //   A::/ (5, a)
+a + 5  //   A::+ (a, 5)
++a     //   A::+ (a, null)</pre>
+
+</div>
+<!-- SECTION [4103-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/3/37fbcefdec4e97d72737d6b52e9220d2.xhtml used -->
+</body>
+</html>

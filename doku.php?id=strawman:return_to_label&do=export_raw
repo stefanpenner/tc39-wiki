@@ -1,0 +1,131 @@
+**Why:**
+
+  * If [[lambdas|lambda expressions]] use the completion value but do not have a built-in ''return'', then programmers will still need some way of aborting a computation with an early result.
+  * More generally, aborting a computation with an early result is useful anyway.
+  * And the idea of aborting a computation underlies several other features of the language, including ''return'', ''throw'', ''break'', and ''continue''. This might make it possible to define some of these features by desugaring into this one.
+  * Labeled statements and ''return'' already exist in the language, so syntactically this requires very little addition to the language.
+
+**How:**
+
+  * Add one more production to the grammar:
+<code ebnf>
+Statement ::= ... | return : Identifier (Expression)? ';'?
+</code>
+  * The label being returned to must be in scope (i.e., immediately preceding a statement in which the ''return'' statement is nested). Otherwise it is a static error.
+  * The dynamic return point associated with the label must still be live when the ''return'' statement is invoked; otherwise it is a dynamic error, i.e., an exception is raised.
+
+**What:**
+
+  * The evaluation of a labeled statement corresponds to marking a return point in the execution context.
+  * A return to the label attempts to unwind the execution context to the return point (if that point is still live), using the value of the return argument as the completion value of the labeled statement.
+  * If that point is not live, it does not unwind the context, but rather raises an exception.
+  * Unwinding the execution context may pass through finally blocks, which execute and may perform their own control effects, effectively canceling the unwinding.
+
+**Examples:**
+
+These two examples demonstrate that you can only return to a label that surrounds your current statement.
+
+<code javascript>
+L: f();
+g();
+return : L; // error: invalid label
+</code>
+
+<code javascript>
+return : L; // error: invalid label
+f();
+L: g();
+</code>
+
+This example uses the completion value to produce a result.
+
+<code javascript>
+exit: {
+    let product = 1;
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] === 0)
+            return : exit 0;
+        product *= a[i];
+    }
+    product
+}
+</code>
+
+This example cancels a computation without needing a result value.
+
+<code javascript>
+cancel: {
+    let x // = ...
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] === 'cancel')
+            return : cancel;
+        x = munge(a[i]);
+    }
+    frobnicate(x);
+    // etc.
+}
+// etc.
+</code>
+
+The following example raises an exception since the inner function attempts to return to a label that is no longer live:
+
+<code javascript>
+(function() {
+    L: {
+        return function() {
+            return : L;
+        }
+    }
+})()
+</code>
+
+This example shows that even though labels are second-class (i.e., they aren't values), they can in fact be turned into first-class function values (i.e., //escape continuations//):
+
+<code javascript>
+function f() {
+    L: {
+        let label = lambda(x) { return : L x }
+        // etc.
+    }
+}
+</code>
+
+The following is a naive and incorrect desugaring of ''try body catch(e) handler'':
+
+<code javascript>
+let $result = (lambda() { $THROW: body[throw e |==> return : $THROW(new Exception(e))] })();
+if ($result instanceof Exception)
+    (lambda(e) handler)($result.value)
+else
+    $result
+</code>
+
+The problem with this is that ''throw'' throws its exception to a //lexically// bound exception handler, rather than a //dynamically// bound exception handler.
+
+So to get a proper desugaring, we need to create a protocol that simulates dynamically binding the current exception handler:
+
+<code javascript>
+let $result = (lambda() { $THROW: withHandler(lambda(x) { return : $THROW x }, lambda() body) })();
+if ($result instanceof Exception)
+    (lambda(e) handler)($result.value)
+else
+    $result
+</code>
+
+where ''throw e'' desugars to ''raise(e)'' and the ''withHandler'' and ''raise'' functions are defined as:
+
+<code javascript>
+let [withHandler, raise] = (lambda() {
+    let handler = lambda(x) { die('uncaught exception: ' + x) };
+    lambda withHandler(newHandler, body) {
+        let oldHandler = handler;
+        handler = newHandler;
+        let result = body();
+        handler = oldHandler;
+        result
+    }
+    lambda raise(x)
+        handler(new Exception(x))
+    [withHandler, raise]
+})();
+</code>

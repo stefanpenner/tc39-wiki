@@ -1,0 +1,602 @@
+This is the discussion page for [[proposals:type_parameters]].
+
+===== Late-breaking proposal for more readable syntax =====
+
+From [[http://weblogs.mozillazine.org/roadmap/archives/2006/11/project_tamarin.html|my blog]], a comment from Tom Palmer:
+
+"My recommendation might not look much like C++, but I find this __much__ easier to read (and I've done enough Java 5 and C++ to be familiar with angle brackets - don't get me wrong):"
+
+  List of Map of (pair of int, coord3d of double)
+
+"It also doesn't seem out of line with the style of backwards compatibility and several new reserved words in ES4. This one single change in ES4 would just make my day."
+
+I'm sorry I didn't think of this.  I like it a lot.  Is it too late to consider?  We have after all been open to surface-syntax revisions, and we are not yet near a "last call for implementations to start" point (and if we were, changing this particular sub-syntax would not be hard).
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/11/08 16:37//
+
+Eh, no, I can't say I like it. It's visually less clear to me -- you have to remember and visualize the associativity of "of" -- and the example above doesn't really work anyways. You're trying to resolve this parse ambiguity introduced by losing a rightmost terminator for parameter lists by insisting that >1-ary parameter lists be parenthesized. But a parenthesized list of type expressions is already taken: it's a union type. In other words:
+
+  foo of (X, Y)
+
+is ambiguous: is foo a 1-parameter type instantiated with a union(X,Y) value, or is foo a 2-parameter type instantiated with X and Y? The parser can't tell, we'd need feedback from the symbol level. I don't think we want that.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/11/09 12:01//
+
+Good point, I keep forgetting unions and their overloading of parentheses (which could be criticized independently, but I won't start).  Still, my eyes hurt from ''.<'', and the closing ''>'' that people tend to append with extra spaces.  Does anyone have a fresh thought on improving readability?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/11/09 14:00//
+
+Final thought from Tom Palmer:
+
+"Or how about this:"
+
+  List of Map of <pair of int, coord3d of double>
+
+"It still suffers ''> >'' vs. ''>>'', but it would be less likely because of the ability to leave it off for single parameters (and which you can't do for ''.<'' because of the existing meaning of ''.'')."
+
+"But again, I'll try to stay out of it now. I've chattered enough. Again, do what seems best, and thanks for considering the options."
+
+I still am taken by ''T of U'', and ''T of <U, V>'' resolves the ambiguity.  Is this worth fussing over?  I think so, since ''.<>'' is novel (for good reasons discussed here) but not super-readable.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/11/10 10:12//
+
+I am still not really taken with it, as I said above the reader is still stuck with having to parse associativity for an operator that is based on a word that has ambiguous associativity in natural language. I guess that is only an issue if it's possible to define left-associative forms, and if the only syntactic form for declaring parametric types puts the parameter on the right then it's not //technically// an issue (assuming also that the operator can only ever be fully applied, and there's no currying). It still //feels// kludgy to me; but I'm opposed to importing anything from English just in principle.
+
+I guess if you want to force the matter I won't object in any concrete sense. Maybe a straw poll at the next F2F?
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/11/11 01:03//
+
+Think of ''of'' as this proposal's ''.'' if followed by ''<'', and then let the ''<'' and ''>'' be optional if there's only one type parameter.
+
+Yeah, we should talk about this.  It's a marginal thing, almost not worth talking about -- except we have a language with a high keyword density, and we've got chatty syntax elsewhere.  We should re-balance the syntactic weight distribution where it is out of whack.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/11/13 12:43//
+
+Agreement was reached at the Nov-16 meeting to keep the current .<...> syntax. It seems to "read" better in expression contexts such as ''f.<T>(x)'', vs. ''f of T(x)''.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/11/17 08:05//
+
+===== Syntactic ambiguity and inference =====
+
+One syntactic form under this proposal is ambiguous: call sites. For example, in the following code:
+
+<code>
+function sort[ty](x: array[ty], y: array[ty]): null { ... }
+
+var p : array[int] = ...;
+var q : array[int] = ...;
+
+sort[int](p, q)
+</code>
+
+The last call is syntactically ambiguous. It could mean calling the value of an array index expression, or it could mean calling a type-parametric function. There are a few solutions:
+
+  * Use a syntax such as ''sort<int>(p,q)'' as in java or C++. This gives rise to the C++ token ambiguity ''>>'' when closing nested type expressions, and makes the parser slightly more complex in order to differentiate the opening ''<'' from the less-than operator, but it can be managed.
+  * Use a syntax such as ''sort{int}(p,q)'', reusing braces. This gives rise to ambiguity with the proposed notation for [[hashcodes|object indexing]], though could be avoided by changing that proposal. See that page for more discussion.
+  * Use some level of unification or type inference. This would make matters more difficult as the inference would differ in dynamic and static modes. Probably undesirable.
+  * Something else?
+
+----
+I've suggested we use ''sort<int>(p,q)'' style, not (or not only) to make C++, C#, and Java people happy. Whether we do [[hashcodes|object indexing]], I think we want to keep ''{}'' for other things, and where possible stand on others' shoulders (see leading blurb in [[proposals:iterators and generators]]).
+
+The relevant productions from ECMA-262 Edition 3's grammar are:
+<code>
+MemberExpression :
+    PrimaryExpression
+    FunctionExpression
+    MemberExpression [ Expression ]
+    MemberExpression . Identifier
+    new MemberExpression Arguments
+
+NewExpression :
+    MemberExpression
+    new NewExpression
+
+LeftHandSideExpression :
+    NewExpression
+    CallExpression
+</code>
+The ''LeftHandSideExpression'' non-terminal is the goal of this sub-grammar.
+
+Note how this sub-grammar disambiguates ''new C(args).mem'' as ''(new C(args)).mem'', and of course allows nullary constructors to be called without empty parentheses: ''var d = new Date''.  Using ''<>'' to bracket type parameters changes the meaning of ''new C < T > ( A )'', but such sentences in Edition 3 are neither likely, nor likely to mean what the programmer intended.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/02/15 23:51//
+
+I like () more than [] because it means invoke (possibly a contructor, or type factory). I don't like sort<T> because of the syntactic ambiguity with < and >. The conflicts may be few, but when they do occur the program might silently change meaning, and will require looking ahead more than one token to parse using recursive descent. E.g.
+
+<code>
+x<y>20    // okay, after much work by an LL parser
+x<y>(20)  // okay, but means something different than it used to
+</code>
+
+Perhaps the most offensive issue is that it introduces a new syntax that we have to explain to the world, when parens will do just fine (i think). Here are Graydon's examples rewritten:
+
+<code>
+class Pair(A,B)
+{
+  var fst : A;
+  var snd : B;
+};
+
+class Hashtable(K,V)
+{
+  var hash_func : (function(K) : int);
+  var store : Array( Pair(K,V) );
+
+  function fetch(k : K) : V
+  {
+    int ix = hash_func(k);
+    while (store[ix].fst != k)
+      ix = ... // some probe sequence
+    return store[ix].snd;
+  }
+
+  Hashtable(hf : (function(K) : int)) 
+  {
+    hash_func = hf;
+  }
+}
+</code>
+
+
+
+<code>
+class A(T) {
+  var x : T 
+}
+
+function sort(T) (x : Array(T), y : Array(T)) {}
+
+var a : Array(int) = ...
+var b : Array(int) = ...
+
+sort(int)(a,b) // create sort(T) function and call it
+</code>
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/02/27 14:55//
+
+The ambiguity with using ''<'' and ''>'' affects ''new C<T>(A)'', not ''C<T>(A)'' -- the latter is not a cast expression (see [[proposals:is as to]]), and we need not allow it as a call expression.  Again, it seems very unlikely that anyone ever wrote ''new C < T > (A)'' and meant ''%%((new C) < T) > (A))%%''.
+
+The problem with using call syntax is that it requires the compiler to examine each potentiall call expression and discern which have arguments that are type parameters.  Is this possible?  Is it desirable?
+
+**Update** To answer the "is this possible" question, we can ask "must all parameterized types be defined before use?"  In Edition 3, you can call a forward reference to a function, and use operator ''new'' to construct using a forward reference to a constructor.  Adding type parameters without special bracketing syntax breaks this feature.
+
+This may be acceptable, or even desirable, for type construction.  But backward compatibility means not breaking the forward-reference cases without type parameters, and all things equal (they're too often not, I'm not assuming ;-)), I'd rather preserve symmetry when extending Edition 3. 
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/02/27 21:29//
+
+Wrt. the "compiler must examine each potential call expression" issue: suppose in a call expression, say ''sort(T)(a: array(T))'' you //let// the parser assume ''(T)'' is a normal expresion list. 
+
+There are two translation paths to think about:
+
+  * In the path translating to dynamic checks, the call is probably going to be modeled at runtime as a factory of functions, or such. Say, a function like this:
+<code>
+  function sort_factory(t) { 
+    assert_is_type(t, Type);
+    return function(a) {
+      assert_is_type(a, t);
+      sort_body(a);
+    }
+  }
+</code>
+or something semantically equivalent. In this case, types really //do// just wind up being runtime values. No harm in parsing them that way in the first place.
+
+  * In the path translating through static type checking, it seems to me that for much of the static type system to work at all, at least the //type-arity// of a callee has to be known at call site (as well as the exact type of a constructor, at a ''new'' expression site). I don't know what sort of forward-reference you have in mind, but typechecking usually happens on a translation-unit scale (especially if we support recursive types and whatnot) and I think //at least// all the arities of abstract types should become known during checking. So when we're checking the call expression, we will have enough information to decide that the first parameter list //must// be a type-parameter list, and to check that the members of that list are indeed static type expressions (i.e. //identifiers//). 
+
+IOW, I don't think either case breaks (or even requires type-to-parser feedback) if you parse a type-parameter list as an expression-parameter list, and //maybe decide later// that the parameters should have been type identifiers, only in the static case, and only after you've decided how many type identifiers the callee requires as parameters.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/03/01 11:02//
+
+In which case, why would we add more syntax, even if it's familiar-looking from C++, Java, C#?  Just in order to be familiar-looking seems like the only reason, but as Jeff says, it won't be familiar-looking to Edition 3 users, or to many less expert users.  So I'm sold.  Others should weigh in pro or con.
+
+The forward reference I have in mind is what's specified by ECMA-262 Edition 3 section 10, where entering an execution context binds declared functions, then conditionally binds variables (so ''var'' naming an already-bound function or host property does not delete and re-create that property), then executes code.
+
+This is what allows scripters to call a forward reference without a forward declaration of any kind.  Entering an execution context does not involve processing call sites, just binding names, but it sounds like this would be the last chance to do deferred type processing, if not in static mode. And AS3 does inter-compilation-unit verification at something like load time, so as Jeff said "compile time extends almost up to the moment the script executes".
+
+Anyway, this kind of function forward reference has nothing to do with static mode.  Thanks for sorting the cases out.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/01 12:01//
+
+===== Backward compatibility =====
+
+Assuming we steer clear of unification or inference, parametric types would interact with "old code" in the following ways:
+
+  * Old code could store, pass around, and call concrete instances of parametric types.
+    * In the dynamic mode, instantiated type parameters (full types) would imply the usual operator-to (type downcast by default), which is what users would write by hand if they wished to simulate homogeneous containers using monomorphic arrays, for example.
+    * In the static mode, instantiated type parameters would imply the usual static checking. 
+  * If old code tried to make a non-instantiating call to a parametric constructor or function (eg. calling ''sort(a,b)'' or ''new Array()'' without providing parameters) it would default to providing ''*'' for each type parameter.
+  * Old or monomorphic code compiles as a special case (0 parameters) of polymorphic code.
+
+
+
+===== Defining the meaning as factory functions =====
+
+Suppose we define the meaning of Hashtable(String,Number) as an actual function call that returns a new type, represented as a type object.  (ie a value).  Types are comparable.  So this type generator function must be memoizing.
+
+With this model functions are indistinguishable from built-in type constructors:
+
+<code javascript>
+  function f(t) {
+    class C(T) { ... }
+    return C(t);
+  }
+</code>
+
+Here ''f'' constructs a new type. Question: is ''f(String) == f(String)'' true?  Most people seemed to think "yes", which means that classes are non-generative (IIANM, but IANATT (I am not a Type Theorist)).
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/17 11:24//
+
+===== Syntactic contexts =====
+
+I'm just trying to collect all contexts in which any new syntax would have to recognized.  I'll use angle brackets because they stand out here, but assume for the moment that I have no opinion on the syntactic matter.
+
+==== Classes and interfaces ====
+
+Class definitions and possibly interfaces:
+
+    class Fnord<T> { ... }
+    class Foo extends Fnord<Object> { ... }
+
+Type annotations on parameters, variables, functions, and methods:
+
+    function f( b : Fnord<Object> ) : Fnord<Object> { ... }
+
+''new'' expressions:
+
+    new Fnord<Object>(...)
+    new Fnord<int>
+
+==== Functions ====
+
+If we want parameterized functions (I'm not sure we do), then also the following.
+
+Function definitions and types:
+
+    function fun<T>( x : function <T>(int) : T ) : Fnord<T> { ... }
+
+Function calls:
+
+    fun<int>(f)
+
+==== The bracket issue ====
+
+Here are some strikes against all the bracket proposals:
+
+  * //Angle brackets// are hard to parse because they are not normally used as brackets and because ECMAScript does not clearly delineate "type" context expressions from "other" expressions.
+    * For annotations we can perhaps fix the parsing problem by introducing syntactic constraints on type expressions.
+    * With parameterized function types, we will need unbounded lookahead: one can't disambiguate until one sees the closing angle bracket.  This complicates the parser substantially.
+  * //Parentheses// seem natural because they map parameterized types to factories, until one considers the meaning of ''Array(Object)'': this has a reasonable meaning in ECMAScript 3 but which now should be taken to mean "the type that results from constraining the array to elements of type Object".
+  * //Brackets// are the same, ''Array[Object]'' has a reasonable meaning in ECMAScript 3 and will now have to change its meaning, and for parameterized functions you can't know what ''f[Foo](10)'' means, syntactically.  A type checker may know, but we have to allow for dynamic systems, and deferring the determination of the meaning of a phrase to run-time is not very pleasant.
+  * //Braces// are probably a simpler choice but are associated with objects, not types, and at least some members of this group would like to reserve them for an object indexing syntax.
+
+I have yet another proposal, inspired by Guy Steele's observation that operator overloading in C++ is broken not because overloading is a broken idea but because there are not enough operators to overload.  That is, it isn't parameterized types that are broken, we just need more brackets to choose from.
+
+I think we should use ''%%[[%%'' and '']]'' to bound type parameters.  There are several advantages:
+
+  * The brackets stand out syntactically, and they are clearly brackets
+  * They are reasonably succinct
+  * No ECMAScript 3 programs use ''%%[[%%'' for anything, so compatibility is not an issue
+  * The parser needs no lookahead
+  * Any type instantiation context is distinguishable syntactically to both compiler and programmer
+  * The doubled brackets bring one's thoughts to the metalevel, which is where type instantiation operates
+  * The brackets can be lexed and parsed as two separate tokens, so there is no ambiguity about lexing eg ''f[g[7]]''
+
+Ie,
+
+    class Fnord[[ T ]] { ... }
+    function fun[[ T ]]( x : int ) : T { ... }
+    sort[[ int ]]( x, y )
+    List[[ Pair[[ Object, Number ]] ]]
+
+The main disadvantage appears to be that the syntax is a bit bulky, especially with nested types, but a couple of judicious spaces help a lot, and I don't think it's a hardship
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/18 02:59//
+
+Hey, I like this -- I was going to propose ''%%<<%%'' and ''%%>>%%'', with the chevron characters ''<<'' and ''>>'' also accepted, something Perl 6 allows in its quest for more operators and brackets.  But square brackets are better than the shift operators for unambiguous type construction syntax.  The square bracket Unicode characters that leapt out at me are \u27E6 and \u27E7 (from "Miscellaneous Mathematical Symbols-A" -- or their "CJK Symbols and Punctuation" twins \u301A and \u301B).  Comments?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/04/19 23:23//
+
+The shift operators are probably as bad for bracketing as ''<'' and ''>'' I think, in terms of parser complexity, which is why new tokens are so nice.
+
+Are we ready to go to full Unicode for the "standard" character set?  I'm a wee bit worried about the tool chains, but I don't know a lot about that issue.  Fortress (cf reference to Steele) has decided to go whole hog and allow any operator in Unicode, and lots of different kinds of brackets, but they are seeing things in a much longer perspective and for a very different crowd, and they have workarounds in the lexical syntax.
+
+I guess we could define that the official syntax is those Unicode characters, but that the square-bracket token sequences can be used interchangably.  (Like Pascal would allow ''(.'' and ''.)'' for square brackets, since most European systems did not have the brackets.)
+
+I could live with a solution like that.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/20 09:43//
+
+This is a miserable point, but here are some visual options for composite characters, just to stare at them and see if one looks less nauseating:
+
+<code>
+
+map{{string, array{{int}} }}
+map[[string, array[[int]] ]]
+
+map[|string, array[|int|] |]
+map(|string, array(|int|) |)
+map<|string, array<|int|> |>
+map{|string, array{|int|} |}
+
+map.<string, array.<int>. >.
+map.[string, array.[int]. ].
+map.{string, array.{int}. }.
+
+map<.string, array<.int.> .>
+map[.string, array[.int.] .]
+map{.string, array{.int.} .}
+
+map<:string, array<:int:> :>
+map[:string, array[:int:] :]
+map{:string, array{:int:} :}
+map(:string, array(:int:) :)
+</code>
+
+My feeling is actually that the ''map<|...|>'' one reads best, but I'm mostly not in favour of the concept of multi-character brackets.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/04/21 15:58//
+
+Urr, further staring reveals the obvious fact: angle brackets means less-fun interaction with embedding script fragments in XML dialects. I change my vote to ''map[|...|]''.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/04/22 12:45//
+
+I like ''[|...|]'' best too, especially if we allow \u27E6 and \u27E7 as single-character alternatives.  Now to find a keyboard that can encode these two characters!
+
+**Update**: but man, is it hard to type ''[|T, U|]'' quickly.  The combination of unshifted ''['' and its shifted neighbor's neighbor ''|'', and then shifted ''|'' followed by unshifted '']'', seems hard to learn and speed up, but perhaps if I practice till my fingers bleed....  ''%%[[%%...%%]]%%'' is a lot easier to type, and as Lars points out, spaces aid readability.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/04/24 15:10//
+
+----
+
+==== An attempt to rescue single brackets ====
+
+Double brackets of all kinds are ugly and hard to read so I am motivated to attempt a rescue of the ''[...]'' syntax for type parameters. It is simple and familiar; and if natural languages are evidence for the way people like to use syntax, the fewer punctuation marks the better.
+
+Lars points out that ''()'' and ''[]'' are problematic for passing type parameters because expressions such as ''Array(Object)'' and ''Array[Object]'' would change meaning if we used one or the other for to mean Array of Objects, for example. The argument I make here applies to either kind of punctuation, but I'll talk about brackets since I prefer them in this case.
+
+Let's say in ES4 the expression ''Array[Object]'' means: get the value of the property whose key is the value of ''Object'' from the ''Array'' object. This is close to the meaning that the same expression has in ES3. The difference of course is that the value of ''Object'' gets converted to a ''String'' before being used as the key.
+
+Now, let's also say that when you define a type parameterized definition that you get a value with a catchall get method that manages an internal table of derived parameterized types. Using the example of ''class Pair'':
+
+<code>
+class Pair[A,B]
+{
+    var fst : A
+    var snd : B
+}
+</code>
+
+This class definition results in a (abstract) factory class ''Pair'' that has a catchall static ''get'' method that takes an array of type objects like this:
+
+<code>
+class Pair
+{
+    static function get * (targs : [ Type, Type ])
+    {
+        var hash = hashcode(targs)
+        if( this[hash] === void 0 )
+        {
+            this[hash] = new_class(Pair,targs)
+        }
+        return this[hash]
+    }
+}
+</code>
+
+So now bracket access of the ''Pair'' class generates a parameterized type or throws an InvalidTypeParameter exception.
+
+<code>
+var pair : Pair[int,String] = new Pair[int,String](10,"cats")
+</code>
+
+<code>
+var err : Pair[3] // throws InvalidTypeParameter at compile time
+</code>
+
+<code>
+... = Pair[3] // throws InvalidTypeParameter at compile time in ! and run time in ~
+</code>
+
+Again, the meaning of the bracket syntax doesn't change across language versions or syntactic contexts within edition 4. 
+
+=== Addressing compatibility ===
+
+What about the problem cases like ''Array[Object]''? In ES3 ''Array'' is defined as an type-unparameterized constructor function; something like ''function Array() { ... }''. We want to be able to define it as a type-parameterized class; something like ''class Array[t] { ... }''. But if we do this we break compatiblity with ES3. It is worth noting this breakage is not at the fault of the proposed type parameter syntax, but rather the fault of changing the meaning of ''Array''. Perhaps we should reconsider changing the meaning of ''Array'' and use another name like ''Vector''. Or maybe we should put the new ''Array'' in a namespace that optionally shadows the old one.
+
+In the Builtins proposal we have introduced other object model incompatibilities, although more subtle. Perhaps we can do here what we have done there to get a familiar syntax for type parameters without breaking old programs.
+
+==== A renewed attempt to bury single brackets :-) ====
+
+Except in the case of ''Array'' (the only existing data type we want to parameterize), I probably believe that what you've written above will work.
+
+However:
+
+Tools and people like to know what they're looking at without having to take into account a very large context.  It was a good thing that eg C chose to denote array access by a different syntax than function call (unlike Fortran), and chose to require an empty parameter list to functions that take no arguments (unlike Pascal).  People routinely complain about Lisp that its syntax provides too few clues to the reader.  We should not fall into that trap, but I fear that brackets or parens lead us into it.
+
+Angle brackets as in Java and C++ are basically the right thing, since they are succinct and stand out nicely; there is little room for confusion.  Unfortunately, they are hard to parse, and since we don't intend to do any inferencing they will have to be handled in many contexts.  Angle brackets will therefore likely be a problem in practice.  Thus if we want distinguished syntax, we choose something else.  (What I ought to do here is go and prove myself wrong by trying to make the parsing of angle brackets work.)
+
+Double brackets may be ugly and a little bulky in nested expressions, but they are easy to type, straightforward to read, and importantly, they allow me not to wonder about what it is that I'm looking at.  The chance of breaking working programs with ''%%[%%[...]]'' is extremely slight; for something like ''[|...|]'' it is nonexistent.
+
+As to issues of compatibility, we already have a vector type, namely ''Array''.  Adding another (entirely similar) type to allow for parameterization, merely to avoid introducing slightly uglier syntax for type application, seems like false economy, whether the type is ''improved::Array'' or ''Vector''.  (One can probably play tricks with subclassing to reduce the impact, but one is then unlikely to be able to get optimized array representations for ''int'', say.)
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/12 05:16//
+
+==== Rescue of single brackets abandoned! ====
+
+Alright then. I buy the argument that the meaning of ''T[U]'' is not necessarily clear from the immediate context, and it does break compatibility with ''Array'' and friends. But those same arguments can and should be used against ''T%%[%%[U]]'' as well. You may think you know what it means, but you could be just as wrong as with ''T[U]'', if not as often. So that leaves us with something like ''T[|U|]''. It's ugly and hard to type but maybe that's the price we pay for type parameters.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/05/12 10:41//
+
+Since we're on the topic, I will point out that after staring at the above examples I initially felt that ''T<|U|>'' reads best among the double-bracket options, and I still feel that way. 
+
+  * it looks more like the type parameters in other languages
+  * it's slightly easier to type than ''T[|U|]'' because you don't need to articulate the shift key in the middle of entering it
+  * visually, the two characters flow together better, look a bit more like a single unit
+    * it contains one fewer typographic stroke per composite
+    * the angles and verticals don't interfere with each other as much
+    * in courier at least, there appears less visible space in the interior of the ''<|'' composite
+  
+The only reason I came down against it is that I felt it possible that any increased use of ''<'' might increase the chances of accidental interference between the JS and surrounding XHTML parsers in a web-content context. I'm not sure that's a very strong reason against, considering:
+
+  * people already need to worry about that when using the less-than operator
+  * type parameters are aimed at above-average script authors anyways
+  * there's a known solution: marked cdata sections, external scripts, or entity references if you're a masochist
+
+Therefore I suggest reconsideration (including "opening an editor and typing in some examples to get the feel of it") of the ''T<|U|>'' form. 
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/05/12 13:38//
+
+I like ''<| |>'' slightly more than ''[|  |]'' for the reasons you describe. But here's a crazy idea. How about a variation on ''.<  >.'' in which we drop the trailing dot? The visual effect is single bracket like, but without the syntactic ambiguity of single brackets. Since the parameter of ''.< >'' is a type expression there is no chance of confusing a closing angle brace with one of the binary operators ''>'',''%%>%%>'', or ''>%%>%%>''. Here's a sample,
+
+<code>
+class Map.<T, U> { }
+var x : Map.<String, Array.<int>> = ...
+... = new Map.<String, Array.<int>>
+</code>
+
+We could be even cleverer and not require the initial dot in definitions so, for example, class definitions will read like:
+
+<code>
+class Map<T, U> { }
+</code>
+
+Or going one step further, we could only require the dot in expressions outside of a type expression so that code will read like this:
+
+<code>
+class Map<T,U> { }
+var x : Map<String, Array<int>> = ...
+... = new Map.<String, Array<int>>
+</code>
+
+This seems too good to be true! Someone bring me back down to earth.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/05/12 14:33//
+
+A stroke of brilliance, that.  I could buy it.  I'd probably insist on requiring ''.'' everywhere.  You shouldn't have to think about syntax, you should just use it.  If you have two syntaxes for the same thing and you have to choose between them in a context-dependent way then you're just asking for trouble. [//[[jodyer@adobe.com|Jeff Dyer]] 2006/05/13 07:47// --- Agreed, the syntax for a thing shouldn't change with context. And I don't want to press my luck, but maybe we could get away with dropping the dot in definitions while keeping them in all kinds of type expressions, since they are different. But I would be more than happy with keeping the dot everywhere if others don't agree.]
+
+Here's my running example written in that style:
+
+<code>
+class ListNode.<T> 
+{
+    function ListNode(value : T) {
+        this.value = value;
+    }
+
+    var value : T;
+    var next  : ListNode.<T>;
+}
+
+public interface Collection.<T> 
+{
+    function size() : int;
+    function add(item : T);
+    function element(n : int) : T;
+}
+
+public class LinkedList.<T> implements Collection.<T>
+{
+    public function size() : int { 
+        var n : int = 0;
+        for ( let p : ListNode.<T> = head ; p != null ; p = p.next )
+            n++;
+        return n;
+    }
+
+    public function add(item : T) {
+        var x = new ListNode.<T>(item);
+        if (head == null)
+            head = x;
+        else
+            tail.next = x;
+        tail = x;
+    }
+
+    public function element(n : int) : T {
+        for ( var p : ListNode.<T> = head ; n > 0 ; p = p.next, --n )
+            ;
+        return p.value;
+    }
+
+    var head : ListNode.<T> = null;
+    var tail : ListNode.<T> = null;
+}
+
+var v : Collection.<int> = new LinkedList.<int>;
+v.add(37);
+v.element(0);
+</code>
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/13 03:04//
+
+I concur with Lars; if you're going to denote list-of-foo as ''list.<foo>'' you should denote it the same way in the declaration, definition and instantiations. 
+
+Nice syntax though!
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/05/16 12:28//
+
+Cool. Let's go with ''.<>'' in type expressions and in type definitions. We can always drop the dot in type definitions later if it seems like the right thing to do.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/05/16 12:31//
+
+===== Mixins? =====
+Can a base class be a type param by itself?
+
+Can a base interface be a type param by itself?
+
+For e.g. should the following be permitted?
+<code>
+class foo.<T> extends T
+</code>
+This needs to be called out in the spec.
+This can be used to do mixins (albiet with a single flavour), and as a substitute for MI.
+
+I think we should not permit it.
+
+It must be possible to check that type params are valid at definition time, rather than instantation time. e.g., in class foo.<T> extends T, we do not know what methods would override what others because no information is available about the base class; we do not even know whether T is a class or an interface, etc.
+
+For the same reason, a base interface must not be a type param by itself.
+
+ --- //[[pratapl@microsoft.com|Pratap Lakshman]] 2006/09/06 11:46//
+
+Agreed. As I understand it, the only things that can appear after ''extends'' and ''implements'' are class names and interface names, respectively. Furthermore, these names must have been bound by class/interface declarations. IOW:
+
+<code javascript>
+class C extends String            // legal
+class C.<T> extends T             // illegal
+class C extends function(int):int // illegal
+type A = String
+class C extends A                 // illegal
+var x = String
+class C extends x                 // illegal
+const x = String
+class C extends x                 // illegal
+</code>
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2006/09/07 12:13//
+
+Oops, pardon my hastiness! We should also allow extending/implementing a class/interface with a fully instantiated type. For example, the following should be legal:
+
+<code javascript>
+class IntList implements Collection.<int> { ... }
+</code>
+
+Along the lines of Pratap's question, do we want to restrict the ways the extended/implemented type can be instantiated, so that it can only be instantiated by known class/interface types? That is, a "fully instantiated type" is either a type that is not a type variable, or a fully instantiated type applied to a sequence of fully instantiated types.
+
+It's possible to generalize this further to allow free type parameters to appear in some of these places, but as Pratap points out, it would prevent you from rejecting bad subclassing relationships at declaration time.
+
+BTW, do we have nested classes? If so, there are more places where free type parameters could appear, e.g.:
+
+<code javascript>
+class Foo.<T> {
+    class Bar extends Collection.<T> { ... }
+}
+</code>
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2006/09/07 19:35//
+
+The current rule for TypeIdentifiers that appear in the extends/implements clause of a class/interface is that they are known at definition time. This means that there are no forward references to any part of a TypeIdentifier that appears in an inheritance clause, and that their values are constant and known when visited during the definition phase. See [[strict and standard modes]] for more on the definition phase.
+
+Also, nested classes have not been proposed. We dropped them from AS3 to avoid order of initialisation issues.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/09/11 11:55//

@@ -1,0 +1,151 @@
+====== Object Initializer super references ======
+
+In object-oriented programming languages, inheritance is used to perform behavioral composition. An object combines together the properties it inherits from its prototypes with new  and replacement properties define for the specific object. Occasionally in creating such compositions it necessary for the object to explicitly access prototype behavior that is over-ridden by the object.
+
+Traditionally this has been accomplished in object-oriented languages using the keyword ''super''.  ECMAScript has reserved this keyword but has never supported it. One of the reasons was that imperative object construction style that was typically used did not provide sufficient context for a function declaration to determine how to access over-ridden properties.
+
+Object Initialisers provide sufficient context and hence this proposal allows use of the keyword in functions defined within an Object Initialiser.
+
+
+===== Overview =====
+
+Sometimes a method on an object that over-rides a prototype method needs to invoke the over-ridden method. Consider for example:
+<code javascript>
+var sup = {
+   validate() { /* validate internal invariants */}
+}
+
+var sub = sup <| {
+   validate() {
+       /* validate invariants imposed by prototype */
+       /* validate instance specific invariants */
+   }
+}
+</code>
+
+How should the object ''sub'' actually code the call to its prototype's validate method?  The idiom that would most likely be used today  would be an expression of the form:
+<code javascript>
+      sup.validate.call(this);
+      /* validate subclass invariants */
+</code>
+This formulation does the job, but is idiomatic and its intent may not be obvious to readers.  Also, it requires explicitly referencing  the prototype object by name. If such references in multiple places is error prone, especially when a prototype hierarchy is being refactored.  These issues are addressed by adding a super call expression as an additional form of //PrimaryExpression//:
+
+**//PrimaryExpression// :** ...\\
+**''super''** \\
+
+The value of ''super'' is the same as the value of ''this'' but when ''super'' is used as the base of a property access the property lookup starts with the object that is the prototype of the object defined by the object literal that contains the reference to ''super''.
+
+Then above example could then be coded like:
+
+<code javascript>
+
+var sub = sup <| {
+   validate() {
+       super.validate();
+       /* validate instance specific invariants */
+   }
+}
+</code>
+
+In this example, the expression ''super.validate()'' means ''sup.validate.call(this)''. But note that ''sup'' does not have to be referenced by name with the body of validate.
+
+A //PrimaryExpression// containing ''super'' may only occurs within a function body that is contained within a object initialiser.  It is an early SyntaxError error for ''super'' to occur in any other context. 
+
+Use of ''super'' is not limited to //CallExpression//.  It can also be used to get or set the value of accessor properties and to get the value of data properties defined by the prototype, even if the property is over-ridden by the object:
+
+<code javascript>
+var f=0;
+var sup = {
+   k:= 1,
+   get foo() {return f},
+   set foo(v){f=v}
+}
+
+var sub = sup <| {
+   get foo() {
+      var supFoo = super.foo;
+      print("getting foo: "+supFoo);
+      return supFoo;
+   },
+   set foo(v){super.foo = v+super.k}
+}
+</code>
+
+But note that the use of ''super'' does not change the semantics of assigning to an inherited data property.  Such assignments create own properties even if ''super'' was used to access the property.
+
+<code javascript>
+var f=0;
+var sup = {k: 1};
+
+var sub = sup <| {
+   setK () {
+      print(super.k); // prints 1
+      print(this.k);  // prints 1 -- inherited from sup
+      super.k = 2;
+      print(super.k); // prints 1 -- assignment created own k
+      print(this.k);  // prints 2 -- own property created by assignment
+   }
+}
+</code>
+
+===== super in Accessor Property Definitions =====
+In object initialisers the **get** function and **set** function of an accessor property are defined independently of each other and only either one of them need to present to over-ride an inherited accessor property definition. If either the **get** or **set** function is not present then the default definition is used:
+
+<code javascript>
+var f = 1;
+var sup = {
+   get f() {return f}
+};
+
+var sub = sup <| {
+   set f(v) {f=v}
+};
+print(sup.f);  //1
+sub.f=2;
+print(sup.f);  //2
+print(sub.f);  //undefined
+</code>
+
+The reason ''sub.f'' prints ''undefined'' is because the definition of a ''set f'' accessor in sub implicitly cause the default ''get f'' accessor to also be created.  A default ''get'' accessor always returns the value undefined.
+
+This problem can be avoided by explicitly defining a ''get f'' accessor that uses ''super'' to invoke the over-ridden accessor:
+
+<code javascript>
+var f = 1;
+var sup = {
+   get f() {return f}
+};
+
+var sub = sup <| {
+   set f(v) {f=v},
+   get f() {return super.f}
+};
+print(sup.f);  //1
+sub.f=2;
+print(sup.f);  //2
+print(sub.f);  //2
+</code> 
+
+Needing to over-delegate to a prototype's ''get'' or ''set'' accessor function is common enough that a special definition form is provided for such definitions.  The syntax is:
+
+**//PropertyAssignment// :** ...\\
+**set super get** //PropertyName// **(** **)** **{** //FunctionBody//  **}**  \\
+**get super set**  //PropertyName// **(** //PropertySetParameterList// **)** **{** //FunctionBody//  **}**  \\
+
+These forms cause to ''set'' or ''get'' accessor function to be automatically set to a function that does a ''super'' ''set'' or ''get'' access for that property.
+
+Using this form of property definition, the above example object definition could be simplified to:
+<code javascript>
+var sub = sup <| {
+   get super set f(v) {f=v}
+};
+print(sup.f);  //1
+sub.f=2;
+print(sup.f);  //2
+print(sub.f);  //2
+</code>  
+
+===== Extract a Function Containing super from an Object =====
+When a function contains a reference to ''super'', that function internally captures an internal reference to the %%[[%%Prototype%%]]%% of the object created by the enclosing object initialiser. If such a function is subsequently extracted from the original object and installed as a property value in some other object, the internal reference to the original %%[[%%Prototype%%]]%% is not modified. Essentially, when a function references ''super'' it is statically referencing a specific object that is identified when the function is defined and not the %%[[%%Prototype%%]]%% of the object from which the function was most recently retrieved.
+
+This behavior is consistent with that of most other languages that provide reflection function to extract methods containing super and then independently invoke them.

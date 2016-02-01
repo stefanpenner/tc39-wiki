@@ -1,0 +1,438 @@
+====== Typed Objects ======
+
+(Formerly known as [[binary data]])
+
+
+2014/01 TC39 presentation: [[https://docs.google.com/presentation/d/1HGoxjX74Q9i8I1ok-hkmxzWlM7CDQwxT0sUS5PJDxdg/edit?usp=sharing|TC39 Typed Objects presentation]]
+
+===== Goals =====
+
+Typed objects provide portable, memory-safe, efficient, and structured access to contiguously allocated data. Certain kinds of typed objects can also expose a binary representation of their backing store, making them conveniently serializable and deserializable.
+
+Some use cases:
+
+  * optimized data abstractions -- these will be very easy to optimize well in JIT's
+  * binary serialization
+  * optimized data representations for compilers that generate JavaScript
+  * communicating structured data (such as arrays of records) to WebGL
+
+
+
+
+===== Examples =====
+
+<code javascript>
+const Point2D = new StructType({ x: uint32, y: uint32 });
+const Color = new StructType({ r: uint8, g: uint8, b: uint8 });
+const Pixel = new StructType({ point: Point2D, color: Color });
+
+const Triangle = Pixel.Array(3);
+
+let t = Triangle([{ point: { x:  0, y: 0 }, color: { r: 255, g: 255, b: 255 } },
+                  { point: { x:  5, y: 5 }, color: { r: 128, g: 0,   b: 0   } },
+                  { point: { x: 10, y: 0 }, color: { r: 0,   g: 0,   b: 128 } }]);
+// ...
+</code>
+
+====== Overview ======
+
+This section provides a high-level overview of the typed objects library.
+
+
+
+
+===== Typed Objects =====
+
+A **//typed object//** is an object that is permanently associated with a type (see below), which governs all of the object's property accesses. The type dictates the complete set of own-properties of every instance of that type. Specifically, instances are non-extensible and their instance properties are non-configurable.
+
+Every "slot" in a typed object's storage is guarded by coercions, enforcing its corresponding slot type in the type.
+Accessing a slot gives a sub-object, sharing the storage with the original object. Assigning to a slot is a copy in memory.
+
+<code javascript>
+const S1 = new StructType({x : float32, y : float64});
+const S = new StructType({a : int16, s1 : S1});
+
+let s1 = S1({ x : 1.5, y : 2.3});
+let s = S({a : 10, s1 : s1})
+
+s1.x = 2.5; // s.s1.x does not change
+s.s1 = s1; // copy; s.s1.x is 2.5
+s1.x = 3.0; // s.s1.x does not change
+s11 = s.s1; // s11 is a sub-object of s, sharing the it's storage.
+s11.x = 3.5; // s.s1.x is now 3.5
+
+</code>
+
+
+Conceptually, a typed object is a "fat pointer" -  a pointer into a backing storage, augmented with its type and other parameters.
+Typed object is fully characterized by the following tuple:
+   (arrayBuffer, offset, type, opacity)
+
+Equality on typed objects is defined as equality on "fat pointers" - two structs are equal if the point at the same storage and have the same types. 
+(this is equivalent to component-wise equality on tuples representing the pointers). 
+
+For the above example,
+   !(s1 === s.s1)
+   s11 === s.s1
+
+Engines can then optimize the representation of the typed objects quite heavily, including potentially a zero-allocation implementation for local variables and parameters to functions.
+ 
+
+===== Types =====
+
+A **//type//** is a spec-internal construct that represents a kind of template or schematic for a class of data: how to allocate instances of that class, and what coercion to apply when updating a slot of that type.
+
+A **//type object//** is an ECMAScript object that represents a particular type.
+
+==== Built-in Value Types ====
+
+The typed objects library includes a number of **//value types//**, which represent immutable data. Type objects that represent value types can be called to perform their coercions, but they cannot be invoked with ''new''.
+
+The numeric value types are:
+
+  * ''uint8'', ''uint8Clamped'' : 8-bit unsigned integers
+  * ''uint16'' : 16-bit unsigned integers
+  * ''uint32'' : 32-bit unsigned integers
+  * ''int8'' : 8-bit signed integers
+  * ''int16'' : 16-bit signed integers
+  * ''int32'' : 32-bit signed integers
+  * ''float32'' : 32-bit IEEE754 floating-point numbers
+  * ''float64'' : 64-bit IEEE754 floating-point numbers
+
+Each numeric value type's coercion is the standard coercion, except for ''uint8Clamped'', which performs a saturating coercion.
+
+The other value types are:
+
+  * ''boolean'' : ECMAScript primitive boolean
+  * ''string'' : ECMAScript primitive string
+
+The coercions associated with these types are the standard ECMAScript algorithms %%[[%%ToBoolean%%]]%% and %%[[%%ToString%%]]%%, respectively.
+
+==== Built-in Reference Types ====
+
+The built-in **//reference type//** (i.e., non-value type):
+
+  * ''Object'' : ECMAScript object reference
+
+can contain a reference to any ECMAScript object or ''null''. The coercion associated with the ''Object'' type descriptor is the standard ECMAScript %%[[%%ToObject%%]]%% algorithm.
+
+The built-in reference type:
+
+  * ''Any'' : any ECMAScript value
+
+can contain a reference to any ECMAScript value. The ''Any'' type descriptor does not perform any coercion.
+
+
+
+==== Struct Types ====
+
+The ''StructType'' constructor defines new struct (i.e., record) type descriptors.
+
+<code javascript>
+T = new StructType({ field1: T1, ..., fieldn: Tn })
+</code>
+
+The ''StructType'' constructor takes an object that describes the struct layout. The object is enumerated for its own properties (similar to ''Object.defineProperty'' et al). If any of the own properties has an indexed name an exception is thrown (this avoids incompatibilities in the enumeration order between engines).
+
+A struct type T can be used as a function to create a typed struct object:
+
+<code javascript>
+x = T({ field1: x1, ..., fieldn: xn });
+</code>
+
+The initializer argument can be left out:
+
+<code javascript>
+x = T();
+</code>
+
+In this case the %%[[%%Initialize%%]]%% method for each field type is used to initialize the fields.
+
+A struct type can also be used to create a typed object over an existing storage:
+
+<code javascript>
+x = T(arrayBuffer, offset);
+</code>
+
+Typed objects of the same type created over the same array buffer at the same offsets are identical:
+
+<code javascript>
+x = T(arrayBuffer, offset);
+y = T(arrayBuffer, offset);
+x === y // true
+</code>
+
+Prototypes of typed objects are derived from their types, i.e.: 
+  x.__proto__ === T.prototype
+
+
+
+==== Array Types ====
+
+For every type T, a type representing arrays of a fixed size of type T can be created:
+
+<code javascript>
+TArray = T.Array(n);
+</code>
+
+An array type T can be instantiated to construct a typed array:
+
+<code javascript>
+x = TArray([1, 1, 3, 5, 8, 13, 21, 34]);
+</code>
+
+The initializer must have the length less than the length of an array. The initializer can be left out:
+
+<code javascript>
+x = TArray();
+</code>
+
+%%[[%%Initialize%%]]%% method for the array's element type is used to initialize the array elements not specified by the initializer.
+
+Function T.array(n) is a shortcut for T.Array(n)(), so the following
+
+<code javascript>
+x = T.array(10)
+</code>
+
+creates an array of 10 Ts. T.array is also overloaded to work from array-like initializer, so that:
+
+<code javascript>
+x = Point.array([{x : 0, y : 0}, {x : 1, y : 1}]);
+</code>
+
+creates a pair of Points (a 2-element array of Points). Its type is Point.Array(2).
+
+All arrays of the same element type share the same prototype, accessible by T.Array.prototype.
+
+Multidimensional arrays can be constructed by applying dim to array types:
+
+<code javascript>
+const TT = T.Array(2).Array(2);
+var tt = TT([[1,2],[3,4]])
+</code>
+
+The prototype relationship still applies, so that
+   tt.__proto__ === T.Array.Array.prototype
+
+
+====== Types: Details ======
+
+This section describes the concepts of the types API in more detail.
+
+
+
+
+
+
+===== Opacity =====
+
+For most typed objects, their backing storage can be accessed through the API below, e.g.:
+
+<code javascript>
+let p = Point({x : 0, y : 0});
+let arrayBuffer = storage(p).buffer;
+</code>
+
+arrayBuffer gives direct access to the "bytes" underlying p. Occasionally this is undesired, e.g. when passing a typed object as an output argument to a function. To prevent access to underlying storage, an opaque instance of typed object can be created:
+
+<code javascript>
+let p = Point(arrayBuffer, 64); // p references existing array buffer
+let result = opaque(p);
+result.x = 1; // modifies p.x
+storage(result); // returns null
+computeResult(result); // can modify result.x and result.y but cannot access arrayBuffer
+</code>
+
+There are three built-in types that are considered **//opaque//**: ''Object'', ''string'', and ''Any''. For security, they are not allowed to expose their internal storage since they may contain pointers (see below). A struct or array type is opaque if it contains opaque fields or elements, respectively.
+
+All typed objects of opaque types are opaque. Also, all sub-objects of opaque objects are opaque:
+
+<code javascript>
+const O = new StructType({ o : object, p : Point });
+f = function() { console.log("!!!"); }
+o = O({ o : f, p : { x : 1, y : 2 }});
+// o is opaque
+opaque(o) === o; // O.opaque is identity.
+// Even though Point is not an opaque type, o.p is opaque.
+</code>
+
+For every non-opaque types, an opaque version can be obtained:
+<code javascript>
+const OPoint = Point.Opaque();
+var op = OPoint({ ... });
+storage(op) === undefined;
+const OO = O.Opaque(); // OO === O
+</code>
+
+
+===== Type Equivalence =====
+
+Types have an inherent concept of equivalence, i.e., when two types T1 and T2 can be considered to be the same. In particular, any operation expecting a value of type T1 accepts values of type T2 and vice versa. Type equivalence comes into play in the ''T.storage'' and ''Handle.move'' methods (see below).
+
+Types are considered equivalent if their structure is equivalent, in the following sense:
+
+  * If they are structs, their field names and orders match and their field types are (inductively) equivalent.
+  * If they are arrays of fixed length, their length is the same and their element type is (inductively) equivalent.
+  * If they are built-in types, they must be the same built-in type.
+
+Note that this makes it possible to construct two user-defined types that have two separate type objects (which are distinguishable via ''==='') but that are nevertheless equivalent. This //structural typing// allows for multiple libraries to interoperate without sharing common type definitions.
+
+====== Typed Objects: Details ======
+
+This section describes the concepts of the typed objects API in more detail.
+
+
+===== Exposing Storage =====
+
+Instances of transparent types can expose their underlying storage as binary data. Transparent array types have the following properties:
+
+  * ''.buffer'' : ''ArrayBuffer'' or ''null'' : the buffer containing the backing storage for the array
+  * ''.byteOffset'' : ''integer'' or ''undefined'' : the byte offset in the buffer at which the array data begins
+  * ''.byteLength'' : ''integer'' or ''undefined'' : the number of bytes of the buffer consumed by the array
+
+The following operations on typed objects expose storage:
+
+  * ''buffer(object)'' : ''ArrayBuffer'' or ''null'' : the buffer containing the backing storage for the array
+  * ''byteOffset(object)'' : ''integer'' or ''undefined'' : the byte offset in the buffer at which the array data begins
+  * ''byteLength(object)'' : ''integer'' or ''undefined'' : the number of bytes of the buffer consumed by the array
+  * ''storage(object)'' : takes an instance of the struct type and produces an object containing the above three properties.
+
+An example of extracting the storage of a transparent struct:
+
+<code javascript>
+const Point = new StructType({ x: uint32, y: uint32 });
+let p = Point({ x: 0, y: 0 });
+let { buffer, byteOffset, byteLength } = storage(p);
+</code>
+
+An example of an opaque struct type:
+
+<code javascript>
+let t = Thing({ foo: obj1, bar: obj2 });
+storage(Thing) === undefined // true
+</code>
+
+
+===== Struct Layout =====
+
+The layout of transparent struct types is observable by exposing their storage. For portability, the layout is fully specified.
+
+The layout of a struct type follows the enumeration order of the struct layout descriptor that was used to create the type.
+
+Each field is padded to reside at a byte offset that is a multiple of the field type's byte alignment (specified below via the %%[[%%ByteAlignment%%]]%% internal property). The struct type's byte length is padded to be a multiple of the largest byte alignment of any of its fields.
+
+===== Introspection =====
+
+Typed objects can be queried for their type object:
+
+<code javascript>
+let p = new Point();
+objectType(p) === Point // true
+</code>
+
+Non-typed objects simply produce the type ''Object'':
+
+<code javascript>
+let o = { x: 0, y: 0 };
+objectType(o) === Object // true
+</code>
+
+
+====== API ======
+
+===== Types =====
+
+Type objects are functions with the following additional properties:
+
+  * ''opaque'' : ''boolean''
+
+Indicates whether the type is opaque.
+
+  * ''byteLength'' : ''integer'' | ''undefined''
+
+Transparent, fixed-size types have a ''byteLength'' that indicates the ''byteLength'' of their instances. For opaque or variable-size types, this property is ''undefined''. The ''byteLength'' of the built-in ''boolean'' type is 1.
+
+  * ''byteAlignment'' : ''integer'' | ''undefined''
+
+Transparent, fixed-size types have a ''byteAlignment'' that reflects the %%[[%%ByteAlignment%%]]%% internal property. For opaque or variable-size types, this property is ''undefined''.
+
+  * ''.storage(x)'' : ''{ buffer: ArrayBuffer, byteOffset: integer, byteLength: integer }''
+
+Produces an object exposing the backing storage of the typed object (see above).
+
+  * ''.equivalent(T)'' : ''boolean''
+
+Determines whether the two types are equivalent, using the algorithm described above.
+
+  * %%[[%%Initialize%%]]%%(obj, propName)
+
+This internal method is used for constructing default opaque objects. The method takes a base object and a property name and initializes that property of the base object with default values for the type. For number types these are zero values; for ''Object'' the zero value is ''null'', for ''Any'' the zero value is ''undefined''; for ''boolean'' the zero value is ''false''; for ''string'' the zero value is ''""''; for structs and arrays these recursively initialize all fields or elements, respectively.
+
+  * %%[[%%ByteAlignment%%]]%%
+
+This internal property indicates the alignment requirements for struct padding; it is only defined for transparent, fixed-size types. For number types, the value is the type's byte length. For ''boolean'', the value is 1. For fixed-size arrays, the value is the %%[[%%ByteAlignment%%]]%% of the element type multiplied by the length. For structs, the value is the largest %%[[%%ByteAlignment%%]]%% of the fields.
+
+==== Struct Types ====
+
+In addition to the properties described above of all type objects, struct type objects have the following properties:
+
+  * ''fieldOffsets'' : ''{ string: integer, ... }''
+
+A map indicating the byte offsets of each field in the struct type.
+
+  * ''fieldTypes'' : ''{ string: Type, ... }''
+
+A map indicating the types of each field in the struct type.
+
+==== Array Types ====
+
+In addition to the properties described above of all type objects, array type objects have the following properties:
+
+  * ''elementType'' : Type
+
+The type of the array elements.
+
+  * ''length'' : ''integer'' or ''undefined''
+
+Length of an array type.
+
+===== Typed Objects =====
+
+All typed objects have an internal property:
+
+  * %%[[%%Type%%]]%%
+
+that indicates the type of the object.
+
+==== Structs ====
+
+A struct object contains only the own-properties specified by the struct type. These are reflected as data properties that are non-configurable, writable, and enumerable.
+
+
+==== Arrays ====
+
+A typed array contains only the own-properties ''length'' and ''0'' through ''length'' - 1. The ''length'' data property is non-configurable, non-writable, and enumerable. The indexed data properties are non-configurable, writable, and enumerable.
+
+Typed arrays have the following methods:
+
+  * ''.get(index)''
+  * ''.set(index, value)''
+  * ''.set(array[, startOffset[, endOffset]])''
+  * ''.subarray(begin, end)''
+
+====== Rationale ======
+
+  * Why not address I/O use cases?
+
+The ''DataView'' abstraction (specified by Khronos, will be folded into ECMAScript) provides the low-level primitives needed for this, and user-land abstractions can be built on top. This is already being done, e.g. with libraries like [[https://github.com/jDataView/jDataView/|jDataView]] or [[https://github.com/dherman/datascript.js|datascript.js]] (latter is a personal pet project of dherman's, not yet working).
+
+In particular, binary formats often need expressive and dynamic data dependencies that are decidedly out of scope for this API, such as being able to specify an array whose length is determined by a preceding integer, or a file entry whose starting offset is determined by a preceding integer.
+
+  * Why not allow endianness/layout to be customizable?
+
+Other than in the I/O case, endianness only matters for WebGL, and since this API compatibly extends Khronos typed arrays, the solution is the same. For layout, WebGL can use the type introspection API's to determine offsets. The other common need for controlling layout is for avoiding wasteful padding; this can be done by hand by reordering struct fields from largest to smallest.
+
+  * Why depend on enumeration order for the struct layout descriptor?
+
+The API only uses named own-properties, whose enumeration order is portable across engines and being specified in ES6 for portability. The common case will be to use an object literal, whose syntax is highly readable for this API.

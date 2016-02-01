@@ -1,0 +1,120 @@
+**This proposal has progressed to the Draft ECMAScript 6 Specification, which is available for review here: [[harmony:specification_drafts]]. Any new issues relating to them should be filed as bugs at [[http://bugs.ecmascript.org]]. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.**
+
+===== Precedent =====
+
+  * ''(new Function).name === "anonymous"'' wanted by the Web, according to [[https://bugs.webkit.org/show_bug.cgi?id=7726|this webkit bug]]
+  * ''(function(){}).name === ""'' may be wanted too, we suspect -- we aren't sure, though, so this behavior of some browser-based implementations is not strong precedent
+  * ''function f(){} assert(f.name === "f")'' is implemented by several browsers, with name not writable and not configurable
+  * Most browsers that implement ''name'' for functions use it in the result of ''toString'' as the function identifier ([[https://mail.mozilla.org/pipermail/es-discuss/2009-March/008916.html|detailed results of testing by Allen]])
+  * ''toString'' according to ES3 is not well-defined for anonymous function expressions
+  * Writable [[http://trac.webkit.org/changeset/42478|displayName]] property used for console logging in webkit
+
+
+===== Goals =====
+
+These conflict if achieved for all functions.
+
+  * Support //de facto// standards per above precedent
+  * Avoid adding unnecessary properties
+  * Keep ''name'' and ''toString'' results consistent
+  * Automatically derive names for synthesized functions such as get, set, and bind functions
+    * e.g., for ''obj = {get prop() { return 42; }}'' extracting the getter for ''prop'' would recover a function ''g'' such that ''g.name === "get prop"'' in one proposal
+  * Allow some functions to be given arbitrary names, e.g. by code generators (Objective-J)
+
+===== Proposals =====
+
+These are not mutually exclusive.
+
+  * For function declarations and named function expressions, create a non-writable, non-configurable ''name'' property whose value is the function's identifier as a string
+  * For anonymous function expressions, create no ''name'' property at all
+  * ''Function.prototype'' would have no ''name'' property (in some implementations it is a function created as if by evaluating an anonymous function expression taking no arguments and having an empty body)
+  * Add ''Function.create(''//name//'', ''//params...//'', ''//body//'')'' per [[https://mail.mozilla.org/pipermail/es-discuss/2009-March/008954.html|Maciej's suggestion]]
+  * Rather than adding a WebKit-inspired ''displayName'' [[http://www.alertdebugging.com/2009/04/29/building-a-better-javascript-profiler-with-webkit/|writable property]], specify ''Function.displayName(f)'' as follows:
+    * If ''f.name'' exists, return ''f.name''.
+    * Else if ''f'' was invoked via an expression evaluated from a Reference whose propertyName was ''N'', return ''N''.
+    * Else if ''f'' was assigned to a Reference whose propertyName was ''M'', return ''M''. There could be more than one such ''M''. Implementations should pick the most recently used name.
+    * Else if ''f'' was the initial value in an object initializer or a property descriptor for a property named ''P'', return ''P''.
+    * Else returned ''undefined''.
+
+===== Discussion =====
+
+I like the spirit of Maciej's proposal, but I don't like repeating the string-pasting, ''eval''-like interface of the ''Function'' constructor. Here's a variation:
+
+<code javascript>
+Function.create(name, call[, construct[, proto]])
+</code>
+
+Creates a function with the given display name, call behavior, optional construct behavior (which defaults to the usual call-with-fresh-object behavior), and optional prototype (which defaults to the original value of ''Function.prototype'').
+
+<code javascript>
+Function.getDisplayNameOf(f)
+</code>
+
+Returns the display name of a function.
+
+Some more detail:
+
+  * Every function has an internal %%[%%%%[%%DisplayName%%]%%%%]%% property
+  * The semantics automatically infers this property for function literals in at least the following contexts:
+    * function declarations: the declared name is the inferred display name
+    * named function expressions: the function name is the inferred display name
+    * ''var''/''let''/''const'' declarations that assign function literals: the variable name is the inferred display name
+    * object literals that assign function literals to property names: the property name is the inferred display name
+
+Sample implementation:
+
+<code javascript>
+(function() {
+    var names = new WeakMap();
+
+    Function.create = function(name, call, construct, fproto) {
+        if (!fproto)
+            fproto = Function.prototype;
+        if (fproto !== Function.prototype && !(fproto instanceof Function))
+            throw new TypeError("expected instance of Function, got " + fproto);
+        var f;
+        if (!construct) {
+            construct = function() {
+                var oproto = f.prototype;
+                if (typeof oproto !== "object")
+                    oproto = Object.prototype;
+                var newborn = Object.create(oproto, {});
+                var result = Function.prototype.apply.call(call, arguments);
+                return typeof result === "object" ? result : newborn;
+            }
+        }
+        var handler = Proxy.Handler(Object.create(fproto, {}));
+        f = Proxy.createFunction(handler, call, construct, fproto);
+        return f;
+    };
+
+    Function.getDisplayNameOf = function(f) {
+        return names.get(f);
+    };
+})();
+</code>
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2011/02/24 06:00//
+
+The major objection to losing the "compile this string as the function body" ''Function'' design on which Maciej built comes from the use-case: Objective J compilation and similar want to create a function per "method", not two (one returned by this variation and its ''call'' function). Maciej's ''Function.create'' proposal was simply a ''Function'' variant that allowed the intrinsic name to be specified. This variation is more like a proxy-maker.
+
+A minor objection:
+
+<code javascript>
+Function.prototype instanceof Function  // => false
+</code>
+
+This means you cannot pass ''otherWindow.Function.prototype'' as the ''proto'' parameter.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/02/28 21:34//
+
+Despite being one of the people responsible for displayName existing i kind of wish that it didn't.  I feel that a lot of what it provides needn't being exposed to content in general.  In hindsight i feel the better solution would have been to have the platform development tools provide APIs to associate names with some functions and so not have it be part of ES core.
+
+If we were wanting to standardise some kind of developer tools API (essentially the frequently reverse engineered 'console' APIs) I think displayName (or similar) would make sense there.
+
+ --- //[[oliver@apple.com|Oliver Hunt]] 2011/05/01 23:33//
+
+
+Proposal update from Brandon Benvie: https://mail.mozilla.org/pipermail/es-discuss/2012-November/026403.html
+
+ --- //[[waldron.rick@gmail.com|Rick Waldron]] 2013/01/29 09:58//

@@ -1,0 +1,906 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=clarification" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#type_conversions" class="toc">Type conversions</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#solution_1updateable_type_constraints_deprecated" class="toc">Solution 1: Updateable type constraints (DEPRECATED)</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#solution_2automatic_dynamic_wrappers" class="toc">Solution 2: Automatic dynamic wrappers</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#solution_3explicit_dynamic_wrappers" class="toc">Solution 3: Explicit dynamic wrappers</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#solution_4write_barrier_type-check" class="toc">Solution 4: Write barrier type-check</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#solution_5explicit_dynamic_deep_copy_deprecated" class="toc">Solution 5: Explicit dynamic (deep) copy (DEPRECATED)</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#solution_6._explicit_dynamic_shallow_copy_deprecated" class="toc">Solution 6. Explicit dynamic (shallow) copy (DEPRECATED)</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#solution_7automatic_dynamic_copy_deprecated" class="toc">Solution 7: Automatic dynamic copy (DEPRECATED)</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#solution_8read_barrier_type-check" class="toc">Solution 8: Read barrier type-check</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#informative_notes_on_dynamic_optimization" class="toc">Informative notes on dynamic optimization</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#solution_9write_barrier_with_deep_checking" class="toc">Solution 9: Write barrier with deep checking</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#discussion" class="toc">Discussion</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#runtime_types" class="toc">Runtime types</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#dynamic_checks" class="toc">Dynamic checks</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#tag_subtype_checking" class="toc">Tag subtype checking</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#deep_tag_checking" class="toc">Deep tag checking</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#implications" class="toc">Implications</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#convertible_types" class="toc">Convertible types</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#object_field_invariants" class="toc">Object field invariants</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#type_conversions_and_tail_calls" class="toc">Type conversions and tail calls</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#type_check_elimination" class="toc">Type check elimination</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#merging_type_checks" class="toc">Merging type checks</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#implementation_via_cast-passing_style" class="toc">Implementation via cast-passing style</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#implementation_via_stack_annotation" class="toc">Implementation via stack annotation</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#merging_sets_of_types" class="toc">Merging sets of types</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#implementations" class="toc">Implementations</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=clarification:runtime_types_and_conversions&amp;do=export_html.html#other_considerations" class="toc">Other considerations</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<p>
+DO NOT EXPORT
+</p>
+
+<a name="type_conversions"></a><h1>Type conversions</h1>
+<div class="level1">
+
+<p>
+ There are a number of places where type conversions occur, e.g.: 
+</p>
+<ul>
+<li class="level1"><div class="li"> interconvertible types like <code>int</code> and <code>double</code></div>
+</li>
+<li class="level1"><div class="li"> interconvertible types with <code>to</code> methods</div>
+</li>
+<li class="level1"><div class="li"> structural types with convertible component types</div>
+</li>
+<li class="level1"><div class="li"> using something of type * in a statically typed context</div>
+</li>
+</ul>
+
+<p>
+ In each conversion, there is a static portion and a dynamic portion: the static type checker knows what types are interconvertible and allows or disallows the conversion accordingly. The dynamic portion is the actual runtime conversion.
+</p>
+
+<p>
+For simple types like <code>int</code> and <code>double</code>, the runtime conversion is straight-forward. But there are two things that make conversion more subtle: functions and mutable slots.
+</p>
+
+<p>
+Take the following example. We expect to be able to use a dynamically typed object with a (static) structural object type. But the mutability of the slots is problematic:
+</p>
+<pre class="code javascript">type Box = <span class="br0">&#123;</span> val: TCPSocket <span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">var</span> boxAny : * = <span class="br0">&#123;</span> val: <span class="kw2">new</span> TCPSocket <span class="br0">&#125;</span> : *
+<span class="kw2">var</span> box : Box = boxAny          <span class="co1">// conversion from * ~&gt; Box</span>
+boxAny.<span class="me1">val</span> = <span class="kw2">new</span> RubberChicken  <span class="co1">// no problem, boxAny is untyped</span>
+box.<span class="me1">val</span>                         <span class="co1">// ERROR: no longer a TCPSocket!</span></pre>
+<p>
+At some point, it has to be an error for <code>o.x.val</code> to be a <code>RubberChicken</code>, because the type system promised it would always be a <code>TCPSocket</code>. It&rsquo;s generally not possible to catch this kind of error statically, because of type <code>*</code>. But there are many options for how and when to generate this error at runtime.
+</p>
+
+</div>
+<!-- SECTION [16-1531] -->
+<a name="solution_1updateable_type_constraints_deprecated"></a><h2>Solution 1: Updateable type constraints (DEPRECATED)</h2>
+<div class="level2">
+
+<p>
+ When a value is used in a context that needs to impose more type constraints on it, we could simply update its internal type constraints. This is simple and efficient, but means that when passing a value to multiple places, which could be in totally unrelated parts of the program, the type constraints of one context could affect the behavior of the other. This violates the program&rsquo;s abstractions and will generate very confusing errors that are hard to debug.
+</p>
+
+<p>
+<strong>DEPRECATED: violates abstractions</strong>
+</p>
+
+</div>
+<!-- SECTION [1532-2100] -->
+<a name="solution_2automatic_dynamic_wrappers"></a><h2>Solution 2: Automatic dynamic wrappers</h2>
+<div class="level2">
+
+<p>
+ Since an object&rsquo;s type constraints might be violated by a mutation at any subsequent point in the program, like the one in the <code>Box</code> example, it&rsquo;s not enough to check the constraints only at the time of conversion.  One solution is to protect a typed property whose value is untyped with extra checks at all gets/sets. This can be thought of as wrapping the value in a &ldquo;view&rdquo; or &ldquo;fat pointer&rdquo; that allows mutations to still happen on the underlying object and claims to be <code>===</code> to the original object, but wraps its get/set operations with extra checks.
+</p>
+
+<p>
+This approach can also be used for wrapping functions: to convert a function of type <code>(function(*):*)</code> to a function of type <code>(function(int):String)</code>, you wrap it in a proxy whose <strong>[[Call]]</strong> behavior inserts extra before/after dynamic checks to preserve the type&rsquo;s invariants. Using the &ldquo;view&rdquo; approach, this wrapper can actually still allow the original function object and wrapped function object to share property tables and be considered the &ldquo;same object&rdquo; according to <code>===</code>.
+</p>
+
+<p>
+The benefits of this solution are that it&rsquo;s safe, fully general, and allows for the full range of conversions. The drawback is efficiency: it means every communication between typed and untyped code incurs a space and time cost for adding a wrapper. If this were to make crossing the boundary between typed and untyped code too expensive, it might discourage users from mixing the two styles.
+</p>
+
+<p>
+On the other hand, if most heavy computation doesn&rsquo;t happen across these boundaries, this efficiency cost might be negligible. The only way to know is to experiment, but we should think about this. If most tight inner loops are not communicating between typed and untyped code, it may not be such an issue.
+</p>
+
+<p>
+This solution also implies that all operations on objects might have to operate on views, which has global implications for efficiency. It can probably be as small as a single branch and pointer indirection, but it&rsquo;s widespread. (Clever compilers can prove with flow analysis when no mixing could occur and optimize away some of these checks, but in general this is probably unlikely.)
+</p>
+
+</div>
+<!-- SECTION [2101-4294] -->
+<a name="solution_3explicit_dynamic_wrappers"></a><h2>Solution 3: Explicit dynamic wrappers</h2>
+<div class="level2">
+
+<p>
+ On the other hand, if the cost of wrapping is too much to incur silently, we can force the user to request the wrapper by making automatic conversions between typed/untyped code illegal, but provide an explicit cast operator that adds wrappers as above. This way users don&rsquo;t have to implement the wrappers themselves, but they do have to ask for it when they want it.
+</p>
+
+</div>
+<!-- SECTION [4295-4714] -->
+<a name="solution_4write_barrier_type-check"></a><h2>Solution 4: Write barrier type-check</h2>
+<div class="level2">
+
+<p>
+ A simple possibility is to perform typechecks when assigning  an object to a slot. When an &ldquo;untyped object&rdquo; (an object with type *)  is passed to a typed slot (a slot with type T != *), the object type  is not compatible with the slot type so an exception is raised.
+</p>
+
+<p>
+In this case, there are no safety issues, but some potential pain exists when upgrading libraries to &ldquo;types mode&rdquo;: legacy untyped user code cannot pass structured parameters, for example. 
+</p>
+
+<p>
+<strong>GROUP REACTION:</strong> 
+</p>
+<ul>
+<li class="level1"><div class="li"> Everyone&rsquo;s concerned with the example case of &ldquo;adding types to the <acronym title="Document Object Model">DOM</acronym>&rdquo;</div>
+</li>
+<li class="level1"><div class="li"> Read barriers probably better (case 8, with dynamic optimizations)</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [4715-5391] -->
+<a name="solution_5explicit_dynamic_deep_copy_deprecated"></a><h2>Solution 5: Explicit dynamic (deep) copy (DEPRECATED)</h2>
+<div class="level2">
+
+<p>
+ Instead of &ldquo;views&rdquo; which share state with the objects they wrap, we could make a cast that copies the object. This is likely to be much more expensive than the view approach, since it probably requires a deep copy in order to handle all conversions recursively throughout a compound structural type. The semantics of copying complicated ES objects might not be obvious, either. But it avoids the difficulty of implementing views, and it avoids the global invariant that all object operations might involve an indirection through views.
+</p>
+
+<p>
+<strong>DEPRECATED: too deep (often copies entire world)</strong>
+</p>
+
+</div>
+<!-- SECTION [5392-6049] -->
+<a name="solution_6._explicit_dynamic_shallow_copy_deprecated"></a><h2>Solution 6. Explicit dynamic (shallow) copy (DEPRECATED)</h2>
+<div class="level2">
+
+<p>
+ Instead of a deep copy, we could provide only a certain set of shallow copying cast operators (e.g., one for function types, one for structural object types, etc.). Users who want to convert a compound type with multiple conversions have to implement the recursive deep copy themselves.
+</p>
+
+<p>
+This is simpler than the deep copy option, and might not be terribly inefficient in practice. As with deep copy, it avoids the efficiency issues of making all operations in the runtime operate on views.
+</p>
+
+<p>
+<strong>DEPRECATED: almost as inconvenient as no copy, copy semantics precludes mutation</strong>
+</p>
+
+</div>
+<!-- SECTION [6050-6697] -->
+<a name="solution_7automatic_dynamic_copy_deprecated"></a><h2>Solution 7: Automatic dynamic copy (DEPRECATED)</h2>
+<div class="level2">
+
+<p>
+ Instead of explicit copy operators, it&rsquo;s also possible to implement an automatic conversion via copying. This is essentially what Lars&rsquo;s functional wrapper proposal is doing for functions, and the analogous behavior for object types would be to perform a deep copy. The more I think about it, the more fraught with issues deep copy is.. But anyway, this is a possibility.
+</p>
+
+<p>
+<strong>DEPRECATED: terrifying</strong>
+</p>
+
+</div>
+<!-- SECTION [6698-7159] -->
+<a name="solution_8read_barrier_type-check"></a><h2>Solution 8: Read barrier type-check</h2>
+<div class="level2">
+
+<p>
+ This approach avoids the time and space overheads (and implementation complexity) of wrappers (see option 2 above), but requires dynamic checks to be sprinkled (to a greater or lesser extent) throughout the program.
+</p>
+
+<p>
+For the example above, the conversion from * to Box does not introduce a wrapper or view; box is just set to  point to the same record as boxAny. On the access to box.val (or any access to a record), since box has type Box = {val:TCPSocket} and the underlying record is not guaranteed to hold a TCPSocket, the compiler will insert a check that box.val returns a TCPSocket, and will issue a dynamic type error otherwise. Note that this error is detected at the same time as option 2, though with different machinery.
+</p>
+
+<p>
+For other code like: 
+</p>
+<pre class="code javascript">type Box = <span class="br0">&#123;</span> val: TCPSocket <span class="br0">&#125;</span>
+<span class="kw2">function</span> f<span class="br0">&#40;</span>box:Box<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> box.<span class="me1">val</span>;
+<span class="br0">&#125;</span></pre>
+<p>
+the compiler will also insert the same dynamic check.
+</p>
+
+<p>
+Essentially, option 2 introduces run-time data structures (wrappers and views) to ensure that the necessary run-time checks are performed; this option 8 statically inserts those checks everywhere they might be needed.
+</p>
+
+<p>
+Of course, a sufficiently-smart compiler could prove many of these checks are redundant, and the necessary analyses are fairly tractable. One limitation is that worst-case assumptions would need to be made about data coming from outside the current module, or unit of analysis.
+</p>
+
+<p>
+<strong>INITIAL GROUP REACTION:</strong> 
+</p>
+<ul>
+<li class="level1"><div class="li"> Jeff thinks this may be viable</div>
+</li>
+<li class="level1"><div class="li"> Cormac: dynamically less inefficient (less runtime type information)</div>
+</li>
+<li class="level1"><div class="li"> Brendan: compiler optimization burden too heavy?</div>
+</li>
+<li class="level1"><div class="li"> Lars: probably too expensive; won&rsquo;t have a smart compiler.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [7160-8873] -->
+<a name="informative_notes_on_dynamic_optimization"></a><h3>Informative notes on dynamic optimization</h3>
+<div class="level3">
+
+<p>
+ The group discussed this point at some length during the July meeting, and settled on two possible dynamic optimizations that can make read barrier type-checks cheaper. Cheap enough, we believe, to make them feasible even in dynamic implementations with &ldquo;non-smart&rdquo; compilers. While not necessarily a part of the language semantics, we felt it important to record these possible techniques. 
+</p>
+
+<p>
+In the following, we assume that there is an object <code>OBJ</code> that has a type <code>T</code>, and <code>n-1</code> slots <code>S0:U0</code> .. <code>S<em>n</em>:U<em>n</em></code> <em>outside</em> <code>OBJ</code>, that <em>refer</em> to <code>OBJ</code>. Then when attempting a property read <code>S<em>i</em>.x</code>, intended to extract field <code>x</code> from <code>OBJ</code> via some referencing slot <code>S<em>i</em>:U<em>i</em></code>, we have two ways to cache type-compatibility information to make this read efficient: 
+</p>
+<ol>
+<li class="level1"><div class="li"> <code>OBJ</code> can carry a single bit that is set when <em>any</em> slot <code>S<em>k</em>:U<em>k</em></code> exists with <code>Uk != T</code>. </div>
+<ul>
+<li class="level2"><div class="li"> When the bit is set, <code>S<em>i</em>.x</code> must perform a typecheck between <code>U<em>i</em></code> and <code>T</code>.</div>
+</li>
+<li class="level2"><div class="li"> When the bit is cleared, we know that <em>every</em> <code>S<em>k</em>:U<em>k</em></code> has <code>U<em>k</em> == T</code>, so <code>S<em>i</em>.x</code> can proceed without a typecheck.</div>
+</li>
+<li class="level2"><div class="li"> This bit (on <code>OBJ</code>) may be modified any time a new <code>S<em>j</em></code> is made to refer to <code>OBJ</code>.</div>
+</li>
+</ul>
+</li>
+</ol>
+<ol>
+<li class="level1"><div class="li"> Every slot <code>S<em>i</em>:U<em>i</em></code> <em>that currently refers to <code>OBJ:T</code></em> can carry a single bit that indicates whether <code>U<em>i</em> != T</code>.  </div>
+<ul>
+<li class="level2"><div class="li"> When the bit is set, as above, <code>S<em>i</em>.x</code> must perform a typecheck between <code>U<em>i</em></code> and <code>T</code>.</div>
+</li>
+<li class="level2"><div class="li"> When the bit is cleared, as above, no type comparison is required.</div>
+</li>
+<li class="level2"><div class="li"> These bits (on every <code>S<em>i</em></code>) must be set or cleared any time an <code>S<em>i</em></code> is given a referent: there&rsquo;s only one bit and it relates to the <em>current referent</em>.</div>
+</li>
+</ul>
+</li>
+</ol>
+
+<p>
+ Essentially the first case spends a bit less space (one bit per object), but is more likely to enter the slow slot-to-object type comparison. The second case spends a bit more space (one bit per slot) but is less likely to enter the slow type comparison. 
+</p>
+
+</div>
+<!-- SECTION [8874-10925] -->
+<a name="solution_9write_barrier_with_deep_checking"></a><h2>Solution 9: Write barrier with deep checking</h2>
+<div class="level2">
+
+<p>
+ (Added 2007-07-20 at the Yahoo! (Sunnyvale) meeting, after long discussion about use cases, see <a href="doku.php%3Fid=meetings:minutes_jul_19_2007.html" class="wikilink1" title="meetings:minutes_jul_19_2007" onclick="return svchk()" onkeypress="return svchk()">minutes</a>.)
+</p>
+
+<p>
+Variables, parameters, and functions can be annotated with structural object types.  When a value is stored into a variable or parameter so annotated, or when a value is returned from a parameter so annotated, then a deep check is made to ensure that the object conforms to the type in question: all fields must be present, and must contain values that are compatible with the specified field types.
+</p>
+
+<p>
+In other words, this is a write barrier with a weak notion of safety.  There is no checking on reads or writes to components of the value, only on writes to the annotated variable or parameter (and of course any annotated fields or properties in it, if the actual value is a typed object structure or a nominal type instance).
+</p>
+
+<p>
+It is a useful solution mainly because it (a) speaks to all the use cases except strong safety and (b) is tractable (not a research problem).
+</p>
+
+<p>
+<strong>INITIAL GROUP REACTION:</strong> 
+</p>
+<ul>
+<li class="level1"><div class="li"> Lars proposed it</div>
+</li>
+<li class="level1"><div class="li"> Brendan thinks it&rsquo;s a viable compromise</div>
+</li>
+<li class="level1"><div class="li"> Chris mentioned that this is what people have asked for in the Ruby world</div>
+</li>
+<li class="level1"><div class="li"> Cormac objects to the very weak notion of safety and the conflict between the syntax and the semantics; by analogy with other annotations the former implies something much stronger than what is provided by the latter</div>
+</li>
+<li class="level1"><div class="li"> Jeff doesn&rsquo;t know how well it will do with function types and array types, there may be semantic/performance problems</div>
+</li>
+</ul>
+
+<p>
+ Cormac notes that a safety bit a la Solution 8 can be used here: if an object matches a structural type with all statically typed fields then the bit can be set on the reference, and code can use this for speeding up operations, eg, <code>x.y.z</code> to go down a path: less checking.
+</p>
+
+<p>
+<strong>AFTER OFF-LIST DISCUSSION:</strong>
+</p>
+
+<p>
+Trying to sum up, Lars writes: 
+</p>
+<ul>
+<li class="level1"><div class="li"> future-proofing demands that we not co-opt type annotation syntax for something not providing type-like guarantees (jeff, lth)</div>
+</li>
+<li class="level1"><div class="li"> type annotation syntax should provide type-like guarantees now (jeff)</div>
+</li>
+<li class="level1"><div class="li"> explicit wrapping is viable (everyone), with an operator &ldquo;x wrap T&rdquo; or &ldquo;x like T&rdquo; or &ldquo;x to T&rdquo;</div>
+</li>
+<li class="level1"><div class="li"> unwrapping may be required (brendan)</div>
+</li>
+<li class="level1"><div class="li"> important use cases require that annotated APIs can accept untyped objects from code that can&rsquo;t change (lth, brendan)</div>
+</li>
+<li class="level1"><div class="li"> pushing annotations out of the function header and into the body weakens the language in a sense (cormac, lth)</div>
+</li>
+</ul>
+
+<p>
+ Cormac proposes that <code>like</code> can be used as an annotation, Jeff proposes that it can be used as an operator, in both cases it would check and wrap.  (We need to resolve what the wrapper would do if the object changes under its feet, but that&rsquo;s for later.)
+</p>
+
+<p>
+Leaving functions aside for the moment:  I would like to suggest a variant on this.  The purpose of this variant is to retain the ability to have assertions without wrapping, and to have wrapping when desired, and to use strong future-proof structural annotations.
+</p>
+
+<p>
+(1) Structural type annotations can be used to say something about the permanent structure of the object: 
+</p>
+<pre class="code">function f( x: T ) { ... }</pre>
+
+<p>
+ means that the value passed to x must have the structure indicated by T and this structure must be permanent (type-safe).  Untyped code can&rsquo;t pass old objects through this kind of an interface.
+</p>
+
+<p>
+The operator &ldquo;is&rdquo; performs this kind of test too.
+</p>
+
+<p>
+(2) The annotation and operator &ldquo;like&rdquo; is a shape test that says nothing about permanent structure.  It can be used in a header to provide an assertion on entry or return, and in the body to generate a boolean&rdquo;, and in &ldquo;switch type&rdquo;: 
+</p>
+<pre class="code">function f( x: like T ) : like S {
+    if (x like T)
+       ...
+    switch type (x) {
+    case (x: like S) { ... }
+    }
+}</pre>
+
+<p>
+ The type can be a structural object type or structural array type.  Untyped code can pass old objects through this interface, and conformance will be checked.
+</p>
+
+<p>
+(3) The annotation and operator &ldquo;wrap&rdquo; is exactly &ldquo;like&rdquo; plus construction of a type-safe wrapper if necessary.  The wrapper is known to have the correct shape, and this shape is permanent (type-safe): 
+</p>
+<pre class="code">function f( x: wrap T ) : wrap S {
+    v = x wrap T;
+    switch type (x) {
+    case (x: wrap S) { ... }
+    }
+}</pre>
+
+<p>
+ Now only wrapped objects pay for the read barrier, and the &ldquo;wrap-if-you-must&rdquo; semantics provide for the optimization of Solution 8 in that there will be no wrapper if it&rsquo;s not necessary; obviously the wrapper is more expensive than a bit but perhaps a good compiler can handle this if the object does not flow to other functions.  (If the object does flow to other functions those other functions will get a wrapper that does not lose any safety in the process even if they receive untyped arguments.)
+</p>
+
+<p>
+Wrapper semantics:
+</p>
+
+<p>
+<acronym title="In my opinion">IMO</acronym>, the wrapper should be constructed s.t. it performs a &ldquo;like&rdquo; test every time it pulls a field out of its underlying structure, and throws an error if the shape is not right, <acronym title="In other words">IOW</acronym>, a deep check.  I think this is what&rsquo;s wanted.  But again, this is a little secondary.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2007/07/31 10:59</em>
+</p>
+
+<p>
+Of further note is that &ldquo;wrap&rdquo; makes sense for function types, so an interface like this: 
+</p>
+<pre class="code">function f( fn: function(int,string):boolean )</pre>
+
+<p>
+ accepts functions statically typed like its argument, but  
+</p>
+<pre class="code">function f( fn: wrap function(int,string):boolean )</pre>
+
+<p>
+ would accept some notion of compatible functions too, notably <code>...* &rarr; *</code>, and wrap them in a closure that performs argument checking and return value checking.
+</p>
+
+<p>
+There is also the notion of using &ldquo;function&rdquo; as a type meaning &ldquo;some function&rdquo;, so that a union type can capture &ldquo;other stuff&rdquo;, 
+</p>
+<pre class="code">function f( fn: (function(int,string):boolean,function) )</pre>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2007/07/31 11:39</em>
+</p>
+
+<p>
+Finally, wrapping <em>might</em> be defined along the following lines (just a sketch from some earlier mail!):
+</p>
+
+<p>
+Attempt to define what it means to wrap a structural type:
+</p>
+
+<p>
+The phrase 
+</p>
+<pre class="code">x wrap { f1: t1, t1: t2, ... }</pre>
+
+<p>
+ evaluates to a structure y s.t. &ldquo;y.f1&rdquo; returns &ldquo;x.f1 wrap t1&rdquo; and &ldquo;y.f1 = v&rdquo; stores v in x.f1 if v conforms to t1 and otherwise fails with a run-time error.  Repeated accesses to an unchanged field of a wrapped structure returns the same value, so if x.f1 does not change between two accesses to y.f1 then the second access returns the same value as the first.  Wrapping a structure that has an annotation making it conform to the target type never creates a new object.
+</p>
+
+<p>
+The intent is that if x has manifest type t then x wrap t returns x, and if not it returns some object that provides a t-like view on x.
+</p>
+
+<p>
+I don&rsquo;t mind that if it&rsquo;s explicit, probably.
+</p>
+
+<p>
+If x is a function and ft is a function type t1*t2*...*tn &rarr; tr then 
+</p>
+<pre class="code">x wrap ft</pre>
+
+<p>
+ is 
+</p>
+<pre class="code">let (v = x)
+  function (p1:t1, ..., pn:tn) : tr { return v(p1, ..., pn) }</pre>
+
+<p>
+ If x has the correct manifest type, x wrap ft &rArr; x.
+</p>
+
+<p>
+The phrase 
+</p>
+<pre class="code">x wrap [t]</pre>
+
+<p>
+ is an object that acts as a proxy for the array, returning v wrap t on read and accepting values of type t on write.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2007/07/31 11:39</em>
+</p>
+
+</div>
+<!-- SECTION [10926-18010] -->
+<a name="discussion"></a><h2>Discussion</h2>
+<div class="level2">
+
+<p>
+ Of all of these possibilities, I prefer solutions 2 (automatic wrappers) or 3 (explicit wrappers), because they allow all the conversions we want with a hopefully small overhead. If solution 2 is too &ldquo;magic,&rdquo; solution 3 allows somewhat greater user control. Solution 6 (shallow copy) might be okay, although I think copying is a little subtle in ES, with all the complications like prototypes and internal properties.
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+Graydon reminded me that at the <a href="doku.php%3Fid=meetings:minutes_apr_21_2006.html" class="wikilink1" title="meetings:minutes_apr_21_2006" onclick="return svchk()" onkeypress="return svchk()">April meeting at Microsoft</a>, and in the followup proposal that Lars wrote at <a href="doku.php%3Fid=clarification:type_system.html" class="wikilink1" title="clarification:type_system" onclick="return svchk()" onkeypress="return svchk()">type system</a>, we did indeed agree to use Solution 4 (&rdquo;Disallow problematic conversions&rdquo;).  To ease the pain of migrating ES3 to ES4 code with structural types, I recall that we agreed to something else that Graydon reminded me of, which is fairly buried in my comments in <a href="doku.php%3Fid=clarification:type_system.html" class="wikilink1" title="clarification:type_system" onclick="return svchk()" onkeypress="return svchk()">type system</a>:
+</p>
+<pre class="code javascript">  let obj : SomeStructuralType = <span class="kw2">new</span> SomeStructuralType<span class="br0">&#40;</span>untypedObj<span class="br0">&#41;</span></pre>
+<p>
+That is, we chose Solution 4 combined with an explicit way to construct a (possibly lazy) deep copy of an ES3 object that has the desired ES4 structural type.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/06/30 14:30</em>
+</p>
+
+<p>
+I think Solution 4 is the only that makes sense to me.
+</p>
+
+<p>
+I&rsquo;m skeptical that the pain of mixing typed and untyped code will be as great as suggested, and I&rsquo;m skeptical that this will happen a lot.  There are a couple of reasons.
+</p>
+
+<p>
+The main application of mixed typed/untyped code is probably small untyped scripts interacting with typed libraries.  These scripts will usually manipulate either instances of classes exported by the libraries or they will have access to named structural types with which to type their object literals, when necessary.  Neither case seems to require conversion.
+</p>
+
+<p>
+Migrating from untyped to typed code is a little harder, but from my point of view on the internet, there exists no typed ECMAScript code at this time, so fitting into existing (untyped) libraries is trivial.  Typed client code can often be hidden behind an <acronym title="Application Programming Interface">API</acronym>.  When a library becomes available in a typed form, client code is converted to typed form and upgraded.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/07/19 09:20</em>
+</p>
+
+<p>
+It seems our language design choices are:
+</p>
+<ul>
+<li class="level1"><div class="li"> non-strict: types are enforced dynamically, and structured data can pass between typed and untyped code.</div>
+</li>
+<li class="level1"><div class="li"> strict 1: types are enforced statically (and partially dynamically), and structured data can pass between typed and untyped code.</div>
+</li>
+<li class="level1"><div class="li"> strict 2: types are enforced statically (and partially dynamically), and structured data cannot pass between typed and untyped code.</div>
+</li>
+</ul>
+
+<p>
+ I fear that under option &ldquo;strict 2&rdquo;,  in practice we will only have two kinds of programs - those that are fully typed, and those that are fully untyped, and no easy migration path between the two.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x63%3B%26%23x6f%3B%26%23x72%3B%26%23x6d%3B%26%23x61%3B%26%23x63%3B%26%23x40%3B%26%23x73%3B%26%23x6f%3B%26%23x65%3B%26%23x2e%3B%26%23x75%3B%26%23x63%3B%26%23x73%3B%26%23x63%3B%26%23x2e%3B%26%23x65%3B%26%23x64%3B%26%23x75%3B" class="mail" title="&#x63;&#x6f;&#x72;&#x6d;&#x61;&#x63;&#x40;&#x73;&#x6f;&#x65;&#x2e;&#x75;&#x63;&#x73;&#x63;&#x2e;&#x65;&#x64;&#x75;">Cormac Flanagan</a> 2006/07/21 16:22</em>
+</p>
+
+</div>
+<!-- SECTION [18011-20948] -->
+<a name="runtime_types"></a><h1>Runtime types</h1>
+<div class="level1">
+
+<p>
+ Every ES runtime value contains an internal tag indicating some information about the value&rsquo;s type. Dynamic checks involve checking that tag to make sure that the value&rsquo;s tag is compatible with the expected type.
+</p>
+
+<p>
+For primitive types and classes, the tag is straight-forward: it&rsquo;s just the primitive type or class. For untyped functions and arrays, it&rsquo;s <code>Function</code> or <code>Array</code>, respectively. But for structurally typed functions and objects, the type tag should contain all the static type information that was associated with the original value. Dynamically typed object literals have the structural type <code>{}</code>, because it&rsquo;s known that they are objects but there are no other known constraints.
+</p>
+
+<p>
+Examples:
+</p>
+<pre class="code javascript"><span class="co1">// tag: function(int):String</span>
+<span class="kw2">function</span> f<span class="br0">&#40;</span>x : int<span class="br0">&#41;</span> : String <span class="br0">&#123;</span> ... <span class="br0">&#125;</span>
+&nbsp;
+<span class="co1">// tag: { x: int, y: int }</span>
+<span class="br0">&#123;</span> x: <span class="nu0">3</span>, y: <span class="nu0">4</span> <span class="br0">&#125;</span> : <span class="br0">&#123;</span> x: int, y: int <span class="br0">&#125;</span>
+&nbsp;
+<span class="co1">// tag: { x: int }</span>
+<span class="br0">&#123;</span> x: <span class="nu0">3</span>, y: <span class="nu0">4</span> <span class="br0">&#125;</span> : <span class="br0">&#123;</span> x: int <span class="br0">&#125;</span>
+&nbsp;
+<span class="co1">// tag: {}</span>
+<span class="br0">&#123;</span> x: <span class="nu0">3</span>, y: <span class="nu0">4</span> <span class="br0">&#125;</span> : *</pre>
+</div>
+<!-- SECTION [20949-21925] -->
+<a name="dynamic_checks"></a><h1>Dynamic checks</h1>
+<div class="level1">
+
+<p>
+ There are several different kinds of runtime checks possible for a value.
+</p>
+
+</div>
+<!-- SECTION [21926-22030] -->
+<a name="tag_subtype_checking"></a><h2>Tag subtype checking</h2>
+<div class="level2">
+
+<p>
+ Checking the value&rsquo;s tag involves a runtime invocation of the static subtyping algorithm. Notice that this algorithm is not required to look at the value&rsquo;s actual contents, only its tag. For example:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> o : * = <span class="br0">&#123;</span> x: <span class="nu0">3</span>, y: <span class="st0">'foo'</span> <span class="br0">&#125;</span> : <span class="br0">&#123;</span> x: int <span class="br0">&#125;</span>
+o isTagCompatible <span class="br0">&#123;</span> x: int, y: int <span class="br0">&#125;</span> <span class="co1">// true</span></pre>
+<p>
+Notice also that for union types, the tag subtyping check involves an implicit <code>typecase</code> on the variants of the union:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> o : * = <span class="kw2">function</span><span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> x <span class="br0">&#125;</span>
+o isTagCompatible <span class="br0">&#40;</span>int, <span class="kw2">function</span><span class="br0">&#40;</span>int<span class="br0">&#41;</span>:int<span class="br0">&#41;</span> <span class="co1">// true</span></pre>
+</div>
+<!-- SECTION [22031-22619] -->
+<a name="deep_tag_checking"></a><h2>Deep tag checking</h2>
+<div class="level2">
+
+<p>
+ Checking the actual contents of an object recursively is another possible operation, perhaps implementable in terms of the tag check:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> o : * = <span class="br0">&#123;</span> x: <span class="nu0">3</span>, y: <span class="st0">'foo'</span> <span class="br0">&#125;</span>
+o isDeepCompatible <span class="br0">&#123;</span> x: int, y: int <span class="br0">&#125;</span> <span class="co1">// false</span>
+<span class="co1">// same as:</span>
+<span class="br0">&#40;</span>o isTagCompatible <span class="br0">&#123;</span> x: int, y: int <span class="br0">&#125;</span>
+    &amp;&amp; <span class="br0">&#40;</span>!o.<span class="me1">x</span> || o.<span class="me1">x</span> isTagCompatible int<span class="br0">&#41;</span>
+    &amp;&amp; <span class="br0">&#40;</span>!o.<span class="me1">y</span> || o,y isTagCompatible int<span class="br0">&#41;</span><span class="br0">&#41;</span></pre>
+<p>
+Notice that tag compatibility is a permanent guarantee, whereas deep tag compatibility can change. For example, the <code>isDeepCompatible</code> check on <code>o</code> will succeed after setting <code>o.y = 4</code>.
+</p>
+
+</div>
+<!-- SECTION [22620-23216] -->
+<a name="implications"></a><h2>Implications</h2>
+<div class="level2">
+
+<p>
+ Which checks we use and where we use them will affect the definition of the runtime portion of the type system. We still need to specify where and when these checks are required.
+</p>
+
+</div>
+<!-- SECTION [23217-23422] -->
+<a name="convertible_types"></a><h1>Convertible types</h1>
+<div class="level1">
+
+<p>
+ In strict mode, we need to determine just what types are considered convertible. (In the <a href="doku.php%3Fid=clarification:formal_type_system.html" class="wikilink1" title="clarification:formal_type_system" onclick="return svchk()" onkeypress="return svchk()">formal type system</a>, we&rsquo;ve represented this as the &ldquo;⇝&rdquo; relation, i.e., &ldquo;T1 ⇝ T2&rdquo; means that type T1 is convertible to type T2.) There are some interesting quirks:
+</p>
+
+</div>
+<!-- SECTION [23423-23715] -->
+<a name="object_field_invariants"></a><h2>Object field invariants</h2>
+<div class="level2">
+
+<p>
+ This is just quick notes because I&rsquo;m running out of time today (sorry!). 
+</p>
+<ul>
+<li class="level1"><div class="li"> covariant properties can be subverted via mutation</div>
+</li>
+<li class="level1"><div class="li"> same problem as Java&rsquo;s covariant arrays</div>
+</li>
+<li class="level1"><div class="li"> two possibilities:</div>
+<ul>
+<li class="level2"><div class="li"> dynamic guards (with all the attendant design options)</div>
+</li>
+<li class="level2"><div class="li"> make structural object properties invariant</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ In the July meeting, we agreed on covariant subtyping for object fields, which will require a run-time subtype check on writes to object fields.
+</p>
+
+</div>
+<!-- SECTION [23716-24207] -->
+<a name="type_conversions_and_tail_calls"></a><h1>Type conversions and tail calls</h1>
+<div class="level1">
+
+<p>
+ Type conversions can interfere with <a href="doku.php%3Fid=proposals:proper_tail_calls.html" class="wikilink1" title="proposals:proper_tail_calls" onclick="return svchk()" onkeypress="return svchk()">proper tail calls</a>. For example, using only very simple nominal types:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Even <span class="br0">&#123;</span>
+    static <span class="kw2">var</span> odd : Odd = <span class="kw2">new</span> Odd;
+&nbsp;
+    <span class="kw2">function</span> test<span class="br0">&#40;</span>n:int<span class="br0">&#41;</span> : boolean <span class="br0">&#123;</span>
+        <span class="kw1">if</span> <span class="br0">&#40;</span>n == <span class="nu0">0</span><span class="br0">&#41;</span>
+            <span class="kw1">return</span> <span class="kw2">true</span>;
+        <span class="kw1">return</span> odd.<span class="me1">test</span><span class="br0">&#40;</span>n-<span class="nu0">1</span><span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">class</span> Odd <span class="br0">&#123;</span>
+    static <span class="kw2">var</span> even : Even = <span class="kw2">new</span> Even;
+&nbsp;
+    <span class="kw2">function</span> test<span class="br0">&#40;</span>n:int<span class="br0">&#41;</span> : * <span class="br0">&#123;</span>
+        <span class="kw1">if</span> <span class="br0">&#40;</span>n == <span class="nu0">0</span><span class="br0">&#41;</span>
+            <span class="kw1">return</span> <span class="kw2">false</span>;
+        <span class="kw1">return</span> even.<span class="me1">test</span><span class="br0">&#40;</span>n-<span class="nu0">1</span><span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+Both of the mutually recursive calls to <code>test</code> methods should be tail calls, but when <code>Even.test</code> calls <code>Odd.test</code> it has to check its result to make sure it&rsquo;s a <code>boolean</code>, so it has to store a type-check on the stack.
+</p>
+
+<p>
+More generally, take any function <code>function f(..) : T { .. return g(..) .. }</code> where the expected type of <code>g(..)</code> is <code>S</code>.
+</p>
+
+<p>
+If <code>S</code> and <code>T</code> are the same type, or <code>T</code> is a subtype of <code>S</code>, for example, only one check is needed on the stack, and the call to <code>g</code> can be a tail call. But in strict mode, <code>S</code> may only be convertible to <code>T</code>, and in standard mode, <code>S</code> and <code>T</code> might be completely unrelated. In this situation, a check for type <code>T</code> needs, in theory, to be performed after <code>g(..)</code> returns. These checks may destroy tail recursion.
+</p>
+
+</div>
+<!-- SECTION [24208-25533] -->
+<a name="type_check_elimination"></a><h2>Type check elimination</h2>
+<div class="level2">
+
+<p>
+ Here is a relatively simple approach to restore tail recursion, in the context of the above function <code>f</code> which tail-calls <code>g</code>.  Just before performing the call to <code>g(..)</code>, look at the stack to see if the current activation has a return-type-check
+</p>
+<ul>
+<li class="level1"><div class="li"> if it doesn&rsquo;t, pop the current activation, store a <code>T</code>-type-check on the stack, and perform the call.</div>
+</li>
+<li class="level2"><div class="li"> if the current activation has a <code>U</code>-type-check then pop the activation, pop that <code>U</code>-type-check, merge the types <code>T</code> and <code>U</code> into a combined type <code>S</code> (see below), push the <code>S</code> type check on the stack, and perform the call.</div>
+</li>
+</ul>
+
+<p>
+ If <code>T</code> is <code>*</code>, none of the above is necessary, and the tail call can simply pop the activation, leave any existing type check on the stack as is, and perform the call.
+</p>
+
+</div>
+<!-- SECTION [25534-26347] -->
+<a name="merging_type_checks"></a><h2>Merging type checks</h2>
+<div class="level2">
+
+<p>
+ If <code>U</code> is <code>*</code> then we should push the more precise check <code>T</code> (and vice versa if <code>T</code> is <code>*</code>).
+</p>
+
+<p>
+If <code>U</code> is a subtype of <code>T</code>, then we should push the more precise check <code>U</code> (and vice versa if <code>T</code> is a subtype of <code>U</code>).
+</p>
+
+<p>
+However, two types may be compatible but neither is a subtype of the other.  For example,  <code>function(int):*</code> and <code>function(*):int</code>.
+</p>
+
+<p>
+One solution would be to combine two compatible types into a single merged type-check. E.g. <code>function(int):*</code> and <code>function(*):int</code> would become <code>function(int):int</code>. This way there&rsquo;s only one type-check saved on the stack and it can&rsquo;t grow too big. It does require synthesizing new type objects, using some appropriate algorithm.
+</p>
+
+<p>
+A simpler solution is to drop the second type check on the stack, and just keep the oldest one. This approach is type sound. But it violates abstractions by allowing <code>f</code> to cancel the return-type guarantee of <code>g</code>.
+</p>
+
+</div>
+<!-- SECTION [26348-27308] -->
+<a name="implementation_via_cast-passing_style"></a><h3>Implementation via cast-passing style</h3>
+<div class="level3">
+
+<p>
+ Merging casts on the stack as described above requires access to the cast on the top of the stack. If this cast is in the ML stack (in the reference implementation), such access is impossible. An alternative approach is cast-passing style, where each call to the evaluator passes in as an extra argument the cast on top of the stack (or null, if the top of the stack is not a cast).
+</p>
+<pre class="code">
+eval(expr,topCast) {
+   case expr of {
+       apply(e1,e2) :
+            let fun(formal,body,returnType) = eval(e1, null)
+                arg = eval(e2, null)
+            in eval( subst(arg,formal,body), merge(topCast,returnType) )
+       ...
+   }
+}
+</pre>
+
+</div>
+<!-- SECTION [27309-28020] -->
+<a name="implementation_via_stack_annotation"></a><h3>Implementation via stack annotation</h3>
+<div class="level3">
+
+<p>
+ These checks work a lot like stack annotations in the <a href="doku.php%3Fid=proposals:stack_inspection.html" class="wikilink1" title="proposals:stack_inspection" onclick="return svchk()" onkeypress="return svchk()">stack_inspection</a> proposal, and could even be implemented with the same mechanism. The <code>annotate</code> method stores a type check above the current activation and <code>getCurrentAnnotation</code> tells us whether there is a current type-check stored above the current activation.
+</p>
+
+<p>
+If we had a special stack annotator called <code>returnTypeChecks</code>:
+</p>
+<pre class="code javascript">magic native <span class="kw2">var</span> returnTypeChecks : ControlInspector&lt;TypeObject&gt;;</pre>
+<p>
+then we could store type checks on the stack as stack annotations, and implement return-type-checks by instrumenting function calls. For example, a tail call to <code>f(x)</code> would be rewritten as:
+</p>
+<pre class="code javascript">let <span class="br0">&#40;</span>T = returnTypeChecks.<span class="me1">getCurrentAnnotation</span><span class="br0">&#40;</span><span class="br0">&#41;</span>, U = <span class="kw1">typeOf</span><span class="br0">&#40;</span>f<span class="br0">&#41;</span>.<span class="me1">returnType</span><span class="br0">&#41;</span>
+  <span class="br0">&#40;</span>U == <span class="br0">&#40;</span>type *<span class="br0">&#41;</span>
+     <span class="co1">// we never need a *-type-check</span>
+     ? f<span class="br0">&#40;</span>x<span class="br0">&#41;</span>
+     : <span class="br0">&#40;</span>T === <span class="kw2">null</span>
+          <span class="co1">// create a U-type-check</span>
+          ? <span class="br0">&#40;</span>returnTypeChecks.<span class="me1">annotate</span><span class="br0">&#40;</span>U<span class="br0">&#41;</span>, f<span class="br0">&#40;</span>x<span class="br0">&#41;</span><span class="br0">&#41;</span>
+          : <span class="br0">&#40;</span>U.<span class="me1">isSubtypeOf</span><span class="br0">&#40;</span>T<span class="br0">&#41;</span>
+               <span class="co1">// replace the T-type-check with U</span>
+               ? <span class="br0">&#40;</span>returnTypeChecks.<span class="me1">annotate</span><span class="br0">&#40;</span>U<span class="br0">&#41;</span>, f<span class="br0">&#40;</span>x<span class="br0">&#41;</span><span class="br0">&#41;</span>
+               : <span class="br0">&#40;</span>T.<span class="me1">isSubtypeOf</span><span class="br0">&#40;</span>U<span class="br0">&#41;</span>
+                    <span class="co1">// keep the T-type-check</span>
+                    ? f<span class="br0">&#40;</span>x<span class="br0">&#41;</span>
+                    <span class="co1">// keep the T-type-check and create a nested U-type-check</span>
+                    : <span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+                           returnTypeChecks.<span class="me1">annotate</span><span class="br0">&#40;</span>U<span class="br0">&#41;</span>;
+                           <span class="kw1">return</span> f<span class="br0">&#40;</span>x<span class="br0">&#41;</span>
+                       <span class="br0">&#125;</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#41;</span></pre>
+<p>
+The evaluator would then need extra built-in behavior to check for the existence of a return-type-check annotation and perform the check whenever a function returns.
+</p>
+
+</div>
+<!-- SECTION [28021-29679] -->
+<a name="merging_sets_of_types"></a><h2>Merging sets of types</h2>
+<div class="level2">
+
+<p>
+ A different approach to merging types is akin to hash-consing: instead of keeping a single type-check on a stack frame, we keep a set of type-checks. Then instead of merging two casts, we merge a single cast into a set, but don&rsquo;t re-add it if it&rsquo;s already there. Then tail calls always replace their stack frame, but they may accumulate more than one cast.
+</p>
+
+</div>
+<!-- SECTION [29680-30072] -->
+<a name="implementations"></a><h3>Implementations</h3>
+<div class="level3">
+
+<p>
+ An implementation via cast-passing style would be the same, except the <code>merge</code> function would operate on a type check and a set of type checks.
+</p>
+
+<p>
+For an implementation based on stack annotation, a simple implementation of this merging function might look like:
+</p>
+<pre class="code javascript"><span class="kw2">function</span> merge<span class="br0">&#40;</span>Ts, U<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    let newTs = <span class="br0">&#91;</span><span class="br0">&#93;</span>;
+    let found = <span class="kw2">false</span>;
+    <span class="kw1">for</span> <span class="br0">&#40;</span>let i = <span class="nu0">0</span>; i &lt; Ts.<span class="me1">length</span>; i++<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        let T = Ts<span class="br0">&#91;</span>i<span class="br0">&#93;</span>;
+        <span class="kw1">if</span> <span class="br0">&#40;</span>T == U<span class="br0">&#41;</span>
+            found = <span class="kw2">true</span>;
+        <span class="kw1">else</span> <span class="br0">&#123;</span>
+            <span class="kw1">if</span> <span class="br0">&#40;</span>U.<span class="me1">isSubtypeOf</span><span class="br0">&#40;</span>T<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+                found = <span class="kw2">true</span>;
+                newTs.<span class="me1">push</span><span class="br0">&#40;</span>U<span class="br0">&#41;</span>;
+            <span class="br0">&#125;</span>
+            <span class="kw1">else</span> <span class="kw1">if</span> <span class="br0">&#40;</span>T.<span class="me1">isSubtypeOf</span><span class="br0">&#40;</span>U<span class="br0">&#41;</span><span class="br0">&#41;</span>
+                newTs.<span class="me1">push</span><span class="br0">&#40;</span>T<span class="br0">&#41;</span>;
+            <span class="kw1">else</span>
+                newTs.<span class="me1">push</span><span class="br0">&#40;</span>T<span class="br0">&#41;</span>;
+        <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span>
+    <span class="kw1">if</span> <span class="br0">&#40;</span>!found<span class="br0">&#41;</span>
+        newTs.<span class="me1">push</span><span class="br0">&#40;</span>U<span class="br0">&#41;</span>;
+    <span class="kw1">return</span> newTs;
+<span class="br0">&#125;</span></pre>
+<p>
+and then a tail call to <code>f(x)</code> would look like:
+</p>
+<pre class="code javascript">let <span class="br0">&#40;</span>Ts = returnTypeChecks.<span class="me1">getCurrentAnnotation</span><span class="br0">&#40;</span><span class="br0">&#41;</span>, U = <span class="kw1">typeOf</span><span class="br0">&#40;</span>f<span class="br0">&#41;</span>.<span class="me1">returnType</span><span class="br0">&#41;</span>
+  <span class="br0">&#40;</span>U == <span class="br0">&#40;</span>type *<span class="br0">&#41;</span>
+     <span class="co1">// we never need a *-type-check</span>
+     ? f<span class="br0">&#40;</span>x<span class="br0">&#41;</span>
+     : <span class="br0">&#40;</span>Ts === <span class="kw2">null</span>
+          <span class="co1">// create a U-type-check</span>
+          ? <span class="br0">&#40;</span>returnTypeChecks.<span class="me1">annotate</span><span class="br0">&#40;</span><span class="br0">&#91;</span>U<span class="br0">&#93;</span><span class="br0">&#41;</span>, f<span class="br0">&#40;</span>x<span class="br0">&#41;</span><span class="br0">&#41;</span>
+          <span class="co1">// merge U into the existing set of checks</span>
+          : <span class="br0">&#40;</span>returnTypeChecks.<span class="me1">annotate</span><span class="br0">&#40;</span>merge<span class="br0">&#40;</span>Ts, U<span class="br0">&#41;</span><span class="br0">&#41;</span>, f<span class="br0">&#40;</span>x<span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#41;</span></pre>
+</div>
+<!-- SECTION [30073-31328] -->
+<a name="other_considerations"></a><h2>Other considerations</h2>
+<div class="level2">
+
+<p>
+ The type-check elimination rules should work for relationships between things like a nominal type and the dynamic object type <code>{*}</code> &ndash; I think subtyping makes that work for free. There may be a few kinds of types that can be eliminated even when subtyping doesn&rsquo;t work out.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x64%3B%26%23x68%3B%26%23x65%3B%26%23x72%3B%26%23x6d%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x63%3B%26%23x63%3B%26%23x73%3B%26%23x2e%3B%26%23x6e%3B%26%23x65%3B%26%23x75%3B%26%23x2e%3B%26%23x65%3B%26%23x64%3B%26%23x75%3B" class="mail" title="&#x64;&#x68;&#x65;&#x72;&#x6d;&#x61;&#x6e;&#x40;&#x63;&#x63;&#x73;&#x2e;&#x6e;&#x65;&#x75;&#x2e;&#x65;&#x64;&#x75;">Dave Herman</a> 2007/04/25 14:45</em> 
+</p>
+
+</div>
+<!-- SECTION [31329-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/c/c27045f8af729f2299a700fc5591b571.xhtml used -->
+</body>
+</html>

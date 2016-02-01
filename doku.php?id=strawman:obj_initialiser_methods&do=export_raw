@@ -1,0 +1,222 @@
+====== Method Properties in Object Initialisers ======
+//This is one of several related [[strawman:object_initialiser_extensions|Object Initialiser Extensions]].// 
+
+Using ES5 object literal syntax one can define properties whose values are functions and which serve as methods. However, properties defined in this manner are enumerable and making a property non-enumerable can only be done uses the Object reflection functions. Such function valued properties are typically intended to only be used as methods and to never be modified or deleted. However, ES5 has no declarative why to identify such a “method” property or to distinguish them from a property whose intended use is as a “data” property that happens to store function values. This distinction can be declaratively made by adding the “method” keyword to object literal syntax. For example:
+<code javascript>
+var obj = {
+        method doSomething(args) { return doSomeWork()},
+        callback: function () {/*default handler*/},
+        prop:  expr
+};
+</code>
+''method'' creates a non-enumerable, non-writable, configurable data property of the object whose value is the function object created by the function expression that is obtained by replacing the keyword “method” with the keyword “function”. The function object is also frozen.
+
+The above example is semantically equivalent to:
+<code javascript>
+var obj = {
+        doSomething: Object.freeze(
+             function doSomething(args) { return doSomeWork()}),
+        callback: function () {/*default handler*/},
+        prop:  expr
+};
+Object.defineProperty(obj,”doSomething”,
+     {writable: false, enumerable: false, configurable: true});
+Object.freeze(obj.doSomething.prototype);
+</code>
+
+Change: "method" property keyword don't imply non-configurable --- //[[Allen@Wirfs-Brock.com|Allen Wirfs-Brock]] 2011/03/08 01:24//
+
+===== Syntax =====
+//ObjectLiteral// :\\
+**{ }**\\
+**{** //PropertyNameAndValueList// **}**\\
+**{** //PropertyNameAndValueList// **, }**\\
+\\
+//PropertyNameAndValueList// :\\
+//PropertyAssignment//\\
+//PropertyNameAndValueList// **,** //PropertyAssignment//\\
+\\
+//PropertyAssignment// :\\
+//PropertyName// **:** //AssignmentExpression//\\
+**get** //PropertyName// **( ) {** //FunctionBody// **}**\\
+**set** //PropertyName// **(** //PropertySetParameterList// **) {** //FunctionBody// **}**\\
+**method** //PropertyName// **(** //FormalParameterList<sub>opt</sub>// **) {** //FunctionBody// **}**\\
+
+
+===== Rational/Use Cases =====
+ECMAScript does not have an explicit concept of “method” that is distinct from a data property whose value is a function closure. However, common practice is to consider most such function valued data properties as de facto methods that are not intended to be dynamically modified and which should not be enumerated. This convention is also used by ES5's built-in objects whose methods are all defined as being non-enumerable. The ECMAScript 5th Edition provides mechanisms for programmatically setting property attributes so “methods” are not enumerable and non-writable. However, this idiom cannot be concisely specified in the context of the superior object literal notation for creating objects. This extension provides object literal syntax for concisely defining such “method” properties. 
+
+<del>
+===== A More Radical Idea Alternative =====</del> \\
+Withdrawn  --- //[[Allen.Wirfs-Brock@microsoft.com|Allen Wirfs-Brock]] 2010/09/08 04:38//
+
+<del>There are arguably situations where it would be desirable to have “invoke only” properties. These would be method-like properties that could be called but whose function values could not be directly accessed or manipulated as naked function values. This is not possible without extending the ECMAScript object model to include a richer set of property attributes and associated semantics. If such an extension was made then the method keyword in object initialisers  probably should designate those semantics. 
+
+Alternatively, methods could have "bind on extraction" behavior: If the method read as a property rather than invoked, what is read is not the naked function value itself. Rather the read returns that function as bound (as if by Function.prototype.bind()) to the base object of that property access as that bound function's "this". Technically, this can still be expressed in ES5 as
+</del>
+
+<del>
+<code javascript>
+Object.defineProperty(obj,”doSomething”, {
+      get: function(){return doSomething.bind(this);}, 
+      set: undefined, 
+      enumerable: false, 
+      configurable: false
+});
+</code>
+</del>
+
+<del>
+Thus, the reflection API could still present the method as if it had been defined this way. Note that the above expansion, if naively implemented, would cause binding even on direct method invocation. Any realistic implementation of "method" must avoid this overhead.
+</del>
+
+===== Discussion =====
+== Is this bound for methods?  ==
+
+**From: Brendan Eich,Tuesday, August 11, 2009 4:14 PM**\\
+Is method meant to imply .bind()?
+
+**On Aug 11, 2009, at 4:38 PM, Allen Wirfs-Brock wrote:**
+No bind for method.  If you use such an object as a prototype then an inheriting object would what this within such methods to bind to themselves rather than the source of the method on the prototype chain.
+----
+
+== Invoke only Properties  ==
+**On Aug 11, 2009, at 4:38 PM, Allen Wirfs-Brock wrote:**\\
+I also like the idea of “invoke only” properties (you can call them but not explicitly put or get them)
+
+**From: Brendan Eich,Tuesday, August 11, 2009 4:56 PM**\\
+E4X (ECMA-357) has these, they suck, frankly. Recent discussion occurred in [[https://bugzilla.mozilla.org/show_bug.cgi?id=509705]]
+
+People using JS functionally want to use .apply, .call, funargs, etc. Invoke-only breaks these use-cases utterly.
+
+I hope we don't make method mean anything like E4X's hidden XML.prototype and XMLList.prototype methods.
+
+
+
+
+
+
+
+== Why the method keyword? ==
+
+It seems like we can skip the ''method'' keyword. We can detect a method with a single look ahead:
+
+<code javascript>
+var obj = {
+  doSomething(args) {
+    ...
+  }
+
+var obj = {
+  doSomething(args) {
+    return doSomeWork();
+  },
+  callback: function () {
+    // Default handler
+  },
+  prop: expr
+};
+
+</code>
+ --- //[[arv@google.com|Erik Arvidsson]] 2011/03/15 22:10//
+
+Totally agree with Brendan: just say no to call-only methods. It's a needless restriction, with very limited upside and all sorts of downside.
+
+Also, I once again like where Arv is going with this -- if we can avoid verbosity, that's better. And I can't tell you the number of times I've actually accidentally written:
+
+<code javascript>
+var obj = {
+    foo: 1,
+    bar: "hello",
+    baz(x, y, z) {
+    }
+}
+</code>
+
+without realizing it. My brain just //wants// this syntax to exist. :)
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2011/03/15 22:36//
+
+We can certainly avoid ''method'' contextual keywords, but it would seem the result would be a non-sharp function. Then we could allow
+
+<code javascript>
+var obj = {
+    #baz(x, y, z) { ... }
+};
+</code>
+
+and so on (the variant with explicit ''this'' parameterization, vs. this one with lexically scoped ''this'').
+
+Then no lookahead is required. But lookahead is not a problem given the need to check for '':'' after a property name.
+
+Some may object to sharp functions requiring an extra character compared to non-sharp functions. I personally would be happy with only sharp-method syntax, and anyone wanting bad old non-sharp functions has to write it out as today, using ''baz: function (...) {...}''!
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/03/16 20:34//
+
+The problem I see with keywordless methods is that the legacy is that keywordless properties (I'm not counting get/set as this sort of keyword) have default attributes so for legacy consistancy I would expect foo, bar, and baz:
+<code javascript>
+var obj = {
+    foo: 1,
+    get () bar{ return "hello"},
+    baz(x, y, z) {
+    }
+}
+</code>
+to all have attributes {configurable: true, enumerable: true, writable: true} (exclude the writable for bar). There is nothing forcing this treatment of baz-like properties, but the legacy consistency seems like a good idea to me. If you buy that logic then the way you make all these properties non-enumerable is  to put a "var" in front of them:
+<code javascript>
+var obj = {
+    var foo: 1,
+    var get () bar{ return "hello"},
+    var baz(x, y, z) {
+    }
+}
+</code>
+That's basically what I did except I really don't like labeling methods with "var"so I essentially used "method" as an alias for "var.
+
+However, once a different keyword is used additional semantics can apply to it. "method"  means more than just enumerable: false. It also sets writable: false and and freezes the function.  (see [[strawman:Obj_initialiser_const|Other Object Initialiser Property Attribute Modifiers]] for the complete definition of all the property modifiers.)
+
+I wouldn't be opposed simply replacing method with #-functions even though it isn't that different from the baz(){} case.
+
+I do caution about going overboard in minimizing keystrokes.  The typical line of code is read many more times than it is edited so readability is really important.  I actually considered use three prefix special characters to represent negated attributes (eg, ~=writable:false, \=enumerable false, %=configurable:false) so you could write things like:
+<code javascript>
+var obj = {
+    \%foo: 1,
+    ~get () bar{ return "hello"},
+    ~\%baz(x, y, z) {
+    }
+}
+</code> 
+But I found I couldn't remember what they meant for either reading or writing.
+
+ --- //[[Allen@Wirfs-Brock.com|Allen Wirfs-Brock]] 2011/03/16 23:32//
+
+Another issue with dropping the method modifier is that it conflicts with the use of **''new''** as a keyword that introduces the constructor body in [[obj initialiser class abstraction]].
+<code javascript>
+class Foo {
+  method new () {},  //this defines a prototype method named "new"
+  new () {           //this provides the body for the Foo constructor
+  }
+}
+</code>
+ --- //[[Allen@Wirfs-Brock.com|Allen Wirfs-Brock]] 2011/03/19 18:47//
+
+Another option is to use ''constructor'' instead of ''new''.
+
+<code javascript>
+class Rect {
+  size() {},  // This defines a prototype method named "size"
+  constructor(w, h) {  //This provides the body for the Rect constructor
+  }
+}
+</code>
+
+One good side effect of renaming ''new'' to ''constructor'' is that''constructor'' is already supposed to point at the constructor function which is already present on the prototype.
+
+ --- //[[arv@google.com|Erik Arvidsson]] 2011/03/21 18:27//
+
+Erik, you would still have the name problem.  Is:
+  constructor () {}
+the name of an instance method named "constructor" or is the declaration of the initialization code for new instances. It is the key word (whatever it happens to be) that precedes the property name in method declarations that allow the two to be distinguished 
+
+--- //[[Allen@Wirfs-Brock.com|Allen Wirfs-Brock]] 2011/03/22 15:34// without reserving "constructor" (or "new") from being used as a method name.
+

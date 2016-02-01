@@ -1,0 +1,84 @@
+
+===== Minimal Proposal =====
+
+  * Add some kind of type-safe ''sprintf'' analogue.  I don't know what this means yet, but if we punt this to the "ecosystem", type safety will have to be added after Edition 4 is done.  It might not be possible to bolt on type safety without more foundational work.  Or if possible using [[proposals:meta objects|reflection]], it might be unsightly or otherwise costly (just requiring reflection is costly; it might mean no formatting in the [[clarification:compact profile]]).  I'd like to put a "foot in the door" here, to ensure that Edition 4 can support type-safe formatting somehow.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/01 00:03//
+
+===== sprintf suggestion =====
+
+For the type-safe formatter, perhaps the following works.
+
+Currently missing from this proposal: the exact formatting specifiers and their meanings.
+
+==== Syntax ====
+
+<code javascript>
+   format( literal-string, expression )
+</code>
+
+==== Semantics ====
+
+''format'' is a built-in operator that takes a literal string and any object and returns a string.  
+
+The string encodes formatting specifications (like in C) and raw text.  Each formatting specification is followed by a colon and the name of the field to be extracted from the object.  Only primitive values can be formatted, and it is an error when the type of the value does not match the type of the formatting specification.  However, the ''!'' conversion modifier allows the conversion of value of one type to a value of the correct type (thus "%!s" applies the String function to the argument before printing).
+
+Non-identifier field names are substrings of the format string bracketed by quotes.
+
+==== Examples ====
+
+<code javascript>
+   format( "Person: %s:name %d:age %.2g:salary\n", { name: "Bill", age: 52, salary: 25000 } );
+
+   format( "My data: [%d:'0', %d:'1']\n", [37, 42] );
+
+   format( "%!5.2g:value", getValue() );
+</code>
+
+==== Discussion ====
+
+In Edition 3 this is (dynamically) type-safe, and besides implementable in user code.  
+
+In Edition 4 this is statically type-safe since ''format'' is a built-in operator and (presumably?) there are some guarantees in the language that e.g. ''String'' returns a string.  In an untyped setting or for functions returning Object, it's still possible to type-check dynamically.
+
+It's nice that we don't have to worry about positional arguments.
+
+No introspection is needed beyond that already present in Edition 3.
+
+Various extensions are possible, by tacking on an extra argument.  Consider a third argument that is an object that contains custom converters:
+
+<code javascript>
+   format( "Person: %s:name %d:age %.2g:salary\n", 
+           myPerson,
+           { name : function (s : String) : String { return s.toTitleCase() } } );
+</code>
+
+The main problem with the proposal is that it's a bit of a closed world, it does not encourage the ecosystem to extend it.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/13 08:21//
+
+Brendan proposed that we could use the ''%'' operator, like Python:
+
+    "Person: %s:name %d:age %.2g:salary\n" % { name: "Bill", age: 52, salary: 25000 }
+
+Seems nice enough to me.
+
+Observe that static typing of fragments like this requires a type system that does not give the object literal the type ''Object'' but something more useful, as outlined in the body of [[destructuring assignment]]; you'd end up writing (with currently proposed syntax) 
+
+    "Person: %s:name %d:age %.2g:salary\n" % #{ name: "Bill", age: 52, salary: 25000 }
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/18 03:52//
+
+There are probably real limits to what the ecosystem can be expected to do if we want static typing and convenient syntax.
+
+One can probably hack around with pragmas:
+
+    use formatting "%s:name" = toTitlecase
+
+but this is just shorthand for passing in an object that defines formatting functions.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/18 04:06//
+
+I moved this out of the proposal:json_encoding_and_decoding wiki here
+
+ --- //[[iain.lamb@yahoo.com|Iain Lamb]] 2006/09/22 15:02// 

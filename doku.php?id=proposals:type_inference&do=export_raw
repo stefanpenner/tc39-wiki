@@ -1,0 +1,57 @@
+===== Motivation =====
+
+With [[proposals:strict and standard modes]], ES4 users can gain the benefits of static type checking.  But the cost could be high: the system won't necessarily catch most kinds of bugs, yet may lead to over-annotating (we have anecdotal evidence of this from AS3 users).  What if we were to change the language so that no type annotation meant "infer this type" instead of "top type"?
+
+===== Precedent =====
+
+Nicolas Cannasse's [[http://haxe.org/|haXe]] language has already explored this idea.  HaXe looks like an ML-flavored ES4.  It translates to JS and AS.  It seems to feature:
+
+  * Classes and interfaces.
+  * Enums as n-ary [[proposals:switch class|switch classes]] with matching ''switch'' semantics.
+  * Type parameters, including constraints (e.g., ''class EvtQueue<T : Event, EventDispatcher>'')
+  * Hindley-Milner (I presume) unification-based type inference.
+  * Structural types using object initialisers as type annotations.
+
+HaXe seems neat, but it might just be a big hack.  Of course, it's not constrained by compatibility. But it is aimed straight at the JS and AS languages, both in terms of translation target and developer audience.
+
+===== Proposal =====
+
+This proposal will explore type inference for ES4.  It won't be more than a place-holder by our deadline for new proposals, but I'd like to get a "foot in the door".  It should not disrupt [[proposals:strict and standard modes]] so much as extend the static part after modifying what the lack of a type annotation means.  Comments welcome.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/02/28 23:08//
+
+I'd have to recommend against anything beyond the necessary (expression-temporary type) inference. I believe this violates too many assumptions in the user communities we're addressing. Consider this value:
+
+<code>
+function f(x) { return x; }
+</code>
+
+We're agreed that this is going to be valid ES4 code. Let's consider its type (note that it has to have the same type in static or dynamic mode).
+
+  * ML people might think ''f : forall X . X -> X''.
+  * Ruby/Python/JS/Perl people think ''f : obj->obj'' where ''obj'' can have any slots you like.
+  * Java/C++ people think this function is nonsense and wish it would go away, but since they're programming in ECMAScript there are going to be //some// cases where they have to accept the existence of hashtable-y expando objects. We can probably expect them to gloss this as ''f : map<string,obj> -> map<string,obj>''.
+
+Much as I'd like to cater to ML people, I think they represent zero percent of our real audience. I think we're already bending the Java/C++ people a bit by making them accept dynamic objects in some circumstances. I don't think any of them will expect ML-style inference in any circumstance. The confusion just gets worse if you have this:
+
+<code>
+function f(x) { return x.bar; }
+</code>
+
+For this code:
+
+  * The dynamic crowd thinks nothing new, they still think ''f : obj->obj''.
+  * Java/C++ crowd sees nothing new either, they can still think ''f : map<string,obj> -> map<string,obj>''.
+  * With ML-style inference, the typechecker has to synthesize a type constraint on ''x'' -- note that we have no notation for types like ''forall X,Y with (X.bar : Y) . X -> Y'' -- then export that type to ''f'', and propagate it through all the variables used as arguments to ''f'', and fail when someone uses argument objects with two non-unifiable types in the ''.bar'' slots
+
+I'd argue that nobody in our target audience will expect this latter behavior. That makes it surprising, and we want to minimize surprise.
+
+(plus, as technical arguments: I don't think we have a proof that inference is decidable in this language, and it would be a lot of work)
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/03/15 11:58//
+
+I'm so in favor of withdrawing this proposal, you'd have to bribe me not to.  But I did want to record it, and I still welcome comments from others.
+
+Just based on lack of annotation meaning something different from Edition 3, and the ongoing quest to unify static and dynamic and avoid "two languages", this does seem like a non-starter.  But at least we can say why we didn't do anything like haXe.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/15 19:05//

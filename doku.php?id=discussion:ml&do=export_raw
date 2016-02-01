@@ -1,0 +1,87 @@
+====== SML of New Jersey (SML/NJ) ======
+
+I'm putting in some notes on [[http://www.smlnj.org|SML of New Jersey]] for the moment, so people can start working with it. Graydon, if you'd like to put in some information about OCaml as well, that would be useful.
+
+===== Downloading =====
+
+The most recent version of SML/NJ is [[http://www.smlnj.org/dist/working/110.59/index.html|version 110.59]]. Download the files from this link.
+
+===== Installing =====
+
+Follow the instructions at the above link.
+
+I found the Windows installation ([[http://www.smlnj.org/dist/working/110.59/WININSTALL|WININSTALL]]) straightforward, although I didn't try to set up any of the Cygwin integration ([[http://www.smlnj.org/dist/working/110.59/CYGWININSTALL|CYGWININSTALL]]).
+
+===== Running the REPL =====
+
+There's an introduction to the REPL at [[http://www.smlnj.org/doc/interact.html]].
+
+===== Compiling Programs =====
+
+Compilation in SML works through a separate library called the //Compilation Manager// (CM). I'm still learning about the CM. It's documented at [[http://www.smlnj.org/doc/CM/new.pdf]].
+
+===== Continuations =====
+
+First-class continuations are provided in ''SMLofNJ.Cont''.
+
+The ''SMLofNJ'' library is documented at [[http://www.smlnj.org/doc/SMLofNJ/pages/smlnj.html]].
+
+Try it out at the REPL:
+
+<code sml>
+% sml
+Standard ML of New Jersey v110.59 [built: Mon Jun 05 13:26:49 2006]
+- open SMLofNJ.Cont;
+[autoloading]
+[library $SMLNJ-BASIS/basis.cm is stable]
+[autoloading done]
+opening SMLofNJ.Cont
+  type 'a cont = 'a ?.cont
+  val callcc : ('a cont -> 'a) -> 'a
+  val throw : 'a cont -> 'a -> 'b
+  val isolate : ('a -> unit) -> 'a cont
+  type 'a control_cont = 'a ?.InlineT.control_cont
+  val capture : ('a control_cont -> 'a) -> 'a
+  val escape : 'a control_cont -> 'a -> 'b
+- callcc (fn k => throw k 5);
+val it = 5 : int
+- callcc (fn k => 1 + 2 + 3 + throw k 5);
+val it = 5 : int
+</code>
+
+===== Threads =====
+
+Lars pointed out today that threads are another way we could specify ''yield''. SML/NJ comes with [[http://cml.cs.uchicago.edu/|Concurrent ML]] (CML), a set of concurrency primitives and libraries.
+
+Getting started with CML is a little tricky because you have to use the Compilation Manager. The [[http://en.wikipedia.org/wiki/Concurrent_ML|Wikipedia page]] includes a good example of building a concurrent "hello, world".
+
+I've moved the old [[coroutines from threads]] code to a separate page, since the code has changed significantly.
+
+----
+Comments on the two XXX comments I saw:
+
+                                     recv g; (* XXX: who receives first? *)
+
+This looks correct: the spawned thread should block awaiting a ''gen.next()'', ''gen.send(v)'', or ''gen.throw(e)'' call from whoever created the generator-iterator or has its hands on it and wants to start it.
+
+                                     (body (g); send (g, Throw StopIteration))
+                                         handle Thrown v => send (g, Throw v) (* XXX: then throw StopIteration? *)
+
+If an exception is raised in ''body (g)'', then it should propagate to the caller via ''send (g, Throw v)''.  If the body returns (explicit void return or fall off the end of the generation function body), then ''StopIteration'' must be thrown unless the generator is closed.  And any exception that might be raised by ''send (g, Throw StopIteration)'' -- if that's possible (is it?) -- should not be re-sent.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/10/23 11:00//
+
+Thanks for the clarifications. Figuring out the right behavior of the state machine took me a while, but it was instructive. Rather than continue editing code in the wiki, I'll just leave the above for history's sake and commit to MTN from now on. I've created a directory ''playground/generators'' in the MTN repository for the experimental code.
+
+Next I'll experiment with an alternative implementation using ''callcc'' for comparison.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2006/10/23 20:27//
+
+The threaded implementation of generators is now in MTN, under the ''playground/generators'' section. There's also an implementation in terms of ''callcc''. I'll integrate these into the main code (instead of the "playground") next.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2006/10/28 17:27//
+
+===== Documentation =====
+
+  * [[http://www.smlnj.org/doc/index.html|SML/NJ user's guide]]
+  * [[http://www.smlnj.org/doc/literature.html|SML books and tutorials]]

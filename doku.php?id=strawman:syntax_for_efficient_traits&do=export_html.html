@@ -1,0 +1,504 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:syntax_for_efficient_traits&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:syntax_for_efficient_traits&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:syntax_for_efficient_traits&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:syntax_for_efficient_traits&amp;do=export_html.html#syntax_for_efficient_traits" class="toc">Syntax for Efficient Traits</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:syntax_for_efficient_traits&amp;do=export_html.html#the_traitliteral" class="toc">The TraitLiteral</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:syntax_for_efficient_traits&amp;do=export_html.html#dynamic_semantics" class="toc">Dynamic Semantics</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:syntax_for_efficient_traits&amp;do=export_html.html#semi-static_semantics" class="toc">Semi-Static Semantics</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:syntax_for_efficient_traits&amp;do=export_html.html#earlier_errors" class="toc">Earlier Errors</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:syntax_for_efficient_traits&amp;do=export_html.html#optimization_opportunities" class="toc">Optimization Opportunities</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:syntax_for_efficient_traits&amp;do=export_html.html#examples" class="toc">Examples</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:syntax_for_efficient_traits&amp;do=export_html.html#colored_point" class="toc">Colored Point</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:syntax_for_efficient_traits&amp;do=export_html.html#enumerable_trait" class="toc">Enumerable Trait</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:syntax_for_efficient_traits&amp;do=export_html.html#acks" class="toc">Acks</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:syntax_for_efficient_traits&amp;do=export_html.html#see" class="toc">See</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="syntax_for_efficient_traits"></a><h1>Syntax for Efficient Traits</h1>
+<div class="level1">
+
+<p>
+ The <a href="http://traitsjs.org" class="urlextern" target="_blank" title="http://traitsjs.org" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Traits library</a> deals in individual trait instances. Without VM support, this is <a href="https://mail.mozilla.org/pipermail/es-discuss/2010-September/011825.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2010-September/011825.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">unpleasantly expensive</a>, requiring at least an allocation per method per instance. On the one hand, the full expressiveness of the Traits library requires it to operate dynamically on trait instances. On the other hand, the expected typical usage pattern wraps trait operations in functions for making traits, where an individual trait-making-function would typically make traits with the same method code coupled with different data. Given <a href="http://code.google.com/p/es-lab/wiki/Traits#Performance" class="urlextern" target="_blank" title="http://code.google.com/p/es-lab/wiki/Traits#Performance" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">adequate analysis</a>, this more static pattern should be easily optimizable by VMs into a vtable-based implementation, where the method code gathered together by a class is painlessly shared among its instances.
+</p>
+
+<p>
+The syntax for traits presented here supports this more static expected pattern of use, where a <em>trait class</em> serves as a trait-making-function. This serves several purposes: 
+</p>
+<ul>
+<li class="level1"><div class="li"> It provides a more convenient and understandable notation for this pattern.</div>
+</li>
+<li class="level1"><div class="li"> It avoids the need for implementers to recognize and optimize a complex pattern of using the Traits library. Instead, implementers need only optimize uses of this notation.</div>
+</li>
+<li class="level1"><div class="li"> It helps programmers know when to expect an efficient implementation. Traits expressed using this notation are either erroneous and will fail early (on evaluating a ClassDeclaration or ClassExpression at the latest) or will be efficiently implemented.</div>
+</li>
+</ul>
+
+<p>
+ None of this precludes the generality supported by the Traits library. The Traits library and Object.create remain available and interoperate smoothly with code expressed using this syntax, without creating confusion for either programmers or implementers about what is supposed to be efficient.
+</p>
+<pre class="code">
+  Declaration : ...          // &quot;...&quot; means all the existing members
+      LetDeclaration
+      ConstDeclaration
+      FunctionDeclaration
+      ClassDeclaration
+      TraitClassDeclaration
+  ClassDeclaration :         // by analogy with FunctionDeclaration
+      class Identifier ( FormalParameterList? ) TraitBody
+  TraitClassDeclaration :    // by analogy with FunctionDeclaration
+      trait class Identifier ( FormalParameterList? ) TraitBody
+  MemberExpression : ...
+      ClassExpression
+      TraitClassExpression
+  ClassExpression :          // by analogy with FunctionExpression
+      class Identifier? ( FormalParameterList? ) TraitBody
+  TraitClassExpression :     // by analogy with FunctionExpression
+      trait class Identifier? ( FormalParameterList? ) TraitBody
+  TraitBody :                // by analogy with FunctionBody
+      =&gt; TraitLiteral
+      { Program =&gt; TraitLiteral }
+</pre>
+
+<p>
+A <em>class</em> makes <em>instances</em> that behave according to the behavior described by the class. A <em>trait class</em> makes <em>traits</em>, which can contribute towards a class&rsquo; description of the behavior of its instances. TraitBody is defined using &ldquo;<code>&rArr;</code>&rdquo; and a second production so that a class or trait class could initialize private state before constructing the instance or trait that might use this state. 
+</p>
+
+<p>
+By &ldquo;Program&rdquo; above, we simply mean an optional list of SourceElements excluding ReturnStatements. But for this exclusion, what we mean by &ldquo;Program&rdquo; is identical to FunctionBody.
+</p>
+
+</div>
+<!-- SECTION [1-3427] -->
+<a name="the_traitliteral"></a><h2>The TraitLiteral</h2>
+<div class="level2">
+<pre class="code">
+  TraitLiteral :   // by analogy to ObjectLiteral 
+      { TraitMixinList? , TraitPartList? } // ignoring obvious comma placement issues
+  TraitMixinList : // by analogy to PropertyNameAndValueList
+      TraitMixin
+      TraitMixinList , TraitMixin
+  TraitPartList :  // by analogy to PropertyNameAndValueList
+      TraitPart
+      TraitPartList , TraitPart
+
+  TraitMixin :
+      mixin Identifier Arguments Renamings?
+  Renamings
+      Renaming
+      Renamings Renaming
+  Renaming
+      with ( Identified as Identifier ) // TODO: comma separated list
+      without ( Identifier ) // TODO: comma separated list
+
+  TraitPart :      // by analogy to PropertyAssignment
+      PropertyName : AssignmentExpression
+      get PropertyName() { FunctionBody }
+      set PropertyName( PropertySetParameterList ) { FunctionBody }
+      MethodDeclaration
+      RequirementDeclaration
+  MethodDeclaration :
+      method PropertyName ( FormalParameterList? ) { FunctionBody }
+  RequirementDeclaration :
+      require PropertyName
+</pre>
+
+</div>
+<!-- SECTION [3428-4488] -->
+<a name="dynamic_semantics"></a><h2>Dynamic Semantics</h2>
+<div class="level2">
+
+<p>
+ Rather than define the semantics of this traits notation in terms of an existing library, we define internal functions that provide <a href="doku.php%3Fid=strawman:traits_semantics.html" class="wikilink1" title="strawman:traits_semantics" onclick="return svchk()" onkeypress="return svchk()">trait semantics</a> equivalent to that provided by the traits library: 
+</p>
+<table class="inline">
+	<tr>
+		<th class="centeralign">  Internal Function  </th><th class="centeralign">  Corresponding Traits Library Method  </th>
+	</tr>
+	<tr>
+		<td class="leftalign"><a href="doku.php%3Fid=strawman:traits_semantics.html#traitliteral" class="wikilink1" title="strawman:traits_semantics" onclick="return svchk()" onkeypress="return svchk()">TraitLiteral</a>              </td><td>Trait(...) </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><a href="doku.php%3Fid=strawman:traits_semantics.html#tcreate" class="wikilink1" title="strawman:traits_semantics" onclick="return svchk()" onkeypress="return svchk()">TCreate</a>              </td><td class="leftalign">Trait.create  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><a href="doku.php%3Fid=strawman:traits_semantics.html#tcompose" class="wikilink1" title="strawman:traits_semantics" onclick="return svchk()" onkeypress="return svchk()">TCompose</a>             </td><td class="leftalign">Trait.compose  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><a href="doku.php%3Fid=strawman:traits_semantics.html#tresolve" class="wikilink1" title="strawman:traits_semantics" onclick="return svchk()" onkeypress="return svchk()">TResolve</a>             </td><td class="leftalign">Trait.resolve  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><a href="doku.php%3Fid=strawman:traits_semantics.html#toverride" class="wikilink1" title="strawman:traits_semantics" onclick="return svchk()" onkeypress="return svchk()">TOverride</a>            </td><td class="leftalign">Trait.override  </td>
+	</tr>
+</table>
+<br />
+
+<p>
+ A TraitLiteral is much like an ObjectLiteral. Notice that we could now define ObjectLiteral in terms of an expansion to a call to <code>Object.create</code> with a literal property-descriptor-map as second argument (ignoring infinite regress). Likewise, we define TraitLiteral in terms of an expansion to an expression that will generate the property-descriptor-map to be used as the second argument to <code>TCreate</code>. 
+</p>
+
+<p>
+We define the dynamic semantics of the above production as expansions to calls to these internal functions. 
+</p>
+<table class="inline">
+	<tr>
+		<th class="centeralign">  Syntax                           </th><th class="centeralign">  Dynamic Semantics  </th>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>trait class T(x,y) &rArr;{...}</code>     </td><td class="leftalign"><code>const T(x, y) { return</code> /*<em>Trait Literal Expansion</em>*/; <code>}</code>  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>class C(x,y) &rArr;{...}</code>  </td><td class="leftalign"><code>const C(x,y) { return TCreate(C.prototype, (trait class(x,y)&rArr;{...})(x,y)); }</code>  </td>
+	</tr>
+	<tr>
+		<td class="centeralign" colspan="2">  Trait Literal Expansion  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>{</code> /*<em>mixins</em>*/, /*<em>parts</em>*/ <code>}</code>  </td><td class="leftalign"><code>TOverride({</code> /*<em>eparts</em>*/ <code>}, TCompose(</code> /*<em>emixins</em>*/ <code>))</code>  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>mixin T2(y,x)</code>                  </td><td class="leftalign"><code>T2(y,x)</code>  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>mixin T2(y,x) with (p as q)</code>    </td><td class="leftalign"><code>TResolve({ p: &lsquo;q&rsquo; }, T2(y,x))</code>  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>mixin T2(y,x) without (p)</code>      </td><td class="leftalign"><code>TResolve({ p: undefined }, T2(y,x))</code>  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>p: valExpr</code>                     </td><td class="leftalign"><code>p: {value: valExpr, enumerable: true}</code>  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>get p() {body;}</code>                </td><td class="leftalign"><code>p: {get: const() {body;}, enumerable: true}</code>  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>set p(n) {body;}</code>               </td><td class="leftalign"><code>p: {set: const(n) {body;}, enumerable: true}</code>  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>method p(x,y) {body;}</code>          </td><td class="leftalign"><code>p: {value: const(x,y) {body;}, method: true}</code>  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>require p</code>                      </td><td class="leftalign"><code>p: {required: true}</code>  </td>
+	</tr>
+</table>
+<br />
+
+<p>
+ The &ldquo;/*<em>emixins</em>*/&rdquo; and &ldquo;/*<em>eparts</em>*/&rdquo; above are the expanded forms of &ldquo;/*<em>mixins</em>*/&rdquo; and &ldquo;/*<em>parts</em>*/&rdquo; according to the rest of the above table. If a <code>get</code> and a <code>set</code> appear for the same property, we combine their expansion into the obvious joint property descriptor rather than a conflict.
+</p>
+
+<p>
+Like the FunctionDeclarations they expand to, ClassDeclarations and TraitClassDeclarations are hoisted to the beginning of the Block or Program they appear in, and so may be mutually recursive. Unlike FunctionDeclarations, by our &ldquo;earlier error&rdquo; rules below, these can throw a TypeError when evaluated, which is to say, on entry to their Block or Program. A ClassExpression or TraitClassExpression can also throw a TypeError when evaluated, but these are not hoisted so the error occurs according to where the expression appears.
+</p>
+
+<p>
+Because of the algebraic properties of these traits operations, simpler TraitLiterals are equivalent to simpler expansions 
+</p>
+<table class="inline">
+	<tr>
+		<th class="centeralign">  Syntax                                    </th><th class="centeralign">  Simplified Dynamic Semantics  </th>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>{</code> /*<em>mixins</em>*/, /*<em>parts</em>*/ <code>}</code>  </td><td class="leftalign"><code>TOverride({</code> /*<em>eparts</em>*/ <code>}, TCompose(</code> /*<em>emixins</em>*/ <code>))</code>  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>{</code> /*<em>mixins</em>*/ <code>}</code>                 </td><td class="leftalign"><code>TCompose(</code> /*<em>emixins</em>*/ <code>)</code>  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>{</code> /*<em>mixin</em>*/ <code>}</code>                  </td><td class="leftalign">/*<em>emixin</em>*/  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>{</code> /*<em>parts</em>*/ <code>}</code>                  </td><td class="leftalign"><code>{</code> /*<em>eparts</em>*/ <code>}</code>  </td>
+	</tr>
+</table>
+<br />
+
+<p>
+ Notice that overriding <em>only</em> occurs when a class or trait class uses both mixins and parts in one TraitLiteral.
+</p>
+
+</div>
+<!-- SECTION [4489-8280] -->
+<a name="semi-static_semantics"></a><h1>Semi-Static Semantics</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [8281-8317] -->
+<a name="earlier_errors"></a><h2>Earlier Errors</h2>
+<div class="level2">
+
+<p>
+ In addition to the expansion shown above, a TraitClassDeclaration and TraitClassExpression also records that the function it evaluates to (or binds to the trait class name) is in fact a trait class. Nothing other than a trait class may claim to be a trait class. However, we should not use [[Class]] to record this, as trait classes are still proper functions and must continue to appear to be proper functions. For example, the equivalent of <code>hiddenWeakMap.set(T, true)</code> would be an adequate record, as long it occurs before <code>T</code> is observable and the explanatory <code>hiddenWeakMap</code> is shared across frames (JavaScript global contexts).
+</p>
+
+<p>
+When a class or trait class contains a TraitMixin, the Identifier in the TraitMixin (<code>T2</code> above) is supposed to evaluate to a trait class. This identifier must be free in the class or trait class that this TraitMixin appears in, and must be declared by a TraitClassDeclaration or ConstDeclaration outside this class or trait class, so that the value it designates will be stable over the life of the individual class or trait class that mixes it in. If not, a static SyntaxError is reported. 
+</p>
+
+<p>
+When the class or trait class declaration or expression is evaluated, we also check that these captured values are indeed trait classes, i.e., a function that a TraitClassDeclaration or TraitClassExpression has recorded is a trait class, and throw a <code>TypeError</code> if not. To help keep track of the distinction, we name all our examples  trait classes with an initial upper case and a <code>Trait</code> suffix. When this convention is used consistently, it should reliably prevent these <em>&ldquo;not a trait class&rdquo;</em> TypeErrors from occurring dynamically.
+</p>
+
+<p>
+By virtue of these rules, when a class or trait class declaration or expression is evaluated, the VM can tell exactly what property names it requires and provides. Therefore, on evaluating a ClassDeclaration or ClassExpression, the VM also knows whether there are any conflicts or unresolved requirements. If so, a TypeError must be thrown then. Note that this is earlier than the equivalent reports from <code>Trait.create</code>, which do not happen until instances are made.
+</p>
+
+<p>
+Because classes and trait classes are generative, these TypeErrors cannot in general be reported as static errors, but must wait until the class or trait class declaration or expression is evaluated. This is what we mean by &ldquo;Semi-Static&rdquo;. For example, there&rsquo;s no way to tell statically whether the following code would throw these TypeErrors:
+</p>
+<pre class="code javascript">  <span class="kw2">const</span> makeEnhancedPointClass<span class="br0">&#40;</span><span class="kw2">const</span> ExtraTrait<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    trait <span class="kw2">class</span> PointTrait<span class="br0">&#40;</span>x, y<span class="br0">&#41;</span> =&gt; <span class="br0">&#123;</span>
+      method getX<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> x; <span class="br0">&#125;</span>,
+      method getY<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> y; <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span>
+    <span class="kw2">class</span> Point<span class="br0">&#40;</span>x, y, color<span class="br0">&#41;</span> =&gt; <span class="br0">&#123;</span>
+      mixin ExtraTrait<span class="br0">&#40;</span>color<span class="br0">&#41;</span>,
+      mixin PointTrait<span class="br0">&#40;</span>x, y<span class="br0">&#41;</span>
+    <span class="br0">&#125;</span>
+    <span class="kw1">return</span> Point;
+  <span class="br0">&#125;</span></pre>
+<p>
+It is not yet clear how useful the generality of the above pattern is, although I believe Newspeak demonstrates the utility of a similiar notion of parameterizable superclasses. (TODO: citation) In any case, the dynamic and generative nature of JavaScript argues for preserving this flexibility. As shown by the analysis here, this flexibility does not impede either our optimization or early diagnostic goals. When ClassDeclarations or TraitClassDeclarations appear at top level in a Program these errors are reported as early as possible anyway, when the Program is first evaluated and (because of hoisting) before any code in the Program runs.
+</p>
+
+</div>
+<!-- SECTION [8318-11804] -->
+<a name="optimization_opportunities"></a><h2>Optimization Opportunities</h2>
+<div class="level2">
+
+<p>
+ By the same bookkeeping that allows these earlier errors to be reported, the VM can keep track of the method code associated with the provided method properties of each class or trait class. For each of these, an instance must <em>appear</em> to have the implied frozen bound methods as <em>own</em> properties. But so long as the properties are only ever invoked as methods of the instance, rather than read as observable property values, the frozen bound method object never need be created. Rather, for each class and trait class, the VM should also keep track
+</p>
+<ul>
+<li class="level1"><div class="li"> statically, of the names of the variables used freely in its TraitLiteral, and</div>
+</li>
+<li class="level1"><div class="li"> dynamically, of the values bound to these names in the scope in which the TraitLiteral is evaluated.</div>
+</li>
+</ul>
+
+<p>
+Together, this pair is like the optimized representation of a [[Scope]] object used to implement storage-efficient closures. 
+</p>
+
+<p>
+The set of [[Scope]]s gathered together by a class is allocated as a hidden [[State]] field on the instance, indexed by the trait class of origin. As with lexical [[Scope]]s, the [[State]] has the same shape for all instances of the same class, and so can be allocated at the same time as the instance&rsquo;s non-method properties. When a method is invoked, the method code is evaluated in the context of the [[Scope]] for that method&rsquo;s trait within the instance&rsquo;s [[State]]. In addition to its explicit arguments, the method&rsquo;s code only needs be given access to the instance and be informed about the offset into this instance at which it should find its captured [[Scope]] variables. This offsetting logic should resemble C++&rsquo;s implementation of multiple inheritance.
+</p>
+
+<p>
+Each instance also needs dynamic storage to memoize all the bound frozen methods which do get reified by explicit [[Get]] operations outside the context of a method invocation. Further [[Get]]s must check this memo first, or we would lose <code>===</code>.
+</p>
+
+<p>
+Again, because classes and trait classes are generative, these optimizations cannot in general be performed statically, but must wait until the class or trait class declaration or expression is evaluated. However, this still amortizes the optimization over all instances of these classes, which is the whole point. Again, for ClassDeclarations and TraitClassDeclarations appearing at top level in a Program, these optimizations occur as early as possible anyway, effectively statically at compile time.
+</p>
+
+</div>
+<!-- SECTION [11805-14272] -->
+<a name="examples"></a><h1>Examples</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [14273-14297] -->
+<a name="colored_point"></a><h2>Colored Point</h2>
+<div class="level2">
+
+<p>
+ The colored point example from the <a href="http://traitsjs.org" class="urlextern" target="_blank" title="http://traitsjs.org" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://traitsjs.org</a> front page, with minor revisions for Harmony without traits:
+</p>
+<pre class="code javascript">  <span class="kw2">const</span> makeColorTrait<span class="br0">&#40;</span>col<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> Trait<span class="br0">&#40;</span><span class="br0">&#123;</span>
+      color: <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> col; <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span>
+  <span class="kw2">const</span> makePoint<span class="br0">&#40;</span>x, y<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> Trait.<span class="me1">create</span><span class="br0">&#40;</span>      <span class="co1">// create an instance of a trait</span>
+      Object.<span class="me1">prototype</span>,        <span class="co1">// that inherits from Object.prototype</span>
+        Trait.<span class="me1">compose</span><span class="br0">&#40;</span>           <span class="co1">// and is the composition of</span>
+          makeColorTrait<span class="br0">&#40;</span><span class="st0">'red'</span><span class="br0">&#41;</span>, <span class="co1">// a color trait</span>
+          Trait<span class="br0">&#40;</span><span class="br0">&#123;</span>                <span class="co1">// and an anonymous point trait</span>
+            getX: <span class="kw2">const</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> x; <span class="br0">&#125;</span>,
+            getY: <span class="kw2">const</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> y; <span class="br0">&#125;</span>,
+            toString: <span class="kw2">const</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="st0">''</span>+x+<span class="st0">'@'</span>+y; <span class="br0">&#125;</span>               
+          <span class="br0">&#125;</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span>
+  <span class="kw2">const</span> p = makePoint<span class="br0">&#40;</span><span class="nu0">0</span>,<span class="nu0">2</span><span class="br0">&#41;</span>;
+  p.<span class="me1">color</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="co1">// 'red'</span></pre>
+<p>
+The code above rewritten using this proposed notation:
+</p>
+<pre class="code javascript">  trait <span class="kw2">class</span> ColorTrait<span class="br0">&#40;</span>col<span class="br0">&#41;</span> =&gt; <span class="br0">&#123;</span> 
+    method color<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> col; <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span>
+  trait <span class="kw2">class</span> PointTrait<span class="br0">&#40;</span>x, y<span class="br0">&#41;</span> =&gt; <span class="br0">&#123;</span>
+    method getX<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> x; <span class="br0">&#125;</span>,
+    method getY<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> y; <span class="br0">&#125;</span>,
+    method toString<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="st0">''</span>+x+<span class="st0">'@'</span>+y; <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span>
+  <span class="kw2">class</span> Point<span class="br0">&#40;</span>x, y<span class="br0">&#41;</span> =&gt; <span class="br0">&#123;</span>
+    mixin ColorTrait<span class="br0">&#40;</span><span class="st0">'red'</span><span class="br0">&#41;</span>,
+    mixin PointTrait<span class="br0">&#40;</span>x, y<span class="br0">&#41;</span>
+  <span class="br0">&#125;</span>
+  <span class="kw2">const</span> p = Point<span class="br0">&#40;</span><span class="nu0">0</span>,<span class="nu0">2</span><span class="br0">&#41;</span>;
+  p.<span class="me1">color</span><span class="br0">&#40;</span><span class="br0">&#41;</span>; <span class="co1">// 'red'</span></pre>
+<p>
+A minor semantic difference is that our <code>Point</code> class makes instances that inherits from <code>Point.prototype</code> so that <code>p instanceof Point</code> will return true. Whereas the original makes points that inherit directly from <code>Object.prototype</code>.
+</p>
+
+<p>
+Unfortunately, this example also demonstrates a hazard created by the notational choices proposed above. To preserve the robustness of the original code, we had to pay the verbosity cost of introducing an intermediate <code>PointTrait</code> trait. Had we used the following more compact and legible code, the properties introduced by the <code>Point</code> class directly would silently override any conflicting properties from the traits being mixed in.
+</p>
+<pre class="code javascript">  trait <span class="kw2">class</span> ColorTrait<span class="br0">&#40;</span>col<span class="br0">&#41;</span> =&gt; <span class="br0">&#123;</span> 
+    method color<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> col; <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span>
+  <span class="kw2">class</span> Point<span class="br0">&#40;</span>x, y<span class="br0">&#41;</span> =&gt; <span class="br0">&#123;</span>
+    mixin ColorTrait<span class="br0">&#40;</span><span class="st0">'red'</span><span class="br0">&#41;</span>,
+    method getX<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> x; <span class="br0">&#125;</span>,
+    method getY<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> y; <span class="br0">&#125;</span>,
+    method toString<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="st0">''</span>+x+<span class="st0">'@'</span>+y; <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span>
+  <span class="kw2">const</span> p = Point<span class="br0">&#40;</span><span class="nu0">0</span>,<span class="nu0">2</span><span class="br0">&#41;</span>;
+  p.<span class="me1">color</span><span class="br0">&#40;</span><span class="br0">&#41;</span>; <span class="co1">// 'red'</span></pre>
+</div>
+<!-- SECTION [14298-16570] -->
+<a name="enumerable_trait"></a><h2>Enumerable Trait</h2>
+<div class="level2">
+
+<p>
+ The <a href="http://soft.vub.ac.be/~tvcutsem/traitsjs/tutorial.html" class="urlextern" target="_blank" title="http://soft.vub.ac.be/~tvcutsem/traitsjs/tutorial.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Traits tutorial examples</a> rewritten using out proposed notation.
+</p>
+
+<p>
+<code>EnumerableTrait</code> itself is not improved by our new notation:
+</p>
+<pre class="code javascript">  trait <span class="kw2">class</span> EnumerableTrait<span class="br0">&#40;</span><span class="br0">&#41;</span> =&gt; <span class="br0">&#123;</span>
+    require forEach,
+    method map<span class="br0">&#40;</span>fun<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw2">const</span> seq = <span class="br0">&#91;</span><span class="br0">&#93;</span>;
+      <span class="kw1">this</span>.<span class="me1">forEach</span><span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span>e,i<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        seq.<span class="me1">push</span><span class="br0">&#40;</span>fun<span class="br0">&#40;</span>e,i<span class="br0">&#41;</span><span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+      <span class="kw1">return</span> seq;
+    <span class="br0">&#125;</span>,
+    method filter<span class="br0">&#40;</span>pred<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw2">const</span> seq = <span class="br0">&#91;</span><span class="br0">&#93;</span>;
+      <span class="kw1">this</span>.<span class="me1">forEach</span><span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span>e,i<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">if</span> <span class="br0">&#40;</span>pred<span class="br0">&#40;</span>e,i<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+          seq.<span class="me1">push</span><span class="br0">&#40;</span>e<span class="br0">&#41;</span>;          
+        <span class="br0">&#125;</span>
+      <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+      <span class="kw1">return</span> seq;
+    <span class="br0">&#125;</span>,
+    method reduce<span class="br0">&#40;</span>init, fun<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw2">const</span> result = init;
+      <span class="kw1">this</span>.<span class="me1">forEach</span><span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span>e,i<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        result = fun<span class="br0">&#40;</span>result, e, i<span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+      <span class="kw1">return</span> result;
+    <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span>;</pre>
+<p>
+<code>makeInterval</code> comes out both better and worse, since we again need to introduce an intermediate trait class to avoid the implied override:
+</p>
+<pre class="code javascript">  trait <span class="kw2">class</span> IntervalTrait<span class="br0">&#40;</span>min, max<span class="br0">&#41;</span> =&gt; <span class="br0">&#123;</span>
+    start: min,
+    end: max,
+    size: max - min - <span class="nu0">1</span>,
+    method toString<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="st0">''</span>+min+<span class="st0">'..!'</span>+max; <span class="br0">&#125;</span>,
+    method contains<span class="br0">&#40;</span>e<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="br0">&#40;</span>min &lt;= e<span class="br0">&#41;</span> &amp;&amp; <span class="br0">&#40;</span>e &lt; max<span class="br0">&#41;</span>; <span class="br0">&#125;</span>,
+    method forEach<span class="br0">&#40;</span>consumer<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">for</span> <span class="br0">&#40;</span>let i = min; i &lt; max; i++<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        consumer<span class="br0">&#40;</span>i,i-min<span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span>
+  <span class="kw2">class</span> Interval<span class="br0">&#40;</span>min, max<span class="br0">&#41;</span> =&gt; <span class="br0">&#123;</span>
+    mixin EnumerableTrait<span class="br0">&#40;</span><span class="br0">&#41;</span>,
+    mixin IntervalTrait<span class="br0">&#40;</span>min, max<span class="br0">&#41;</span>
+  <span class="br0">&#125;</span>
+  <span class="kw2">const</span> i = Interval<span class="br0">&#40;</span><span class="nu0">0</span>,<span class="nu0">5</span><span class="br0">&#41;</span>;
+  i.<span class="me1">start</span> <span class="co1">// 0</span>
+  i.<span class="me1">end</span> <span class="co1">// 5</span>
+  i.<span class="me1">reduce</span><span class="br0">&#40;</span><span class="nu0">0</span>, <span class="kw2">const</span><span class="br0">&#40;</span>a,b<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> a+b; <span class="br0">&#125;</span><span class="br0">&#41;</span> <span class="co1">// 0+1+2+3+4 = 10</span></pre>
+<p>
+These examples suggest that perhaps our syntax should implicitly compose where it currently implicitly overrides. This is doable, but leaves open the question of how to syntactically express an override.
+</p>
+
+</div>
+<!-- SECTION [16571-18293] -->
+<a name="acks"></a><h1>Acks</h1>
+<div class="level1">
+
+<p>
+Traits have a long history that we will not try to credit here. See <a href="http://traitsjs.org" class="urlextern" target="_blank" title="http://traitsjs.org" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://traitsjs.org</a> for the derivations of these ideas.
+</p>
+
+<p>
+The <a href="http://traitsjs.org" class="urlextern" target="_blank" title="http://traitsjs.org" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Traits library</a> itself is the basis for everything here, and is by Tom Van Cutsem with help from MarkM.
+</p>
+
+<p>
+The syntax proposed above is primarily by MarkM, with influence by many public discussions on es-discuss, Allen Wirf-Brock&rsquo;s <a href="doku.php%3Fid=strawman:obj_initialiser_constructors.html" class="wikilink1" title="strawman:obj_initialiser_constructors" onclick="return svchk()" onkeypress="return svchk()">obj initialiser constructors</a> proposal, and by <a href="https://mail.mozilla.org/pipermail/es-discuss/2010-September/011825.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2010-September/011825.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Brendan's challenge</a>, and some early feedback from Tom. The syntax here also borrows some ideas privately communicated to MarkM by Erik Aarvidson and Alex Russell.
+</p>
+
+<p>
+The optimization ideas presented here are inspired by Ihab Awad and Mike Stay&rsquo;s old <a href="http://google-caja.googlecode.com/svn/trunk/doc/html/cajitaOptimization/index.html" class="urlextern" target="_blank" title="http://google-caja.googlecode.com/svn/trunk/doc/html/cajitaOptimization/index.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Cajita Optimization</a> proposal.
+</p>
+
+<p>
+Newspeak, for emphasizing the utility of parameterizable superclasses (TODO: cite needed).
+</p>
+
+</div>
+<!-- SECTION [18294-19295] -->
+<a name="see"></a><h1>See</h1>
+<div class="level1">
+
+<p>
+<a href="http://traitsjs.org" class="urlextern" target="_blank" title="http://traitsjs.org" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://traitsjs.org</a>
+</p>
+
+<p>
+Old <a href="http://google-caja.googlecode.com/svn/trunk/doc/html/cajitaOptimization/index.html" class="urlextern" target="_blank" title="http://google-caja.googlecode.com/svn/trunk/doc/html/cajitaOptimization/index.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Cajita Optimization</a> proposal.
+</p>
+
+<p>
+<a href="doku.php%3Fid=strawman:obj_initialiser_constructors.html" class="wikilink1" title="strawman:obj_initialiser_constructors" onclick="return svchk()" onkeypress="return svchk()">obj initialiser constructors</a> 
+</p>
+
+</div>
+<!-- SECTION [19296-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/0/074db88ef6dcca95b7f89478977ecc90.xhtml used -->
+</body>
+</html>

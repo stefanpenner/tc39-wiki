@@ -1,0 +1,34 @@
+====== Array Subtypes ======
+
+===== Motivation =====
+A common request from developers is for a mechanism that allows the creation of a "Array subtype".  An Array subtype is in essence an Array instance with a custom prototype chain.
+
+===== Proposal =====
+We propose the addition of a 'createConstructor' function to the Array constructor object that returns a new function object with the same call semantics as the built in Array constructor, but returning an array instance with a custom prototype.
+
+A pseudo implementation of this function would be:
+
+<code>
+Array.createConstructor = function() {
+    var constructor = function() {
+        var result = <<Initial Array Constructor>>.apply(null, arguments);
+        result.__proto__ = constructor.prototype; // recognising that this isn't actually possible in raw ES
+        return result;
+    }
+    constructor.prototype.constructor = constructor;
+    return constructor;
+}
+</code>
+
+===== Discussion =====
+
+Beware the case where ''arguments.length == 1 && arguments[0]'' is a valid ''length'' value. Or did you intend to preserve that wart in ''Array''? I hope not!  --- //[[brendan@mozilla.org|Brendan Eich]] 2010/11/17 22:14//
+
+
+I was preserving existing behaviour as it would allow code to use the Array constructor or the subtype interchangeably, but I could go either way without any real problem --- //[[oliver@apple.com|Oliver Hunt]] 2010/12/15 21:08//
+
+The ''result.constructor'' property is instance-invariant and should be on ''constructor.prototype'', as with all the built-in and user-defined constructor functions.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/01/14 01:40//
+
+I believe I have now fixed the example code  --- //[[oliver@apple.com|Oliver Hunt]] 2011/01/20 01:09//

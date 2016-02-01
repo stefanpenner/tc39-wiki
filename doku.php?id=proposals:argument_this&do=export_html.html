@@ -1,0 +1,126 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:argument_this&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:argument_this&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:argument_this&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<p>
+(See also the <a href="doku.php%3Fid=discussion:argument_this.html" class="wikilink1" title="discussion:argument_this" onclick="return svchk()" onkeypress="return svchk()">discussion page</a>.)
+</p>
+
+<a name="proposal_for_argument_this"></a><h1>Proposal for &quot;Argument This&quot;</h1>
+<div class="level1">
+
+<p>
+ For class methods, we really have two design options:
+</p>
+<ul>
+<li class="level1"><div class="li"> &ldquo;Bound-this&rdquo;: The class method closes over this, and always ignores its first argument (this is the current design).</div>
+</li>
+<li class="level1"><div class="li"> &ldquo;Argument-this&rdquo;: The class method does not close over this, and instead uses its first argument.</div>
+</li>
+</ul>
+
+<p>
+ I wonder if its possible at this  stage to re-visit the issue of &ldquo;bound-this&rdquo;.   I&rsquo;ve been trying to formalize the semantics of a mini-ES4, and bound-this methods are turning out a bit awkward to fit in. I understand that &ldquo;bound-this&rdquo; has precedent in Actionscript and it guarantees that &ldquo;this&rdquo; always has the right type (that is, this class or a subclass), which may facilitate optimization.
+</p>
+
+<p>
+Yet there are some technical benefits for &ldquo;argument-this&rdquo;: it yields a smaller and more coherent language, with only one flavor of method (plain vanilla ES3, now with types). It means that all methods (both from classes and structural objects) take a &ldquo;this&rdquo; argument, which is what ES3 programmers might expect, and is perhaps more &ldquo;Javascripty&rdquo;.
+</p>
+
+<p>
+The type system, via self types, can ensure (in both strict and standard mode) that &ldquo;this&rdquo; is a subtype of (or compatible with) the underlying class type, which is a somewhat weaker guarantee than &ldquo;bound-this&rdquo;.
+</p>
+
+<p>
+Bound-this does support the nice coding pattern: 
+</p>
+<pre class="code">   doTenTimes( outputStream.println )</pre>
+
+<p>
+ However, this works only if the object outputStream comes from a class, and breaks if outputStream is a structural object. That is, bound-this methods and object methods are just different kinds of entities. The more robust coding pattern: 
+</p>
+<pre class="code">   doTenTimes( function() outputStream.println() )</pre>
+
+<p>
+ that works for both class methods and object methods will also work under both  bound-this and argument-this. It seems that porting code from &ldquo;bound this&rdquo; to &ldquo;argument this&rdquo; primarily requires introducing these wrappers around method extractions. I think argument-this supports  all the coding patterns that programmers should use, and in weird corner cases it gives a semantics that is perhaps more consistent with ES3 and structural objects.
+</p>
+
+<p>
+&ldquo;Argument this&rdquo; also yields a smoother interoperation between classes and objects, from the point-of-view of the type system. For example, the class D  
+</p>
+<pre class="code">  class D { var foo:int = 10; function f():int { return this.foo } };</pre>
+
+<p>
+ is a subtype of  
+</p>
+<pre class="code">  {foo:int; function(this:this):int }</pre>
+
+<p>
+ under &ldquo;argument-this&rdquo;; under &ldquo;bound this&rdquo;, D is a subtype of 
+</p>
+<pre class="code">  {foo:int; function(this:*):int }</pre>
+
+<p>
+ where this:* indicates that the &ldquo;this&rdquo; argument is discarded, and looks a little strange.
+</p>
+
+<p>
+Since classes are new in ES4, this is our only chance to get them right.  It it still possible to revisit this issue at this stage? Would it significantly hurt compatibility with Actionscript?
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x63%3B%26%23x6f%3B%26%23x72%3B%26%23x6d%3B%26%23x61%3B%26%23x63%3B%26%23x40%3B%26%23x73%3B%26%23x6f%3B%26%23x65%3B%26%23x2e%3B%26%23x75%3B%26%23x63%3B%26%23x73%3B%26%23x63%3B%26%23x2e%3B%26%23x65%3B%26%23x64%3B%26%23x75%3B" class="mail" title="&#x63;&#x6f;&#x72;&#x6d;&#x61;&#x63;&#x40;&#x73;&#x6f;&#x65;&#x2e;&#x75;&#x63;&#x73;&#x63;&#x2e;&#x65;&#x64;&#x75;">Cormac Flanagan</a> 2007/05/14 09:10</em>
+</p>
+
+<p>
+There is a third option: 
+</p>
+<ul>
+<li class="level1"><div class="li"> &ldquo;Rejected-this&rdquo;: The class method closes over this, and any attempt to invoke the extracted method with a non-null this object causes a run-time (or compile-time, if you can track it) error.</div>
+</li>
+</ul>
+
+<p>
+ Under this rule, D is a subtype of  
+</p>
+<pre class="code">  {foo:int; function(this:()):int }</pre>
+
+<p>
+ or perhaps even 
+</p>
+<pre class="code">  {foo:int; function(this:D):int }</pre>
+
+<p>
+ Don&rsquo;t know what this does for your type system, though.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2007/05/15 05:39</em> 
+</p>
+
+</div>
+<!-- SECTION [63-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/e/e380a4b5bfe4c5a2b6b4f8fededdffb6.xhtml used -->
+</body>
+</html>

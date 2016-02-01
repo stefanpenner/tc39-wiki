@@ -1,0 +1,177 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=harmony:array_comprehensions&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="http://wiki.ecmascript.org/feed.php?mode=list&amp;ns=harmony" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=harmony:array_comprehensions&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=harmony:array_comprehensions&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:array_comprehensions&amp;do=export_html.html#overview" class="toc">Overview</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:array_comprehensions&amp;do=export_html.html#examples" class="toc">Examples</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:array_comprehensions&amp;do=export_html.html#template_string_nesting_example" class="toc">Template String Nesting Example</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:array_comprehensions&amp;do=export_html.html#syntax" class="toc">Syntax</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:array_comprehensions&amp;do=export_html.html#translation" class="toc">Translation</a></span></li>
+</ul>
+</div>
+</div>
+
+<p>
+<strong>This proposal has progressed to the Draft ECMAScript 6 Specification, which is available for review here: <a href="doku.php%3Fid=harmony:specification_drafts.html" class="wikilink1" title="harmony:specification_drafts" onclick="return svchk()" onkeypress="return svchk()">specification_drafts</a>. Any new issues relating to them should be filed as bugs at <a href="http://bugs.ecmascript.org" class="urlextern" target="_blank" title="http://bugs.ecmascript.org" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://bugs.ecmascript.org</a>. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.</strong>
+</p>
+
+<a name="overview"></a><h1>Overview</h1>
+<div class="level1">
+
+<p>
+ Array comprehensions were introduced in <a href="https://developer.mozilla.org/en/Core_JavaScript_1.5_Guide/Working_with_Arrays#Array_comprehensions" class="urlextern" target="_blank" title="https://developer.mozilla.org/en/Core_JavaScript_1.5_Guide/Working_with_Arrays#Array_comprehensions" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">JavaScript 1.7</a>. Comprehensions are a well-understood and popular language feature of list comprehensions, found in languages such as <a href="http://docs.python.org/tutorial/datastructures.html#list-comprehensions" class="urlextern" target="_blank" title="http://docs.python.org/tutorial/datastructures.html#list-comprehensions" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Python</a> and <a href="http://www.haskell.org/haskellwiki/List_comprehension" class="urlextern" target="_blank" title="http://www.haskell.org/haskellwiki/List_comprehension" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Haskell</a>, inspired by the mathematical notation of <a href="http://en.wikipedia.org/wiki/Set-builder_notation" class="urlextern" target="_blank" title="http://en.wikipedia.org/wiki/Set-builder_notation" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">set comprehensions</a>.
+</p>
+
+<p>
+Array comprehensions are a convenient, declarative form for creating computed arrays with a literal syntax that reads naturally.
+</p>
+
+<p>
+Per <a href="doku.php%3Fid=harmony:iterators.html" class="wikilink1" title="harmony:iterators" onclick="return svchk()" onkeypress="return svchk()">iterators</a>, default property value (not key) enumeration and custom value iteration may be done using <code>for</code>-<code>of</code> loop head syntax, rather than <code>for</code>-<code>in</code>.
+</p>
+
+</div>
+<!-- SECTION [371-1251] -->
+<a name="examples"></a><h1>Examples</h1>
+<div class="level1">
+
+<p>
+ Filtering an array:
+</p>
+<pre class="code javascript"><span class="br0">&#91;</span> x <span class="kw1">for</span> <span class="br0">&#40;</span>x of a<span class="br0">&#41;</span> <span class="kw1">if</span> <span class="br0">&#40;</span>x.<span class="me1">color</span> === ‘blue’<span class="br0">&#41;</span> <span class="br0">&#93;</span></pre>
+<p>
+Mapping an array:
+</p>
+<pre class="code javascript"><span class="br0">&#91;</span> square<span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="kw1">for</span> <span class="br0">&#40;</span>x of <span class="br0">&#91;</span><span class="nu0">1</span>,<span class="nu0">2</span>,<span class="nu0">3</span>,<span class="nu0">4</span>,<span class="nu0">5</span><span class="br0">&#93;</span><span class="br0">&#41;</span> <span class="br0">&#93;</span></pre>
+<p>
+Cartesian product:
+</p>
+<pre class="code javascript"><span class="br0">&#91;</span> <span class="br0">&#91;</span>i,j<span class="br0">&#93;</span> <span class="kw1">for</span> <span class="br0">&#40;</span>i of rows<span class="br0">&#41;</span> <span class="kw1">for</span> <span class="br0">&#40;</span>j of columns<span class="br0">&#41;</span> <span class="br0">&#93;</span></pre>
+</div>
+<!-- SECTION [1252-1549] -->
+<a name="template_string_nesting_example"></a><h2>Template String Nesting Example</h2>
+<div class="level2">
+
+<p>
+ The <a href="doku.php%3Fid=harmony:quasis.html#nesting" class="wikilink1" title="harmony:quasis" onclick="return svchk()" onkeypress="return svchk()">nesting example</a> on the template string page 
+</p>
+<pre class="code">
+rows = [['Unicorns', 'Sunbeams', 'Puppies'], ['&lt;3', '&lt;3', '&lt;3']],
+safehtml`&lt;table&gt;${
+  rows.map(function(row) {
+    return safehtml`&lt;tr&gt;${
+      row.map(function(cell) {
+        return safehtml`&lt;td&gt;${cell}&lt;/td&gt;`
+      })
+    }&lt;/tr&gt;`
+  })
+}&lt;/table&gt;`
+</pre>
+
+<p>
+Can be made prettier using other features of ES6. Using arrow functions:
+</p>
+<pre class="code">
+rows = [['Unicorns', 'Sunbeams', 'Puppies'], ['&lt;3', '&lt;3', '&lt;3']],
+safehtml`&lt;table&gt;${
+  rows.map(row =&gt; safehtml`&lt;tr&gt;${
+    row.map(cell =&gt; safehtml`&lt;td&gt;${cell}&lt;/td&gt;`)
+  }&lt;/tr&gt;`
+}&lt;/table&gt;`
+</pre>
+
+<p>
+or using comprehensions:
+</p>
+<pre class="code">
+rows = [['Unicorns', 'Sunbeams', 'Puppies'], ['&lt;3', '&lt;3', '&lt;3']],
+safehtml`&lt;table&gt;${
+  [safehtml`&lt;tr&gt;${
+    [safehtml`&lt;td&gt;${cell}&lt;/td&gt;` for cell of row]
+  }&lt;/tr&gt;` for row of rows]
+}&lt;/table&gt;`
+</pre>
+
+<p>
+or using hypothetical left-to-right array comprehensions with parenful syntax:
+</p>
+<pre class="code">
+rows = [['Unicorns', 'Sunbeams', 'Puppies'], ['&lt;3', '&lt;3', '&lt;3']],
+safehtml`&lt;table&gt;${
+  [for (row of rows) safehtml`&lt;tr&gt;${
+    [for (cell of row) safehtml`&lt;td&gt;${cell}&lt;/td&gt;`]
+  }&lt;/tr&gt;`]
+}&lt;/table&gt;`
+</pre>
+
+</div>
+<!-- SECTION [1550-2738] -->
+<a name="syntax"></a><h1>Syntax</h1>
+<div class="level1">
+<pre class="code">
+ArrayLiteral ::= ...
+              |  &quot;[&quot; Expression (&quot;for&quot; &quot;(&quot; LHSExpression &quot;of&quot; Expression &quot;)&quot;)+ (&quot;if&quot; &quot;(&quot; Expression &quot;)&quot;)? &quot;]&quot;
+</pre>
+
+</div>
+<!-- SECTION [2739-2907] -->
+<a name="translation"></a><h1>Translation</h1>
+<div class="level1">
+
+<p>
+ An array comprehension:
+</p>
+
+<p>
+<strong>[</strong> <em>Expression<sub>0</sub></em> <strong>for (</strong> <em>LHSExpression<sub>1</sub></em> <strong>of</strong> <em>Expression<sub>1</sub></em> <strong>)</strong> ... <strong>for (</strong> <em>LHSExpression<sub>n</sub></em> <strong>) if (</strong> <em>Expression</em> <strong>)</strong><sub><em>opt</em></sub> <strong>]</strong>
+</p>
+
+<p>
+can be defined by expansion to the expression:
+</p>
+
+<p>
+<strong>let (</strong><em>result</em> <strong>= []) {</strong> <br/>
+     <strong>for (let </strong><em>LHSExpression<sub>1</sub></em> <strong>of</strong> <em>Expression<sub>1</sub></em> <strong>) {</strong> <br/>
+         ... <br/>
+         <strong>for (let </strong><em>LHSExpression<sub>n</sub></em> <strong>of</strong> <em>Expression<sub>n</sub></em> <strong>) {</strong> <br/>
+             <strong>if (</strong> <em>Expression</em> <strong>)</strong><sub><em>opt</em></sub> <br/>
+                 <em>ArrayPush</em><strong>(</strong><em>result</em><strong>,</strong> <em>Expression<sub>0</sub></em><strong>);</strong> <br/>
+             <strong>}</strong> <br/>
+         <strong>}</strong> <br/>
+     <strong>}</strong> <br/>
+ <strong>=&gt;</strong> <em>result</em> <br/>
+ <strong>}</strong>
+</p>
+
+</div>
+<!-- SECTION [2908-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/5/56e9d7c125ef4c3be4bd55a5e79341ca.xhtml used -->
+</body>
+</html>

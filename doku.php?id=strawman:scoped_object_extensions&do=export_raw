@@ -1,0 +1,245 @@
+====== Scoped Object Extensions ======
+
+Scoped object extensions allows different libraries to define and reuse monkey patches without conflicting with each other.
+
+
+===== Goals =====
+
+  * Allow property extensions to any object
+  * Extensions are only available in lexical scopes where they have been explicitly defined or imported
+  * When in scope property extensions are indistinguishable from normal properties 
+  * Extensions may be used to extend objects to support interfaces that non-extended objects support. Extensions can be used to support duck-type polymorphism between extended and non-extended objects.
+
+
+
+===== Examples =====
+
+Extensions add properties to an object. Extensions are specified declaratively as part of a module declaration. The properties added via an extension are only visible within the module within which the extension is declared.
+
+<code>
+module {
+  extension Array.prototype {
+    where: Array.prototype.filter,
+    select: Array.prototype.map
+  }
+
+  // extensions are in scope in their defining module
+  var evens = [1, 2, 3, 4].where(function (value) { return {value %2) == 0; });
+  alert(typeof([].where));  // function
+  alert(typeof(Array.prototype.select));  // function
+}
+// extensions are not in scope outside the lexical scope of the module
+alert(typeof([].where));  // undefined
+alert(typeof(Array.prototype.select));  // undefined
+</code>
+
+Extensions can be exported and imported across modules:
+
+<code>
+module Collections { 
+  export extension Extensions = Array.protoype {
+    where: function(condition) { ... }
+    select: function(transformer) { ... }
+  }
+}
+
+module LolCatzDotCom {
+  // imports Array.prototype extensions where and select into this module
+  import Collections.Extensions;
+
+  var allCatz = someArrayValue;
+  // Array extensions are in scope
+  var cuteCatz = allCatz.where(function(cat) { return cat.isCute; });
+
+  alert(typeof([].where));  // function
+}
+</code>
+
+Extension properties appear to the programmer the same as any regular property defined on an object. In the above example, allCatz might be an array, or it might be any other object which contains a suitable 'where' property. Extensions may be used in this way to introduce duck type polymorphism.
+
+Any object may be extended:
+
+<code>
+module DOMExtensions {
+  extension window {
+    width: function () { return this.innerWidth; }
+  }
+
+  alert(window.width());
+}
+</code>
+
+===== Related Work =====
+
+Very similar to Ruby refinements which are based on ClassBlocks. Open Classes from MultiJava. C# extension methods.
+
+===== Syntax =====
+
+Scoped object extension syntax builds on the syntax from the modules proposal.
+
+<code>
+ExtensionDeclaration ::= "extension" [Identifier "="] Expression ObjectLiteral
+
+ExportDeclaration ::= ...
+                   | export ExtensionDeclaration
+
+ModuleElement ::= ...
+               | ExtensionDeclaration
+</code>
+
+
+
+
+
+===== Extension Definition =====
+
+Object extensions are defined by ExtensionDeclarations:
+
+<code>
+ExtensionDeclaration ::= "extension" [Identifier "="] Expression ObjectLiteral
+</code>
+
+The ''Expression'' identifies the object being extended. The ''Expression'' is evaluated once at module startup (TODO: compile-time, link-time, run-time). The ''ObjectLiteral'' specifies the extension object containing the extension properties for the extended object. Extension objects are frozen and are prototype-less.
+
+If the ''Identifier'' is present in an ExtensionDeclaration then the extension is a named extension. The ''Identifier'' is bound to a const variable whose value is the extension object. TODO: Naming extensions is needed for importing/exporting them. Should the Identifier be in scope outside of import declarations? If not, is there a better syntax for naming extensions?
+
+As a matter of style, it is recommended that extension names be  "Extensions" where possible, or end on "Extensions". This will increase clarity when importing extensions.
+
+===== Exporting Extensions =====
+
+Object extensions may be exported from a module:
+
+<code>
+ExportDeclaration ::= ...
+                   | export ExtensionDeclaration
+</code>
+
+An object extension declared in an ExportDeclaration is exported from the containing module. An exported object extension which is named adds the named extension identifier to the set of identifiers exported by the module. Exported ExtensionDeclarations may be named or unnamed.
+
+
+
+===== Importing Extensions =====
+
+Extensions may be imported from another module.
+
+<code>
+ImportPath(load) ::= ModuleExpression(load) "." ImportSpecifierSet
+ImportSpecifierSet ::= "*"
+                    | IdentifierName
+                    | "{" (ImportSpecifier ("," ImportSpecifier)*)? ","? "}"
+ImportSpecifier ::= IdentifierName (":" Identifier)?
+</code>
+
+An import specifier of ''*'' imports all exported object extensions from the identified module - both named and unnamed extensions. If an import specifier of ''IdentifierName'' identifies an exported named extension then that extension is imported. 
+
+TODO: Individual extension properties may also be imported by name. Need to wrangle the syntax...
+
+
+
+===== Multiple Extensions =====
+
+A module may contain multiple extension definitions for the same object. When multiple extension definitions exist for the same object, the individual extension objects are removed from the extended object and a new extension object is created. The new extension object is created by adding all the extension properties from the defining extensions in the lexical order the extensions are defined in. The new extension object is frozen and has no prototype. In the case of conflicting extension definitions to the same object with the same property name, the last definition wins. TODO: could make this an error.
+
+A module may both import and locally define extensions for the same object. In the more general case, the conflicting extensions are removed and a new extension is added. The new extension is created by first adding all imported extensions in lexical order of importing, then local extension definitions are added. The new extension object is frozen and has no prototype. Conflicts between imported extensions and conflicts between imported extensions and locally defined extensions are not an error. Locally defined extensions always win over imported extensions, regardless of lexical order of import and definition. TODO: Is this the right rule? 
+
+TODO: nested modules have extensions from outer modules in scope.
+
+Inside a given lexical scope an object will have at most one extension object. Extension objects are frozen and have no prototype. The complete set of extension properties in a lexical scope can be determined statically.
+
+TODO: This should be reworked in terms of property descriptors.
+
+
+===== Lexical Scope =====
+
+Each module declaration has a unique lexical scope. The lexical scope of an expression is the lexical scope of the immediately containing module. The notion of lexical scope propagates similarly to 'strict mode'. Calls to ''eval'' inherit the lexical scope of their immediate caller.
+
+===== Property Lookup =====
+
+Property lookup on an object proceeds by first doing a lookup on the extension object if one is in scope. If the object does not have an extension object, or the extension object does not have a matching named property, then lookup proceeds normally on the object. When an object extension is in scope, the extension properties win. Note that all objects may be extended. 
+
+Given:
+
+<code>
+var P = {};
+var O = Object.create(P);
+</code>
+
+The expression ''O.M'' searches for a property ''M'' in the following order:
+
+  - extension object for ''O''
+  - ''O''
+  - extension object for ''P''
+  - ''P''
+  - extension object for ''Object.prototype''
+  - ''Object.prototype''
+
+
+
+
+
+
+===== Property Lookup Spec Changes =====
+
+Section 8.12.1 %%[[GetOwnProperty]]%%(P) is modified as follows:
+
+When the %%[[GetOwnProperty]]%% internal method of O is called with property name P and lexical scope L, the following steps are taken:
+  - Let D be the result of calling %%[[GetExtensionProperty]]%% on object O with property name P and lexical scope L.
+  - If D is not undefined, return D.
+  - Else return %%[[GetUnextendedOwnProperty]]%% on object O with property name P.
+
+When the %%[[GetExtensionProperty]]%% internal method of O is called with property name P and lexical scope L, the following steps are taken:
+  - If O doesn’t have an object extension in lexical scope L return undefined.
+  - Else let E be the object extension for O in lexical scope L.
+  - Return %%[[GetUnextendedOwnProperty]]%% with object E and property name P.
+
+When the %%[[GetUnextendedOwnProperty]]%% internal method of O is called with property name P, the following steps are taken:
+NOTE: this is just the old version of %%[[GetOwnProperty]]%%
+  - If O doesn’t have an own property with name P, return undefined.
+  - Let D be a newly created Property Descriptor with no fields.
+  - Let X be O’s own property named P.
+  - If X is a data property, then
+    - Set D.%%[[Value]]%% to the value of X’s %%[[Value]]%% attribute.
+    - Set D.%%[[Writable]]%% to the value of X’s %%[[Writable]]%% attribute
+  - Else X is an accessor property, so
+    - Set D.%%[[Get]]%% to the value of X’s %%[[Get]]%% attribute.
+    - Set D.%%[[Set]]%% to the value of X’s %%[[Set]]%% attribute.
+  - Set D.%%[[Enumerable]]%% to the value of X’s %%[[Enumerable]]%% attribute.
+  - Set D.%%[[Configurable]]%% to the value of X’s %%[[Configurable]]%% attribute.
+  - Return D.
+
+A consequence of the changes to %%[[GetOwnPropertyDescriptor]]%% is that extensions apply to MemberExpressions (both '.' and '[' operators), internal methods from 8.12 (Get, CanPut, Put, HasProperty, ...), as well as Object.getOwnPropertyDescriptor. The lexical scope will need to be propagated from all reflection APIs(Get, CanPut, Put, HasProperty, ...) down to %%[[GetOwnPropertyDescriptor]]%%.
+
+Extension properties are non-configurable so assignment and Object.defineProperty will not allow modification of extension properties. 
+
+Alternative:
+
+An alternative design is to only apply extension lookup to the '.' and '[' operators.
+
+===== Property Iteration =====
+
+Extension properties participate in object property iteration. 
+
+In sections:
+
+  * 12.6.4 The for-in Statement
+  * 15.2.3.4 Object.getOwnPropertyNames
+  * 15.2.3.14 Object.keys
+
+Extension properties are included in property iterations and shadow non-extension properties of the same name. When iterating over the properties of an object, if an object has both an extension property and a regular(non-extension) property then the iteration will proceed as if the non-extension property is not present on the object.
+
+TODO: formalize this section.
+
+===== Reflective API for Extensions =====
+
+TODO: Need API on Object to access %%[[GetUnextendedOwnProperty]]%% and %%[[GetExtensionProperty]]%% directly.
+
+
+===== Implementation Notes =====
+
+  * An existing compiling implementation will not need to change its code gen for legacy code  because it can determine statically that no object extensions are in scope. 
+  * The set of extension objects in scope is a compile time constant. Extensions objects are frozen and the set of extensions is specified declaratively. Taking advantage of this fact should allow implementations to minimize the performance impact.
+
+
+
+
+

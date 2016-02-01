@@ -1,0 +1,44 @@
+===== Identifier Identification =====
+
+==== Problem ====
+
+ECMAScript is used to implement a variety of tools that check code for conformance with the ECMAScript specification, minimize it, perform other transformations, or generate ECMAScript code. These tools have to be able to check identifiers for conformance, taking the identifier specification and the underlying Unicode specification into consideration. This currently requires the tools to include large regular expressions or tables. When tools bring their own data, they likely will support only one ECMAScript/Unicode version, and there's no guarantee that their data will match the identifier definition of the runtime they're running, as implementations are free to support any Unicode version higher than the minimum version required by the ECMAScript specification.
+
+In general, Unicode character properties can be supported through code point classification functions or through regular expression patterns. In the case of ECMAScript parsers, it seems classification functions are more useful:
+  - When looking at a number of parsers, I found that the majority already use code point classification functions, in particular functions to identify IdentifierPart and IdentifierStart characters. JSLint and CoffeeScript have the only parsers that detect tokens using regular expressions; neither of these two handle Unicode escape sequences, which are hard to integrate into this approach. Approaches are summarized below.
+  - Functions can easily accept additional parameters, such as the target ECMAScript version.
+
+
+^ Parser (of)  ^ Tokenizer  ^ non-ASCII characters  ^ # of ES/Unicode versions  ^ ES version  ^ Unicode version  ^ Unicode escapes  ^
+^ [[https://github.com/douglascrockford/JSLint/blob/master/jslint.js|JSLint]]  | RegExp  | no  | —  |  ?  |  ?  | no  |
+^ [[https://github.com/jshint/jshint/blob/master/src/lex.js|JSHint]]  | Functions  | yes  | 1  |  5.1  |  6.3.0  | yes  |
+^ [[https://github.com/jashkenas/coffee-script/blob/master/src/lexer.coffee|CoffeeScript]]  | RegExp  | wrong - accepts 0x7F-0xFFFF  | —  |  ?  |  ?  | no  |
+^ [[https://github.com/ariya/esprima/blob/master/esprima.js|Esprima]]  | Functions  | yes  | 1  |  5.1  |  6.3.0  | yes  |
+^ [[http://marijnhaverbeke.nl/acorn/|acorn]]  | Functions  | yes  | 1  |  5.1  |  6.3.0  | yes  |
+^ [[https://github.com/mishoo/UglifyJS2/blob/master/lib/parse.js|UglifyJS2]]  | Functions  | yes  | 1  |  5.1  |  6.3.0  | yes  |
+
+==== Proposed Solution ====
+
+Add the following functions, which detect identifier characters based on either the minimum Unicode version of a specified ECMAScript edition, or the Unicode version used by the implementation.
+
+**String.isIdentifierStart(cp [, edition])**
+
+  - If //cp// is a String value or String object, then let //cp// be the result of calling the standard built-in function String.prototype.codePointAt with //cp// as the **this** value and 0 as the //pos// argument.
+  - If //cp// is not a Number value or Number object, throw a TypeError exception.
+  - Let //cp// be ToNumber(//cp//).
+  - If //cp// is not finite, throw a RangeError exception.
+  - If ToInteger(//cp//) ≠ //cp//, throw a RangeError exception.
+  - If //cp// < 0 or //cp// > 0x10FFFF, throw a RangeError exception.
+  - If //edition// is provided and not undefined, then:
+    - If //edition// is not a Number value, throw a TypeError exception.
+    - If //edition// is not 3, 5, or 6, throw a RangeError exception.
+  - If //edition// is 3 or 5, let //unicode// be 3.0.
+  - Else if //edition// is 6, let //unicode// be 5.1.
+  - Else let //unicode// be the Unicode version supported by the implementation in ECMAScript identifiers.
+  - If //edition// is not provided or is undefined, then let //edition// be 6.
+  - If //cp// is matched by the IdentifierStart production in edition //edition// of the ECMAScript Language Specification using Unicode version //unicode//, then return true.
+  - Return false.
+
+**String.isIdentifierPart(cp [, version])**
+
+This function behaves in exactly the same way as String.isIdentifierStart, except that the return value is based on whether //cp// is matched by the IdentifierPart production.

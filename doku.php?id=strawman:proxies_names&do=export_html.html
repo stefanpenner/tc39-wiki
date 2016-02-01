@@ -1,0 +1,139 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:proxies_names&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:proxies_names&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:proxies_names&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="proxies_and_private_names"></a><h1>Proxies and Private Names</h1>
+<div class="level1">
+
+<p>
+ This is a placeholder page to record the ongoing discussion on the interaction between <a href="doku.php%3Fid=harmony:direct_proxies.html" class="wikilink1" title="harmony:direct_proxies" onclick="return svchk()" onkeypress="return svchk()">direct_proxies</a> and <a href="doku.php%3Fid=harmony:private_name_objects.html" class="wikilink1" title="harmony:private_name_objects" onclick="return svchk()" onkeypress="return svchk()">private_name_objects</a>.
+</p>
+
+<p>
+The basic issue is that a proxy can&rsquo;t just intercept operations involving private names naively, since that would allow a malicious proxy to steal private names, e.g.:
+</p>
+<pre class="code javascript">let n = <span class="kw2">new</span> <span class="kw3">Name</span><span class="br0">&#40;</span><span class="br0">&#41;</span>
+obj<span class="br0">&#91;</span>n<span class="br0">&#93;</span> <span class="co1">// if obj is a proxy, the proxy handler sees: handler.get(target, n, obj)</span></pre>
+<p>
+Here&rsquo;s another <a href="https://mail.mozilla.org/pipermail/es-discuss/2011-December/018901.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2011-December/018901.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">problematic case described by Sam Tobin-Hochstadt</a>.
+</p>
+
+<p>
+An earlier design discussed at the July TC39 meeting split up all traps into &ldquo;normal&rdquo; and &ldquo;name&rdquo; variants, where the &ldquo;name&rdquo; variants would need to &ldquo;prove&rdquo; to the proxy that they knew of the intercepted private name, given its &ldquo;public&rdquo; part. This lead to some concern about the overhead required to transparently deal with names and lead us to explore <a href="https://mail.mozilla.org/pipermail/es-discuss/2012-August/024313.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2012-August/024313.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">some alternative designs</a>, one of which is detailed below: 
+</p>
+<ul>
+<li class="level1"><div class="li"> The Proxy constructor (and <a href="doku.php%3Fid=strawman:revokable_proxies.html" class="wikilink1" title="strawman:revokable_proxies" onclick="return svchk()" onkeypress="return svchk()">Proxy.revocable</a>) takes a third argument that describes a &ldquo;whitelist&rdquo; of private names this proxy knows about</div>
+</li>
+</ul>
+<pre class="code javascript"><span class="kw2">var</span> whitelist = <span class="kw2">new</span> WeakSet<span class="br0">&#40;</span><span class="br0">&#41;</span>
+<span class="kw2">var</span> p = Proxy<span class="br0">&#40;</span>target, handler, whitelist<span class="br0">&#41;</span>
+<span class="kw2">var</span> n1 = <span class="kw2">new</span> <span class="kw3">Name</span><span class="br0">&#40;</span><span class="br0">&#41;</span>
+<span class="kw2">var</span> n2 = <span class="kw2">new</span> <span class="kw3">Name</span><span class="br0">&#40;</span><span class="br0">&#41;</span>
+whitelist.<span class="me1">add</span><span class="br0">&#40;</span>n1<span class="br0">&#41;</span>
+p<span class="br0">&#91;</span>n1<span class="br0">&#93;</span> <span class="co1">// calls handler.get(target, n1, p)</span>
+p<span class="br0">&#91;</span>n2<span class="br0">&#93;</span> <span class="co1">// calls handler.unknownPrivateName(target)</span></pre><ul>
+<li class="level1"><div class="li"> The whitelist must be a genuine built-in WeakSet (throw TypeError if it isn&rsquo;t)</div>
+</li>
+<li class="level1"><div class="li"> If a private name is on the whitelist, this is sufficient &ldquo;proof&rdquo; for the proxy that its handler knows about this private name, so the name can be exposed to its traps.</div>
+</li>
+<li class="level1"><div class="li"> When a proxy traps an operation involving a private name, before calling the handler trap, it checks whether the name is on the whitelist.</div>
+</li>
+<li class="level1"><div class="li"> If the private name is on the whitelist, the trap is called normally (passing the name as-is to the trap)</div>
+</li>
+<li class="level1"><div class="li"> Unique names don&rsquo;t need to be part of the set to be trappable.</div>
+</li>
+<li class="level1"><div class="li"> Names can be added to or removed from the whitelist even after the proxy was constructed (dynamic updates, needed for membranes).</div>
+</li>
+<li class="level1"><div class="li"> If the private name is not on the whitelist, the proxy calls a new <code>unknownPrivateName(target)</code> trap.</div>
+</li>
+<li class="level1"><div class="li"> If the <code>unknownPrivateName</code> trap is not defined, or the trap invocation returns <code>true</code>, the operation is forwarded to the target (the handler never sees the name).</div>
+</li>
+<li class="level1"><div class="li"> If the <code>unknownPrivateName</code> trap returns <code>false</code>, a TypeError is thrown. This is useful for proxies that don&rsquo;t want to forward operations on names they don&rsquo;t know about (membranes probably want to do this)</div>
+</li>
+<li class="level1"><div class="li"> If no whitelist is specified, the proxy always calls the <code>unknownPrivateName</code> trap for any operation involving private names (it&rsquo;s as if the whitelist is always empty).</div>
+</li>
+</ul>
+
+<p>
+ <strong>Lookup on the whitelist</strong>
+</p>
+
+<p>
+Care must be taken that a proxy can&rsquo;t specify its own whitelist to interfere with the lookup of private names. To this end, the whitelist must be a built-in WeakSet, and the lookup of a private name <code>name</code> occurs by calling the built-in/intrinsic <code>WeakSet.prototype.has</code> method. Overriding this method will not influence private name lookup. The check is performed as if the proxy performs:
+</p>
+<pre class="code javascript">WeakSet.<span class="me1">prototype</span>.<span class="me1">has</span>.<span class="me1">call</span><span class="br0">&#40;</span>whitelist, <span class="kw3">name</span><span class="br0">&#41;</span> <span class="co1">// assuming the original definition of WeakSet.prototype.has</span></pre>
+<p>
+ <strong>Advantages</strong> 
+</p>
+<ul>
+<li class="level1"><div class="li"> No doubling of the number of traps (<code>get</code> vs <code>getName</code>, <code>has</code> vs <code>hasName</code>, etc.)</div>
+</li>
+<li class="level1"><div class="li"> Traps get the actual private name as argument, allowing them to easily forward the operation (no trickery with <code>.public</code> properties)</div>
+</li>
+<li class="level1"><div class="li"> The <code>unknownPrivateName</code> trap allows the handler to define its own policy w.r.t. how to deal with unknown private names.</div>
+</li>
+<li class="level1"><div class="li"> Proxies that don&rsquo;t specify a whitelist and don&rsquo;t specify an <code>unknownPrivateName</code> trap are oblivious to private names: any operation involving a private name is just forwarded to the target, without consulting the handler.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1-4081] -->
+<a name="open_issues"></a><h2>Open issues</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> WeakSet isn&rsquo;t currently specified. Alternatively, the whitelist could be a WeakMap mapping private names to <code>true</code>. An effort is underway to prototype this in <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=792439" class="urlextern" target="_blank" title="https://bugzilla.mozilla.org/show_bug.cgi?id=792439" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Spidermonkey</a>.</div>
+</li>
+<li class="level1"><div class="li"> It&rsquo;s not entirely clear from <a href="doku.php%3Fid=harmony:private_name_objects.html" class="wikilink1" title="harmony:private_name_objects" onclick="return svchk()" onkeypress="return svchk()">private_name_objects</a> which operations precisely can be invoked with name objects rather than string-valued property names.</div>
+</li>
+<li class="level1"><div class="li"> It may make more sense for the <code>unknownPrivateName</code> trap to return or throw explicitly, rather than having it a return a boolean. See <a href="https://mail.mozilla.org/pipermail/es-discuss/2013-January/028001.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2013-January/028001.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">this es-discuss thread</a>.</div>
+</li>
+</ul>
+
+<p>
+ <strong>Discussion during TC39 September 2012 meeting, Boston</strong>:
+</p>
+<ul>
+<li class="level1"><div class="li"> Must specify that even if <code>WeakSet.prototype.has</code> is changed, proxy still calls the intrinsic one (to prevent stealing of names via an overridden method)</div>
+</li>
+<li class="level1"><div class="li"> Desire to allow any array-like instead of WeakSet (for notational convenience, i.e. <code>Proxy(target, handler, [n1, n2])</code>), which is then coerced into (i.e. whose elements are copied into) a WeakSet. One problem with this is that updating the original array-like won&rsquo;t then update the coerced WeakSet, which may be confusing.</div>
+</li>
+<li class="level1"><div class="li"> Desire to get rid of the <code>.public</code> property of private names. If we don&rsquo;t drop the <code>.public</code> property, don&rsquo;t need the whitelist but instead just a <code>resolvePrivateName</code> trap. If we stick with the whitelist, we should not pass the <code>.public</code> property to the unknownPrivateName/resolvePrivateName trap.</div>
+</li>
+<li class="level1"><div class="li"> Turned the <code>resolvePrivateName(target, name.public) &rarr; undefined | name</code> trap into a simpler <code>unknownPrivateName(target) &rarr; boolean</code> trap. At this point, the <code>.public</code> property on private names is no longer needed as far as proxies are concerned.</div>
+</li>
+<li class="level1"><div class="li"> The <code>resolvePrivateName(target, public)</code> trap worked as follows:</div>
+<ul>
+<li class="level2"><div class="li"> If the <code>resolvePrivateName</code> trap is not defined, or the trap invocation returns <code>undefined</code>, the operation is forwarded to the target.</div>
+</li>
+<li class="level2"><div class="li"> If the <code>resolvePrivateName</code> trap returns the private name corresponding to <code>public</code>, the operation is trapped as if the private name were in the whitelist.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [4082-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/c/c583987b2406dc11575a3eec0f203a85.xhtml used -->
+</body>
+</html>

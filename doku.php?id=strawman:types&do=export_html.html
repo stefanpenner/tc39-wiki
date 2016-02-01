@@ -1,0 +1,258 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:types&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:types&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:types&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:types&amp;do=export_html.html#proposal_for_types_in_harmony" class="toc">Proposal for types in Harmony</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:types&amp;do=export_html.html#syntax_of_the_annotation_language" class="toc">Syntax of the Annotation Language</a></span><ul class="toc">
+<li class="level4"><span class="li"><a href="doku.php%3Fid=strawman:types&amp;do=export_html.html#option_1use_a_separate_language_grammar_non-terminal_for_types" class="toc">Option 1: Use a separate language (grammar non-terminal) for types</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=strawman:types&amp;do=export_html.html#option_2use_a_combined_type_and_expression_language_with_new_syntax_for_types" class="toc">Option 2: Use a combined type and expression language, with new syntax for types</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=strawman:types&amp;do=export_html.html#option_3use_a_combined_type_and_expression_language_reusing_existing_values_as_types" class="toc">Option 3: Use a combined type and expression language, reusing existing values as types</a></span><ul class="toc">
+<li class="level5"><span class="li"><a href="doku.php%3Fid=strawman:types&amp;do=export_html.html#option_3_for_functions" class="toc">Option 3 for functions</a></span></li>
+<li class="level5"><span class="li"><a href="doku.php%3Fid=strawman:types&amp;do=export_html.html#option_3_for_arrays" class="toc">Option 3 for arrays</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:types&amp;do=export_html.html#semantics_of_the_annotation_language" class="toc">Semantics of the Annotation Language</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="proposal_for_types_in_harmony"></a><h2>Proposal for types in Harmony</h2>
+<div class="level2">
+
+<p>
+ Harmony is intended to support optional type annotations on properties (e.g., on variables and fields). These type annotations are enforced dynamically; there is no separate static type checking phase.
+</p>
+
+<p>
+Types are first-class values and can be stored in variables, passed to functions, etc, just like other values. In particular, there is no need for a separate notion of type variables.
+</p>
+
+<p>
+Every value has an allocated type. The allocated type is the type given to a value when it is created and which defines its fixed structure. The allocated type of a value never changes.
+</p>
+
+<p>
+Every property (e.g., variable or field) has a storage type. The storage type of a property constrains the set of values that can be stored in the property. The storage type of a property is also called the property&rsquo;s type constraint.
+</p>
+
+<p>
+The declarations of properties can carry type annotations, which define the storage type of the property. Annotation is denoted by following the annotated property name with a colon and a type expression. Annotations are not required: any property lacking an annotation is implicitly given the storage type ANY, meaning that the property can hold a value of any allocated type.
+</p>
+
+</div>
+<!-- SECTION [1-1234] -->
+<a name="syntax_of_the_annotation_language"></a><h3>Syntax of the Annotation Language</h3>
+<div class="level3">
+
+<p>
+ A top-level design choice is the syntax of the type language. For the purposes of this discussion, we assume the type language  includes the ANY type, nominal types, record types, and function types. (The semantics of these types are sketched in the mini-proposals below.)
+</p>
+
+<p>
+It appears we have three major options on type language syntax:
+</p>
+
+</div>
+<!-- SECTION [1235-1620] -->
+<a name="option_1use_a_separate_language_grammar_non-terminal_for_types"></a><h4>Option 1: Use a separate language (grammar non-terminal) for types</h4>
+<div class="level4">
+
+<p>
+ This choice provides a fairly natural, unconstrained syntax for various kinds of types: 
+</p>
+<pre class="code javascript">* <span class="co1">// for ANY</span>
+C <span class="co1">// for the type C </span>
+<span class="br0">&#123;</span>x:C, y:string<span class="br0">&#125;</span> <span class="co1">// for records</span>
+<span class="kw2">function</span><span class="br0">&#40;</span>number,*<span class="br0">&#41;</span>:string</pre>
+<p>
+It would be straightforward to switch into the type language transparently, at appropriate places, eg following the &ldquo;:&rdquo; on a formal parameter declaration: 
+</p>
+<pre class="code javascript"><span class="kw2">function</span><span class="br0">&#40;</span> arg : <span class="br0">&#123;</span>x:C, y:string<span class="br0">&#125;</span> <span class="br0">&#41;</span> : <span class="kw1">void</span> <span class="br0">&#123;</span> ... <span class="br0">&#125;</span></pre>
+<p>
+However, we need some way to escape from one language to the other.  Referring to computed expressions  from within a type is straightforward: 
+</p>
+<pre class="code javascript">let computedType = ... <span class="me1">arbitrary</span> expression ... ;
+&nbsp;
+<span class="kw2">function</span><span class="br0">&#40;</span> arg : computedType <span class="br0">&#41;</span> : <span class="kw1">void</span> <span class="br0">&#123;</span> ... <span class="br0">&#125;</span></pre>
+<p>
+ (This mixing of types and dynamically computed expressions would be problematic in a statically typed language, but straightforward in Harmony since types are enforced dynamically.)
+</p>
+
+<p>
+We could also use the syntax &ldquo;type(...)&rdquo; to &ldquo;escape&rdquo; to the type language from within the expression language (for example, to bind a variable to a type): 
+</p>
+<pre class="code javascript">let pairType = type<span class="br0">&#40;</span> <span class="br0">&#123;</span>x:C, y:C<span class="br0">&#125;</span> <span class="br0">&#41;</span>;</pre>
+<p>
+Overall, the &ldquo;type(...)&rdquo; part is a little clunky, but otherwise this option seems quite clean, extensible, and intuitive.
+</p>
+
+</div>
+<!-- SECTION [1621-2932] -->
+<a name="option_2use_a_combined_type_and_expression_language_with_new_syntax_for_types"></a><h4>Option 2: Use a combined type and expression language, with new syntax for types</h4>
+<div class="level4">
+
+<p>
+ We could try to introduce additional syntax into the expression language to express types. For example: 
+</p>
+<pre class="code javascript">* <span class="co1">// for the ANY type, don't think there are parsing ambiguities here</span>
+C   <span class="co1">// for the type C</span>
+<span class="kw2">function</span><span class="br0">&#40;</span>number,*<span class="br0">&#41;</span>:string <span class="co1">// similar to function expressions, but hopefully not ambiguous</span></pre>
+<p>
+This looks ok-ish, but not very future proof. It might be difficult to later add additional kinds of types due to a fairly crowded and possibly ambiguous grammar. 
+</p>
+
+<p>
+In particular, what syntax  should we use for record types that would make them distinct from record literals? Doubling the braces is one (not particularly good) option:
+</p>
+<pre class="code javascript"><span class="br0">&#123;</span><span class="br0">&#123;</span>x:C, y:string<span class="br0">&#125;</span><span class="br0">&#125;</span>  <span class="co1">// use double braces for a record type, </span>
+                   <span class="co1">// since the &quot;{...}&quot; syntax is already taken for record literals</span></pre>
+</div>
+<!-- SECTION [2933-3844] -->
+<a name="option_3use_a_combined_type_and_expression_language_reusing_existing_values_as_types"></a><h4>Option 3: Use a combined type and expression language, reusing existing values as types</h4>
+<div class="level4">
+
+<p>
+ Consider the following record expression, which creates an object with &ldquo;x&rdquo; and &ldquo;y&rdquo; fields: 
+</p>
+<pre class="code javascript"><span class="br0">&#123;</span> x:C, y:string <span class="br0">&#125;</span></pre>
+<p>
+ In appropriate contexts, we could re-interpret this object as a type that describes objects with at least two fields: an &ldquo;x&rdquo; field containing a &ldquo;C&rdquo; object, and a &ldquo;y&rdquo; field containing a string. Essentially, this is a pun, where we reuse certain objects as types describing other objects.
+</p>
+
+<p>
+Regarding mutation, it appears that once such a type annotation is evaluated to a mutable object, we need to either (1) freeze that object, or (2) make an immutable copy of that object.
+</p>
+
+<p>
+Although this syntax appears ok for record types, it is problematic for other types. Some specific problem types are discussed below; this approach would likely constrain our ability to later introduce additional types into the language.
+</p>
+
+</div>
+<!-- SECTION [3845-4791] -->
+<a name="option_3_for_functions"></a><h5>Option 3 for functions</h5>
+<div class="level5">
+
+<p>
+ For functions, we could re-use a function value as a type that describes all similarly-typed functions. For example, here &ldquo;fnType&rdquo; describes double-to-double functions. 
+</p>
+<pre class="code javascript">let fnType = <span class="kw2">function</span><span class="br0">&#40;</span>x:double<span class="br0">&#41;</span>:double <span class="br0">&#123;</span> <span class="kw1">return</span> x; <span class="br0">&#125;</span>;
+&nbsp;
+<span class="kw2">function</span> applyTwice<span class="br0">&#40;</span>f : fnType<span class="br0">&#41;</span> : fnType <span class="br0">&#123;</span>
+    <span class="kw1">return</span> <span class="kw2">function</span><span class="br0">&#40;</span>x:double<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> f<span class="br0">&#40;</span>f<span class="br0">&#40;</span>x<span class="br0">&#41;</span><span class="br0">&#41;</span>; <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+Of course, if &ldquo;fnType&rdquo; is both a function and a type describing similarly-typed functions, then by analogy 
+</p>
+<pre class="code javascript"><span class="br0">&#123;</span> x:<span class="nu0">1</span>, y:<span class="st0">"abc"</span> <span class="br0">&#125;</span></pre>
+<p>
+ should be both an object and a type describing similarly-typed objects. Similarly, &ldquo;1&rdquo; should be both a value and a type describing doubles, and this approach seems to collapse under its own inconsistencies.
+</p>
+
+</div>
+<!-- SECTION [4792-5529] -->
+<a name="option_3_for_arrays"></a><h5>Option 3 for arrays</h5>
+<div class="level5">
+
+<p>
+ One option for expressing arrays is to use the <a href="doku.php%3Fid=harmony:spread.html" class="wikilink1" title="harmony:spread" onclick="return svchk()" onkeypress="return svchk()">spread</a> operator, so an array of doubles is denoted as: 
+</p>
+<pre class="code javascript">let x : <span class="br0">&#91;</span>...<span class="me1">double</span><span class="br0">&#93;</span> = some expression;</pre>
+<p>
+ However, the spread operator normally applies only to arrays, so its behavior needs to be extended here, and its not clear what exact value (an array of some kind?) is produced as the result of the expression 
+</p>
+<pre class="code javascript"><span class="br0">&#91;</span>...<span class="me1">double</span><span class="br0">&#93;</span></pre>
+<p>
+   Alternatively, an array could serve as a type describing similarly-typed arrays, but that raises similar problems to those discussed with functions above. 
+</p>
+
+<p>
+Finally, we could imagine an array of length 1 that contains a type T serving as a type of arrays of type T. 
+</p>
+<pre class="code javascript">let x : <span class="br0">&#91;</span>double<span class="br0">&#93;</span> = <span class="br0">&#91;</span><span class="nu0">1</span>,<span class="nu0">2</span>,<span class="nu0">3</span><span class="br0">&#93;</span></pre>
+<p>
+ This works, after a fashion, but is subject to the same mutation concerns as with records above. It may be hard to extend this to fixed-length arrays (aka tuples). We could have  
+</p>
+<pre class="code javascript"><span class="br0">&#91;</span>double,double,double<span class="br0">&#93;</span></pre>
+<p>
+ be a type describing arrays with exactly three doubles.
+</p>
+
+<p>
+ Overall, although re-using values as types seems initially simpler, it turns out to be rather ugly, limiting, and not future-proof.
+</p>
+
+</div>
+<!-- SECTION [5530-6723] -->
+<a name="semantics_of_the_annotation_language"></a><h3>Semantics of the Annotation Language</h3>
+<div class="level3">
+
+<p>
+ The following collection of mini-proposals describes the semantics of a dynamic type system for ES-Harmony. Each mini-proposal (mostly) depends only on the earlier proposals, and they are best read in order. They mostly assume &ldquo;option 1&rdquo; above, but the issues of syntax and semantics are mostly orthogonal.
+</p>
+
+<p>
+Comments are welcome, either via email or by adding to this page. The individual proposals cannot be edited, because they were derived from earlier content that may not be worth translating into DokuWiki syntax.
+</p>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x63%3B%26%23x6f%3B%26%23x72%3B%26%23x6d%3B%26%23x61%3B%26%23x63%3B%26%23x40%3B%26%23x73%3B%26%23x6f%3B%26%23x65%3B%26%23x2e%3B%26%23x75%3B%26%23x63%3B%26%23x73%3B%26%23x63%3B%26%23x2e%3B%26%23x65%3B%26%23x64%3B%26%23x75%3B" class="mail" title="&#x63;&#x6f;&#x72;&#x6d;&#x61;&#x63;&#x40;&#x73;&#x6f;&#x65;&#x2e;&#x75;&#x63;&#x73;&#x63;&#x2e;&#x65;&#x64;&#x75;">Cormac Flanagan</a> 2008/08/26 18:58</em> 
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="lib/exe/fetch.php%3Fcache=cache&amp;media=http%253A%252F%252Fslang.soe.ucsc.edu%252Fcormac%252Fharmony%252Fproposal-types-core.html" class="urlextern" title="http://slang.soe.ucsc.edu/cormac/harmony/proposal-types-core.html" style="background-image: url(lib/images/fileicons/html.png)" onclick="return svchk()" onkeypress="return svchk()">proposal-types-core.html</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="lib/exe/fetch.php%3Fcache=cache&amp;media=http%253A%252F%252Fslang.soe.ucsc.edu%252Fcormac%252Fharmony%252Fproposal-types-record.html" class="urlextern" title="http://slang.soe.ucsc.edu/cormac/harmony/proposal-types-record.html" style="background-image: url(lib/images/fileicons/html.png)" onclick="return svchk()" onkeypress="return svchk()">proposal-types-record.html</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="lib/exe/fetch.php%3Fcache=cache&amp;media=http%253A%252F%252Fslang.soe.ucsc.edu%252Fcormac%252Fharmony%252Fproposal-types-function.html" class="urlextern" title="http://slang.soe.ucsc.edu/cormac/harmony/proposal-types-function.html" style="background-image: url(lib/images/fileicons/html.png)" onclick="return svchk()" onkeypress="return svchk()">proposal-types-function.html</a></div>
+</li>
+</ul>
+<hr noshade="noshade" size="1" />
+
+<p>
+Pending type proposals:
+</p>
+<ul>
+<li class="level1"><div class="li"> Union, null, and undefined types</div>
+</li>
+<li class="level1"><div class="li"> Array types</div>
+</li>
+<li class="level1"><div class="li"> Non-null types (and semantics of initialization)</div>
+</li>
+</ul>
+<hr noshade="noshade" size="1" />
+
+</div>
+<!-- SECTION [6724-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/5/508273ceef4b86b15b7064e05b22f5a9.xhtml used -->
+</body>
+</html>

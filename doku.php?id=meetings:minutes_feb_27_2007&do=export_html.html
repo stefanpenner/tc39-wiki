@@ -1,0 +1,116 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=meetings:minutes_feb_27_2007&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=meetings" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=meetings:minutes_feb_27_2007&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=meetings:minutes_feb_27_2007&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="attendance"></a><h5>Attendance</h5>
+<div class="level5">
+<ul>
+<li class="level1"><div class="li"> Dave Herman</div>
+</li>
+<li class="level1"><div class="li"> Jeff Dyer</div>
+</li>
+<li class="level1"><div class="li"> Cormac Flanagan</div>
+</li>
+<li class="level1"><div class="li"> Graydon Hoare</div>
+</li>
+<li class="level1"><div class="li"> Brian Crowder</div>
+</li>
+<li class="level1"><div class="li"> Doug Crockford</div>
+</li>
+<li class="level1"><div class="li"> Chris Pine</div>
+</li>
+<li class="level1"><div class="li"> Francis Cheng</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1-157] -->
+<a name="question_on_standard_mode"></a><h5>Question on Standard Mode</h5>
+<div class="level5">
+
+<p>
+ What should be the behavior of the following program in standard mode? Should the evaluator remember the type of g, and enforce it at calls? But that might then imply that the evaluator needs to dynamically infer a type for each sub-expression.  
+</p>
+<pre class="code">
+type BoolFn = function (boolean):boolean;
+
+function f(g:BoolFn):* {
+   g(4);
+   
+   // a more complicated version is
+   // ((function (h:BoolFn):BoolFn { return h; })(g))(4)
+}
+
+function id(x:*):* { return x; }
+
+f(id);
+</pre>
+
+<p>
+Also, the following program should not be statically rejected  in strict mode, but how should the checks work at run-time? The evaluator could again remember the type of g, or the verifier could insert a &lt;boolean&gt; check around the call to g.
+</p>
+<pre class="code">
+type BoolFn = function ():boolean;
+
+function f(g:BoolFn):* {
+   g();
+   
+   // A more complicated version is
+   // ((function (h:BoolFn):BoolFn { return h; })(g))()
+}
+
+function four():* { return 4; }
+
+f(four);
+</pre>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x63%3B%26%23x6f%3B%26%23x72%3B%26%23x6d%3B%26%23x61%3B%26%23x63%3B%26%23x40%3B%26%23x73%3B%26%23x6f%3B%26%23x65%3B%26%23x2e%3B%26%23x75%3B%26%23x63%3B%26%23x73%3B%26%23x63%3B%26%23x2e%3B%26%23x65%3B%26%23x64%3B%26%23x75%3B" class="mail" title="&#x63;&#x6f;&#x72;&#x6d;&#x61;&#x63;&#x40;&#x73;&#x6f;&#x65;&#x2e;&#x75;&#x63;&#x73;&#x63;&#x2e;&#x65;&#x64;&#x75;">Cormac Flanagan</a> 2007/02/26 14:06</em>
+</p>
+
+<p>
+We discussed this and came up with 3 plausible solutions (including cases induced by slot read/write on structural types wherein the expression evaluates through  a compatible-but-different type than the referent): 
+</p>
+<ul>
+<li class="level1"><div class="li"> The evaluator&rsquo;s intermediate value type(s) can carry implied types. This would be the REF type for assignment LHSs, as well as the VAL type returned for RHSs.</div>
+</li>
+<li class="level1"><div class="li"> The verifier (or a stage slightly thereafter) could reduce the statements to a normal form such that all assignments and calls pass through typed TEMP fixtures.</div>
+</li>
+<li class="level1"><div class="li"> The verifier (or a stage slightly thereafter) could insert explicit casts inside complex expressions to cover all &ldquo;implied&rdquo; temporaries.</div>
+</li>
+</ul>
+
+<p>
+ We did not agree on which of these strategies to adopt, but none of them seem terribly disruptive (as far as not requiring a change to the AST).
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x67%3B%26%23x72%3B%26%23x61%3B%26%23x79%3B%26%23x64%3B%26%23x6f%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x67;&#x72;&#x61;&#x79;&#x64;&#x6f;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">graydon</a> 2007/02/27 09:21</em> 
+</p>
+
+</div>
+<!-- SECTION [158-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/3/3b17de5acf2271f0b27890c945fdcc3e.xhtml used -->
+</body>
+</html>

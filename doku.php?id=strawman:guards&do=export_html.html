@@ -1,0 +1,231 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:guards&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:guards&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:guards&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:guards&amp;do=export_html.html#guards" class="toc">Guards</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:guards&amp;do=export_html.html#creating_guards" class="toc">Creating Guards</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:guards&amp;do=export_html.html#guarding_variables" class="toc">Guarding Variables</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:guards&amp;do=export_html.html#guarding_parameters_and_results" class="toc">Guarding Parameters and Results</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:guards&amp;do=export_html.html#guarding_properties" class="toc">Guarding Properties</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:guards&amp;do=export_html.html#open_issues" class="toc">Open Issues</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:guards&amp;do=export_html.html#see" class="toc">See</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="guards"></a><h1>Guards</h1>
+<div class="level1">
+
+<p>
+ Guards are used as a convenient syntax for enforcing user-defined invariants. They can be used as types, but can also enforce arbitrary constraints. Use guards to annotate variable and parameter declarations, function return results, and property definitions. Each guard is asked to approve an incoming value, the <em>specimen</em>, to determine whether to let it pass, coerce it, or reject it. Examples of uses of guards include:
+</p>
+<pre class="code">
+  let x :: Number = 37;
+  function f(p :: String, q :: MyType) :: Boolean { ... }
+  let o = {a :: Number : 42, b: &quot;b&quot;};
+</pre>
+
+<p>
+The syntax is:
+</p>
+<pre class="code">
+  Guard :
+      :: GuardExpression
+  GuardExpression :
+      ConditionalExpression
+</pre>
+
+<p>
+A Guard annotation evaluates its GuardExpression to a value in that scope in the usual manner. (See clarifications below for which scope that is, and when the evaluation occurs.) The GuardExpression should evaluate to an object with a [[Brand]] internal property which is then consulted to determine whether to pass or coerce the specimen or not. In detail: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let <em>t</em> be the result of evaluating GuardExpression.</div>
+</li>
+<li class="level1"><div class="li"> If <em>t</em> is not an object or doesn&rsquo;t have a [[Brand]] internal property, throw a TypeError. The [[Brand]] lookup is done on <em>t</em> only; it does not follow <em>t</em>&lsquo;s prototype chain.</div>
+</li>
+<li class="level1"><div class="li"> Let <em>brand</em> = <em>t</em>.[[Brand]] and save it for the guard check.</div>
+</li>
+</ol>
+
+<p>
+ Later, when checking a specimen <em>s</em>: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Call <em>brand</em>.<code>coerce</code>(<em>s</em>).  This will either return a value (either <em>s</em> or possibly a coerced version of <em>s</em>) or throw an exception.</div>
+</li>
+</ol>
+
+</div>
+<!-- SECTION [1-1577] -->
+<a name="creating_guards"></a><h2>Creating Guards</h2>
+<div class="level2">
+
+<p>
+ The [[Brand]] internal property can be set when creating a guard using whatever syntax or <acronym title="Application Programming Interface">API</acronym> is approved for setting metaproperties during object creation. Once set, it cannot be changed. Also, user code cannot read it except indirectly via <code>::</code>.
+</p>
+
+<p>
+Optionally we may have an <code>Object.setBrand</code>(<em>guard</em>, <em>brand</em>) method that creates a [[Brand]] internal property on an extensible object <em>guard</em> that doesn&rsquo;t already have one. It is an error to use <code>Object.setBrand</code> on a <em>guard</em> object that already has a [[Brand]] internal property.
+</p>
+
+<p>
+The brand object (the value of the [[Brand]] internal property) can be anything. To be useful, it should be an object with a <code>coerce</code> method.
+</p>
+
+</div>
+<!-- SECTION [1578-2314] -->
+<a name="guarding_variables"></a><h2>Guarding Variables</h2>
+<div class="level2">
+
+<p>
+ Here, we define the ConstDeclaration and LetDeclaration from <a href="doku.php%3Fid=harmony:block_scoped_bindings.html" class="wikilink1" title="harmony:block_scoped_bindings" onclick="return svchk()" onkeypress="return svchk()">block_scoped_bindings</a> to generalize the defining position from an Identifier to a Pattern. This is a somewhat different factoring than the Pattern at <a href="doku.php%3Fid=harmony:destructuring.html" class="wikilink1" title="harmony:destructuring" onclick="return svchk()" onkeypress="return svchk()">destructuring</a>, but the &ldquo;...&rdquo; below should include all the Pattern productions there.
+</p>
+
+<p>
+We do it this way, rather than extend the ES5 VariableDeclaration, since we are not trying to enhance the deprecated VariableStatement.
+</p>
+<pre class="code">
+  ConstDeclaration :
+      const Pattern = AssignmentExpression
+  LetDeclaration :
+      let Pattern = AssignmentExpression  
+  Pattern : ... // 
+      Identifier Guard?
+</pre>
+
+<p>
+The guard expression, if present, is evaluated in left to right order, and therefore before the AssignmentExpression initializer.
+</p>
+
+<p>
+A guarded <code>const</code> variable simply inserts an initialize-time check &mdash; the value of the <em>brand</em> guard is used immediately to check the initializer and coerce it before assigning it to the variable.
+</p>
+
+<p>
+A guarded <code>let</code> variable inserts the corresponding check and coercion on initialization and on all assignments to the variable. Therefore, reading the variable, which is not translated, can only either 
+</p>
+<ul>
+<li class="level1"><div class="li"> throw a ReferenceError if read before initialization, or </div>
+</li>
+<li class="level1"><div class="li"> yield a value which the guard considers acceptable.</div>
+</li>
+</ul>
+
+<p>
+ There intentionally is no way to guard <code>var</code> variables. Doing that would be problematic because <code>var</code> variables can be written before their definitions are evaluated and there can be multiple definitions for the same <code>var</code> variable.
+</p>
+
+</div>
+<!-- SECTION [2315-3888] -->
+<a name="guarding_parameters_and_results"></a><h2>Guarding Parameters and Results</h2>
+<div class="level2">
+<pre class="code">
+  FunctionDeclaration :
+      function Identifier FunctionHead { FunctionBody }
+      const Identifier FunctionHead { FunctionBody }
+  FunctionExpression :
+      function Identifier? FunctionHead { FunctionBody }
+      const Identifier? FunctionHead { FunctionBody }
+  FunctionHead :
+      ( FormalParameterList? ) Guard?
+
+  FormalParameterList :
+      FormalParameter
+      FormalParameterList , FormalParameter
+      // extend for optional and rest parameters
+  FormalParameter :
+      const? Pattern
+  Pattern : ...
+      Identifier Guard?
+</pre>
+
+<p>
+When a FormalParameter variable is annotated with a Guard, the corresponding argument value is first checked and coerced via the guard before binding to the parameter. When a Guard appears after the close paren of a FunctionHead, then whatever value would be returned is checked and coerced via the guard before being returned.
+</p>
+
+<p>
+Guard expressions on function parameters and results are <em>not</em> evaluated when the function is called, but rather when the function definition is evaluated. Thus, they are <em>not</em> evaluated in the scope defined by this function, but rather in the scope in which this function definition itself is evaluated. The resulting guard values are therefore captured by the created function.
+</p>
+
+</div>
+<!-- SECTION [3889-5207] -->
+<a name="guarding_properties"></a><h2>Guarding Properties</h2>
+<div class="level2">
+
+<p>
+ The reason our guard syntax uses &ldquo;<code>::</code>&rdquo; rather than the &ldquo;<code>:</code>&rdquo; of ES4 is so that we can annotate property definitions in object literals.
+</p>
+<pre class="code">
+  PropertyAssignment : ...
+      PropertyName Guard? : AssignmentExpression
+</pre>
+
+<p>
+As with function parameter and result guards, literal property guards are evaluated in the scope in which the object literal appears, and are evaluated prior to evaluating the object literal.
+</p>
+
+<p>
+Here we have a choice of either making the guard an attribute of the annotated property or turning the annotated property into an accessor property whose setter enforces the guard.
+</p>
+
+</div>
+<!-- SECTION [5208-5849] -->
+<a name="open_issues"></a><h1>Open Issues</h1>
+<div class="level1">
+<ul>
+<li class="level1"><div class="li"> What, if any, syntax do we want to integrate guards with classes?  A lot depends on the choice of class proposal.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Should guarded properties be enforced by attributes or be turned into accessors?</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [5850-6081] -->
+<a name="see"></a><h1>See</h1>
+<div class="level1">
+
+<p>
+ <a href="doku.php%3Fid=strawman:trademarks.html" class="wikilink1" title="strawman:trademarks" onclick="return svchk()" onkeypress="return svchk()">trademarks</a>
+</p>
+
+<p>
+<a href="doku.php%3Fid=strawman:classes_with_trait_composition.html" class="wikilink1" title="strawman:classes_with_trait_composition" onclick="return svchk()" onkeypress="return svchk()">classes with trait composition</a>
+</p>
+
+<p>
+<a href="https://mail.mozilla.org/pipermail/es-discuss/2010-November/012191.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2010-November/012191.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">email thread</a> 
+</p>
+
+</div>
+<!-- SECTION [6082-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/8/8c30ebd57abba26ebdb4600ef444eedf.xhtml used -->
+</body>
+</html>

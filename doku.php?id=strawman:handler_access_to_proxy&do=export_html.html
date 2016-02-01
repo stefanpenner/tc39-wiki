@@ -1,0 +1,265 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:handler_access_to_proxy&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:handler_access_to_proxy&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:handler_access_to_proxy&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:handler_access_to_proxy&amp;do=export_html.html#handler_access_to_proxies" class="toc">Handler access to proxies</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:handler_access_to_proxy&amp;do=export_html.html#extended_api" class="toc">Extended API</a></span><ul class="toc">
+<li class="level4"><span class="li"><a href="doku.php%3Fid=strawman:handler_access_to_proxy&amp;do=export_html.html#proxy_as_optional_argument" class="toc">Proxy as optional argument</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=strawman:handler_access_to_proxy&amp;do=export_html.html#proxy_as_additional_argument" class="toc">Proxy as additional argument</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=strawman:handler_access_to_proxy&amp;do=export_html.html#proxy_as_argument_only_for_particular_traps" class="toc">Proxy as argument only for particular traps</a></span></li>
+</ul>
+</li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:handler_access_to_proxy&amp;do=export_html.html#reservations" class="toc">Reservations</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:handler_access_to_proxy&amp;do=export_html.html#references" class="toc">References</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:handler_access_to_proxy&amp;do=export_html.html#feedback" class="toc">Feedback</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="handler_access_to_proxies"></a><h2>Handler access to proxies</h2>
+<div class="level2">
+
+<p>
+ We should consider the possibility of extending the <a href="doku.php%3Fid=strawman:proxies.html#api" class="wikilink1" title="strawman:proxies" onclick="return svchk()" onkeypress="return svchk()">Proxy Handler API</a> such that handlers get access to the proxy for which they are currently intercepting. Motivating use cases:
+</p>
+<ul>
+<li class="level1"><div class="li"> A handler shared by many proxy instances may want to identify the proxy for which it is currently &ldquo;servicing&rdquo; an operation. For instance, the shared handler could use a <a href="doku.php%3Fid=harmony:weak_maps.html" class="wikilink1" title="harmony:weak_maps" onclick="return svchk()" onkeypress="return svchk()">WeakMap</a> keyed by the proxy&rsquo;s identity to store per-proxy state.</div>
+</li>
+<li class="level1"><div class="li"> Without access to the proxy, the handler has no way of accessing the prototype passed to <code>Proxy.create</code>. It also cannot reliably distinguish whether it is servicing an object or a function proxy. When given access to a proxy, the handler could perform <code>Object.getPrototypeOf(proxy)</code>, <code>typeof proxy</code> and <code>proxy instanceof Fun</code> to get at this data (credit goes to David Bruant)</div>
+</li>
+<li class="level1"><div class="li"> If the (currently fundamental) <code>getPropertyDescriptor</code> and <code>getPropertyNames</code> traps would have access to the <code>proxy</code>, they can easily be turned into derived traps, as indicated in this <a href="doku.php%3Fid=strawman:proxy_derived_traps.html" class="wikilink1" title="strawman:proxy_derived_traps" onclick="return svchk()" onkeypress="return svchk()">strawman</a>.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1-1128] -->
+<a name="extended_api"></a><h3>Extended API</h3>
+<div class="level3">
+
+<p>
+ The easiest way to allow a handler access to the proxy it is currently servicing is to pass the proxy as an additional argument to the handler traps. From here, there are multiple routes to take:
+</p>
+<ol>
+<li class="level1"><div class="li"> Add <code>proxy</code> as an optional last argument to all traps.</div>
+</li>
+<li class="level1"><div class="li"> Add <code>proxy</code> as an argument at the most appropriate position for each trap.</div>
+</li>
+<li class="level1"><div class="li"> Add <code>proxy</code> only as an argument to the <code>getPropertyDescriptor</code> and <code>getPropertyNames</code> traps (for the purpose of defining their derived behavior).</div>
+</li>
+</ol>
+
+</div>
+<!-- SECTION [1129-1647] -->
+<a name="proxy_as_optional_argument"></a><h4>Proxy as optional argument</h4>
+<div class="level4">
+
+<p>
+ We could add a <code>proxy</code> parameter as an optional last argument to all existing traps.
+</p>
+
+<p>
+Pro:
+</p>
+<ul>
+<li class="level1"><div class="li"> regular <acronym title="Application Programming Interface">API</acronym></div>
+</li>
+<li class="level1"><div class="li"> traps that aren&rsquo;t interested in accessing the proxy can simply ignore it</div>
+</li>
+</ul>
+
+<p>
+ Con:
+</p>
+<ul>
+<li class="level1"><div class="li"> adding an optional last argument restricts our options if one of the Object <acronym title="Application Programming Interface">API</acronym> methods would change in the future. If e.g. <code>Object.getOwnPropertyDescriptor</code> takes an extra argument in a later edition, how can we reconcile this with existing code that assumes that the second parameter is the proxy? (requires refactoring)</div>
+</li>
+<li class="level1"><div class="li"> for some traps, getting the proxy as the last argument is counter-intuitive.</div>
+</li>
+</ul>
+
+<p>
+ For example, the trap <code>getOwnPropertyDescriptor</code> is triggered by code like: 
+</p>
+<pre class="code javascript">Object.<span class="me1">getOwnPropertyDescriptor</span><span class="br0">&#40;</span>proxy, <span class="kw3">name</span><span class="br0">&#41;</span></pre>
+<p>
+Yet the order in which the params are passed to the trap is reversed:
+</p>
+<pre class="code javascript">getOwnPropertyDescriptor: <span class="kw2">function</span><span class="br0">&#40;</span><span class="kw3">name</span>, proxy<span class="br0">&#41;</span> <span class="br0">&#123;</span>...<span class="br0">&#125;</span></pre>
+<p>
+Passing <code>proxy</code> as the last argument is odd in this way for <code>get{Own}PropertyDescriptor</code>, <code>defineProperty</code>, <code>delete</code>, <code>hasOwn</code>. It is OK for <code>get{Own}PropertyNames</code>, <code>keys</code>, <code>fix</code> (freeze/seal/preventExtensions), <code>has</code>, <code>enumerate</code>. The <code>get</code> and <code>set</code> traps already have implicit access to <code>proxy</code> via <code>receiver</code> (which is either the <code>proxy</code> or an object inheriting from the <code>proxy</code>). The <code>proxy</code> argument could be passed either as an extra first argument or as an extra last argument.
+</p>
+
+</div>
+<!-- SECTION [1648-3110] -->
+<a name="proxy_as_additional_argument"></a><h4>Proxy as additional argument</h4>
+<div class="level4">
+
+<p>
+ We could add a <code>proxy</code> parameter as an extra argument to all existing traps. Depending on the trap, the argument is added either as a mandatory argument or as an optional trailing argument.
+</p>
+
+<p>
+Pro:
+</p>
+<ul>
+<li class="level1"><div class="li"> The position of <code>proxy</code> is consistent with its position in the intercepted code.</div>
+</li>
+</ul>
+
+<p>
+Con:
+</p>
+<ul>
+<li class="level1"><div class="li"> Less consistent.</div>
+</li>
+<li class="level1"><div class="li"> Some traps can&rsquo;t ignore the <code>proxy</code> parameter.</div>
+</li>
+</ul>
+
+<p>
+ Below is a proposed updated <acronym title="Application Programming Interface">API</acronym> (when the <code>proxy</code> parameter is optional, it is enclosed in square brackets): 
+</p>
+<pre class="code javascript"><span class="co1">// fundamental traps</span>
+getOwnPropertyDescriptor: <span class="kw2">function</span><span class="br0">&#40;</span>proxy, <span class="kw3">name</span><span class="br0">&#41;</span> -&gt; PropertyDescriptor | undefined <span class="co1">// Object.getOwnPropertyDescriptor(proxy, name)</span>
+getOwnPropertyNames:      <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#91;</span>proxy<span class="br0">&#93;</span><span class="br0">&#41;</span> -&gt; <span class="br0">&#91;</span> string <span class="br0">&#93;</span>                         <span class="co1">// Object.getOwnPropertyNames(proxy) </span>
+defineProperty:           <span class="kw2">function</span><span class="br0">&#40;</span>proxy, <span class="kw3">name</span>, propertyDescriptor<span class="br0">&#41;</span> -&gt; any        <span class="co1">// Object.defineProperty(proxy,name,pd)</span>
+<span class="kw1">delete</span>:                   <span class="kw2">function</span><span class="br0">&#40;</span>proxy, <span class="kw3">name</span><span class="br0">&#41;</span> -&gt; boolean                        <span class="co1">// delete proxy.name</span>
+fix:                      <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#91;</span>proxy<span class="br0">&#93;</span><span class="br0">&#41;</span> -&gt; <span class="br0">&#123;</span> string: PropertyDescriptor <span class="br0">&#125;</span>     <span class="co1">// Object.{freeze|seal|preventExtensions}(proxy)</span>
+                                            | undefined
+<span class="co1">// derived traps</span>
+getPropertyDescriptor:    <span class="kw2">function</span><span class="br0">&#40;</span>proxy, <span class="kw3">name</span><span class="br0">&#41;</span> -&gt; PropertyDescriptor | undefined <span class="co1">// Object.getPropertyDescriptor(proxy, name)   (not in ES5)</span>
+getPropertyNames:         <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#91;</span>proxy<span class="br0">&#93;</span><span class="br0">&#41;</span> -&gt; <span class="br0">&#91;</span> string <span class="br0">&#93;</span>                         <span class="co1">// Object.getPropertyNames(proxy)              (not in ES5)</span>
+has:       <span class="kw2">function</span><span class="br0">&#40;</span><span class="kw3">name</span>, <span class="br0">&#91;</span>proxy<span class="br0">&#93;</span><span class="br0">&#41;</span> -&gt; boolean                  <span class="co1">// name in proxy</span>
+hasOwn:    <span class="kw2">function</span><span class="br0">&#40;</span>proxy, <span class="kw3">name</span><span class="br0">&#41;</span> -&gt; boolean                  <span class="co1">// ({}).hasOwnProperty.call(proxy, name)</span>
+get:       <span class="kw2">function</span><span class="br0">&#40;</span>receiver, <span class="kw3">name</span>, <span class="br0">&#91;</span>proxy<span class="br0">&#93;</span><span class="br0">&#41;</span> -&gt; any            <span class="co1">// receiver.name</span>
+set:       <span class="kw2">function</span><span class="br0">&#40;</span>receiver, <span class="kw3">name</span>, val, <span class="br0">&#91;</span>proxy<span class="br0">&#93;</span><span class="br0">&#41;</span> -&gt; boolean   <span class="co1">// receiver.name = val</span>
+enumerate: <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#91;</span>proxy<span class="br0">&#93;</span><span class="br0">&#41;</span> -&gt; <span class="br0">&#91;</span>string<span class="br0">&#93;</span>                     <span class="co1">// for (name in proxy) (return array of enumerable own and inherited properties)</span>
+keys:      <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#91;</span>proxy<span class="br0">&#93;</span><span class="br0">&#41;</span> -&gt; <span class="br0">&#91;</span>string<span class="br0">&#93;</span>                     <span class="co1">// Object.keys(proxy)  (return array of enumerable own properties only)</span></pre>
+<p>
+Other ways to decide on the optionality of <code>proxy</code>:
+</p>
+<ul>
+<li class="level1"><div class="li"> make <code>proxy</code> mandatory for the traps that trap methods on <code>Object</code>, and optional (trailing) for all others.</div>
+</li>
+<li class="level1"><div class="li"> make it optional for derived traps, mandatory for fundamental traps.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [3111-5502] -->
+<a name="proxy_as_argument_only_for_particular_traps"></a><h4>Proxy as argument only for particular traps</h4>
+<div class="level4">
+
+<p>
+ Only add the <code>proxy</code> parameter to the <code>getPropertyDescriptor</code> and <code>getPropertyNames</code> traps. Pro: keeps the overall <acronym title="Application Programming Interface">API</acronym> simple while still allowing derived behavior for these traps. Con: inconsistent, doesn&rsquo;t cater to all motivating use cases.
+</p>
+
+</div>
+<!-- SECTION [5503-5806] -->
+<a name="reservations"></a><h3>Reservations</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> Should a handler really be able to distinguish whether it is handling an object or a function proxy?</div>
+</li>
+<li class="level1"><div class="li"> Having access to the proxy by default increases the risk for infinite recursion hazards.</div>
+</li>
+</ul>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x74%3B%26%23x6f%3B%26%23x6d%3B%26%23x76%3B%26%23x63%3B%26%23x2e%3B%26%23x62%3B%26%23x65%3B%26%23x40%3B%26%23x67%3B%26%23x6d%3B%26%23x61%3B%26%23x69%3B%26%23x6c%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x74;&#x6f;&#x6d;&#x76;&#x63;&#x2e;&#x62;&#x65;&#x40;&#x67;&#x6d;&#x61;&#x69;&#x6c;&#x2e;&#x63;&#x6f;&#x6d;">Tom Van Cutsem</a> 2011/02/28 06:10</em>
+</p>
+
+</div>
+<!-- SECTION [5807-6093] -->
+<a name="references"></a><h2>References</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="https://mail.mozilla.org/pipermail/es-discuss/2011-January/012640.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2011-January/012640.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Discussion thread</a> on es-discuss (the idea originated while discussing the default behavior of the <code>getPropertyDescriptor</code> and <code>getPropertyNames</code> traps).</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [6094-6354] -->
+<a name="feedback"></a><h2>Feedback</h2>
+<div class="level2">
+
+<p>
+ Discussed at the March 2011 TC39 meeting.
+</p>
+
+<p>
+Q: Why not consider proxy as an instance variable of the handler? A: Would preclude sharing a single handler among multiple proxies, or else handler would have to keep track of all the proxies it is serving as part of its instance state.
+</p>
+
+<p>
+Q: why not bind a handler&rsquo;s <code>this</code> to the proxy it is serving? A: confuses meta-levels (this = handler = meta-level, proxy = base-level). Also, makes handler inheritance unworkable: can inherit from a handler, in which case <code>this</code> in a parent handler should refer to the inheriting handler.
+</p>
+
+<p>
+General agreement that we may want to provide the proxy as an argument to all traps.
+</p>
+
+<p>
+Andreas: experimenting with <acronym title="Document Object Model">DOM</acronym> wrappers. All prototype-climbing traps require access to the receiver object (which is not necessarily the proxy object), not just the get/set traps. The get and set trap may want access to both the receiver and the proxy.
+</p>
+
+<p>
+Tom: propose to add <code>proxy</code> as a first argument to all traps. Andreas, Brendan, Dave: in favor of adding it as an optional last argument:
+</p>
+<ul>
+<li class="level1"><div class="li"> in most use cases that came up thus far, there was no need for the <code>proxy</code> parameter</div>
+</li>
+<li class="level1"><div class="li"> <code>proxy</code> parameter is dangerous (runaway recursion hazard), good to be able to ignore it most of the time</div>
+</li>
+<li class="level1"><div class="li"> Tom: what about inconsistent ordering w.r.t the trapped code? Dave: Proxy <acronym title="Application Programming Interface">API</acronym> is for experts, they will cope.</div>
+</li>
+</ul>
+
+<p>
+ Current consensus:
+</p>
+<ul>
+<li class="level1"><div class="li"> add <code>receiver</code> as a first argument to all prototype-climbing traps (get, set, has, getPropertyNames, getPropertyDescriptor traps)</div>
+</li>
+<li class="level1"><div class="li"> add proxy as an optional last argument to all traps.</div>
+</li>
+</ul>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x74%3B%26%23x6f%3B%26%23x6d%3B%26%23x76%3B%26%23x63%3B%26%23x2e%3B%26%23x62%3B%26%23x65%3B%26%23x40%3B%26%23x67%3B%26%23x6d%3B%26%23x61%3B%26%23x69%3B%26%23x6c%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x74;&#x6f;&#x6d;&#x76;&#x63;&#x2e;&#x62;&#x65;&#x40;&#x67;&#x6d;&#x61;&#x69;&#x6c;&#x2e;&#x63;&#x6f;&#x6d;">Tom Van Cutsem</a> 2011/03/30 12:54</em>
+</p>
+
+</div>
+<!-- SECTION [6355-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/9/93eecde3dbe1de017f0871a18de70685.xhtml used -->
+</body>
+</html>

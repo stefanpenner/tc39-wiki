@@ -1,0 +1,31 @@
+Further discussion of this topic on es-discuss has convinced its original proposer, MarkM, that there is no coherent general convention for isArrayLike that can be rescued and reconciled with existing practice. Accordingly, I have stopped editing this page. If someone does believe that attempting a coherent proposal would still be productive, they should please edit this page accordingly. //---MarkM 1/9/2010 10:48am PDT//
+
+
+====== isArrayLike(obj :any) :boolean ======
+
+This [[https://mail.mozilla.org/pipermail/es-discuss/2009-December/010255.html|es-discuss thread]] documents a variety of conventions currently in use to determine if an object should be array-like. The following proposed predicate has the virtues that it
+
+   * admits native arrays, arguments objects, and (perhaps inappropriately) String wrapper objects,
+   * admits those host objects that are typically considered array-like by other legacy array-like tests (is this true?),
+   * does not admit any other legacy ES3R non-host objects (to prevent false positives),
+   * allows ES5 programmers to easily define new array-like non-array objects,
+   * takes bounded-by-constant time (i.e., no iteration) under the assumption that inheritance chains have bounded depth,
+   * is a reasonably compatible compromise with the existing notions of array-like in legacy libraries as represented by the thread cited above.
+
+
+<code javascript>
+function isArrayLike(obj) {
+  return !!(obj &&
+            typeof obj === 'object' && 
+            'length' in obj && 
+            !({}.propertyIsEnumerable.call(obj, 'length'));
+}
+</code>
+
+
+===== Issues =====
+
+   * It may be better for the above predicate to reject String wrapper objects, such as by adding a 
+     <code javascript>({}).toString.call(obj) !== '[object String]'</code> conjunct.
+   * Although the above code cannot cause side effects on ES3R or ES5 when ''obj'' is a non-host object, it can cause side effects when ''obj'' is a [[strawman:proxies|proxy]]. This is necessary to allow proxies to emulate array-like objects adequately to pass the above predicate.
+   * Unfortunately, the ''propertyIsEnumerable'' test above, despite the name, [[https://mail.mozilla.org/pipermail/es-discuss/2009-December/010381.html|actually tests whether a property is both enumerable and own]]. This means the above predicate will reject objects that inherit a non-enumerable length property. I can think of no reliable and portable ES3R test which tests only property enumerability, except by running a for-in loop and testing the output. Doing so would kill the bounded-by-constant time virtue.

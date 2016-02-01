@@ -1,0 +1,99 @@
+====== Date and time improvements ======
+
+(Also see the [[discussion:date_and_time|the discussion page]] for this proposal)
+
+Note that all new properties and methods below are to be added to the builtin dynamic class ''Date'', not to ''Date.prototype''. Future code should be able to early-bind accesses to the new properties and methods.
+
+
+
+
+
+===== Property access =====
+
+The ''Date'' class shall be extended with the following properties:
+
+  time
+  fullYear
+  month
+  date
+  day
+  hours
+  minutes
+  seconds
+  milliseconds
+  UTCFullYear
+  UTCMonth
+  UTCDate
+  UTCDay
+  UTCHours
+  UTCMinutes
+  UTCSeconds
+  UTCMilliseconds
+  timezoneOffset
+
+Except for timezoneOffset these are all read-write.
+
+Reading property //foo// is equivalent to calling ''intrinsic::get//Foo//''.  Writing property //foo// is equivalent to calling ''intrinsic::set//Foo//'' with one argument.
+
+
+===== Current and elapsed times =====
+
+  * A new static function ''Date.now():double'' shall be added to the ''Date'' class. This function shall return the current number of milliseconds since the epoch time ''1970-01-01T00:00:00.0Z''.
+  * A new method ''Date.prototype.nanoAge():double'' shall be added to the ''Date'' class. This function shall return an approximation of the number of //nanoseconds// of real time that have elapsed since its object was constructed. The approximation is of unspecified quality, and may vary in both accuracy and precision from platform to platform. The approximation will necessarily lose precision as its object ages, since it is expressed as a ''double'': after approximately 104 days of real time, its object will have been alive for over 2^53 nanoseconds, so the result of this call will carry more than 2 nanoseconds rounding error after 104 days, and more than 4 nanoseconds rounding error after 208 days. Code wishing to measure greater periods of real time may either construct fresh Date objects after 104 days, or accept the gradual loss of precision.
+
+
+
+
+
+
+
+
+
+
+===== ISO Date strings =====
+
+Support for printing and parsing a subset of ISO-8601 date strings shall be added.
+
+  * A new method ''Date.toISOString():String'' shall be added to the ''Date'' class. 
+    * The method shall return an ISO-format string (defined below) denoting the date represented in its underlying ''Date'' object. 
+  * The static function ''Date.parse(s:String):double'' shall be extended in the following fashion:
+    * The function shall accept an ISO-format string as its first argument.
+    * If the first argument is a valid ISO-format string then it must be interpreted as an ISO-format string. 
+    * The function shall accept an optional second argument, which shall be convertible to ''double''.  If it is not convertible the function shall throw a ''TypeError''.  The second argument denotes the //default time// for omitted fields during parsing. For example, the result of ''Date.now()'' may be used to provide default field values from the current time.
+    * If no second argument is provided, parsing will assume a default time of ''1970-01-01T00:00:00.0''.
+    * The function shall return a ''double'' value representing the date denoted by its arguments.  
+The subset of ISO-8601 supported follows:
+
+    timestamp ::= date? "T" time? tz?
+    year     ::= ("-" dig+ | dig{4} dig*)
+    date     ::= year ( "-" dig{2} ( "-" dig{2} )? )?
+    time     ::= dig{2} ( ":" dig{2} ( ":" dig{2} ( "." dig+ )? )? )?
+    tz       ::= ("+" | "-") dig{2} ( ":" dig{2} )?
+               | "Z"
+    dig      ::= "0" ... "9"
+
+For example
+
+    2006-04-17T
+    2006-04-17T12:37:00.005+03:30
+    T12:37+03
+    10000T
+    -1T00
+
+Spaces are not allowed anywhere in the grammar. 
+
+The "-" prefix permits denoting years before 0CE. 
+
+The maximum and minimum representable dates remain those set out in the ECMA-262-3 document.
+
+The meaning of an integer ''f'' represented by a string of n digits after the period in the ''time'' part is the fractional second value ''f/10^n''.
+
+The method ''Date.prototype.toISOString'' shall generate strings of this format with all fields present and the shortest possible nonempty string of digits following the period in the ''time'' part.  It always produces a UTC time with a suffix ''Z''.
+
+
+
+===== Time zones =====
+
+The committee agreed on 2007-07-19 to change the definition of ''DaylightSavingsTA(t)'' to something along the lines of "It should return a best effort value for the daylight savings adjustment for the UTC timestamp ''t'' at the location of the computer running the code, using historical data when relevant and possible.  Most modern operating systems provide interfaces that supply these data."
+
+The language could be better than that, though :-)

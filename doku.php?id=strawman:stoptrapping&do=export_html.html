@@ -1,0 +1,78 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:stoptrapping&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:stoptrapping&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:stoptrapping&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="stoptrapping"></a><h1>stopTrapping</h1>
+<div class="level1">
+
+<p>
+ Since trapping is entirely decoupled from &ldquo;protecting&rdquo; a proxy in the direct proxy <acronym title="Application Programming Interface">API</acronym>, we propose the introduction of a separate operation, named <code>Proxy.stopTrapping</code>. The call <code>Proxy.stopTrapping(aProxy)</code> triggers the proxy&rsquo;s <code>stopTrapping()</code> trap. This gives the handler a chance to either accept or reject the request:
+</p>
+<ul>
+<li class="level1"><div class="li"> If the <code>stopTrapping</code> trap returns true, the handler will be relinquished and the proxy henceforth becomes nothing but an empty forwarder to its target. In some sense, it has &ldquo;become&rdquo; its target (and indeed, smart engines may even implement it that way).</div>
+</li>
+<li class="level1"><div class="li"> If the <code>stopTrapping</code> trap returns false, the request to stop trapping is ignored.</div>
+</li>
+</ul>
+
+<p>
+ Unlike a failed protection operation, a failed <code>Proxy.stopTrapping</code> operation fails silently. If it were to fail by throwing an exception, this would expose that the object is a proxy and break transparent virtualization. <code>Proxy.stopTrapping(obj)</code> on a regular non-proxy object <code>obj</code> is a no-op.
+</p>
+
+<p>
+Now that protecting an object no longer requires fixing the proxy, <code>Proxy.stopTrapping</code> is an operation with a relatively narrow set of use cases. We expect it to only be used in special cases where the original creator of a proxy knows precisely when the proxy is no longer needed, and can be &ldquo;switched off&rdquo; for performance reasons. In most cases, we envision that a proxy will be trapping for its full lifetime and <code>stopTrapping</code> by default returns false.
+</p>
+
+<p>
+<a href="lib/exe/detail.php%3Fid=strawman%253Astoptrapping&amp;cache=cache&amp;media=strawman:stoptrapping.png.html" class="media" title="strawman:stoptrapping.png" onclick="return svchk()" onkeypress="return svchk()"><img src="lib/exe/fetch.php%3Fw=600&amp;h=&amp;cache=cache&amp;media=strawman:stoptrapping.png" class="mediacenter" title="stopTrapping operation: before and after" alt="stopTrapping operation: before and after" width="600" /></a>
+</p>
+
+</div>
+<!-- SECTION [1-1552] -->
+<a name="a_better_api"></a><h2>A better API</h2>
+<div class="level2">
+
+<p>
+ The above <acronym title="Application Programming Interface">API</acronym> allows anyone with a reference to the proxy to try and switch off the proxy, by passing it to <code>Proxy.stopTrapping</code>. A better <acronym title="Application Programming Interface">API</acronym> would represent the ability to switch off a proxy as a separate object (capability):
+</p>
+<pre class="code javascript"><span class="kw2">var</span> <span class="br0">&#123;</span> proxy, stopTrapping <span class="br0">&#125;</span> = Proxy.<span class="me1">revokableFor</span><span class="br0">&#40;</span>target, handler<span class="br0">&#41;</span>;
+<span class="co1">// calling stopTrapping() switches off its paired proxy</span></pre>
+</div>
+<!-- SECTION [1553-1959] -->
+<a name="feedback_and_discussion"></a><h2>Feedback and Discussion</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Discussed at the November 2011 TC39 meeting.</div>
+</li>
+<li class="level1"><div class="li"> Was proposed as part of <a href="doku.php%3Fid=harmony:direct_proxies.html" class="wikilink1" title="harmony:direct_proxies" onclick="return svchk()" onkeypress="return svchk()">direct proxies</a>, but left out.</div>
+</li>
+<li class="level1"><div class="li"> Reasoning: narrow set of use cases, complicates <acronym title="Application Programming Interface">API</acronym> surface and proxy implementation, can still be added later if need be.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1960-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/3/3549dfa6d4aaa1ba9c46120f13bfa308.xhtml used -->
+</body>
+</html>

@@ -1,0 +1,188 @@
+====== ES-Harmony Class System Proposal ======
+
+
+==== Rationale ====
+
+EcmaScript needs better support for providing high-integrity objects
+with data abstraction and hiding, and for private fields
+and methods. Several frameworks provide patterns for
+building class-like systems, but there are several
+advantages to providing such support directly in ES-Harmony, including
+performance, better syntax, security, and standardization.
+
+The design space for class systems is rather large. Here, we initially
+focus on a simple, minimalist design, with no support for inheritance
+or for type annotations, and with instance-private data. There is no
+separate namespace for class names, and class objects are a new kind
+of (first-class) values.
+
+This design is just one of many possible choices, but may
+help structure the discussion about what we want in ES-Harmony.
+
+
+
+
+
+
+
+
+
+
+
+
+==== Open Design Choices ====
+
+Here are some semi-independent choices in the design space:
+  * Do we want both static and instance members?
+    * Yes
+  * Do we want both private and public members? 
+    * Yes
+  * Should private members be instance-private or class-private?
+    * Confused deputy issue, Mark says instance-private, Waldemar says class-private with special syntax
+  * Classes are first-class values, no separate namespace.
+    * Yes
+  * Should classes be generative?
+    * Yes
+  * Should we have "bound-this" for instance methods?
+    * Yes (conceptual reference to current object) -- some disagreement on "this" vs "self", where "self" would be a regular variable with an explicit binding occurrence, and the programmer could use a different variable name.
+  * What is the default value of an uninitialized field, or for a not-yet-initialized field? Applies to both static and instance fields.
+    * Undefined (or exception if it is a const)
+
+----
+
+An alternative design appears at https://mail.mozilla.org/pipermail/es-discuss/2009-March/009115.html
+It needs to be uploaded (and revised a bit) as an alternate strawman.
+
+ --- //[[erights@google.com|Mark S. Miller]] 2010/01/06 18:36//
+
+
+==== Resolved Design Choices ====
+  * Do we want private or public by default? 
+    * Kona -  decided on private.
+  * What is "this" binding inside static members?
+    * Kona - decided it should not be in scope.
+  * Are class objects extensible by assigning to additional fields?
+    * Kona - decided not extensible
+
+==== Syntax: ====
+
+A class contains a list of field and method definitions, each of
+which may be static or not.  Field and method definitions can be
+arbitrarily interleaved.  
+
+The proposed concrete syntax is:
+
+<code javascript>
+class <classname>(<arg-list>) {
+
+      [<modifier>] [static] <fieldname> [ = <exp> ]; 
+      ...
+
+      [<modifier>] [static] <methodname> (<arg-list>) { <body> };
+      ...
+}
+
+<modifier> ::= public | private  	
+
+<exp>  ::= any expression
+
+<body> ::= any function body
+</code>
+
+A missing modifier is implicitly "public", both for methods
+and fields. 
+
+(Rationale: this default behavior is analogous to existing
+ES3 language semantics, and "private" is opt-in.)
+
+A class member is either a method or a field. If a member is not
+static, it is called an instance member.
+
+==== Semantics: ====
+
+The above syntax desugars into the following variable binding, which
+uses an "anonymous class definition" as the initializer expression for
+a variable.
+
+<code javascript>
+let <classname> = class (<arg-list>) { ... same class body as above ... }
+</code>
+
+Thus, <classname> is just a regular variable binding; there is no
+separate namespace for class bindings.
+
+Each time this anonymous class definition is evaluated, it allocates
+a new class object that stores the static fields of the class, and
+evaluates the corresponding initializer expressions in order to
+initialize these static fields.  The new class object is then returned
+as the result of the anonymous class definition expression.  Hence,
+class definitions need to be positioned appropriately, perhaps at the
+top-level, to yield the intended semantics.
+
+The class object also contains the static methods of the class
+definition.  Inside the bodies of these methods, the variable
+"this" is bound to the special uninitialized value. (Rationale: this helps
+catch bugs caused by inappropriate references to "this" inside static
+code.)
+
+Question: what should be the binding of this when evaluating static
+initializer expressions.
+
+This new class object works as a constructor function. That is, the
+expression
+
+<code javascript>
+     new C(<expression-list>) 
+</code>
+
+binds the variables in <arg-list> to the results of evaluating the
+expressions in <expression-list> (in the usual fashion for constructor
+invocations, analogous to in ES3.1).  A new object O of type C is
+allocated and bound to the variable "this".  In the scope of
+these bindings, the initializer expression for each instance field is
+evaluated and use as the initial value of that field.
+
+
+The object O contains the instance fields and instance methods of the
+class.  Inside each instance method, the  variable "this" is
+bound to the corresponding class instance (ie, the object O). 
+
+Note
+that, even if a method is extracted from O and stored in another
+object P, and then invoked via "P.m()", inside the method "m" the
+variable "this" still refers to the original object "O".
+
+Question: if there are forward references within a class from one instance initializer to a later instance field, what should the behavior be?
+
+Question: do we agree on having class-private variables, not instance-private (which might be easier to implement but perhaps less general)?
+
+
+==== Class Membership Predicates ====
+
+For any values v and C, the expression
+
+<code javascript>
+    (v is C)
+</code>
+
+evaluates to true if and only if the value v was produced from a new
+expression for the value C like the one above. This should work both
+for class values and ordinary functions used as constructors.
+
+Note that this relies on objects having an internal, immutable property
+indicating their allocated type. (This is different from the mutable
+''constructor'' property of ES3.)
+
+==== Migrating standard libraries to classes ====
+
+We would probably like to be able to reimplement at least some of the standard libraries using classes, but this means we need to consider whether there are observable differences between classes and function constructors. With that in mind:
+
+Question: should the internal ''[''''[Class]'''']'' property of a class be ''"Function"'' or ''"Class"''? Would this change be likely to break existing programs?
+
+Question: should the ''typeof'' operator of a class return ''"function"'' or ''"class"''? Changing this would probably be likely to cause breakage. Since ''typeof'' is generally considered a pit of backwards compatibility, this should probably just stay at ''"function"''.
+
+
+==== Comments from the Kona Meeting ====
+  * want "private" by default
+  * static should not have "this" in scope
+  * class objects should be non-extensible

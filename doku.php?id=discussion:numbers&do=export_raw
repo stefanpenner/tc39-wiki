@@ -1,0 +1,607 @@
+(this is the discussion page for [[proposals:numbers]])
+
+====== Open issues, July 2007 ======
+
+
+
+
+
+
+===== Class hierarchy (ticket 3) =====
+
+An older discussion item further down concludes that ''Number'' isn't a natural base class for ''int'', ''uint'', and ''decimal'', but I think this understanding predates the introduction of the type ''double'' and also the full implications of the type ''Numeric''.  So let's revisit the decision in full detail.
+
+(Observe that at most ''Number'' is an unfortunate shorthand for its true nature, "Real number".)
+
+If ''Number'' is a nonfinal class and the other types subclass it, then ''Number'' will be used as the base class for new numeric types (bignum, complex, quaternions) even when these are not real numbers, and this is true whether the user adds them or the committee does -- we're talking future-proofing here, and we need a consistent story.  Now this function:
+<code>
+    function negative(x:Number) x < 0;
+</code>
+must fail at run-time if passed a complex; no static type checking can fix that.  That's unfortunate.  The signature on that function has to do with traits of its argument, not subclass relationships.
+
+On the opposite side, ''Numeric'' captures the traits of the built-in numbers by being defined as ''(Number,int,uint,double,decimal)'' but suffers from not being expandable, so the benefit of not being able to pass a complex to ''negative()'' is cancelled by the problem of not being able to pass a bignum either.  In addition, ''Numeric'' is a too-broad name, "built-in real numbers" would be more like it.
+
+Perhaps we should use interfaces and go whole hog?
+
+<code>
+    interface Quaternion {}
+    interface Complex {}
+    interface Real {}
+
+    class Number implements Real { ... }
+    class int implements Real { ... }
+</code>
+
+(where the language does not at present contain anything around Quaternions or Complexes).  The function interface becomes
+
+<code>
+    function negative(x: Real) x < 0;
+</code>
+
+and numeric types implement the desired interface.
+
+----
+
+Interfaces are not quite right, since they can't have static [[proposals:operators|operator]] functions. I'm presuming ''x < 0'' as the body of ''negative'' would use a ''<'' operator appropriate to ''Real'', but not by hardcoding that operator into the language -- in other words, we would support bootstrapping and extensions at the same time, by self-hosting on top of the [[proposals:operators]] proposal.
+
+So far, we've also avoided allowing interfaces to have generic method bodies. I think we would want those here, so both the current (evolving across Editions) set of number-like types and user extensions could share code maximally and not need to copy/paste or delegate to common helper classes or functions.
+
+I will refrain from Scheme tower jokes :-P. But I would prefer to future-proof minimally. Not sure what that means, but I don't think it includes ''Complex'' as a base interface-like type. Sorry this comment is not that helpful; I'll keep noodling.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/07/18 14:37//
+
+No operators are implied.  I'm not convinced we want self-hosting here.  That said, I agree minimal future proofing is better than maximal.
+
+I've split the interfaces so that they do not form a hierarchy, because I don't think that hierarchy is all that useful.  As a consequence, the interfaces Complex and Quaternion would go away, we would not have to anticipate what the users might want.  But we might want to provide an interface ''Numeric'' (darn that word) that ''Real'' extends, and that ''Complex'' could extend too.  Don't know for sure.
+
+Anyhow, we're not out of the woods, complexes done by the user aren't so easy:
+
+<code>
+    interface Complex extends Numeric {}
+
+    class complex implements Complex {
+        public static operator +(a, b): Numeric {
+          // a could be real if b is complex...
+          if (a is Real) {
+            assert( b is Complex );
+            return new complex( a + b.real, b.imag );
+          }
+          else {
+            assert( a is Complex );
+            if (b is Real)
+              return new complex( a.real + b, b.imag );
+            else if (b is Complex)
+              return new complex( a.real + b.real, a.imag + b.imag );
+            else  {
+              // ouch!  Quaternions?  Vectors?  Matrices?  Probably we want to
+              // convert a to the type of b and retry, but how to obtain the
+              // class of b, and is that right anyway?
+            }
+          }
+        }
+        ...
+    }
+</code>
+
+Interestingly the problem is not really that extensions don't compose because our operators don't have type-based dispatch.  The problem is that for all the number types to play together they must "know" about each other in the sense that the rules for interconversions are clear.  Thus picking up two third-party numeric packages (complexes and matrices, say) the program must add code to both to allow interoperation and also to the base system to allow dispatch.  We provide for the latter with our operators; for the former, source code editing is required, or some sort of independent type-based dispatch (like generic functions).
+
+All of this is just a way of getting to the point that it's not quite clear that the user can do something sensible with new number types unless we add a fair bit of machinery, so perhaps we should stop trying and choose something that has as little functionality as possible: a single interface type ''Real'' and built-in types that implement it.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/07/18 14:49//
+
+===== Overflow handling (ticket 4) =====
+
+Mike Cowlishaw argues (further down) that wrapping int (and uint?) arithmetic should signal an error.  Normally, of course, adding two ints will overflow to a double, so this does not apply, and ES3 has clear rules for how that double is truncated when it is used as the input to certain operations, and these rules probably can't be changed for backwards compatibility reason.  So any error signalling would only apply in "use int" or "use uint" mode, where the result type is always known.
+
+(Discuss.)
+
+
+===== Pragmas (ticket 138) =====
+
+The pragmas are a blunt tool.  Too blunt?  Consider that we want to add two numbers ''a'' and ''b'' as integers yielding an integer in all cases (avoiding the question of wraparound for now).  We have several options:
+
+<code>
+    let t : int;
+    { use int; t = a + b }
+</code>
+
+<code>
+    function intadd(x,y) { use int; return x+y }
+    intadd(x,y)
+</code>
+
+Or, assuming we have ''int.intrinsic::+'',
+
+<code>
+    int.intrinsic::+(a,b)
+</code>
+
+A better solution may be to be able to scope pragmas over expressions, not just blocks:
+
+<code>
+    let (use int) a+b
+</code>
+
+What are the use cases for this?  Consider vector summing:
+
+<code>
+  function vadd(xs:[double]) {
+    use uint;
+    let sum:double = 0.0;
+    for ( let i:uint=0 ; i < xs.length ; i++ ) {
+      use double;
+      sum += xs[i];
+    }
+  }
+</code>
+
+Without the outer pragma the increment of ''i'' needs an overflow check.  Without the inner pragma the elements would be converted to ''uint'', clearly wrong.  So a cleaner solution would be:
+
+<code>
+  function vadd(xs:[double]) {
+    use uint;
+    let sum:double = 0.0;
+    for ( let i:uint=0 ; i < xs.length ; i++ ) 
+      let (use double) sum += xs[i]
+  }
+</code>
+
+or even
+
+<code>
+  function vadd(xs:[double]) {
+    let sum:double = 0.0;
+    for ( let i:uint = 0 ; i < xs.length ; let (use uint) i++ )
+      sum += xs[i];
+  }
+</code>
+
+Now, in the latter case, this is almost as good:
+
+<code>
+  function vadd(xs:[double]) {
+    let sum:double = 0.0;
+    for ( let i:uint = 0 ; i < xs.length ; i=uint.intrinsic::+(i,1) )
+      sum += xs[i];
+  }
+</code>
+
+though the compiler will have to work a little harder to figure that out (it needs to inline the call).  It's slightly less clear.
+
+
+
+===== Exposing primitives =====
+
+Should we provide access to eg ''int.intrinsic::+'' just like we provide access to the global ''intrinsic::+''?
+
+The function ''int.intrinsic::+'' is the operator that takes two ints and produces an int; it is exactly what is invoked in this code:
+
+<code>
+   {  use int;  x + y  }
+</code>
+
+The argument in favor would be that the operation exists, and is useful; the argument against would be that it just adds complexity and that the functionality is available anyway (using the code just outlined).
+
+Do not confuse these functions with user-defined operators; they are not.  They are just functions with operator-like names.  We'd define them like this:
+
+<code>
+    intrinsic static function +(a, b) {
+       use int;
+       return a + b;
+    }
+</code>
+
+
+
+===== Integer division =====
+
+Do we need an integer division (quotient) operator?  Or are we happy saying ''let (use int) a / b'' or even ''int.intrinsic::/(a,b)''?  Neither of those two workarounds work for doubles or decimal, and they are not generic.
+
+I propose that we add an operator which I will write ''\\'' which denotes integer division with: the operands are converted to a common representation by the normal algorithm, then rounded to integer, then divided, and the result is the integer quotient in the common representation.
+
+
+===== Future-proofing (no ticket) =====
+
+Issues: bytes, bignums, complexes, and how the number type hierarchy interacts with these extensions, and how the pragmas do or don't work for us.
+
+Consider that we add (for ES5) a type "integer" to represent bignums.  Then the DWIM mode will be something along "use decimal; use integer;".  But do the current pragma rules 
+
+(Discuss.)
+
+
+===== Math operations (ticket 83) =====
+
+Math operations should somehow be specialized to various numeric types: ''abs()'' on an int should produce an int, ''floor()'' on a decimal should produce a decimal, and so on.  What's the full list?  What are good (compatible) solutions?
+
+
+===== Misc ====
+
+  * Ticket 123: re-bindable ''Number''
+
+
+
+----
+
+====== Decimal Comparisons ======
+
+IEEE 754r has a multiplicity of comparison modes, some in which 3.0 != 3.000.  What should ES4 do?  There was some discussion of letting (3.0 == 3.000) == true but (3.0 === 3.000) == false.  The consensus of the committee was that this would confuse users.  Instead, we will add methods to the decimal class to allow some of the more esoteric comparison modes, e.g., the 754r concept of total ordering.
+
+Comment: there's precedent for making 'strictly equals' detect or not detect a difference in exponent (Java and Rexx do, C# does not).  If the underlying meaning of the operator is 'if the two operands are converted to a canonical string are those strings identical' then the Java & Rexx way is good.  But ES3's === operator is more devious that that, and has at least some numerical overtones, so I think I agree that 3.0===3.000 should give **true**.
+
+Adding TotalOrder would be good.  And/or a way to extract the exponent of a decimal number (often handy).   --- //[[MFC@uk.ibm.com|Mike Cowlishaw]] 2006/12/15 00:20//
+
+====== Odds and ends ======
+
+I was toying with a function ''parseNumeric'' that returns the "best" type depending on the input, but it seems hard to specify it well and it's unclear what the gain is.
+
+For symmetry it would be possible to do a function ''parseNumber'' which would be affected by ''use decimal'' and ''use double'' just like ''Number'' is.
+----
+Several questions from the trenches
+
+1. Inside a "use int" (or uint) block, integer literals are affected, but floating point ones are not.  How do "use <numbertype>" statements nest?
+
+  use decimal;
+  if (test) 
+  {
+    use int;
+    ...
+    x = 1.5;
+  }
+
+vs
+
+  use double;
+    if (test)
+    {
+      use int;
+      ...
+      x = 1.5;
+    }
+
+Is x given a decimal value in the first case and double in the second?  That's 1.5 assuming that assignment does not convert numeric operands to int.  Or is it supposed to end up with the value 1.0?
+  Sense of committee is that they nest, and that the resulting value is 1.5, not 1.0
+
+(I would have expected a result of 1, as in item 4 below.  Or perhaps it might be better to flag as an error -- since this is a constant probably some error has been made.  Quiet truncation is a not quite as bad as decapitation, but is part of the reason we added intValueExact() and friends to the Java 5 BigDecimal class. --- //[[MFC@uk.ibm.com|Mike Cowlishaw]] 2006/12/06 00:39//)
+
+2. Traditional conversion from double to int throws away the fractional part, essentially using the "floor" operator.  We've added the "use rounding" pragma for decimal numbers.  Should this pragma be observed when converting a decimal number into an int or uint?  i.e., should intvar = 1.6m result in storing 1 or 2 into intvar with rounding HALF_UP?
+  Sense of committee is that values are truncated
+
+3. Inside "use uint", all operands are converted to uint.  Are negative ints converted to 0?
+  We need input from Lars and Mike on this (also see what AS3 does)
+
+This applies to both doubles and decimals; the 754r committee went into this in some depth, looking a a wide set of hardware and software implementations.  The current draft says:
+
+  * When a numeric operand would convert to an integer outside the range of the destination format, the invalid exception shall be signaled if this situation cannot otherwise be indicated.
+
+In other words, it's an error of some kind.   --- //[[MFC@uk.ibm.com|Mike Cowlishaw]] 2006/12/06 00:20//
+
+4. I believe that the following is true
+
+  var y:decimal = 1.7;
+  use rounding FLOOR; // if rounding mode affects conversion (see 2.0 above)
+
+  if (test)
+  {
+    use int;
+    ...
+    y = y + 1.5;
+  }
+
+at this point y == 2, since both the old value of y and the literal 1.5 will be converted to ints for the addition.
+  Committee agrees this is the behavior
+
+ --- //[[sweet@adobe.com|Dick Sweet]] 2006/12/04 10:38//
+
+5. I suspect that the default precision should be 34 (use full precision of decimal128).  What should the default value for rounding be?  I believe I read somewhere that banks use HALF_EVEN.
+  Committee believes HALF_EVEN is proper default, or may be locale dependent
+
+I strongly recommend that it not be locale-dependendent, as then arithmetic results become locale-dependent, which would be an applications/testing nightmare.  The two reasonable options are HALF_EVEN or HALF_UP.  754r recommends HALF_EVEN, but allows HALF_UP for historical reasons (notably COBOL).  I would suggest HALF_EVEN.  --- //[[MFC@uk.ibm.com|Mike Cowlishaw]] 2006/12/06 00:20//
+
+6. Am I right to believe that precision doesn't affect parsing of constants?  Thus
+  use precision 3;
+  var x:decimal = 123456; // ends up with x == 123456;
+  x = x + 0; // ends up with x == 123000;
+
+  Committee wants Mike's opinion
+
+This one's a language issue, mainly.  In Rexx the precision does not affect constants because they are just strings until you carry out some operation on them, and that does seem to work well.  In other words, precision affects //Arithmetic operations//, not assignments, copies, etc.  That's probably a good rule if it does not conflict with the rest of the language.
+
+(There would probably need to be an implicit limit at 34 digits, so any constant longer than that (rare!) would be rounded whatever the rule.)   --- //[[MFC@uk.ibm.com|Mike Cowlishaw]] 2006/12/06 00:20//
+
+ --- //[[sweet@adobe.com|Dick Sweet]] 2006/12/04 15:14//
+
+====== Discussion of type hierarchy ======
+
+(This is older; not part of the proposal as such.)
+
+The January 26 draft spec states that ''Number'', ''int'', and ''uint'' all are subtypes of ''Object''.  This has come as a surprise to several, who expected there to be a subtype relationship.
+
+  * ''Number'' values are IEEE double precision values
+  * ''int'' values are integers in the range -(2^31) .. (2^31)-1
+  * ''uint'' values are integers in the range 0 .. (2^32)-1
+
+We have also said that there should be conversions among these types.
+
+The spec does not say whether these types are subclassable.  I am guessing that ''Number'' can be subclassed but ''int'' and ''uint'' cannot.
+
+(The only justification for ''int'' and ''uint'' types is that they admit efficient processing and representation; ie, though they must fit into some general Object representation scheme (except in fully strict-mode implementations), they do not have to have the same representation as ''Number''.)
+
+In addition we have discussed adding a new type ''Decimal'' for base-10 floating point numbers; the set of values for this type is a superset of the values for ''Number''.  For this type too we have said that there should be convertibility to the other numeric types.
+
+On top of that we have added enough operator overloading machinery to the language that we can expect some users to wish to add new numeric data types (''Complex'').
+
+So what should the type hierarchy be for numeric types?
+
+===== Flat solution =====
+
+In the "flat solution" the world remains as it is today: every one of these types is a direct subtype of ''Object'', and interconvertibility is handled with the equivalent of ''to'' operators on the types.  We need only define conversion rules from one type to the other.
+
+User-defined numeric types define operators and ''to'' operators to allow this to work more or less seamlessly.
+
+===== Hierarchical solution =====
+
+In the "hierarchical solution" we place the number types in a hierarchy where more general types are closer to the top.
+
+It is natural that ''Number'' is a base type for ''int'' and ''uint'', given both their value sets and their names.  
+
+However, neither ''int'' nor ''uint'' can be a base type of the other; they must(?) instead be interconvertible.  So both are sibling subtypes of ''Number'' and there must be special-case conversion rules among them.
+
+Nor can ''Decimal'' be a subtype of ''Number'', since it contains a superset of values held by ''Number''.  It's really the other way around: ''Number'' must be a subtype of ''Decimal''.  Yet the name ''Number'' suggests a most general type for numbers, and it's pretty peculiar to suggest that the other number types are subtypes of "decimal" numbers.
+
+Some of the confusion comes from poor choices for the type names: ''Number'' when we mean ''double''; ''Decimal'' when we mean ''Base-10 floating point''.  Some choices can't be helped for historical reasons.  But it makes it hard to construct a reasonable hierarchy here.
+
+The subclass relationship would also introduce assumptions about eg preserving object identity and dynamic properties.  Suppose I have an ''int'' object that I store in a ''Number'' variable.  If ''int'' is represented as an efficient machine type then this really is a type of conversion.  This may be visible.  Consider:
+
+<code>
+  var a:int=10; 
+  var b:Number=a, c:Number=a; 
+  a === b;
+</code>
+
+Here I would expect ''true'', and since ''Number'' is a dynamic class I would expect that if I add properties to ''b'' then they would become visible through ''c''.  I think this is reasonable; it follows from the general object model of the language.
+
+===== Parameterized types =====
+
+Parameterized types do not figure into this.  ''Array.<int>'' is not a subtype of ''Array.<Number>'' even if ''int'' is a subtype of ''Number'', and there is no way to use the parameterized type system to express operations that will take "some numeric type" as an argument by relying on a type hierarchy below ''Number''.  It is possible to instantiate a class with a concrete type, of course, but that ability does not depend on one structure or the other for numbers.
+
+===== Conclusion =====
+
+A flat model seems most natural for ECMAScript, with ad-hoc conversions among the types.  
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/23 05:06//
+
+====== Understanding "use <numbertype>" in terms of namespaces ======
+
+The effect of ''use <numbertype>'' can be expressed in terms of system-internal namespaces.  In the following, imagine there are system-internal namespaces ''#decimal'', ''#double'', ''#int'', and ''#uint''.   
+
+==== ''Number'' ====
+
+The four internal namespaces all contain a binding for the name ''Number'': in the ''#decimal'' namespace ''Number'' maps to ''decimal''; in the ''#double'' namespace it maps to ''double''; and so on.  The effect of ''use double'' on ''Number'' is thus the same as ''use namespace #double'':
+
+<code>
+    {    use double; 
+         Number(x);
+    }
+</code>
+
+becomes
+
+<code>
+    {    use namespace #double;
+         Number(x);  // resolves as #double::Number(x)
+    }
+</code>
+
+==== Operators ====
+
+For the interpretation of operators, assume that operators are represented in the environment just in the same way that ''Number'' is, and that there are bindings for all operators in all four system-internal namespaces.  In the ''#double'' namespace, the operators convert their arguments to ''double'' and produce ''double'' results; in the ''#int'' namespace they convert their arguments to ''int'' and produce ''int'' results; and so on:
+
+<code>
+    {    use double; 
+         x + y
+    }
+</code>
+
+becomes
+
+<code>
+    {    use namespace #double;
+         x + y   // resolves as #double::+(x,y)
+    }
+</code>
+
+==== Literals ====
+
+For the interpretation of literals, the main rule is:
+
+  * number literals that are suffixed with a type character are never subject to interpretation dependent on the selected number type
+  * number literals that are not so suffixed are always subject to interpretation
+
+An interpretation can be phrased in terms of namespaces by imagining that there exist system-internal functions called ''#uintValue'' and ''#floatValue'' that take constant strings as input and produce numbers as output.  The names of these functions describe the argument type, not the return type: ''#uintValue'' takes a string that looks like an unsigned integer; ''#floatValue'' takes a string that looks like a floating-point (non-integer) number.  Imagine further that the parser rewrites all nonsuffixed literals as calls to these functions:
+
+<code>
+    3.5 + -76
+</code>
+
+becomes
+
+<code>
+    #floatValue("3.5") + -#uintValue("76")
+</code>
+
+The ''#int'' and ''#uint'' namespaces contain bindings for ''#uintValue'' that return ''int'' and ''uint'' values respectively.
+
+The ''#double'' and ''#decimal'' namespaces contains bindings for both ''#uintValue'' and ''#floatValue''; these return ''double'' and ''decimal'' values respectively depending on the namespace.
+
+Then
+
+<code>
+    {
+        use decimal;
+        x = 3;
+        y = Number(x) + 4.5;
+        {
+            use int;
+            z = 10.5m;
+        }
+    }
+</code>
+
+is expressed as
+
+<code>
+    {
+        use namespace #decimal;
+        x = #uintValue("3");                   // 3m
+        y = Number(x) + #floatValue("4.5");    // decimal(x) + 4.5m
+        {
+            use namespace #int;
+            z = 10.5m;                        // 10.5m even if ''use int'' is in effect
+        }
+    }
+</code>
+
+==== Shadowing ====
+
+Note that ''use int'' and ''use uint'' do not provide a new meaning for ''#floatValue''; this meaning depends on settings in the nesting scopes.  So if the nesting scope has ''use decimal'', floating point literals are still interpreted as decimal.  This is by design.
+
+==== Initial namespace ====
+
+There is a system-initial namespace (not one of the four) that contains bindings for ''Number'', the operators, and the literal functions that are compatible with 3rd Edition.  In particular:
+  * the class name of ''Number'' really is ''Number'' (visible through ''toString'' on the class object)
+  * the operators perform conversion and produce a result that depend on their input types
+  * ''#uintValue'' produces a ''uint'' and ''#floatValue'' produces a ''double''
+
+----
+
+Shouldn't Use perhaps also affect the interpretation of unembellished constants?  i.e., in the example above the 3 be treated as 3m and 4.5 as 4.5m?  
+
+ --- //[[MFC@uk.ibm.com|Mike Cowlishaw]] 2006/05/29 23:43//
+
+Thanks.  I've tried to tighten up the prose and fix some bugs in the description.
+
+At the May f2f there was some discussion about whether the expansion suggested above can capture all it needs to capture.  I'm not aware of holes, but it feels pretty artificial, and I'm unsure if it describes what we want.  Perhaps I should go for a less operational approach when describing this, or write up more requirements for the system.  For example, I might expect that the addition in this program:
+
+<code>
+    {    use int;
+         3.5m + 4m;
+    }
+</code>
+
+is a decimal addition, but the way the spec's written it is not.  What behavior do we think is best here?
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/30 02:58//
+
+==== Number tokens ====
+
+I generally like the suffix rules, but I don't think you should ever
+consider 0xNNNd as a (formed or malformed) decimal-suffix. Really I don't think
+it helps with clarity to say that all suffixes are "accepted", but some
+of those are "invalid". What's the utility of accepted-but-invalid? None I can see;
+just define the valid lexemes explicitly.
+
+For example, I think we should just define the hex-literal lexeme as 0x[a-fA-F0-9]+[ui]? and the
+representation, if it parses, is therefore always unsigned or signed. I think the
+digit-counting rule proposed in the TODO is not a good idea, nor is denoting decimal 
+floating point values by hex value a valuable use-case. If there are a few strange
+cases you need it for, I think it would be more appropriate to defer to a host utility function that composes, say, 4 32-bit uints bitwise into a decimal, and a symmetric operation that decomposes a decimal back to 4 32-bit uints.
+
+We discussed this in today's phone call and there was general agreement on this point.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/09/06 10:26//
+
+I agree.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/09/13 07:57//
+
+==== Arithmetic promotion rules ====
+
+I find the (a) and (b) conditions for operand-promotion not entirely clear in their phrasing. Rewrite as nested lists of conditions:
+  * If there is a 'use <number>' pragma:
+    * all operands are converted to <number>
+    * the expression result is <number>, even if it involves precision loss
+  * If there is no 'use <number>' pragma:
+    * operands are converted to a common representation that loses the least precision.
+    * once a common operand representation is chosen for the operands:
+      * if the operands are double, the result is double
+      * if the operands are decimal, the result is decimal
+      * if the operands are int and the result is representable as an int without loss of precision, the result is an int.
+      * if the operands are uint and the result is representable as an uint without loss of precision, the result is an uint.
+      * else the result is a double
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/09/06 10:36//
+
+I agree that the phrasing in the proposal is not very good.  I like yours better, though it is slightly incorrect: in the no-pragma case the first rule is too open-ended (a nonnegative int can be converted to any of the other three representations by this rule, and there may be hard cases regarding whether to convert a double to decimal or a decimal to double is best, given that 128-bit decimal can't represent all doubles).  Thus I believe we need to impose an explicit ordering here.
+
+  * operands are converted to a common representation by choosing the first of the following rules :
+    * If one operand is decimal, the other is converted to decimal
+    * If one operand is double, the other is converted to double
+    * (Otherwise, one operand is uint and the other is int.)  If the int is nonnegative then it is converted to uint.  Otherwise both operands are converted to double.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/09/13 07:57//
+
+Agreed. Loose wording on my part; and unforgivable considering the hundred-or-so email thread the 754r group has just emerged from regarding the use of the word "number" in the spec :)
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/09/13 10:01//
+
+
+
+
+
+
+
+
+
+
+
+====== int and uint types ======
+
+I was wondering what the rationale was for adding the ''int'' and ''uint'' types; given the ease-of-use and expected users of the language, int types are really rather dangerous because they fail quietly (notably quiet overflows, where ading two positive numbers can result in a negative number).  See, for specific examples (from Michael Howard's blog):
+
+  * [[http://msdn.microsoft.com/library/default.asp?url=/library/en-us/dncode/html/secure04102003.asp|Reviewing Code for Integer Manipulation Vulnerabilities]]
+  * [[http://msdn.microsoft.com/library/en-us/dncode/html/secure01142004.asp|Integer Handling with the C++ SafeInt Class]]
+  * 19 Deadly Sins of Software Security (Howard, LeBlanc and Viega) chapter 3 – Integer Arithmetic Issues
+  * Secure Coding in C and C++ (Seacord) Chapter 5 Integer Security (also available as a [[http://www.awprofessional.com/content/images/0321335724/samplechapter/seacord_ch05.pdf|sample chapter]]).
+
+All the values in these two types are a proper subset of both the binary number type and the decimal type.  The decimal type is unnormalized, too, so integer arithmetic is available directly there and has the 'look and feel' of true integer arithmetic.
+
+ --- //[[MFC@uk.ibm.com|Mike Cowlishaw]] 2006/10/31 00:46//
+
+I think there is a fraction of the user community who wish to do "bit twiddling" as fast as possible. People do actually write code to process raster images, sound, cryptographic primitives, etc. in this language and in some contexts (eg. actionscript) I think they expect to have a smart compiler do things like produce optimized monomorphic ''uint'' arrays. Maybe I'm exaggerating, it's just the impression I got (and the motivation I've been working under). 
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/11/01 10:51//
+
+OK .. so who/where are these people?  :-)   If one is really concerned about fast-as-possible bit-twiddling one is going to use C or Assembler, surely.   --- //[[MFC@uk.ibm.com|Mike Cowlishaw]] 2006/11/01 13:10//
+
+I'm thinking that the AS3 AVM+ will have its JIT emit native machine instructions for integer arithmetic (etc) if it can decide at compile-time that only integers are involved in an expression. (Someone correct me if I'm wrong...) 
+--- //[[stejohns@adobe.com|Steven Johnson]] 2006/11/01 13:42//
+
+Mike: alas, one cannot use C/asm and expect the program to be deliverable to a user just by having them type a URL into a browser. Yet this is what the language may be able to provide: sharp tools like machine arithmetic at a decent speed, hosted in a safe, portable and ultra-convenient execution environment. 
+--- //[[graydon@mozilla.com|graydon]] 2006/11/01 17:22//
+
+Well, that's exactly my concern -- sharp tools have dangers as well as advantages, and these types introduce a particularly subtle danger that doesn't exist in the E3 language.
+--- //[[MFC@uk.ibm.com|Mike Cowlishaw]] 2006/11/02 00:25//
+
+The sharpness is less than in memory-unsafe languages.  You can't index out of bounds, or under-allocate due to sizeof-scaling overflow. True, you may wrap a ''uint'' and overwrite index 0 again, or wrap ''int'' to -(2^31). But you won't corrupt memory or make an exploitable security hole.
+
+Some uses for ''int'' and ''uint'' we know will be popular, which should not require writing C or C++ plugins (which are inevitably banished to a plugin-prison rectangle): 2D and 3D graphics screen and even world coordinates; RGBA and similar colors packed in ''uint''s.  Since these types are novel and not default, I don't think they will see unwarranted use. The use-cases that drove their introduction into Waldemar's spec, JScript.NET, and especially ActionScript in the FlashPlayer are worth supporting.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/11/02 10:01//
+
+OK, I am almost convinced.  But not on "won't ... make an exploitable security hole" ... see the links near the top of this section for some examples.
+
+I believe the unpleasant effects go away if a 'wrap' of an int during arithmetic becomes some type of exception or overflow.  The performance cost is negligible (typically a single compare and test after an operation) -- and the types could then become extendable (later) to user-defined integer ranges, which would be really handy.  
+
+Another approach would be to use explict binary types only for interfacing to external modules, and not for arithmetic.  [Apologies if this is covered in the use cases you refer to, I could not find them after some searching.]
+
+This is the approach I took in NetRexx, btw -- arithmetic in the scripting language is always safe.  Conversions to restricted ranges (such as ints and uints of various sizes) are automatic when calling functions/methods that expect those types.  But any unsafe conversion (Inexact in any sense) raises an exception.  This gives one complete access to existing libraries with essentially no restrictions.
+
+ --- //[[MFC@uk.ibm.com|Mike Cowlishaw]] 2006/11/07 12:22//
+
+> OK, I am almost convinced.  But not on "won't ... make an exploitable security hole" ... see the links near the top of this section for some examples.
+
+I'm painfully aware of those problems in C++ and C, but if ES4 implementations lack memory safety due to silent wrapping on integer overflow, those are implementation bugs. The spec does not require memory-unsafe accesses of any kind, under any circumstances.
+
+But your point about overflow exceptions is well-taken and I see it was raised higher up in this page. I'll help keep it on the agenda.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/07/18 14:44//

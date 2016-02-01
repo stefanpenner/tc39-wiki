@@ -1,0 +1,23 @@
+====== Proposal ======
+
+Add ''x'' to the set of flags ''gim''. The ''x'' flag causes line endings and unescaped spaces in the regular expression to be ignored. By allowing whitespace within regular expression literals, the literals may be significantly easier to read and modify.
+
+This proposal does not allow for comments within regular expression literals because of the confusion of ''/'' closing regexp literals and also being a component of ''%%//%%'' and ''/* */''.
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2010/12/15 19:43//
+
+This was proposed for ES4. The wiki saves us from being condemned to repeat history: [[proposals:extend_regexps#x_flag|proposal]], [[discussion:extend_regexps#mixing_the_x_flag_comments_and_unescaped_with_separated_lexingparsing|comments in x-flagged regexps discussion]], [[discussion:extend_regexps#issues_with_the_x_flag|issues with the x flag]].
+
+In particular, the comment syntax Lars proposed was ''# till end of line''. This should be considered, but let's not ignore Waldemar's objections. Best I can find right now from Waldemar is [[http://permalink.gmane.org/gmane.comp.lang.javascript.ecmascript4.general/2298|this es-discuss post]]. In that message, Waldemar was poking one hole (there are others) in a forward-compatible syntax idea, but I recall him objecting to the x flag on its own.
+
+I should add that CoffeeScript uses triple-slash delimiters for multiline regexp literals: [[http://jashkenas.github.com/coffee-script/|CoffeeScript docs]] under "Extended Regular Expressions". Note that CoffeeScript also uses ''# till end of line'' internal-to-extended-regexp comment syntax.
+
+Of course JS isn't CoffeeScript: ''%%///%%'' is already lexed as comment to end of line with an extra ''/'' in JS, but something like this approach has the advantage that the lexer knows to handle a multiline regexp up front, instead of only after getting a newline (after which it must assume ''/x'' at the end, and require ''x'' to be there).
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2010/12/16 08:41//
+
+The important thing is to get the whitespace. I can live without the comments.
+
+Triple slash looks to be hazardous. 
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2011/01/03 17:50//

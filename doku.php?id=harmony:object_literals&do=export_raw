@@ -1,0 +1,467 @@
+**This proposal has progressed to the Draft ECMAScript 6 Specification, which is available for review here: [[harmony:specification_drafts]]. Any new issues relating to them should be filed as bugs at [[http://bugs.ecmascript.org]]. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.**
+
+
+
+
+====== Harmony: Object Literal Extensions ======
+Allen Wirfs-Brock
+
+//These proposals were promoted with the caveat that TC39 has yet to achieve consensus on the concrete syntax.  Whatever syntax is ultimately chosen, it needs to be consistent with the syntax chosen for the [[harmony: classes]] proposal.  //
+
+Abstraction creation is a central theme of object-based programming and ECMAScript provides many mechanisms  that support patterns for creating object based abstractions.  However, most of these patterns are constructive in nature using procedural code to create the abstractions.  This approach is  powerful in that it allows a wide variety of different technical mechanism to be  used to construct various abstractions. It also allows for programmer defined abstractions with application specific construction semantics. However, this variety can also be problematic. It creates complexity for both readers and writers of ECMAScript program and making it difficult to ECMAScript implementations to recognize common abstraction patterns so they can be optimized.  Most other programming language solve these issues by providing a straightforward declarative mechanism for defining object abstractions based upon a standardize semantics.
+
+ECMAScript does provided a basic declarative mechanism for defining object-based abstractions.  Object initialisers provide a declarative mechanism for defining objects that in most situations is more concise, readable, and maintainable  than programmatic object creation using constructor functions and dynamic property insertion. The declarative nature of object initialisers  also makes it easier for implementations to perform various object representation optimization. However, existing ECMAScript object initialisers do not provide declarative solutions for a number of abstraction capabilities that are common used with ECMAScript objects.
+
+This strawman proposed ways in which ECMAScript object initialisers  can be extended to make them more useful for building complete object abstractions.  A number of individual extensions are identified. This page summarized the extensions and links to proposals for the specific extensions.
+
+
+
+
+
+
+===== Individual Extensions =====
+  * [[harmony:proto operator|Set Literal Prototype Operator]]
+  * [[harmony:object_literals#object_literal_property_shorthands|Object Literal Property Shorthands]]
+  * [[harmony:object initialiser shorthand|Implicit property initialization expressions]]
+  * [[harmony:Object Initialiser super]]
+  * [[harmony:object_literals#object_literal_computed_property_keys|Computed Property Keys]]
+  * [[harmony:object_literals#object_extension_literal|Object Extension Literals]]
+
+
+
+===== Summary Examples =====
+
+Under ES5 creating a literal object with an explicitly specified prototype, a complex combination of property attributes and conventions, and integrity constraints might be code as:
+<code javascript>
+var obj = Object.create(theProtoObj, {
+          konst: {value: f(), enumerable: false, writable: false},
+          handler: {value: defaultHandler, writable: true, enumerable: true, configurable: true},
+          name: {get: function () {return theProtoObj.name.call(this)},
+                 set: function(v) {throw Error("some message")},
+                   enumberable: false, configurable: true},
+         source: {value: function() {throw Error("another message")}},
+         toString: {value: function() {return "d "+theProtoObj.toString.call(this)}}
+});
+</code>
+
+can be more clearly and concisely expressed as:
+<code javascript>
+var obj = theProtoObj <| {
+          konst:= f(), 
+          handler: defaultHandler, 
+          get super set name(v) {throw Error("some message")}
+          source() {throw Error("another message")}
+          toString() {return "d "+super.toString()}
+];
+</code>
+----
+Also supported is explicitly setting the %%[[%%Prototype%%]]%% for array literals and other literal forms:
+<code javascript>
+  var enhancedArrayProto = Array.prototype <| {
+      do (func) {return this.foreach(func)},
+      search (key {return this.indexOf(key) >= 0}
+  };
+  var myArray = enhancedArrayProto <| [0,1,2,3,4,5];
+
+  setCallback(callbackFuncExtras <| function (...arg) {/* handle call back */});
+</code>
+This kinds of "subtyping" of built-in object kinds is not supported by ES5 but has been frequently requested.
+ 
+
+===== Individual Extension Summary =====
+
+
+==== Set Literal [[Prototype]] Operator ====
+
+The ''<|'' operator (pronounced "prototype for") is used in conjunction with a literal to create a new object whose %%[[%%Prototype%%]]%% is set to an explicitly specified value.  It can be used to address several distinct use cases for which separate solutions have been proposed.  Use cases include:
+  *  Specifying an explicit %%[[%%Prototype%%]]%% for object literals
+  *  Specifying an explicit %%[[%%Prototype%%]]%% for array literals
+  *  "Subclassing" arrays
+  *  Setting the prototype of a function to something other than Function.prototype
+  *  Creating a "subclass" of a constructor function
+  *  Setting the prototype of RegExp and other built-in objects.
+  *  Replace the most common uses of the mutable %%__%%proto%%__%% extension
+
+Specifying an explicit %%[[%%Prototype%%]]%% for object literals
+<code javascript>
+  MyObject.prototype <| {a:1,b:2}
+</code>
+Specifying an explicit %%[[%%Prototype%%]]%% for array literals
+<code javascript>
+  appBehavior <| [0,1,2,3,4,5]
+</code>
+Creating a subclass constructor
+<code javascript>
+  let ExtendedDate = Date <| function (...args) {super.constructor(...args};
+     //ExtendedDate inherits from Date
+     //ExtendedDate.prototype inherits from Date.prototype
+</code>
+
+See [[harmony:proto operator|Set Literal Prototype Operator]] for full proposal.
+
+
+
+==== Object Literal Property Shorthands ====
+
+This proposal extends object literals in these four ways:
+  - If a data property definition uses **'':=''** in place of **'':''** the property is non-writable, non-enumerable
+  - If a property definition has the form of a //FunctionDeclaration// without the keyword ''function'' it is a non-enumerable, non-writable, non-configurable data property definition whose name is the function name.  This is called a //method definition//.
+  - If a property definition is the above form of //FunctionDeclaration// or is a //get// or //set// property definition the comma that separates it from the following property definition may be omitted.
+  - Functions defined via method definitions do not have a %%[[%%Construct]] internal method.  This is similar to the built-in methods defined in Chapter 15 which also are not constructors.
+
+ES5 permits constructions of objects with arbitrary property attribute setting using the ''Object.create'' function. However, this form is verbose and its usage is complicated by the fact that the default attribute values are different than what is used for object literals. This can be see as follow starting with a standard ES5 object literal:
+
+<code javascript>
+var obj = {
+   a: x,
+   m: function(z) {return z+this.a+this.k},
+   k: 0.5,
+};
+</code>
+
+If the programmer desires for the property ''k'' to be non-writable  and non-enumerable and for the method property  ''m''to be a non-enumerable method, non-writable, and non-configurable, they would express like this using ''Object.create'':
+
+<code javascript>
+var obj = Object.create(Object.prototype,{
+   a: {value: x, writable: true, configurable: true, enumerable: true},
+   m: {value: function(z) {return z+this.a+this.k}},
+   k: {value: 0.5}  //use default false values for all attributes
+};   
+</code>
+
+Using the extensions in this proposal the above could be directly expressed using an object literal as:
+<code javascript>
+var obj = {
+   a: x,
+   m(z) {return z+this.a+this.k}
+   k:= 0.5,
+};
+</code>
+ 
+See [[harmony:Concise Object Literal Extensions]] for full proposal
+
+
+
+==== Object Literal Property Value Shorthand ====
+
+This proposal provide a shorthand for object initialisers whose property keys are initialized by variables of the same name.
+
+This extension provides Reversibility or symmetry with the [[harmony:destructuring]] shorthand object patterns.
+
+For example, instead of:
+
+<code javascript>
+function f(x, y) { return {x: x, y: y}; }
+</code>
+you can say:
+<code javascript>
+function f(x, y) { return {x, y}; }
+</code>
+
+See [[harmony:object initialiser shorthand|Implicit property initialization expressions]] for full proposal
+
+
+==== Object Literal Computed Property Keys ====
+
+This proposal provide  for object initialisers with property key values that are determined by evaluating an expression. This is particular useful for defining properties whose property keys are private name objects.  A computed property key is specific by using a bracketed expression in a //PropertyName// position. If the value of the expression is a [[harmony:private name objects|private name object]], that object is used as the property key.  Otherwise, ToString is applied to the expression value and that string is used as the property key. 
+
+The following example defines an object with three properties.  One has a statically determined key, one has a dynamically computed numeric string key, one has a private name key.
+
+For example, instead of:
+
+<code javascript>
+const secret = Name.create();
+let obj = {
+   x: 0,
+   get [Math.random()]() {return this.x + this[secret]},
+   [secret]: 42
+};
+</code>
+
+
+
+==== Object Initialiser super References ====
+
+''super'' can be used within object literals to access prototype properties that are over-ridden by the object created by by object literal.  There are two ways that ''super'' can be used.
+  - When used within a //FunctionBody// contained within an object literal, ''super'' has the same value as ''this'' but causes a property lookup to start at the %%[[%%Prototype%%]]%% of the object defined by the literal.
+  - ''super'' can be used in the definition of an accessor property **get** or **set** function to indicate that the corresponding **set** or **get** function should not be reset to the default value and instead should be defined so as to invoke the corresponding **set** or **get** function that would be the result of a property lookup that started at the %%[[%%Prototype%%]]%% of the object defined by the literal 
+
+Here is an example of the first use.  Instead of coding:
+<code javascript>
+var sub = sup <| {
+   validate() {
+       sup.validate.call(this); /* validate invariants imposed by prototype */
+       /* validate instance specific invariants */
+   }
+}
+</code>
+
+You can just code:
+<code javascript>
+var sub = sup <| {
+   validate(...args) {
+       super.validate(); /* validate invariants imposed by prototype */
+       /* validate instance specific invariants */
+   }
+}
+</code>
+
+For the second use case, instead of coding:
+
+<code javascript>
+var sub = sup <| {
+   set f(v) {f=v},
+   get f() {return super.f} //explicitly delegate to prototype's getter because we don't want to over-ride it
+};
+</code>
+
+We can just code:
+<code javascript>
+var sub = sup <| {
+   get super set f(v) {f=v},
+};
+</code>
+
+
+See [[harmony:Object Initialiser super]] for full proposal
+
+
+==== Object Extension Literal  ====
+
+An Object Extension Literal uses Object Literal syntax to specify a set of properties to be added to an already existing object.  An //ObjectLiteral// is treated as an Object Extension Literal when it appears immediately to the right of the **''.''** in a //MemberExpression// or a //CallExpression//.  For example:
+
+<code javascript>
+obj.{a:1,b:2,c:3};
+</code>
+
+This is, for the most part, semantically equivalent to:
+<code javascript>
+Object.defineProperties(obj, {
+   a: {value: 1, enumerable: true, writable: true, configurable: true},
+   b: {value: 2, enumerable: true, writable: true, configurable: true},
+   c: {value: 3, enumerable: true, writable: true, configurable: true}
+};
+</code>
+
+The value of an Object Extension Literal expression is the LHS object. All object literal property forms are valid in an Object Extension Literal including concise methods. If the LHS object already has an property with the same name as a property defined in the Object extension literal, the existing property is replaced or modified according to the rules of %%[[%%DefineOwnProperty]].
+
+Note that the object literal on the right of the **''.''** is not actually instantiated as a distinct object.  Instead each property in the object literal is directly created on the LHS object.  This is important if the property  is a method or accessor function containing **''super''** references because it means that the **''super''** binding is made to the %%[[%%Prototype]] of the LHS object rather than to ''Object.prototype'' which is the %%[[%%Prototype]] of normally instantiated object literals.  It also means that any private named properties can be directly created on the LHS object without without requiring private named properties to be exposed to reflection operations that would otherwise be need to copy them from the extension object to the existing object.
+
+Object Literal Extensions and the Set Literal Prototype Operator can be used in a pattern for defining class-like definitions. See [[Object Extension Literal Class Pattern]].
+
+
+
+
+
+
+
+
+
+
+
+
+
+===== Combined Syntax =====
+The following provides an integrated syntax definition for all of the individual extensions combined with the ES5 Object initialiser syntax:
+
+**//MemberExpression// : ...**\\
+ //MemberExpression// **<|** //ProtoLiteral// \\
+ //MemberExpression// **.** //LiteralObject//\\
+\\
+**//ProtoLiteral// : **\\
+//LiteralObject//  \\
+//LiteralValue// \\
+\\
+**//LiteralObject// : **\\
+//RegularExpressionLiteral// \\
+//ArrayLiteral// \\
+//ObjectLiteral// \\
+//FunctionExpression// \\
+\\
+**//LiteralValue// : **\\
+//NumberLiteral// \\
+//StringLiteral// \\
+//BooleanLiteral// \\
+\\
+**//ObjectLiteral//** **:**\\
+**{** **}** \\
+**{** //PropertyNameAndValueList// **}**\\
+**{** //PropertyNameAndValueList// **, }**\\
+\\
+**//PropertyNameAndValueList// :**\\
+//PropertyAssignmentList// \\
+//PropertyFunctionList// \\
+\\
+**//PropertyAssignmentList// :**\\
+//PropertyAssignment// \\
+//PropertyAssignmentList// **,** //PropertyAssignment// \\
+//PropertyFunctionList// //PropertyAssignment// \\
+//PropertyFunctionList// **,** //PropertyAssignment// \\
+\\
+**//PropertyFunctionList// :**\\
+//PropertyFunction// \\
+//PropertyAssignmentList// **,** //PropertyFunction// \\
+//PropertyFunctionList// //PropertyFunction// \\
+//PropertyFunctionList// **,** //PropertyFunction// \\
+\\
+**//PropertyAssignment// :**\\
+//Identifier//\\
+//PropertyName// **:** //AssignmentStatement//  \\
+//PropertyName// **:=** //AssignmentStatement//  \\
+\\
+**//ProperyFunction// :**\\
+**get**  //PropertyName// **(** **)** **{** //FunctionBody//  **}**  \\
+**set**  //PropertyName// **(** //PropertySetParameterList// **)** **{** //FunctionBody//  **}**  \\
+**set super get** //PropertyName// **(** **)** **{** //FunctionBody//  **}**  \\
+**get super set**  //PropertyName// **(** //PropertySetParameterList// **)** **{** //FunctionBody//  **}**  \\
+//PropertyName// **(** //FormalParameterList//<sub>opt</sub> **)** **{** //FunctionBody//  **}**  \\
+
+\\
+**//PropertyName// :**\\
+**%%[%%** //Expression// **]**\\
+//LiteralPropertyName//\\
+\\
+**//LiteralPropertyName//** **:**\\
+//IdentifierName//\\
+//StringLiteral//\\
+//NumericLiteral//\\
+\\
+**//PropertySetParameterList// :**\\
+//Identifier//
+
+**//PrimaryExpression// :** ...\\
+**''super''** \\
+
+
+===== Code Sample =====
+The followings shows an example of some actual ES5 code and how the same code can be express used some of these extensions:
+
+
+==== Original Code ====
+<code javascript>
+ var objMirrorProto = Object.create(objBasicMirrorProto, {
+      //Implements objectMirrorInterface
+      prototype: {get: function  () {return this.__createObjMirrorOn(Object.getPrototypeOf(this[.__obj))}, enumerable: true, configurable: true},
+      extensible: {get: function () {return Object.isExtensible(this.__obj)}, enumerable: true, configurable: true},
+      ownProperties: {get: function () {
+         return this.ownPropertyNames.map(function(key) {return this.prop(key)}.bind(this));
+      }, enumerable: true, configurable: true},
+      ownPropertyNames: {get: function () {return Object.getOwnPropertyNames(this.__obj)}, enumerable: true, configurable: true},
+      keys: {get: function  () {return Object.keys(this.__obj)}, enumerable: true, configurable: true},
+      enumerationOrder: {get: function () {
+         var names = this.keys;
+         var seen = Object.create(null);
+         names.forEach(function(n){ seen[n]=n});
+         var obj=this.prototype;
+         while(obj) {
+            obj.keys.forEach(function(n) {if (!seen[n]) names.push(seen[n]=n)});
+            obj=obj.prototype;
+         }
+         return names;
+       }, enumerable: true, configurable: true},
+      prop: {value: function(name) {
+         var obj = this.__obj;
+         var desc = Object.getOwnPropertyDescriptor(obj,name);
+         if (desc===undefined) return undefined;
+         return this.__createPropMirrorOn(this,name);
+      }},
+      lookup: {value: function(name) {
+         var p=this.prop(name);
+         if (p) return p;
+         var parent = this.prototype;
+         if (parent) return parent.lookup(name);
+         return undefined;
+      }},
+      has: {value: function(name) {return this.lookup(name) !== undefined}},
+      hasOwn: {value: function(name) {return this.prop(name) !== undefined}},
+      specialClass: {get: function() {return {}.toString.call(this.__obj).split(/\s|]/)[1]}},
+      toString: {value: function() {return "Object Introspection Mirror #"+this.__id}}
+   });
+
+   function mixinFunctionLocalMirror(proto) {
+      return Object.create(proto,{
+         //Implements functionMirrorInterface
+         name: {get: function() {return this.__obj.name}, enumerable: true, configurable: true},
+         source: {get: function() {return this.__obj.toString()}, enumerable: true, configurable: true},
+         isBuiltin: {get: function() {return this.__obj.toString().match(/\)\s*\{\s*\[native code\]\s*\}/)!==null}, enumerable: true, configurable: true},
+         toString: {value: function() {return "Function Introspection Mirror #"+this.__id}}
+       });
+    };
+   
+   var functionMirrorProto = mixinFunctionLocalMirror(objMirrorProto);
+</code>
+
+
+==== Code Rewritten using Extensions ====
+<code javascript>
+ const __obj = Name.create();
+ const __id] = Name.create();
+ const __createObjMirrorOn = Name.create();
+ const __createPropMirrorOn = Name.create();
+
+ var objMirrorProto = objBasicMirrorProto <| {
+      //Implements objectMirrorInterface
+      get prototype() {return this[__createObjMirrorOn(Object.getPrototypeOf(this[__obj]))]}
+      get extensible () {return Object.isExtensible(this[__obj])}
+      get ownProperties () {
+         return this.ownPropertyNames.map(function(key) {return this.prop(key)}.bind(this));
+      }
+      get ownPropertyNames () {return Object.getOwnPropertyNames(this[__obj])}
+      get keys  () {return Object.keys(this[__obj])}
+      get enumerationOrder () {
+         const names = this.keys;
+         const seen = null <| {};
+         names.forEach(function(n){ seen[n]=n});
+         var obj=this.prototype;
+         while(obj) {
+            obj.keys.forEach(function(n) {if (!seen[n]) names.push(seen[n]=n)});
+            obj=obj.prototype;
+         }
+         return names;
+      }
+      prop(name) {
+         const obj = this[__obj];
+         const desc = Object.getOwnPropertyDescriptor(obj,name);
+         if (desc===undefined) return undefined;
+         return this[__createPropMirrorOn](this,name);
+      }
+      lookup(name) {
+         const p=this.prop(name);
+         if (p) return p;
+         const parent = this.prototype;
+         if (parent) return parent.lookup(name);
+         return undefined;
+      }
+      has(name) {return this.lookup(name) !== undefined}
+      hasOwn(name) {return this.prop(name) !== undefined}
+      specialClass() {return {}.toString.call(this.__obj).split(/\s|]/)[1]}
+      toString() {return "Object Introspection Mirror #"+this.__id}
+
+   };
+
+   function mixinFunctionLocalMirror(proto) {
+      return proto <| {
+         //Implements functionMirrorInterface
+         get name() {return this[__obj.name]}
+         get source() {return this[__obj].toString()}
+         get isBuiltin() {return this[__obj.toString()].match(/\)\s*\{\s*\[native code\]\s*\}/)!==null}
+         toString function() {return "Function Introspection Mirror #"+this[__id]}
+       };
+    };
+   
+   var functionMirrorProto = mixinFunctionLocalMirror(objMirrorProto);
+</code>
+
+
+
+===== History =====
+Original Proposal August 10, 2009 \\
+[[strawman:object_initialiser_extensions|Revised Proposal March 2011]]  \\
+Simplified Proposal May 2011 \\
+AllenWB Started further simplification Sept. 15, 2011.  
+eliminated property prefixes for non-configurable and non-enumerable properties\\
+Made <| with a RHS function set the proto of the constructed function.prototype object
+Added bracketed computef property keys\\
+Made comma optional after methods and accessor properties.\\
+Added Object Extension Literals 
+

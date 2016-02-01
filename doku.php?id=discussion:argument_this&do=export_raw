@@ -1,0 +1,53 @@
+This is the discussion page for [[proposals:argument this]].
+
+====== Counter-examples ======
+
+A counterexample for argument-this for object:
+
+    let o = {x:3, f:function () this.x} : {x:int, f:function():int}
+    let o2 = {f:function () 0} : {f:function():int}
+    let m = o.f;
+    o2.f = m;
+    o2.f()
+
+Another variant:
+
+    let o = { f: function (this:this) : int { return this.g() },
+              g: function (this:this) : int { return 37 } }
+    function F() {}
+    F.prototype = o;
+    let x = new F();
+    x.g = function () : string { return "foo" };
+    x.f();
+
+Here, since "x" has type "*", the call "x.f()" will dynamically check the arguments to "f",
+and will complain that the "this" argument ("x" itself) does not match the expected type (ie, an object with appropriate f and g fields).
+
+----
+
+There are examples for and against both kinds of ''this'' handling. Users today, without classes, must bind ''this'' using a closure:
+
+<code javascript>
+Function.prototype.bind = function() {
+  var __method = this, args = $A(arguments), object = args.shift();
+  return function() {
+    return __method.apply(object, args.concat($A(arguments)));
+  }
+}
+</code>
+
+This is from the [[http://www.prototypejs.org/assets/2007/5/1/prototype.js|Prototype]] Ajax library. The ''$A'' helper usage here ensures that we have an ''Array'' of the actual bind-time "pre-arguments". Rewriting your first example in ES3 using Prototype to bind appropriately:
+
+<code javascript>
+let o = {x:3, f:function () {return this.x}}
+let o2 = {f:function () 0}
+let m = o.f.bind(o);
+o2.f = m;
+o2.f()
+</code>
+
+The ''o2.f()'' call will apply with ''this'' bound to ''object'' saved from ''o.f.bind(o)'''s environment, where ''object'' had value ''o''.
+
+The default for untyped JS must remain "argument-this", and people know how to change this default (ES4 will support ''Function.bind'', one of the [[static generics]] available also as ''Function.prototype.bind'', so there will be a short-hand; Prototype and other libraries may override it). I'm not sure whether this helps. Also, did you want this discussion here, or in an [[discussion:argument this]] page?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/05/18 14:34//

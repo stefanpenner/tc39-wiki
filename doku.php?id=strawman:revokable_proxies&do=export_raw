@@ -1,0 +1,110 @@
+====== Revocable Proxies ======
+
+==== The Problem ====
+
+In a nutshell: with direct proxies, one can no longer write a caretaker proxy that nulls out a pointer to its target once revoked. This means that the target can no longer be garbage-collected separately from its proxy.
+
+As pointed out by David Bruant, caretakers are often useful precisely for memory management, where one uses revocation of the caretaker to release the underlying resources, as described [[http://blog.kylehuey.com/post/21892343371/fixing-the-memory-leak|here]].
+
+Such caretakers were easy to define in the old Proxy design, since the link between a proxy and its target was fully under the control of the handler (i.e. fully virtual). However, with direct proxies, the proxy has a built-in, immutable reference directly to its target. This reference can't be modified or nulled out.
+
+==== Proposed Solution ====
+
+Provide an extension to the Proxy API that allows scripts to null out the proxy-target reference. Of course, the API must be designed with care so that this link can't be nulled out by any old client of the proxy. Only the creator of the proxy should have the right to revoke it.
+
+Because revocable proxies appear to be a niche abstraction, we propose to introduce a separate Proxy constructor dedicated to creating revocable proxies. Proxies created with the regular ''Proxy'' constructor would remain unrevocable.
+
+Proposal:
+
+  * Introduce a new factory method ''Proxy.revocable''.
+  * ''Proxy.revocable(target, handler)'' returns an object ''{proxy: proxy, revoke: revoke}''.
+  * ''revoke'' is a zero-argument function that, when called, revokes its associated proxy.
+  * A revoked proxy becomes unusable in the sense that any operation that would trap to the handler instead throws a ''TypeError''.
+  * Revoking an already revoked proxy has no effect.
+  * Once a proxy is revoked, it remains forever revoked.
+  * A revoked proxy drops its target and handler, making both available for garbage collection.
+
+Revoking a proxy is observably equivalent to replacing the handler such that all handler traps throw a ''TypeError'' unconditionally.
+
+Example:
+
+<code javascript>
+let { proxy, revoke } = Proxy.revocable(target, handler);
+proxy.foo // traps
+revoke()  // always returns undefined
+proxy.foo // throws TypeError: "proxy is revoked"
+</code>
+
+==== Revoking while trapping ====
+
+Revocable proxies reintroduce a subtle issue from the old design that had to do with fixing a proxy while it still has pending trap activations on the runtime
+stack: an unrevoked proxy may call one of its traps and be revoked by the time the trap returns:
+
+<code javascript>
+let { proxy, revoke } = Proxy.revocable({foo:42}, {
+  get: function(target, name) { revoke(); return target[name]; }
+});
+proxy.foo // traps and revokes the proxy
+</code>
+
+A first question to answer is whether the above ''proxy.foo'' call should return ''42'' or should instead throw ''TypeError: proxy is revoked''. We propose to have the trap still return its result since the proxy was still unrevoked at the time the operation was performed.
+
+For invariant enforcement to work correctly, the trap's result must be verified against the original target. So, the proxy
+must ensure that it holds on to the original target //before// calling the trap, and use that stored pointer after the trap returns.
+
+===== Spec =====
+
+**Proxy.revocable(target, handler)**
+
+  - If Type(T) is not Object, throw a TypeError exception
+  - If Type(H) is not Object, throw a TypeError exception
+  - Let p be a new Proxy Object with custom internal Object methods as [[http://wiki.ecmascript.org/doku.php?id=harmony:proxies_spec|specified]]
+  - If IsCallable(T), set the %%[[Call]]%%, %%[[Construct]]%% and %%[[HasInstance]]%% internal methods as [[http://wiki.ecmascript.org/doku.php?id=harmony:proxies_spec|specified]]
+  - Set the %%[[Handler]]%% internal property of p to H
+  - Set the %%[[Target]]%% internal property of p to T
+  - Let r be a new Function with the below %%[[Call]]%% behavior
+  - Set the %%[[Proxy]]%% internal property of r to p
+  - Let pair be a new ECMAScript Object
+  - Call pair.%%[[DefineOwnProperty]]%%("proxy",{value:p,writable:true,enumerable:true,configurable:true},true)
+  - Call pair.%%[[DefineOwnProperty]]%%("revoke",{value:r,writable:true,enumerable:true,configurable:true},true)
+  - Return pair
+
+**%%[[Call]]%%**
+
+When the %%[[Call]]%% method of a revoke function F is called:
+
+  - Let proxy be the value of the %%[[Proxy]]%% internal property of F
+  - Set the %%[[Target]]%% internal property of proxy to null
+  - Set the %%[[Handler]]%% internal property of proxy to null
+  - Return undefined
+
+The specification of operations that trap on a proxy P would follow the following template:
+
+  - Let handler be the value of the %%[[Handler]]%% internal property of P.
+  - If handler is null, throw a TypeError
+  - Let target be the value of the %%[[Target]]%% internal property of P.
+  - Let trap be the result of calling GetTrap(handler, "trapName").
+  - If trap is undefined,
+    * a. Return the result of calling the built-in function Reflect.trapName(target).
+  - Let trapResult be the result of calling the %%[[Call]]%% internal method of trap providing handler as the this value, with target as the first argument.
+  - //at this point, %%[[Target]]%% may have been nulled out, be we still have a reference to target to do invariant checks//
+
+Checking for a null %%[[Handler]]%% works because a valid handler must always be of type ''Object'' (it can't normally be set to ''null'').
+
+An **IsCallable** test on a revoked proxy should return false.
+
+The ''typeof'' operator, applied on a revoked proxy, should continue to return the same result it returned for the unrevoked proxy (ensuring ''typeof'' remains a stable operator).
+
+Since the ''instanceof'' operator tries to access the %%[[Prototype]]%% of its LHS and %%[[Get]]%%s the "prototype" of its RHS, if either LHS or RHS is a revoked proxy, a ''TypeError'' will be thrown.
+
+===== Open issues =====
+
+  * Object.prototype.valueOf: this method is currently specified to auto-forward to a proxy's target. If the proxy is revoked, we could throw, but this would be observably different from changing all handler traps to throw (since valueOf currently doesn't trap).
+  * Function.prototype.toString: on a proxy wrapping a function, this method auto-forwards to the target. If the proxy is revoked, we could throw, but this would be observably different from changing all handler traps to throw (since this method currently doesn't trap).
+  * Consider a more developer-friendly alternative to "revocable": nullable?
+  * September 2012 TC39 meeting: some concern was expressed about the ability to throw (either via revocable proxies or via explicit throws in traps) from isFrozen tests. One alternative could be to only trap isFrozen (and isSealed, isExtensible) until it returns true (false for isExtensible). After a stable result is observed, the operation would no longer trap (requires some extra bookkeeping state in the proxy to store the outcome of these operations).
+
+===== References =====
+
+  * Initial post on [[https://mail.mozilla.org/pipermail/es-discuss/2012-August/024344.html|es-discuss]], and a [[https://mail.mozilla.org/pipermail/es-discuss/2012-August/024666.html|proposed solution]].
+  * How caretaker proxies help with [[http://blog.kylehuey.com/post/21892343371/fixing-the-memory-leak|memory leaks]].

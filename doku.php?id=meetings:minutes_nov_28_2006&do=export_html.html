@@ -1,0 +1,304 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=meetings:minutes_nov_28_2006&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=meetings" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=meetings:minutes_nov_28_2006&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=meetings:minutes_nov_28_2006&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="attendees"></a><h1>Attendees</h1>
+<div class="level1">
+<ul>
+<li class="level1"><div class="li"> Graydon</div>
+</li>
+<li class="level1"><div class="li"> Cormac</div>
+</li>
+<li class="level1"><div class="li"> Jeff</div>
+</li>
+<li class="level1"><div class="li"> Francis</div>
+</li>
+<li class="level1"><div class="li"> Dan</div>
+</li>
+<li class="level1"><div class="li"> Dave</div>
+</li>
+<li class="level1"><div class="li"> Brendan</div>
+</li>
+<li class="level1"><div class="li"> Pratap</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1-110] -->
+<a name="agenda"></a><h1>Agenda</h1>
+<div class="level1">
+
+<p>
+ <strong>Dave and Cormac&rsquo;s type system questions:</strong> 
+</p>
+<ul>
+<li class="level1"><div class="li"> is <code>this</code> only ever a class type? interface type?</div>
+<ul>
+<li class="level2"><div class="li"> [jd] class instance inside of an instance method, global object type in global code, object type in unbound functions</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> are there places where <code>this</code> can&rsquo;t be mentioned?</div>
+<ul>
+<li class="level2"><div class="li"> [jd] inside of an instance method, global code, the body of an unbound function (non-method function definition or function expression)</div>
+<ul>
+<li class="level3"><div class="li"> [dh] this answer doesn&rsquo;t make sense to me..?</div>
+<ul>
+<li class="level4"><div class="li"> [jd] take two: <code>this</code> can only be mentioned inside of an instance method, global code, the body of an unbound function (i.e. non-method function definition or function expression). This means that the only place that <code>this</code> cannot be used in a static initialiser of a class or a static method. (note: AS3 also disallows <code>this</code> at the top level of a package)</div>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> what are restrictions on <code>SimplePattern</code> expression? where are they imposed?</div>
+<ul>
+<li class="level2"><div class="li"> [jd] <code>SimplePattern</code> is either a PostfixExpression or an Identifier depending on where it occurs syntactically. E.g. in a parameter context it is an Identifier, on the left side of an assignment it is a PostfixExpression</div>
+<ul>
+<li class="level3"><div class="li"> [dh] from meeting: in non-binding context: identifier, dot, bracket, or call (<code>SimplePattern</code>); in binding context: identifier only (<code>IdentifierPattern</code>)</div>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> what is <code>PatternExpr</code>?</div>
+<ul>
+<li class="level2"><div class="li"> [jd] fuzz. ignore it</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> why don&rsquo;t <code>IdentifierPattern</code> have a <code>TYPE option</code>?</div>
+<ul>
+<li class="level2"><div class="li"> is it this: <code>let ([&rdquo;dave&rdquo;, x:int, b:Boolean] = [&rdquo;dave&rdquo;, 54, true]) { ... }</code></div>
+</li>
+<li class="level2"><div class="li">    or this: <code>let ([&rdquo;dave&rdquo;, x, b] : [String, int, Boolean] = [&rdquo;dave&rdquo;, 54, true]) { ... }</code></div>
+<ul>
+<li class="level3"><div class="li"> [jd] it is the latter: <code>let ([&rdquo;dave&rdquo;, x, b] : [String, int, Boolean] = [&rdquo;dave&rdquo;, 54, true]) { ... }</code></div>
+</li>
+<li class="level3"><div class="li"> [jd] patterns can be be typed, which results in a TypedPattern</div>
+<ul>
+<li class="level4"><div class="li"> [dh] the former version seems more convenient, no? we can reconstruct the type of the entire pattern by recursively propagating the inner type annotations through the structure of the pattern.. there might be ambiguities but I think not; for literals it doesn&rsquo;t matter what the type is, for unannotated variables it&rsquo;s <code>*</code>, and otherwise it&rsquo;s whatever the annotation is. this way the programmer could put the annotations directly with the bindings. seems especially appropriate for the case of multiple-value return</div>
+<ul>
+<li class="level5"><div class="li"> [jd] the problem is that in a non-binding (assignment) context we don&rsquo;t know if we are seeing an object literal or a pattern, so it is convenient if their syntaxes are the same. This is an implementation issues which could probably be overcome with a heavy (language design) hand, but not without allowing hard to read programs. Let&rsquo;s discuss...</div>
+</li>
+</ul>
+</li>
+<li class="level4"><div class="li"> [dh] brendan: we&rsquo;ve been through this before, the ambiguity introduced in object patterns is confusing, so the second version keeps things unambiguous</div>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> what is a <code>Ref</code> expression?</div>
+<ul>
+<li class="level2"><div class="li"> I think it&rsquo;s for variable and field dereference, right?</div>
+<ul>
+<li class="level3"><div class="li"> [jd] it has been replace by ObjectRef and LexicalRef</div>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> what is the <code>NULOP</code> <code>Empty</code>?</div>
+<ul>
+<li class="level2"><div class="li"> [jd] fuzz</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> bug in <code>parser.sml</code>? &ndash; <code>type foo</code> creates a <code>TypeExpr</code>, not a <code>UnaryExpression</code> with <code>UNOP</code> <code>type</code>?</div>
+<ul>
+<li class="level2"><div class="li"> [jd] NAB. <code>UnaryExpression</code> takes an <code>EXPR</code>, the operand of <code>type</code> is a <code>TYPE_EXPR</code>. So, we need a different constructor. We could have named it <code>UnaryTypeExpr</code>, to mirror what we do with <code>BinaryTypeExpr</code>, but there is only one of them so I named it what it is.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> what is the definition of a statically known namespace?</div>
+<ul>
+<li class="level2"><div class="li"> is it the following?</div>
+<ul>
+<li class="level3"><div class="li"> when you see a qualified name <code>e1::x</code> or <code>e1::e2</code></div>
+</li>
+<li class="level3"><div class="li"> the expression <code>e1</code> is a simple <code>LexicalRef</code> with an unqualified identifier <code>n</code></div>
+</li>
+<li class="level3"><div class="li"> the unqualified identifier <code>n</code> is in scope bound to a namespace</div>
+</li>
+<li class="level3"><div class="li"> the namespace was declared via <code>namespace n;</code> or <code>namespace n = &ldquo;...&rdquo;;</code> or is a built-in namespace like <code>intrinsic</code>, <code>public</code>, <code>private</code>, etc.</div>
+</li>
+</ul>
+</li>
+<li class="level2"><div class="li"> [dh] a namespace reference is statically resolvable if:</div>
+<ul>
+<li class="level3"><div class="li"> it is unqualified (since all open namespaces <em>must</em> be statically known)</div>
+</li>
+<li class="level3"><div class="li"> or it is qualified by a statically resolvable namespace;</div>
+</li>
+<li class="level3"><div class="li"> and it refers to a namespace that was declared via <code>namespace n;</code> or <code>namespace n = &ldquo;...&rdquo;;</code> or is a built-in namespace like <code>intrinsic</code>, <code>public</code>, <code>private</code>, etc.</div>
+</li>
+</ul>
+</li>
+<li class="level2"><div class="li"> so is it impossible to declare <code>namespace m::n = ...;</code>?</div>
+<ul>
+<li class="level3"><div class="li"> [fc] Jeff: This is permissible if m::n is a static identifier.</div>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> what is the definition of a statically resolvable name?</div>
+<ul>
+<li class="level2"><div class="li"> all open namespaces are statically known?</div>
+<ul>
+<li class="level3"><div class="li"> [jd] yes</div>
+</li>
+</ul>
+</li>
+<li class="level2"><div class="li"> and name can be statically resolved in those open namespaces</div>
+<ul>
+<li class="level3"><div class="li"> [jd] yes</div>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> list of current open namespaces</div>
+<ul>
+<li class="level2"><div class="li"> does order matter?</div>
+<ul>
+<li class="level3"><div class="li"> [jd] order of nesting matters</div>
+</li>
+</ul>
+</li>
+<li class="level2"><div class="li"> what about &ldquo;parallel&rdquo; open namespaces?</div>
+<ul>
+<li class="level3"><div class="li"> [jd] namespaces opened in the same scope are parallel and references that resolve to different defintions in both are ambiguous</div>
+</li>
+</ul>
+</li>
+<li class="level2"><div class="li"> does it need to be a list of lists?</div>
+<ul>
+<li class="level3"><div class="li"> [jd] a list of sets would suffice</div>
+</li>
+</ul>
+</li>
+<li class="level2"><div class="li"> [dh] so it&rsquo;s a list of lists (or of sets, but lists are simpler), where the outer dimension is ordered by block nesting, and the inner dimension is unordered; i.e., all <code>use namespace</code> pragmas within the same block are considered siblings</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> in <code>IDENT_EXPR</code>, we split out the cases of static names and computed names:<pre class="code">    and IDENT_EXPR =
+         QualifiedIdentifier of { qual : EXPR,
+                                  ident : USTRING }
+       | QualifiedExpression of { qual : EXPR,
+                                  expr : EXPR }</pre>
+</div>
+<ul>
+<li class="level2"><div class="li"> should we also split out the cases of static namespaces and dynamic namespaces?</div>
+</li>
+<li class="level2"><div class="li"> or is it not a syntactic criterion? i.e., there must be an ML function <code>isStaticNamespace</code>?</div>
+<ul>
+<li class="level3"><div class="li"> [jd] the value of qualifiers is not generally known until runtime, so in AS3 we treat all qualifier expressions are dynamic. It might be possible to improve on this in ES4. E.g. <code>private::x</code> could be an considered statically qualified. So could <code>q::x</code> when <code>q</code> is known at compile-time (resolved during the definition phase)</div>
+<ul>
+<li class="level4"><div class="li"> [dh] I thought about this some more; the type checker needs to distinguish static namespaces from dynamic namespaces, but since it requires knowledge of the lexical environment to determine whether a namespace is static, we probably should just leave this as an <code>EXPR</code> and let the type checker determine whether the namespace is static via <code>isStaticNamespace</code> or some such</div>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ <strong>Dave and Cormac&rsquo;s ML question(s):</strong>
+</p>
+
+<p>
+Does anyone have a better solution for dealing with uncaught exceptions? (we&rsquo;re currently inserting debugging info for catch-all match clauses)
+</p>
+<ul>
+<li class="level1"><div class="li"> [gh] found a special mode in SMLNJ that may address this. Will forward info to the list about it.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [111-6928] -->
+<a name="notes"></a><h1>Notes</h1>
+<div class="level1">
+
+<p>
+ Assignment example:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> obj = <span class="br0">&#123;</span> w: <span class="nu0">10</span> <span class="br0">&#125;</span>
+obj.<span class="me1">w</span> <span class="co1">// 10</span>
+<span class="kw2">function</span> f<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> obj <span class="br0">&#125;</span>
+<span class="br0">&#91;</span>f<span class="br0">&#40;</span><span class="br0">&#41;</span>.<span class="me1">w</span><span class="br0">&#93;</span> = <span class="br0">&#91;</span><span class="nu0">42</span><span class="br0">&#93;</span>
+obj.<span class="me1">w</span> <span class="co1">// 42</span></pre><ul>
+<li class="level1"><div class="li"> Notes for Dave and Cormac&rsquo;s questions are inline (above).</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> [jd] Need to pin down the AST.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> [be] There are a lot of unassigned tasks, I&rsquo;ll go in and take some of them, maybe we should all take a look.</div>
+<ul>
+<li class="level2"><div class="li"> [dh] Maybe better to do this at the next f2f.</div>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> [be] About face to face meetings, let&rsquo;s move to three-day meetings. Tentative schedule:</div>
+<ul>
+<li class="level2"><div class="li"> Dec 13, 14, 15 at Adobe San Francisco</div>
+</li>
+<li class="level2"><div class="li"> Jan 24, 25, 26 at Mozilla</div>
+</li>
+<li class="level2"><div class="li"> Feb 21, 22, 23 at Adobe San Francisco</div>
+</li>
+<li class="level2"><div class="li"> Mar 21, 22, 23 at Microsoft Redmond</div>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> [jd] We should discuss structure of the spec, both overall architecture and how to integrate the ML code. [dh] Would it help to have a tool that inlined ML code directly into the wiki? [gh] The wiki source is all plain text, so the easiest way would be to use a <acronym title="Practical Extraction and Report Language">Perl</acronym> script, but I don&rsquo;t know about remote access to the wiki source. [dh] It would also be helpful to have an automated system where the ML source code repository is made available over http somehow. [gh] there are a couple different ways to do that.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> [be] About the overall structure, will work with Francis and maybe Jeff to come up with some options. Will look at other language specs, keeping in mind the structure of the earlier Ecmascript specs. We could perhaps have a mapping of ES3 to ES4 sections. Likes the Scheme approach.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> [jd] So my tentative order of priority for upcoming work is pragmas, definitions, then statements. Does anyone prefer a different order? [gh] and [dh] both think statements should be highest priority.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [6929-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/6/662303bceb4e9f402d8bbb05791b9101.xhtml used -->
+</body>
+</html>

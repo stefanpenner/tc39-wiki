@@ -1,0 +1,152 @@
+====== Conditional expressions ======
+
+Similar to Scheme and Lisp's ''cond''. You can see people simulate this with nested ternary conditional expressions.
+
+====== Syntax ======
+
+<code>
+CondExpression ::= "cond" "{" CaseBlockClause+ DefaultBlockClause? "}"
+
+CaseBlockClause ::= "case" Expression Block
+
+DefaultBlockClause ::= "default" Block
+</code>
+
+====== Examples ======
+
+<code javascript>
+var x = cond {
+            case y > 100 { "huge" }
+            case y > 50  { "big" }
+            default      { "small" }
+        };
+</code>
+
+====== Semantics =====
+
+The expression is equivalent to a nested conditional, where each block is transformed to an expression that produces the completion of the block. (Such as a let-expression that completes similarly to pound-expressions.)
+----
+It is not simulated with nested ternary operators, it is realized with serial ternary operators. This new form is less compact, and is potentially confusing, since it sort of looks like the switch statement, but behaves very differently. Why do we also need this new form? 
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2011/02/28 17:52//
+
+They are in fact nested. Just look at the resulting AST.
+
+To answer your question, the benefit is to improve readability for compound conditionals. Take a simple example like:
+
+<code javascript>
+var x = switch {
+            case y > 100 { "huge" }
+            case y > 50  { "big" }
+            default      { "small" }
+        };
+</code>
+
+Doing this with nested ternaries, you can format the code in several different ways:
+
+<code javascript>
+var x = y > 100
+      ? "huge"
+      : y > 50
+      ? "big"
+      : "small";
+// or
+var x = y > 100 ? "huge"
+      : y > 50  ? "big"
+                : "small";
+// or
+var x = y > 100 ? "huge"
+      : y > 50  ? "big"
+      : "small";
+</code>
+
+These are all a little awkward and none of them really does a good job of representing the general structure of a sequence of pairs of question and answer.
+
+As for calling it ''switch'', well, this was just a pragmatic decision to avoid reserving another keyword. And it shares a lot in common with the semantics of ''switch''; it just avoids all the ''break'' nonsense.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2011/02/28 19:55//
+
+I've changed the name to ''cond'' to make it clearer what I'm proposing. We could always discuss the tradeoffs between different keywords later. Here's the same comparison redone using ''cond'':
+
+<code javascript>
+var x = cond {
+            case y > 100 { "huge" }
+            case y > 50  { "big" }
+            default      { "small" }
+        };
+</code>
+
+vs:
+
+<code javascript>
+var x = y > 100
+      ? "huge"
+      : y > 50
+      ? "big"
+      : "small";
+// or
+var x = y > 100 ? "huge"
+      : y > 50  ? "big"
+                : "small";
+// or
+var x = y > 100 ? "huge"
+      : y > 50  ? "big"
+      : "small";
+</code>
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2011/03/01 01:08//
+
+Of those 4 suggestions, I prefer that last two. I still don't see the need for the first one.
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2011/03/01 01:26//
+
+It seems to me ''?:'' has already grown into too much of the same niche that ''cond'' wants to inhabit.
+
+Suggestive data from Go: [[http://golang.org/doc/go_spec.html#Expression_switches|Go generalizes switch]] so that it subsumes ''cond'' and drops C's ?: ternary conditional operator. You find one or the other, but not both. Is there a language derived from C that has both ''?:'' and ''cond''?
+
+Once again (see also the comma operator), the heavy hand of C is on JS's shoulder.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/03/02 08:24//
+
+What's great about Lisp's ''cond'' is that it explicitly delineates a case analysis. A key element of good programming is getting case analysis right. ([[http://www.cs.yale.edu/quotes.html|Alan Perlis]]: "Programmers are not to be measured by their ingenuity and their logic but by the completeness of their case analysis.") Both ?: and if-else are structured around one-off checks, which you can chain together to form a bunch of checks. But ''cond'' explicitly delineates a case analysis. It's a visual marker that suggests "within these braces is a complete enumeration of the space" --- does not guarantee, but suggests.
+
+When I was in grad school, we taught our undergrads to structure their functions with a ''cond'' as the main body, as a way of getting them always to think about their case analysis. Now that we're talking about treating statements more like expressions with [[strawman:shorter function syntax|sharp functions]] and the like, this style becomes more possible:
+
+<code javascript>
+#(x) {
+    cond {
+        case p(x) { ... }
+        case q(x) { ... }
+        ...
+        default  { ... }
+    }
+}
+</code>
+
+Now, I could always use if-else:
+
+<code javascript>
+#(x) {
+    if (...) { ... }
+    else if (...) { ... }
+    else { ... }
+}
+</code>
+
+But these aren't bracketed in a way that delineates the case analysis. It's easy to start mixing imperative code into the middle, and you end up with programming by patching-till-it-does-something. Alternatively, I could use ?:
+
+<code javascript>
+#(x) {
+    p(x) ? ... :
+    q(x) ? ... :
+           ...
+}
+</code>
+
+but this code just doesn't read as clearly to me. The ''cond''-''case''-''default'' or ''switch''-''case''-''default'' style reads as a case analysis. The above just reads as abstruse hieroglyphics. Yes, JS is in the C tradition, but JS is also many people's first programming language. We don't have to remain loyal to the C tradition just because it's familiar to some.
+
+Personally, I would probably use ''cond'' most of the time, and maybe ?: when there are only two cases. Now that's just my style, and I'm not trying to be in the business of forcing people to write JS in my style. (Although I would certainly advocate using ''cond'' if I were teaching people JS, assuming it existed.) But if we don't include it, we are of course forcing people not to use it.
+
+I see this as being in a similar space to the ?? operator, which I like a lot. It's not necessary, but it encourages and rewards people for using good style.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2011/03/02 22:40//

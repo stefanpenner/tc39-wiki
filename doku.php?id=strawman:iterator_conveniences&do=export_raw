@@ -1,0 +1,95 @@
+====== Iterator conveniences ======
+
+This proposal complements the [[iterators]] strawman with an API of conveniences for constructing iterators.
+
+====== Library ======
+
+<code javascript>
+Iterator.create: function(trap: function() -> iterator) -> iterator
+Iterator.for:    function(x: Object, trap: function() -> iterator) -> iterator
+keys:            function(x: Object, own: boolean = false) -> iterator
+values:          function(x: Object, own: boolean = false) -> iterator
+items:           function(x: Object, own: boolean = false) -> iterator
+</code>
+
+
+  * ''Iterator.create'': Creates a new iterator proxy using the given trap.
+  * ''Iterator.for'': Creates a new iterator proxy using the given trap for the ''iterate'' trap and otherwise behaving as a forwarding proxy.
+  * ''keys'': Creates a new iterator proxy that iterates over the property names of the object ''x''. If ''own'' is provided and is a truthy value, then the iterator only produces the names of the object's own properties.
+  * ''values'': Creates a new iterator proxy that iterates over the property values of the object ''x''. If ''own'' is provided and is a truthy value, then the iterator only produces the values of the object's own properties.
+  * ''items'': Creates a new iterator proxy that iterates over the properties of the object ''x'', providing at each iteration a two-element array with the property name at index 0 and the property value at index 1. If ''own'' is provided and is a truthy value, then the iterator only produces the object's own properties.
+
+====== Sample implementation ======
+
+This code works in the Firefox 4 betas, using the script type ''"application/javascript;version=1.8"''.
+
+<code javascript>
+// The module pattern; this ought to be a standard module.
+var Iteration = (function() {
+
+Iterator = {
+    create: function(trap) {
+        // Proxy.forwardingHandler is given an implementation on the harmony:proxies page.
+        var handler = Object.create(Proxy.forwardingHandler({
+                                        toString: function() { return "[object Iterator]" }
+                                    }),
+                                    { iterate: { value: trap } });
+        return Proxy.create(handler);
+    },
+    for: function(obj, trap) {
+        function g() {
+            for (var x in obj) {
+                yield x;
+            }
+        }
+        // Proxy.forwardingHandler is given an implementation on the harmony:proxies page.
+        var handler = Object.create(Proxy.forwardingHandler(obj),
+                                    { iterate: { value: function() {
+                                          return g();
+                                      } } });
+        return Proxy.create(handler);
+    }
+};
+
+function values(obj) {
+    function makeIterator() {
+        for (x in obj) {
+            yield obj[x];
+        }
+    }
+    return Iterator.create(function() {
+        return makeIterator();
+    });
+}
+
+function keys(obj) {
+    function makeIterator() {
+        for (x in obj) {
+            yield x;
+        }
+    }
+    return Iterator.create(function() {
+        return makeIterator();
+    });
+}
+
+function items(obj) {
+    function makeIterator() {
+        for (x in obj) {
+            yield [x, obj[x]];
+        }
+    }
+    return Iterator.create(function() {
+        return makeIterator();
+    });
+}
+
+return {
+    Iterator: Iterator,
+    values: values,
+    keys: keys,
+    items: items
+};
+
+})();
+</code>

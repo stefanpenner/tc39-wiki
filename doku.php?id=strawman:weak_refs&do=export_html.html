@@ -1,0 +1,255 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:weak_refs&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:weak_refs&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:weak_refs&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:weak_refs&amp;do=export_html.html#rationale" class="toc">Rationale</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:weak_refs&amp;do=export_html.html#examples" class="toc">Examples</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:weak_refs&amp;do=export_html.html#security" class="toc">Security</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:weak_refs&amp;do=export_html.html#portability" class="toc">Portability</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:weak_refs&amp;do=export_html.html#postpone" class="toc">Postpone</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:weak_refs&amp;do=export_html.html#implementation_strategies" class="toc">Implementation strategies</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:weak_refs&amp;do=export_html.html#api" class="toc">API</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:weak_refs&amp;do=export_html.html#semantics" class="toc">Semantics</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:weak_refs&amp;do=export_html.html#references" class="toc">References</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:weak_refs&amp;do=export_html.html#discussion" class="toc">Discussion</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:weak_refs&amp;do=export_html.html#allen_wirfs-brock_20111219" class="toc">Allen Wirfs-Brock 2011/12/19</a></span><ul class="toc">
+<li class="level4"><span class="li"><a href="doku.php%3Fid=strawman:weak_refs&amp;do=export_html.html#turn_counting_and_multiple_references" class="toc">Turn counting and multiple references</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=strawman:weak_refs&amp;do=export_html.html#generationalincremental_gc_effects" class="toc">Generational/Incremental GC Effects</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=strawman:weak_refs&amp;do=export_html.html#is_a_backstop_really_desirable" class="toc">Is a &quot;backstop&quot; really desirable?</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="rationale"></a><h2>Rationale</h2>
+<div class="level2">
+
+<p>
+ The accepted <a href="doku.php%3Fid=harmony:weak_maps.html" class="wikilink1" title="harmony:weak_maps" onclick="return svchk()" onkeypress="return svchk()">weak maps</a> <acronym title="Application Programming Interface">API</acronym> serves important use cases for weak references, but not all. Most importantly, the <a href="http://en.wikipedia.org/wiki/Observer_pattern" class="urlextern" target="_blank" title="http://en.wikipedia.org/wiki/Observer_pattern" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">observer pattern</a> relies on an observable object holding weak references to its observers. If an observer becomes otherwise collectable, the object it observes should not keep it alive. The observer pattern is very relevant to and common on the web, including: 
+</p>
+<ul>
+<li class="level1"><div class="li"> MVC and data binding frameworks</div>
+</li>
+<li class="level1"><div class="li"> reactive-style libraries</div>
+</li>
+<li class="level1"><div class="li"> reactive-style languages that compile to <acronym title="JavaScript">JS</acronym></div>
+</li>
+</ul>
+
+<p>
+ The <a href="http://en.wikipedia.org/wiki/Publish/subscribe" class="urlextern" target="_blank" title="http://en.wikipedia.org/wiki/Publish/subscribe" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">publish-subscribe pattern</a> has similar characteristics.
+</p>
+
+<p>
+It&rsquo;s worth noting that using weak references for the observer pattern ties the behavior of notification to the non-deterministic behavior of the garbage collector. If an object hasn&rsquo;t been collected yet but is intended not to be used anymore, it could still receive a notification. So a well-written observer should still usually be manually disconnected before it dies. But frameworks can use weak references as a back-stop to prevent leaks when their clients forget to disconnect observers.
+</p>
+
+<p>
+TODO: Unify this page and <a href="doku.php%3Fid=strawman:weak_references.html" class="wikilink1" title="strawman:weak_references" onclick="return svchk()" onkeypress="return svchk()">weak_references</a> into one strawman.
+</p>
+
+</div>
+<!-- SECTION [1-1251] -->
+<a name="examples"></a><h2>Examples</h2>
+<div class="level2">
+<pre class="code javascript">let obj = <span class="br0">&#123;</span> ... <span class="br0">&#125;</span>;
+&nbsp;
+let ref = <span class="kw2">new</span> WeakRef<span class="br0">&#40;</span>obj<span class="br0">&#41;</span>;
+<span class="kw3">alert</span><span class="br0">&#40;</span>ref.<span class="me1">get</span><span class="br0">&#40;</span><span class="br0">&#41;</span> === obj<span class="br0">&#41;</span>; <span class="co1">// true</span>
+&nbsp;
+obj = <span class="kw2">null</span>; <span class="co1">// make sure the scope chain isn't keeping obj alive</span>
+document.<span class="me1">getElementById</span><span class="br0">&#40;</span><span class="st0">"big-red-button"</span><span class="br0">&#41;</span>.<span class="me1">onclick</span> = <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="co1">// ... obj has been garbage collected in the meantime ...</span>
+    <span class="kw3">alert</span><span class="br0">&#40;</span>ref.<span class="me1">get</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>; <span class="co1">// null</span>
+<span class="br0">&#125;</span>;</pre>
+</div>
+<!-- SECTION [1252-1610] -->
+<a name="security"></a><h2>Security</h2>
+<div class="level2">
+
+<p>
+ Weak references observe the behavior of the garbage collector, which can provide a channel of communication between otherwise separated partitions of the object graph. Security-sensitive code would most likely need to censor access to the <code>WeakRef</code> <acronym title="Application Programming Interface">API</acronym> from untrusted code. Within a realm, this could be achieved e.g. by creating custom <a href="doku.php%3Fid=harmony:module_loaders.html" class="wikilink1" title="harmony:module_loaders" onclick="return svchk()" onkeypress="return svchk()">module loaders</a>. However, such restrictions do not enable one realm to police other realms. To plug this leak, a weak reference created within realm A should only point weakly within realm A. When set to point at an object from another realm, it should either point strongly or throw an error, depending on whether a surprising leak or a surprising error is expected to be more inconvenient for the caller. Security demands only that such inter-realm references not point weakly.
+</p>
+
+<p>
+See <a href="https://mail.mozilla.org/pipermail/es-discuss/2013-January/028542.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2013-January/028542.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">https://mail.mozilla.org/pipermail/es-discuss/2013-January/028542.html</a> for a nice refinement for pointing weakly at objects from a set of realms.
+</p>
+
+</div>
+<!-- SECTION [1611-2618] -->
+<a name="portability"></a><h2>Portability</h2>
+<div class="level2">
+
+<p>
+ Revealing the non-deterministic behavior of the garbage collector creates a potential for portability bugs. Different host environments may collect a weakly-held object at different times, which a <code>WeakRef</code> exposes to the program.
+</p>
+
+</div>
+<!-- SECTION [2619-2877] -->
+<a name="postpone"></a><h3>Postpone</h3>
+<div class="level3">
+
+<p>
+ In order to restrict the variability of behavior, we tie the collection of weak references to the event loop semantics. The informal invariant is:
+</p>
+
+<p>
+<em>A program cannot observe a weak reference be automatically deleted within a turn of the event loop.</em>
+</p>
+
+<p>
+Specifically, this means that: 
+</p>
+<ul>
+<li class="level1"><div class="li"> When a weak reference is created, subsequent calls to its <code>get</code> method within the same turn must return the object with which it was created (unless it has been explicitly deleted).</div>
+</li>
+<li class="level1"><div class="li"> If a weak reference&rsquo;s <code>get</code> method is called and produces an object, subsequent calls to its <code>get</code> method within the same turn must return the same object (unless it has been explicitly deleted).</div>
+</li>
+</ul>
+
+<p>
+ If we want to allow ECMAScript host environments that have no event loop, we can specify that this behavior is only required in the presence of an event loop.
+</p>
+
+</div>
+<!-- SECTION [2878-3735] -->
+<a name="implementation_strategies"></a><h3>Implementation strategies</h3>
+<div class="level3">
+
+<p>
+ A turn counter is a simple way to detect whether a weak reference has been observed in the current turn. (A single bit is sufficient and more compact, but requires clearing the bit at the end of the turn.)
+</p>
+
+</div>
+<!-- SECTION [3736-3979] -->
+<a name="api"></a><h2>API</h2>
+<div class="level2">
+<pre class="code javascript"><span class="br0">&#91;</span><span class="kw2">new</span><span class="br0">&#93;</span> WeakRef           : <span class="kw2">function</span><span class="br0">&#40;</span>object<span class="br0">&#41;</span> -&gt; WeakRef
+WeakRef.<span class="me1">prototype</span>.<span class="me1">get</span>   : <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> -&gt; object | <span class="kw2">null</span>
+WeakRef.<span class="me1">prototype</span>.<span class="me1">clear</span> : <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> -&gt; undefined</pre><ul>
+<li class="level1"><div class="li"> <code>WeakRef(obj)</code> &ndash; returns a new weak reference to <code>obj</code>. Throws if <code>typeof obj != &ldquo;object&rdquo;</code>.</div>
+</li>
+<li class="level1"><div class="li"> <code>WeakRef.prototype.get</code> &ndash; returns the weakly held object, or <code>null</code> if the object has been collected.</div>
+</li>
+<li class="level1"><div class="li"> <code>WeakRef.prototype.clear</code> &ndash; <code>null</code>s out the internal reference</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [3980-4468] -->
+<a name="semantics"></a><h2>Semantics</h2>
+<div class="level2">
+
+<p>
+ The semantics should be specified at the same level of precision as <code>WeakMap</code>, with at least informal wording about the meaning of weakness.
+</p>
+
+<p>
+The semantics is also tied to the event loop. Operationally, a <code>WeakRef</code> holds a strong reference to its object during a turn, and a weak reference in between turns.
+</p>
+
+</div>
+<!-- SECTION [4469-4804] -->
+<a name="references"></a><h2>References</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="http://msdn.microsoft.com/en-us/data/gg577609" class="urlextern" target="_blank" title="http://msdn.microsoft.com/en-us/data/gg577609" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Rx.js</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://worrydream.com/Tangle/" class="urlextern" target="_blank" title="http://worrydream.com/Tangle/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Tangle</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://dherman.github.com/taskjs" class="urlextern" target="_blank" title="http://dherman.github.com/taskjs" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">task.js</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://sproutcore.com/" class="urlextern" target="_blank" title="http://sproutcore.com/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">SproutCore</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://flapjax-lang.org/" class="urlextern" target="_blank" title="http://flapjax-lang.org/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Flapjax</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://docs.oracle.com/javase/1.5.0/docs/api/java/lang/ref/WeakReference.html" class="urlextern" target="_blank" title="http://docs.oracle.com/javase/1.5.0/docs/api/java/lang/ref/WeakReference.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Java WeakReference</a></div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [4805-5171] -->
+<a name="discussion"></a><h2>Discussion</h2>
+<div class="level2">
+
+</div>
+<!-- SECTION [5172-5195] -->
+<a name="allen_wirfs-brock_20111219"></a><h3>Allen Wirfs-Brock 2011/12/19</h3>
+<div class="level3">
+
+</div>
+<!-- SECTION [5196-5237] -->
+<a name="turn_counting_and_multiple_references"></a><h4>Turn counting and multiple references</h4>
+<div class="level4">
+
+<p>
+ The proposal suggests using turn counting to detect whether the value of a WeakRef has been observed within in turn, but subsequent to a GC. Such an observed WeakRef would not be cleared at the end of the turn. This is  too simplistic to deal with situation where multiple WeakRefs exists to the same object.  In order to maintain consistency of references, the observation of any of the references must prevent all WeakRefs to the observed value from being cleared at the end of the turn.  This will require a more complex mechanism then simply an access turn count for each WeakRef. This is certainly possible, but it increases the complexity of the GC and inter-turn processing. 
+</p>
+
+</div>
+<!-- SECTION [5238-5969] -->
+<a name="generationalincremental_gc_effects"></a><h4>Generational/Incremental GC Effects</h4>
+<div class="level4">
+
+<p>
+ It should be noted that use of generational GC schemes are likely to significantly increase the variability of the latency between an object referenced by a WeakRef becoming eligible for collection and its actual collection.  If a WeakRef is promoted into a less frequently collected region, its referenced object will stay alive until that region is corrected (or possibly longer if the the referenced object is in an even older generation). This seems problematic for the Observer Pattern use case.
+</p>
+
+<p>
+It is not clear what the appropriate behavior would be in a WeakRef is subject to background incremental collection. Particularly, if a &ldquo;complete&rdquo; collection spans more than one turn. Must a WeakRef be unobserved for an entire incremental collection cycle in order to be collected.
+</p>
+
+</div>
+<!-- SECTION [5970-6799] -->
+<a name="is_a_backstop_really_desirable"></a><h4>Is a &quot;backstop&quot; really desirable?</h4>
+<div class="level4">
+
+<p>
+ This proposal suggests that the observer pattern is a primary use case for WeakRefs and then further identifies that it is at best a back stop for clients that forget to disconnect observers.  However, it isn&rsquo;t really clear that the such a backstop is actually desirable.
+</p>
+
+<p>
+Consider this classic bug, the observer pattern used to &ldquo;blink&rdquo; an indicator widget on a display (for example, a region of a canvas) that is associated with some widget.  The observer is attached to a timer event. The bug occurs, when the widget is removed from the logical display but the blink observer is not deleted. If a &ldquo;hard&rdquo; reference to the observer is used, the display region will continue to have visible blink effects even though the widget is no longer rendered.  Using a WeakRef does not necessarily eliminate this problem.  If the WeakRef GC latency is relatively long then the blink effect will continue to be visible for some period of time.  If a generational collector is being used and the  WeakRef to the observer has been promoted to a infrequently collected region then the effect may continue for an extended period of time.  (Note that in some applications UI elements have lifetimes measured in minutes or even hours, so such promotion quite possible).
+</p>
+
+<p>
+In this case, all the &ldquo;back stop&rdquo; seems to have done is to make it more likely that the bug of not disconnecting the observer goes undetected.  If the system was developed on a browser with low GC latency (perhaps non-generations) the bug might easily go undetected.  However, once deployed it might subsequently be run on a high GC latency browser and appear. If the &ldquo;backstop&rdquo; had not existed, it is more likely that the bug would have been observed and corrected during its initial testing. 
+</p>
+
+</div>
+<!-- SECTION [6800-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/2/21caf8849fe66ab7232c3c5e3e1095eb.xhtml used -->
+</body>
+</html>

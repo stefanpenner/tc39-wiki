@@ -1,0 +1,806 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:concurrency&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:concurrency&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#communicating_event-loop_concurrency_and_distribution" class="toc">Communicating Event-Loop Concurrency and Distribution</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#concurrency_model_and_promises" class="toc">Concurrency Model and Promises</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#vats" class="toc">Vats</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#promises_and_promise_states" class="toc">Promises and Promise States</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#eventual_operations" class="toc">Eventual Operations</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#fundamental_static_q_methods" class="toc">Fundamental Static Q Methods</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#promise_methods" class="toc">Promise methods</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#syntactic_sugar" class="toc">Syntactic Sugar</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#non-fundamental_static_q_conveniences" class="toc">Non-fundamental Static Q Conveniences</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#q.delay" class="toc">Q.delay</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#q.race" class="toc">Q.race</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#q.all" class="toc">Q.all</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#q.join" class="toc">Q.join</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#q.memoize" class="toc">Q.memoize</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#q.async" class="toc">Q.async</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#q.defer" class="toc">Q.defer()</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#examples" class="toc">Examples</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#infinite_queue" class="toc">Infinite Queue</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#spawn" class="toc">Spawn</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#vat.evallater_as_async-pgas" class="toc">Vat.evalLater() as Async-PGAS</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#open_vat" class="toc">Open Vat</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#there" class="toc">there</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#map-reduce_lite" class="toc">Map-Reduce Lite</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#amd_loader_lite" class="toc">AMD Loader Lite</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:concurrency&amp;do=export_html.html#see" class="toc">See</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="communicating_event-loop_concurrency_and_distribution"></a><h1>Communicating Event-Loop Concurrency and Distribution</h1>
+<div class="level1">
+
+<p>
+ On both the browser and the server, JavaScript&rsquo;s de-facto concurrency model is increasingly &ldquo;shared nothing&rdquo; communicating event loops. JavaScript event loops within the browser (both frames and workers) send asynchronous messages to other JavaScript event loops via postMessage. JavaScript event loops in the browser send and receive asynchronous messages with servers using asynch XHR, and shortly, Server-Sent Events and WebSockets. And server-side JavaScript has a rapidly growing role as the counterparty of these protocols, and increasingly uses event loops to service them. 
+</p>
+
+<p>
+This strawman consists of several major parts, not all of which need be accepted together.
+</p>
+<ol>
+<li class="level1"><div class="li"> <strong>Reality:</strong> Codifying and formalizing JavaScript&rsquo;s de-facto concurrency model as a de-jure model.</div>
+</li>
+<li class="level1"><div class="li"> <strong>Promises:</strong> A way to</div>
+<ul>
+<li class="level2"><div class="li"> (<strong>Q(p).post(), Q(p).get()</strong>) Make asynchronous requests of objects that may not be synchronously reachable, such as remote objects.</div>
+</li>
+<li class="level2"><div class="li"> (<strong>Q(p).then()</strong>) Ease the burden of local event loop programming, by reifying the ability to register a callback as a first class value.</div>
+</li>
+<li class="level2"><div class="li"> (<strong><a href="doku.php%3Fid=strawman:async_functions.html" class="wikilink1" title="strawman:async_functions" onclick="return svchk()" onkeypress="return svchk()">Q.async, yield</a>:</strong>) for implicit registration of shallow continuations on promises.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <strong>Syntactic sugar</strong></div>
+<ul>
+<li class="level2"><div class="li"> <strong>The infix &ldquo;<code>!</code>&rdquo; operator:</strong> An eventual analog of &ldquo;<code>.</code>&ldquo;, for making eventual requests look more like immediate requests.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> (<strong>Q.makeFar()</strong> and <strong>Q.makeRemote()</strong>) A promise extension mechanism, so that promise handlers can turn local promise operations into remote messages.</div>
+<ul>
+<li class="level2"><div class="li"> <strong>Transport independence:</strong> Using remote object messaging as a symmetric abstraction layer, hiding the annoying differences among the various transports listed above as well as server-to-server TCP and UDP transports.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> (<strong>Vat()</strong>) An event-loop spawning mechanism for spawning new event loops that run concurrently with the event loop which spawned it.</div>
+<ul>
+<li class="level2"><div class="li"> <strong>Worker independence:</strong> Using <code>Vat</code> <acronym title="Application Programming Interface">API</acronym> as an abstraction layer around worker spawning on the browser or process spawning on the server.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> (<strong>Vat.evalLater(), there()</strong>) Using JavaScript itself as mobile code, so event loops can safely inject new behavior into other event loops</div>
+<ul>
+<li class="level2"><div class="li"> <strong>Symmetric Mobile Code:</strong> Generalizes from the current use of JavaScript as mobile code sent only from server and only to browsers.</div>
+</li>
+<li class="level2"><div class="li"> <strong>Async-PGAS:</strong> Provides a distributed analog to the expressiveness of <a href="http://www.cs.rochester.edu/u/cding/amp/papers/full/The%20Asynchronous%20Partitioned%20Global%20Address%20Space%20Model.pdf" class="urlextern" target="_blank" title="http://www.cs.rochester.edu/u/cding/amp/papers/full/The%20Asynchronous%20Partitioned%20Global%20Address%20Space%20Model.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">The Asynchronous Partitioned Global Address Space Model</a>.</div>
+</li>
+</ul>
+</li>
+</ol>
+
+</div>
+<!-- SECTION [1-2645] -->
+<a name="concurrency_model_and_promises"></a><h2>Concurrency Model and Promises</h2>
+<div class="level2">
+
+<p>
+ Aggregate objects into process-like units called <em>vats</em>. Objects in one vat can only send asynchronous messages to objects in other vats. <em>Promises</em> represent such references to potentially remote objects. <em>Eventual message sends</em> queue <em>eventual-deliveries</em> in the work queue of the vat hosting the target object. A vat&rsquo;s thread processes each eventual-delivery to completion before proceeding to the next. Each such processing step is a <em>turn</em>. A <em>then expression</em> registers a callback to happen in a separate turn once a promise is resolved, providing the callback with the promise&rsquo;s <em>resolution</em>. The eventual send and then expressions immediately return a promise for the eventual outcome of the operation they register.
+</p>
+
+<p>
+This model is free of conventional race condition or deadlock bugs. While a turn is in progress, it has mutually exclusive access to all state to which it has synchronous access, i.e., all state within its vat, avoiding conventional race condition bugs without any explicit locking. The model presented here provides no locks or blocking constructs of any kind, although it does not forbid a host environment from providing blocking constructs (like <code>alert</code>). Without blocking, conventional deadlock is impossible. Of course, less conventional forms of race condition and deadlock bugs <a href="http://www.hpl.hp.com/techreports/2009/HPL-2009-78.html" class="urlextern" target="_blank" title="http://www.hpl.hp.com/techreports/2009/HPL-2009-78.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">remain</a>.
+</p>
+
+</div>
+<!-- SECTION [2646-4088] -->
+<a name="vats"></a><h2>Vats</h2>
+<div class="level2">
+
+<p>
+ Partition the JavaScript reference graph into separate units, corresponding to prior concepts variously called vats, workers, processes, tanks, or grains. We adopt the &ldquo;<em>vat</em>&rdquo; terminology here for expository purposes. Vats are only asynchronously coupled to each other, and represent the minimal possible unit of concurrency, transparent distribution, orthogonal persistence, migration, partial failure, resource control, preemptive termination/deallocation, and defense from denial of service. Each vat consists of 
+</p>
+<ul>
+<li class="level1"><div class="li"> a single sequential thread of control, </div>
+</li>
+<li class="level1"><div class="li"> a single call-return stack, </div>
+</li>
+<li class="level1"><div class="li"> a single fifo queue holding <em>eventual-deliveries</em>, </div>
+</li>
+<li class="level1"><div class="li"> an internal object heap, </div>
+</li>
+<li class="level1"><div class="li"> and incoming and outgoing <em>remote references</em>. </div>
+</li>
+</ul>
+
+<p>
+A vat&rsquo;s thread of control dequeues the next eventual-delivery from the queue and processes it to completion before proceeding to the next. When the queue is empty, the vat is idle. 
+</p>
+<pre class="code javascript">  <span class="kw2">const</span> vat = Vat<span class="br0">&#40;</span><span class="br0">&#41;</span>; <span class="co1">//makes a new vat, as an object local to the creating vat.</span>
+  <span class="co1">// A Vat has an ''evalLater'' method that evaluates a Program in a turn of that vat.</span>
+  <span class="co1">// The ''evalLater'' method returns a promise for the evaluation's completion value.</span>
+  <span class="kw2">const</span> funP = vat.<span class="me1">evalLater</span><span class="br0">&#40;</span><span class="st0">''</span> + <span class="kw2">function</span> fun<span class="br0">&#40;</span>x, y<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> x + y; <span class="br0">&#125;</span><span class="br0">&#41;</span>; <span class="co1">// see below</span>
+  <span class="kw2">const</span> sumP = funP ! <span class="br0">&#40;</span><span class="nu0">3</span>, <span class="nu0">5</span><span class="br0">&#41;</span>; <span class="co1">// sumP will eventually resolve to 8, unless...</span>
+  <span class="kw2">const</span> doneP = vat.<span class="me1">terminateAsap</span><span class="br0">&#40;</span><span class="kw2">new</span> Error<span class="br0">&#40;</span><span class="st0">'die'</span><span class="br0">&#41;</span><span class="br0">&#41;</span>; <span class="co1">// that vat is terminated before ''sumP'' is resolved.</span>
+  <span class="co1">// If the vat is terminated first, then ''sumP'' resolves to a //rejected// problem, with</span>
+  <span class="co1">// (Error: die) as its alleged reason for rejection.</span>
+  <span class="co1">// Once the vat is terminated, ''doneP'' will eventually resolve to ''true''.</span></pre>
+<p>
+The vat object that represents a new vat is local to the creating vat, so that a vat may be terminated without waiting for that vat&rsquo;s eventual-delivery queue to drain. 
+</p>
+
+<p>
+The vat abstraction differs from the WebWorker abstraction, even though both are based on communicating event loops, since inter-vat messages are always directed at objects within a vat, not a vat as a whole. We intend that WebWorkers can be implemented in terms of vats and vice versa. However, when vats are built on WebWorkers, in the absence of some kind of weak reference and gc notification mechanism, it is probably impossible to arrange for the collection of distributed garbage. Even with them, <a href="http://erights.org/history/original-e/dgc/index.html" class="urlextern" target="_blank" title="http://erights.org/history/original-e/dgc/index.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">much more</a> is needed to enable collection of distributed cyclic garbage. On the other hand, when vats are provided more primitively, multiple vats within an address space can be jointly within the purview of a single concurrent garbage collector, enabling full gc among these co-resident vats. However, truly distributed vats would still be faced with these same distributed garbage collection worries.
+</p>
+
+<p>
+The &ldquo;<code> '' + function... </code>&rdquo; trick above depends on <a href="doku.php%3Fid=harmony:function_to_string.html" class="wikilink1" title="harmony:function_to_string" onclick="return svchk()" onkeypress="return svchk()">function_to_string</a> to actually pass a string which is the program source for the function, while nevertheless having the function itself appear in the spawning program as code rather than as a literal string. This helps IDEs, refactoring tools, etc. A vat&rsquo;s <code>evalLater</code> method evaluates that string as a program in a safe scope &ndash; a scope containing only the standard global variables such as <code>Object</code>, <code>Array</code>, etc. Except for these, the source passed in should be <em>closed</em> &ndash; should not contain free references to any other variables. If the function is closed but for these standard globals, and these standard globals are not shadowed or replaced in the spawning context, then an IDE&rsquo;s scope analysis of the code remains accurate.
+</p>
+
+</div>
+<!-- SECTION [4089-7755] -->
+<a name="promises_and_promise_states"></a><h2>Promises and Promise States</h2>
+<div class="level2">
+
+<p>
+ We introduce a new opaque type of object, the <em>Promise</em> to represent potentially remote references. A normal JavaScript direct reference may only designate an object within the same vat. Only promises may designate objects in other vats. A promise may be in one of several states:
+</p>
+
+<p>
+<a href="lib/exe/detail.php%3Fid=strawman%253Aconcurrency&amp;cache=cache&amp;media=strawman:refstates3.png.html" class="media" title="strawman:refstates3.png" onclick="return svchk()" onkeypress="return svchk()"><img src="lib/exe/fetch.php%3Fw=&amp;h=&amp;cache=cache&amp;media=strawman:refstates3.png" class="media" alt="" /></a> (TODO: Revise diagram to replace &ldquo;unresolved&rdquo; with &ldquo;pending&rdquo; and &ldquo;broken&rdquo; with &ldquo;rejected&rdquo;.) 
+</p>
+<ul>
+<li class="level1"><div class="li"> <em>pending</em> &ndash; when it is not yet determined what object the promise designates,</div>
+<ul>
+<li class="level2"><div class="li"> <em>pending-local</em> &ndash; when the right to determine what the promise designates resides in the same vat,</div>
+</li>
+<li class="level2"><div class="li"> <em>pending-remote</em> &ndash; when that right is either in flight between vats or resides in a remote vat,</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <em>fulfilled</em> &ndash; resolved to successfully designate some object,</div>
+<ul>
+<li class="level2"><div class="li"> <em>near</em> &ndash; resolved to a direct reference to a local object,</div>
+</li>
+<li class="level2"><div class="li"> <em>far</em> &ndash; resolved to designate a remote object,</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <em>rejected</em> &ndash; will never designate an object, for an alleged reason represented by an associated error.</div>
+</li>
+</ul>
+
+<p>
+A promise may transition from <em>pending</em> to any state. Additionally a promise can transition from <em>far</em> to <em>rejected</em>. A <em>resolved</em> promise can designate any non-promise value including primitives, <code>null</code>, and <code>undefined</code>. Primitives, <code>null</code>, <code>undefined</code>, and some objects are pass-by-copy. All other objects are pass-by-reference. A promise resolved to designate a pass-by-copy value is always near, i.e., it always designates a local copy of the value.
+</p>
+
+<p>
+If a function <code>foo</code> immediately returns either <code>X</code> or a promise which it later fulfills with <code>X</code>, we say that <code>foo</code> <strong><em>reveals</em></strong> <code>X</code>. Unless stated otherwise, we implicitly elide the error conditions from such statements. For the more explicit statement, append: <em>&ldquo;or it throws, or it does not terminate, or it rejects the returned promise, or it never resolves the returned promise.&rdquo;</em> Put another way, such a function returns a <strong><em>reference</em></strong> to <code>X</code>, where by <em>reference</em> we mean either <code>X</code> or a promise for <code>X</code>.
+</p>
+
+</div>
+<!-- SECTION [7756-9816] -->
+<a name="eventual_operations"></a><h2>Eventual Operations</h2>
+<div class="level2">
+
+<p>
+ The existing JavaScript infix <code>.</code> (dot or <em>now</em>) operator enables synchronous interaction with the local object designated by a direct reference. We introduce a corresponding infix <code>!</code> (bang or <em>eventually</em>) operator for corresponding asynchronous interaction with objects eventually designated by either direct references or promises.
+</p>
+
+<p>
+Abstract Syntax: 
+</p>
+<pre class="code">
+  Expression : ...
+      Expression ! [ Expression ] Arguments    // eventual send
+      Expression ! Arguments                   // eventual call
+      Expression ! [ Expression ]              // eventual get
+      Expression ! [ Expression ] = Expression // eventual put
+      delete Expression ! [ Expression ]       // eventual delete
+</pre>
+
+<p>
+The <code>...</code> means &ldquo;and all the normal right hand sides of this production. By &ldquo;abstract&rdquo; here I mean the distinction that must be preserved by parsing, i.e., in an <a href="doku.php%3Fid=strawman:ast.html" class="wikilink1" title="strawman:ast" onclick="return svchk()" onkeypress="return svchk()">ast</a>, but without explaining the precedence and associativity which explains how this is unambiguously parsed. In all cases, the eventual form of an expression queues a eventual-delivery recording the need to perform the corresponding immediate form in the vat hosting the (eventually) designated object. The eventual form immediately evaluates to a promise for the result of eventually performing this eventual-delivery.
+</p>
+<pre class="code javascript">  <span class="kw2">function</span> add<span class="br0">&#40;</span>x, y<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> x + y; <span class="br0">&#125;</span>
+  <span class="kw2">const</span> sumP = add ! <span class="br0">&#40;</span><span class="nu0">3</span>, <span class="nu0">5</span><span class="br0">&#41;</span>; <span class="co1">//sumP resolves in a later turn to 8.</span></pre>
+<p>
+ Attempted Concrete Syntax: 
+</p>
+<pre class="code">
+  MemberExpression : ...
+      MemberExpression [nlth] ! [ Expression ]
+      MemberExpression [nlth] ! IdentifierName
+  CallExpression : ...
+      CallExpression [nlth] ! [ Expression ] Arguments
+      CallExpression [nlth] ! IdentifierName Arguments
+      MemberExpression [nlth] ! Arguments
+      CallExpression [nlth] ! Arguments
+      CallExpression [nlth] ! [ Expression ]
+      CallExpression [nlth] ! IdentifierName
+  UnaryExpression : ...
+      delete CallExpression [nlth] ! [ Expression ]
+      delete CallExpression [nlth] ! IdentifierName
+  LeftHandSideExpression :
+      Identifier
+      CallExpression [ Expression ]
+      CallExpression . IdentifierName
+      CallExpression [nlth] ! [ Expression ]
+      CallExpression [nlth] ! IdentifierName
+</pre>
+
+<p>
+&ldquo;<code>[nlth]</code>&rdquo; above is short for &ldquo;<code>[No LineTerminator here]</code>&ldquo;, in order to unambiguously distinguish infix from prefix bang in the face of automatic semicolon insertion. 
+</p>
+
+</div>
+<!-- SECTION [9817-12278] -->
+<a name="fundamental_static_q_methods"></a><h2>Fundamental Static Q Methods</h2>
+<div class="level2">
+<table class="inline">
+	<tr>
+		<td class="leftalign"><pre class="code javascript">Q<span class="br0">&#40;</span>target<span class="br0">&#41;</span> -&gt; targetP</pre></td><td class="leftalign">Lifts the <code>target</code> argument into a promise designating the same object. If <code>target</code> is already a promise, then that promise is returned. (A promise for promise for T simplifies into a promise for T. Category theorists will be more pleased than Type theorists ;).)  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><pre class="code javascript">Q.<span class="me1">reject</span><span class="br0">&#40;</span>reason<span class="br0">&#41;</span> -&gt; rejectedP</pre></td><td class="leftalign">Makes and returns a fresh <em>rejected</em> promise recording (a sanitized form of) <code>reason</code> as the alleged reason for rejection. <code>reason</code> should generally be an immutable pass-by-copy Error object.  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><pre class="code javascript">Q.<span class="me1">promise</span><span class="br0">&#40;</span>f<span class="br0">&#40;</span>resolve,reject<span class="br0">&#41;</span>-&gt;<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span> -&gt; promise</pre></td><td class="leftalign">Makes a fresh promise, where the promise is initially <em>pending-local</em>, and the argument function f is called with <code>resolve</code> and <code>reject</code> functions for resolving this promise.  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><pre class="code javascript">Q.<span class="me1">isPromise</span><span class="br0">&#40;</span>target<span class="br0">&#41;</span> -&gt; boolean</pre></td><td class="leftalign">Is <code>target</code> a promise? If not, then using <code>target</code> as a target in the various promise operations is still equivalent to using <code>Q(target)</code>, i.e., the promise operations will automatically lift all values to promises.  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><pre class="code javascript">Q.<span class="me1">makeFar</span><span class="br0">&#40;</span>handler, nextSlotP<span class="br0">&#41;</span> -&gt; promise</pre></td><td>Makes a resolved <em>far</em> reference, which can only <a href="http://wiki.erights.org/wiki/Proxy#makeProxy" class="urlextern" target="_blank" title="http://wiki.erights.org/wiki/Proxy#makeProxy" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">further resolve</a> to <em>rejected</em>.</td>
+	</tr>
+	<tr>
+		<td class="leftalign"><pre class="code javascript">Q.<span class="me1">makeRemote</span><span class="br0">&#40;</span>handler, nextSlotP<span class="br0">&#41;</span> -&gt; promise</pre></td><td>Makes an <em>pending-remote</em> promise, which can <a href="http://wiki.erights.org/wiki/Proxy#makeProxy" class="urlextern" target="_blank" title="http://wiki.erights.org/wiki/Proxy#makeProxy" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">further resolve</a> to anything.</td>
+	</tr>
+	<tr>
+		<td class="leftalign"><pre class="code javascript">Q.<span class="me1">ahorten</span><span class="br0">&#40;</span>target1<span class="br0">&#41;</span> -&gt; target2</pre></td><td class="leftalign">Returns the currently most resolved form of target1. If <code>target1</code> is a <em>fulfilled</em> promise, return its resolution. If <code>target1</code> is a promise that is following promise <code>target2</code>, then return <code>target2</code>. If <code>target1</code> is a terminal <em>pending</em> or <em>rejected</em> promise, or a non-promise, then return <code>target1</code>.  </td>
+	</tr>
+</table>
+<br />
+
+<p>
+ Additional non-fundamental static Q convenience methods appear below.
+</p>
+
+</div>
+<!-- SECTION [12279-14355] -->
+<a name="promise_methods"></a><h2>Promise methods</h2>
+<div class="level2">
+
+<p>
+ Assuming <code>p</code> is a promise 
+</p>
+<table class="inline">
+	<tr>
+		<td class="leftalign"><pre class="code javascript">p.<span class="me1">get</span><span class="br0">&#40;</span><span class="kw3">name</span><span class="br0">&#41;</span> -&gt; valueP</pre></td><td class="leftalign">Returns a promise for the result of eventually getting the value of the name property of target.  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><pre class="code javascript">p.<span class="me1">post</span><span class="br0">&#40;</span>opt_name, args<span class="br0">&#41;</span> -&gt; resultP</pre></td><td class="leftalign">Eventually invoke the named method of target with these args. Returns a promise for what the result will be.  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><pre class="code javascript">p.<span class="me1">send</span><span class="br0">&#40;</span>opt_name, ...<span class="me1">args</span><span class="br0">&#41;</span> -&gt; resultP</pre></td><td><code>p.send(m, a, b)</code> is equivalent to <code>p.post(m, [a,b])</code></td>
+	</tr>
+	<tr>
+		<td class="leftalign"><pre class="code javascript">p.<span class="me1">fcall</span><span class="br0">&#40;</span>...<span class="me1">args</span><span class="br0">&#41;</span> -&gt; resultP</pre></td><td><code>p.fcall(a, b)</code> is equivalent to <code>p.post(void 0, [a,b])</code></td>
+	</tr>
+	<tr>
+		<td class="leftalign"><pre class="code javascript">p.<span class="me1">put</span><span class="br0">&#40;</span><span class="kw3">name</span>, value<span class="br0">&#41;</span> -&gt; voidP</pre></td><td class="leftalign">Eventually set the value of the name property of target to value. Return a promise-for-undefined, used for indicating completion.  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><pre class="code javascript">p.<span class="kw1">delete</span><span class="br0">&#40;</span><span class="kw3">name</span><span class="br0">&#41;</span> -&gt; trueP</pre></td><td class="leftalign">Eventually delete the name property of target. Returns a promise for the boolean result.  </td>
+	</tr>
+	<tr>
+		<td><pre class="code javascript">p.<span class="me1">then</span><span class="br0">&#40;</span>success, opt_failure<span class="br0">&#41;</span> -&gt; resultP</pre></td><td class="leftalign">Registers functions <code>success</code> and <code>opt_failure</code> to be called back in a later turn once target is <em>resolved</em>. If <em>fulfilled</em>, call <code>success(resolution)</code>. Else if <em>rejected</em>, call <code>opt_failure(reason)</code>. Return a promise for the callback&rsquo;s result.  </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><pre class="code javascript">p.<span class="me1">end</span><span class="br0">&#40;</span><span class="br0">&#41;</span></pre></td><td>If p resolves to <em>rejected</em>, log the reason to wherever uncaught exceptions go on this platform, e.g., <code>onerror(reason)</code>.</td>
+	</tr>
+</table>
+<br />
+
+</div>
+<!-- SECTION [14356-15892] -->
+<a name="syntactic_sugar"></a><h2>Syntactic Sugar</h2>
+<div class="level2">
+<table class="inline">
+	<tr>
+		<th class="centeralign">  Abstract Syntax  </th><th class="centeralign">  Expansion         </th><th class="centeralign">  Simple Case      </th><th class="centeralign">  Expansion             </th><th class="centeralign">  JSON/RESTful equiv  </th>
+	</tr>
+	<tr>
+		<td class="leftalign">x ! [i](y, z)      </td><td class="leftalign">Q(x).send(i, y, z)  </td><td class="leftalign">x ! p(y, z)        </td><td class="leftalign">Q(x).send(&rsquo;p&rsquo;, y, z)    </td><td class="leftalign">POST   https://...q=p {...}  </td>
+	</tr>
+	<tr>
+		<td class="leftalign">x ! (y, z)         </td><td class="leftalign">Q(x).fcall(y, z)    </td><td class="leftalign"> -                 </td><td class="leftalign"> -                      </td><td class="leftalign">POST   https://...    {...}  </td>
+	</tr>
+	<tr>
+		<td class="leftalign">x ! [i]            </td><td class="leftalign">Q(x).get(i)         </td><td class="leftalign">x ! p              </td><td class="leftalign">Q(x).get(&rsquo;p&rsquo;)           </td><td class="leftalign">GET    https://...q=p        </td>
+	</tr>
+	<tr>
+		<td class="leftalign">x ! [i] = v        </td><td class="leftalign">Q(x).put(i, v)      </td><td class="leftalign">x ! p = v          </td><td class="leftalign">Q(x).put(&rsquo;p&rsquo;, v)        </td><td class="leftalign">PUT    https://...q=p {...}  </td>
+	</tr>
+	<tr>
+		<td class="leftalign">delete x ! [i]     </td><td class="leftalign">Q(x).delete(i)      </td><td class="leftalign">delete x ! p       </td><td class="leftalign">Q(x).delete(&rsquo;p&rsquo;)        </td><td class="leftalign">DELETE https://...q=p        </td>
+	</tr>
+</table>
+<br />
+
+</div>
+<!-- SECTION [15893-16643] -->
+<a name="non-fundamental_static_q_conveniences"></a><h2>Non-fundamental Static Q Conveniences</h2>
+<div class="level2">
+
+</div>
+<!-- SECTION [16644-16695] -->
+<a name="q.delay"></a><h3>Q.delay</h3>
+<div class="level3">
+
+<p>
+ Reveal the <code>answer</code> sometime after <code>millis</code> milliseconds have elapsed.
+</p>
+<pre class="code javascript">  Q.<span class="me1">delay</span> = <span class="kw2">function</span><span class="br0">&#40;</span>millis, answer = undefined<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> Q.<span class="me1">promise</span><span class="br0">&#40;</span>resolve =&gt; <span class="br0">&#123;</span>
+      setTimeout<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="br0">&#41;</span> =&gt; resolve<span class="br0">&#40;</span>answer<span class="br0">&#41;</span>, millis<span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span>;</pre>
+</div>
+<!-- SECTION [16696-16965] -->
+<a name="q.race"></a><h3>Q.race</h3>
+<div class="level3">
+
+<p>
+ Given a list of promises, returns a promise for the resolution of whichever promise we notice has completed first.
+</p>
+<pre class="code javascript">  Q.<span class="me1">race</span> = <span class="kw2">function</span><span class="br0">&#40;</span>answerPs<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> Q.<span class="me1">promise</span><span class="br0">&#40;</span><span class="br0">&#40;</span>resolve,reject<span class="br0">&#41;</span> =&gt; <span class="br0">&#123;</span>
+      <span class="kw1">for</span> <span class="br0">&#40;</span>answerP of answerPs<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        Q<span class="br0">&#40;</span>answerP<span class="br0">&#41;</span>.<span class="me1">then</span><span class="br0">&#40;</span>resolve,reject<span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span>;
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span>;</pre>
+<p>
+We can compose <code>Q.race</code>, <code>Q.delay</code>, and <code>Q.reject</code> to timeout eventual requests.
+</p>
+<pre class="code javascript">  <span class="kw2">var</span> answer = Q.<span class="me1">race</span><span class="br0">&#40;</span><span class="br0">&#91;</span>bob ! foo<span class="br0">&#40;</span>carol<span class="br0">&#41;</span>, 
+                       Q.<span class="me1">delay</span><span class="br0">&#40;</span><span class="nu0">5000</span>, Q.<span class="me1">reject</span><span class="br0">&#40;</span><span class="kw2">new</span> Error<span class="br0">&#40;</span><span class="st0">"timeout"</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#93;</span><span class="br0">&#41;</span>;</pre>
+</div>
+<!-- SECTION [16966-17528] -->
+<a name="q.all"></a><h3>Q.all</h3>
+<div class="level3">
+
+<p>
+ Often it&rsquo;s useful to collect several promised answers, in order to react either when <em>all</em> the answers are ready or when <em>any</em> of the promises becomes <em>rejected</em>.
+</p>
+<pre class="code javascript">  Q.<span class="me1">all</span> = <span class="kw2">function</span><span class="br0">&#40;</span>answerPs<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    let countDown = answerPs.<span class="me1">length</span>;
+    <span class="kw2">const</span> answers = <span class="br0">&#91;</span><span class="br0">&#93;</span>;
+    <span class="kw1">if</span> <span class="br0">&#40;</span>countDown === <span class="nu0">0</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> Q<span class="br0">&#40;</span>answers<span class="br0">&#41;</span>; <span class="br0">&#125;</span>
+    <span class="kw1">return</span> Q.<span class="me1">promise</span><span class="br0">&#40;</span><span class="br0">&#40;</span>resolve,reject<span class="br0">&#41;</span> =&gt; <span class="br0">&#123;</span>
+      answerPs.<span class="me1">forEach</span><span class="br0">&#40;</span><span class="br0">&#40;</span>answerP, index<span class="br0">&#41;</span> =&gt; <span class="br0">&#123;</span>
+        Q<span class="br0">&#40;</span>answerP<span class="br0">&#41;</span>.<span class="me1">then</span><span class="br0">&#40;</span>answer =&gt; <span class="br0">&#123;</span>
+          answers<span class="br0">&#91;</span>index<span class="br0">&#93;</span> = answer;
+          <span class="kw1">if</span> <span class="br0">&#40;</span>--countDown === <span class="nu0">0</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> resolve<span class="br0">&#40;</span>answers<span class="br0">&#41;</span>; <span class="br0">&#125;</span>
+        <span class="br0">&#125;</span>, reject<span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span>;</pre>
+<p>
+We can compose <code>Q.all</code>, <code>then</code>, and <a href="doku.php%3Fid=harmony:destructuring.html" class="wikilink1" title="harmony:destructuring" onclick="return svchk()" onkeypress="return svchk()">destructuring</a> to delay until several operands are revealed
+</p>
+<pre class="code javascript">  <span class="kw2">var</span> sumP = Q.<span class="me1">all</span><span class="br0">&#40;</span><span class="br0">&#91;</span>xP, yP<span class="br0">&#93;</span><span class="br0">&#41;</span>.<span class="me1">then</span><span class="br0">&#40;</span><span class="br0">&#40;</span><span class="br0">&#91;</span>x, y<span class="br0">&#93;</span><span class="br0">&#41;</span> =&gt; <span class="br0">&#40;</span>x + y<span class="br0">&#41;</span>;</pre>
+</div>
+<!-- SECTION [17529-18335] -->
+<a name="q.join"></a><h3>Q.join</h3>
+<div class="level3">
+
+<p>
+ Join is our eventual equality operation. Any messages sent on the join of <code>xP</code> and <code>yP</code> are only delivered if <code>xP</code> and <code>yP</code> both reveal the same target, in which case these messages are eventually delivered to that target and this joined promise itself eventually becomes fulfilled to designate that target. Otherwise, all these messages are discarded with the usual rejected promise contagion.
+</p>
+<pre class="code javascript">  Q.<span class="me1">join</span> = <span class="kw2">function</span><span class="br0">&#40;</span>xP, yP<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> Q.<span class="me1">all</span><span class="br0">&#40;</span><span class="br0">&#91;</span>xP, yP<span class="br0">&#93;</span><span class="br0">&#41;</span>.<span class="me1">then</span><span class="br0">&#40;</span><span class="br0">&#40;</span><span class="br0">&#91;</span>x, y<span class="br0">&#93;</span><span class="br0">&#41;</span> =&gt; <span class="br0">&#123;</span>
+      <span class="kw1">if</span> <span class="br0">&#40;</span>Object.<span class="kw1">is</span><span class="br0">&#40;</span>x, y<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">return</span> x;
+      <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="br0">&#123;</span>
+        <span class="kw1">throw</span> <span class="kw2">new</span> Error<span class="br0">&#40;</span><span class="st0">"not the same"</span><span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span>;</pre>
+</div>
+<!-- SECTION [18336-18988] -->
+<a name="q.memoize"></a><h3>Q.memoize</h3>
+<div class="level3">
+
+<p>
+ <code>Q.memoize</code> of a one argument function returns a new similar one argument function, except that it (eventually) calls the original function no more than once for each such argument. The memo function immediately returns a promise for what the original function will eventually return. Equivalence of arguments is determined by the optional memoMap passed in, which defaults to a new WeakMap() if absent. (Passing a memoMap in also allows the caller to seed the mapping with some prior associations.)
+</p>
+
+<p>
+The difference from a traditional synchronous memoizer is that the original function is called <em>eventually</em> after a promise for its result is <em>already</em> memoized, enabling cycles to work. For example, if memoF === memoize(f) and f(x) calls memoF(x), then an outer call to memoF(x) schedules an eventual call to f(x) which makes an inner call to memoF(x). Both outer and inner calls to memoF(x) returns a promise for what f(x) will eventually return.
+</p>
+<pre class="code javascript">   Q.<span class="me1">memoize</span> = <span class="kw2">function</span><span class="br0">&#40;</span>oneArgFuncP, memoMap = WeakMap<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+&nbsp;
+     <span class="kw1">return</span> <span class="kw2">function</span> oneArgMemo<span class="br0">&#40;</span>arg<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       <span class="kw1">if</span> <span class="br0">&#40;</span>memoMap.<span class="me1">has</span><span class="br0">&#40;</span>arg<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+         <span class="kw1">return</span> memoMap.<span class="me1">get</span><span class="br0">&#40;</span>arg<span class="br0">&#41;</span>;
+       <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="br0">&#123;</span>
+         <span class="kw2">const</span> resultP = oneArgFuncP ! <span class="br0">&#40;</span>arg<span class="br0">&#41;</span>;
+         memoMap.<span class="me1">set</span><span class="br0">&#40;</span>arg, resultP<span class="br0">&#41;</span>;
+         <span class="kw1">return</span> resultP;
+       <span class="br0">&#125;</span>
+     <span class="br0">&#125;</span>
+   <span class="br0">&#125;</span>;</pre>
+</div>
+<!-- SECTION [18989-20304] -->
+<a name="q.async"></a><h3>Q.async</h3>
+<div class="level3">
+
+<p>
+ See <a href="doku.php%3Fid=strawman:async_functions.html#reference_implementation" class="wikilink1" title="strawman:async_functions" onclick="return svchk()" onkeypress="return svchk()">async functions reference implementation</a>.
+</p>
+
+</div>
+<!-- SECTION [20305-20425] -->
+<a name="q.defer"></a><h3>Q.defer()</h3>
+<div class="level3">
+
+<p>
+ (Will likely be deprecated)
+</p>
+<pre class="code javascript">  Q.<span class="me1">defer</span> = <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">const</span> deferred = <span class="br0">&#123;</span><span class="br0">&#125;</span>;
+    deferred.<span class="me1">promise</span> = Q.<span class="me1">promise</span><span class="br0">&#40;</span><span class="br0">&#40;</span>resolve,reject<span class="br0">&#41;</span> =&gt; <span class="br0">&#123;</span>
+      deferred.<span class="me1">resolve</span> = resolve;
+      deferred.<span class="me1">reject</span> = reject;
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+    <span class="kw1">return</span> deferred;
+  <span class="br0">&#125;</span>;</pre>
+</div>
+<!-- SECTION [20426-20707] -->
+<a name="examples"></a><h1>Examples</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [20708-20732] -->
+<a name="infinite_queue"></a><h2>Infinite Queue</h2>
+<div class="level2">
+<pre class="code javascript">  <span class="kw2">function</span> makeQueue<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    let rear;
+    let front = Q.<span class="me1">promise</span><span class="br0">&#40;</span>r =&gt; <span class="br0">&#123;</span> rear = r; <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+    <span class="kw1">return</span> Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+      enqueue: <span class="kw2">function</span><span class="br0">&#40;</span>elem<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        let nextRear;
+        <span class="kw2">const</span> nextTail = Q.<span class="me1">promise</span><span class="br0">&#40;</span>r =&gt; <span class="br0">&#123;</span> nextRear = r; <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+        rear<span class="br0">&#40;</span><span class="br0">&#123;</span>head: elem, tail: nextTail<span class="br0">&#125;</span><span class="br0">&#41;</span>;
+        rear = nextRear;
+      <span class="br0">&#125;</span>,
+      dequeue: <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw2">const</span> result = front ! head;
+        front = front ! tail;
+        <span class="kw1">return</span> result;
+      <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span></pre>
+<p>
+ Calling <code>queue.dequeue()</code> will return a promise for the next element that has or will be enqueued.
+</p>
+
+</div>
+<!-- SECTION [20733-21335] -->
+<a name="spawn"></a><h2>Spawn</h2>
+<div class="level2">
+
+<p>
+ The following <code>spawn</code> function is a simple abstraction built on <code>Vat</code> and <code>then</code> that captures a simple common case:
+</p>
+<pre class="code javascript">  <span class="kw2">function</span> spawn<span class="br0">&#40;</span>src<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">const</span> vat = Vat<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+    <span class="kw2">const</span> resultP = vat.<span class="me1">evalLater</span><span class="br0">&#40;</span>src<span class="br0">&#41;</span>;
+    Q<span class="br0">&#40;</span>resultP<span class="br0">&#41;</span>.<span class="me1">then</span><span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span>_<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      vat.<span class="me1">terminateAsap</span><span class="br0">&#40;</span><span class="kw2">new</span> Error<span class="br0">&#40;</span><span class="st0">'done'</span><span class="br0">&#41;</span><span class="br0">&#41;</span>; 
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+    <span class="kw1">return</span> resultP;
+  <span class="br0">&#125;</span>
+&nbsp;
+  <span class="kw2">const</span> sumP = spawn<span class="br0">&#40;</span><span class="st0">'3+5'</span><span class="br0">&#125;</span><span class="br0">&#41;</span>; <span class="co1">// sumP eventually resolves to 8.</span></pre>
+<p>
+The argument string to <code>spawn</code> is evaluated in a new Vat spawned for that purpose. Spawn returns a promise for what that string will evaluate to. Once that promise resolves, the spawned vat is shut down.
+</p>
+
+</div>
+<!-- SECTION [21336-21978] -->
+<a name="vat.evallater_as_async-pgas"></a><h2>Vat.evalLater() as Async-PGAS</h2>
+<div class="level2">
+
+<p>
+ In the Async-PGAS language X10, the &ldquo;at&rdquo; statement is defined as
+</p>
+<pre class="code">
+  // x10 grammar, not javascript or proposed javascript
+  Statement :
+    at ( PlaceExpression ) Statement
+</pre>
+
+<p>
+The &ldquo;at&rdquo; statement first evaluates the PlaceExpression to a place, which is analogous to a vat. It then evaluates the Statement at that place. The statement evaluates with the lexical scope containing the &ldquo;at&rdquo; statement, so the locality of the values bound to these identifiers is the locality they have at that place rather than at the location containing the &ldquo;at&rdquo; statement. Although the argument to <code>Vat.evalLater</code> must be a closed expression (modulo whitelisted globals), we can get the same effect, a bit more verbosely, by passing in these bindings as an explicit eventual call to a closed function.
+</p>
+
+<p>
+For example, the X10-ish program
+</p>
+<pre class="code javascript">  <span class="kw2">const</span> x = <span class="nu0">6</span>;
+  let ultimateP;
+  at <span class="br0">&#40;</span>place<span class="br0">&#41;</span> <span class="br0">&#123;</span> ultimateP = x*<span class="nu0">7</span>; <span class="br0">&#125;</span></pre>
+<p>
+can be expressed using <code>aVat.evalLater()</code> as
+</p>
+<pre class="code javascript">  <span class="kw2">const</span> x = <span class="nu0">6</span>;
+  let ultimateP = place.<span class="me1">evalLater</span><span class="br0">&#40;</span>x =&gt; x*<span class="nu0">7</span><span class="br0">&#41;</span> ! <span class="br0">&#40;</span>x<span class="br0">&#41;</span>;</pre>
+</div>
+<!-- SECTION [21979-23091] -->
+<a name="open_vat"></a><h2>Open Vat</h2>
+<div class="level2">
+
+<p>
+ The <code>makeOpenVat</code> function makes an <code>OpenVat</code> function. Each <code>OpenVat</code> function is like the <code>Vat</code> function, in that both make an return a new vat instance. Each <code>OpenVat</code> function additionally maintains a side table mapping from all incoming remote promises to the evaluation function of the open vat made by this <code>OpenVat</code> function. The reason we call such vats <em>open</em> is that, given a remote promise into such a vat and the <code>OpenVat</code> function that made that vat, one can thereby inject new code into that vat.
+</p>
+
+<p>
+TODO: explain the membrane variation used below.
+</p>
+<pre class="code javascript">  <span class="kw2">function</span> makeOpenVat<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">const</span> wm = WeakMap<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+  
+    <span class="kw2">function</span> OpenVat<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw2">const</span> vat = Vat<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+      <span class="kw2">const</span> openVat = Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+        evalLater: makeMembraneX<span class="br0">&#40;</span>
+          vat.<span class="me1">evalLater</span>,
+          <span class="br0">&#123;</span> registerRemote: <span class="kw2">function</span><span class="br0">&#40;</span>remote<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+              wm.<span class="me1">set</span><span class="br0">&#40;</span>remote, openVat.<span class="me1">evalLater</span><span class="br0">&#41;</span>; <span class="br0">&#125;</span><span class="br0">&#125;</span><span class="br0">&#41;</span>,
+        terminateAsap: vat.<span class="me1">terminateAsap</span>
+      <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+      <span class="kw1">return</span> openVat;
+    <span class="br0">&#125;</span>
+    OpenVat.<span class="me1">evalAt</span> = <span class="kw2">function</span><span class="br0">&#40;</span>p, src<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">return</span> wm.<span class="me1">get</span><span class="br0">&#40;</span>p<span class="br0">&#41;</span><span class="br0">&#40;</span>src<span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span>;
+    <span class="kw1">return</span> OpenVat;
+  <span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [23092-24204] -->
+<a name="there"></a><h2>there</h2>
+<div class="level2">
+
+<p>
+ The <code>there(p, ...)</code> function is analogous to <code>Q(p).then(...)</code>, except instead of merely relocating the execution of the callback in time till after <code>p</code> is resolved, it further relocates it in spacetime, to where and when p is near. Like <code>Q(p).then(...)</code>, <code>there</code> immediately returns a promise for the eventual outcome. We do not likewise relocate the errback, so that we can still notify it and it can still react on the requesting side to a partition between the requestor and <code>p</code>&lsquo;s host.
+</p>
+<pre class="code javascript">  <span class="kw2">function</span> there<span class="br0">&#40;</span>p, callback, opt_errback<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">var</span> callbackP = OpenVat.<span class="me1">evalAt</span><span class="br0">&#40;</span>p, <span class="st0">''</span> + callback<span class="br0">&#41;</span>;
+    <span class="kw1">return</span> <span class="br0">&#40;</span>callbackP ! <span class="br0">&#40;</span>p<span class="br0">&#41;</span><span class="br0">&#41;</span>.<span class="me1">then</span><span class="br0">&#40;</span>
+      v =&gt; v,
+      opt_errback<span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [24205-24927] -->
+<a name="map-reduce_lite"></a><h2>Map-Reduce Lite</h2>
+<div class="level2">
+
+<p>
+ Given an initial result value, a list of potentially remote promises to elements, a closed mobile <code>mapper</code> function from elements to mapped result values, and an associative / commutative <code>reducer</code> function from pairs of references to result values to a new reference to a result value, <code>mapReduce</code> immediately returns a promise for the result of mapping all the elements where they live, and reducing all of these results together with the initial result value to a result.
+</p>
+
+<p>
+I call this &ldquo;Map-Reduce Lite&rdquo; because, unlike a production map-reduce infrastructure, the following <code>mapReduce</code> does all reductions on the spawning machine, which is therefore a scaling bottleneck, and has none of the fault-tolerance. Here, any failure causes the overall map-reduce to fail, i.e., the returned promise becomes a <em>rejected</em> promise. The mapper and reduction functions are like the conventional functional programming variety, rather than the map-reduce variety which arranged for group-by keys.
+</p>
+<pre class="code javascript">  <span class="coMULTI">/**
+   * Type/Guard syntax below is only a placeholder, not a serious proposal.
+   * @param initValue ::T2
+   * @param elemPs    ::Array[Ref[T1]]  // i.e., Array[T1 | Promise[T1]]
+   * @param mapper    ::(T1 -&gt; T2)      // closed mobile function
+   * @param reducer   ::(T2 x T2 -&gt; T2)
+   * @reveals         ::T2              // i.e., @returns ::Ref[T2]
+   */</span>
+  <span class="kw2">function</span> mapReduce<span class="br0">&#40;</span>initValue, elemPs, mapper, reducer<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    let countDown = elemPs.<span class="me1">length</span>;
+    <span class="kw1">if</span> <span class="br0">&#40;</span>countDown === <span class="nu0">0</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> initValue; <span class="br0">&#125;</span>
+    let result = initValue;
+&nbsp;
+    <span class="kw1">return</span> Q.<span class="me1">promise</span><span class="br0">&#40;</span><span class="br0">&#40;</span>resolve, reject<span class="br0">&#41;</span> =&gt; <span class="br0">&#123;</span>
+      elemPs.<span class="me1">forEach</span><span class="br0">&#40;</span>elemP =&gt; <span class="br0">&#123;</span>
+        <span class="kw2">const</span> mappedP = there<span class="br0">&#40;</span>elemP, mapper<span class="br0">&#41;</span>;
+        Q<span class="br0">&#40;</span>mappedP<span class="br0">&#41;</span>.<span class="me1">then</span><span class="br0">&#40;</span>mapped =&gt; <span class="br0">&#123;</span>
+          result = reducer<span class="br0">&#40;</span>result, mapped<span class="br0">&#41;</span>;
+          <span class="kw1">if</span> <span class="br0">&#40;</span>--countDown === <span class="nu0">0</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> resolve<span class="br0">&#40;</span>result<span class="br0">&#41;</span>; <span class="br0">&#125;</span>
+        <span class="br0">&#125;</span>, reject<span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [24928-26811] -->
+<a name="amd_loader_lite"></a><h2>AMD Loader Lite</h2>
+<div class="level2">
+
+<p>
+ This is a minimal Asynchronous Module Definition (AMD) Loader for a subset of the <a href="https://github.com/amdjs/amdjs-api/wiki/AMD" class="urlextern" target="_blank" title="https://github.com/amdjs/amdjs-api/wiki/AMD" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">AMD API</a> specification. In this subset, <code>define</code> is called with exactly two arguments, a <code>dependencies</code> list of module names, and a factory function with one parameter per dependency.
+</p>
+<pre class="code javascript">   <span class="kw2">function</span> makeSimpleAMDLoader<span class="br0">&#40;</span>fetch, moduleMap = Map<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+     <span class="kw2">var</span> loader;
+&nbsp;
+     <span class="kw2">function</span> rawLoad<span class="br0">&#40;</span>id<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       <span class="kw1">return</span> Q<span class="br0">&#40;</span>fetch<span class="br0">&#40;</span>id<span class="br0">&#41;</span><span class="br0">&#41;</span>.<span class="me1">then</span><span class="br0">&#40;</span>src =&gt; <span class="br0">&#123;</span>
+         <span class="kw2">var</span> result = Q.<span class="me1">reject</span><span class="br0">&#40;</span><span class="kw2">new</span> Error<span class="br0">&#40;</span><span class="st0">'&quot;define&quot; not called by: '</span> + id<span class="br0">&#41;</span><span class="br0">&#41;</span>;
+         <span class="kw2">function</span> define<span class="br0">&#40;</span>deps, factory<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+           result = Q.<span class="me1">all</span><span class="br0">&#40;</span>deps.<span class="me1">map</span><span class="br0">&#40;</span>loader<span class="br0">&#41;</span><span class="br0">&#41;</span>.<span class="me1">then</span><span class="br0">&#40;</span>imports =&gt; <span class="br0">&#123;</span>
+             <span class="kw1">return</span> factory<span class="br0">&#40;</span>...<span class="me1">imports</span><span class="br0">&#41;</span>;
+           <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+         <span class="br0">&#125;</span>
+         define.<span class="me1">amd</span> = <span class="br0">&#123;</span>lite: <span class="kw2">true</span><span class="br0">&#125;</span>;
+&nbsp;
+         <span class="kw2">Function</span><span class="br0">&#40;</span><span class="st0">'define'</span>, src<span class="br0">&#41;</span><span class="br0">&#40;</span>define<span class="br0">&#41;</span>;
+         <span class="kw1">return</span> result;
+       <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+     <span class="br0">&#125;</span>
+     <span class="kw1">return</span> loader = Q.<span class="me1">memoize</span><span class="br0">&#40;</span>rawLoad, moduleMap<span class="br0">&#41;</span>;
+   <span class="br0">&#125;</span></pre>
+<p>
+If module &ldquo;W&rdquo; depends on modules &ldquo;X&rdquo;, &ldquo;Y&rdquo;, and &ldquo;Z&rdquo;, then only once the promises for the &ldquo;X&rdquo;, &ldquo;Y&rdquo;, and &ldquo;Z&rdquo; modules have all been fulfilled will the &ldquo;W&rdquo; factory function be called with these module instances. The result of calling this factory function will then become the &ldquo;W&rdquo; module instance.
+</p>
+
+<p>
+What it means to <em>be</em> the source for the &ldquo;W&rdquo; module is that <code>fetch(&rdquo;W&rdquo;)</code> will eventually return that source string. For example, a given <code>fetch</code> function might fetch it from <code>https://example.com/prefix/W.js</code>.
+</p>
+<pre class="code javascript">  <span class="co1">// At https://example.com/prefix/W.js</span>
+  define<span class="br0">&#40;</span><span class="br0">&#91;</span><span class="st0">'X'</span>, <span class="st0">'Y'</span>, <span class="st0">'Z'</span><span class="br0">&#93;</span>, <span class="kw2">function</span><span class="br0">&#40;</span>X, Y, Z<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> X<span class="br0">&#40;</span>Y, Z<span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span><span class="br0">&#41;</span></pre>
+<p>
+Since the memo mapping we need is from module names, which are strings rather than objects, we need to provide an explicit memoMap argument to <code>Q.memoize</code>, which should be a map that accepts strings as keys.
+</p>
+
+<p>
+Although the cycle tolerance of <code>Q.memoize</code> is generally useful, here it hurts. Because <code>define</code> won&rsquo;t call the factory function until all (<code>Q.all</code>) of the dependencies are fulfilled, any cyclic AMD dependencies cause an undetected deadlock. Still, in the naive absence of this cycle tolerance, such cyclic dependencies would have instead caused an infinite regress which is even worse. Better would be cycle detection and rejection, which we leave as an exercise for the reader. 
+</p>
+
+</div>
+<!-- SECTION [26812-29120] -->
+<a name="see"></a><h1>See</h1>
+<div class="level1">
+
+<p>
+ <a href="https://github.com/promises-aplus/promises-spec" class="urlextern" target="_blank" title="https://github.com/promises-aplus/promises-spec" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Promises/A+</a>
+</p>
+
+<p>
+<a href="https://github.com/slightlyoff/Promises" class="urlextern" target="_blank" title="https://github.com/slightlyoff/Promises" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">DOM Promises</a>
+</p>
+
+<p>
+<a href="http://soft.vub.ac.be/~tvcutsem/talks/presentations/WGLD_CommEventLoops.pdf" class="urlextern" target="_blank" title="http://soft.vub.ac.be/~tvcutsem/talks/presentations/WGLD_CommEventLoops.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">An exploration of communicating event loops in Javascript</a>
+</p>
+
+<p>
+<a href="doku.php%3Fid=strawman:deferred_functions.html" class="wikilink1" title="strawman:deferred_functions" onclick="return svchk()" onkeypress="return svchk()">deferred_functions</a> and <a href="doku.php%3Fid=strawman:async_functions.html" class="wikilink1" title="strawman:async_functions" onclick="return svchk()" onkeypress="return svchk()">async_functions</a>
+</p>
+
+<p>
+<a href="https://brendaneich.com/2007/02/threads-suck/" class="urlextern" target="_blank" title="https://brendaneich.com/2007/02/threads-suck/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">threads suck</a>
+</p>
+
+<p>
+<a href="http://erights.org/talks/promises/paper/tgc05.pdf" class="urlextern" target="_blank" title="http://erights.org/talks/promises/paper/tgc05.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Concurrency Among Strangers</a> and <a href="http://erights.org/talks/thesis/" class="urlextern" target="_blank" title="http://erights.org/talks/thesis/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Part III of Robust Composition</a>
+</p>
+
+<p>
+<a href="http://soft.vub.ac.be/~tvcutsem/publications/phd_tom_van_cutsem.pdf" class="urlextern" target="_blank" title="http://soft.vub.ac.be/~tvcutsem/publications/phd_tom_van_cutsem.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Ambient References: Object Designation in Mobile Ad hoc Networks</a>
+</p>
+
+<p>
+<a href="http://nodejs.org/" class="urlextern" target="_blank" title="http://nodejs.org/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">NodeJS</a>
+</p>
+
+<p>
+<a href="http://waterken.sourceforge.net/web_send/" class="urlextern" target="_blank" title="http://waterken.sourceforge.net/web_send/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">ref_send and web_send</a> 
+</p>
+
+<p>
+<a href="http://wiki.commonjs.org/wiki/Promises/B" class="urlextern" target="_blank" title="http://wiki.commonjs.org/wiki/Promises/B" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">CommonJS Promises/B</a> with <a href="https://github.com/kriskowal/q" class="urlextern" target="_blank" title="https://github.com/kriskowal/q" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">implementation</a> as node npm package.
+</p>
+
+<p>
+<a href="https://github.com/kriskowal/q-connection" class="urlextern" target="_blank" title="https://github.com/kriskowal/q-connection" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Similar to ref_send, but connection-oriented and symmetric</a>
+</p>
+
+<p>
+<a href="https://sites.google.com/site/belayresearchproject/introduction/concepts" class="urlextern" target="_blank" title="https://sites.google.com/site/belayresearchproject/introduction/concepts" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">BCap, another RESTful JSON object-capability protocol</a>
+</p>
+
+<p>
+<a href="http://erights.org/elib/distrib/captp/" class="urlextern" target="_blank" title="http://erights.org/elib/distrib/captp/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">CapTP</a> and <a href="http://code.google.com/p/caja-captp/" class="urlextern" target="_blank" title="http://code.google.com/p/caja-captp/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">caja-captp</a>
+</p>
+
+<p>
+<a href="http://wiki.erights.org/wiki/Causeway" class="urlextern" target="_blank" title="http://wiki.erights.org/wiki/Causeway" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Causeway, a message oriented distributed debugger</a>
+</p>
+
+<p>
+<a href="http://softech.informatik.uni-kl.de/twiki/pub/Homepage/Publikationen/SchaeferPoetzschHeffter10jcobox.pdf" class="urlextern" target="_blank" title="http://softech.informatik.uni-kl.de/twiki/pub/Homepage/Publikationen/SchaeferPoetzschHeffter10jcobox.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">JCoBox</a> (has a formal semantics of a similar model)
+</p>
+
+<p>
+<a href="http://www.hpl.hp.com/techreports/2009/HPL-2009-258.html" class="urlextern" target="_blank" title="http://www.hpl.hp.com/techreports/2009/HPL-2009-258.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Towards Fearless Distributed Computing</a>
+</p>
+
+<p>
+<a href="http://research.microsoft.com/apps/pubs/?id=141999" class="urlextern" target="_blank" title="http://research.microsoft.com/apps/pubs/?id=141999" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Orleans: A Framework for Cloud Computing</a> with <a href="http://channel9.msdn.com/Shows/Going+Deep/Project-Orleans-A-Cloud-Computing-Framework" class="urlextern" target="_blank" title="http://channel9.msdn.com/Shows/Going+Deep/Project-Orleans-A-Cloud-Computing-Framework" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">video</a>. Starts with the same general model &ndash; async messages returning promises, vats (called grains) processing the reception of such messages in sequential turns that run to completion, pipelined polymorphism between promises and far references. Adds scalability by on-demand grain replication and optimistic reconciliation. 
+</p>
+
+<p>
+<a href="http://www.cs.rochester.edu/u/cding/amp/papers/full/The%20Asynchronous%20Partitioned%20Global%20Address%20Space%20Model.pdf" class="urlextern" target="_blank" title="http://www.cs.rochester.edu/u/cding/amp/papers/full/The%20Asynchronous%20Partitioned%20Global%20Address%20Space%20Model.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">The Asynchronous Partitioned Global Address Space Model</a>
+</p>
+
+<p>
+<a href="http://softech.informatik.uni-kl.de/twiki/pub/Homepage/Publikationen/loctypes2011tr.pdf" class="urlextern" target="_blank" title="http://softech.informatik.uni-kl.de/twiki/pub/Homepage/Publikationen/loctypes2011tr.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Location Types for Safe Distributed Object-Oriented
+Programming</a>
+</p>
+
+<p>
+<a href="http://www.infoq.com/presentations/Secure-Distributed-Programming" class="urlextern" target="_blank" title="http://www.infoq.com/presentations/Secure-Distributed-Programming" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Secure Distributed Programming on ECMAScript 5 + HTML5 Platforms</a>
+</p>
+
+<p>
+<a href="http://asyncobjects.sourceforge.net/asyncscala/" class="urlextern" target="_blank" title="http://asyncobjects.sourceforge.net/asyncscala/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">AsyncScala</a>
+</p>
+
+<p>
+<a href="http://static.googleusercontent.com/external_content/untrusted_dlcp/research.google.com/en/us/pubs/archive/40673.pdf" class="urlextern" target="_blank" title="http://static.googleusercontent.com/external_content/untrusted_dlcp/research.google.com/en/us/pubs/archive/40673.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Distributed Electronic Rights in JavaScript</a>
+</p>
+
+<p>
+<a href="lib/exe/fetch.php%3Fid=strawman%253Aconcurrency&amp;cache=cache&amp;media=strawman:promisesvsmonads2.pdf" class="urlextern" title="strawman:promisesvsmonads2.pdf" style="background-image: url(lib/images/fileicons/pdf.png)" onclick="return svchk()" onkeypress="return svchk()">Promises vs. Monads</a> Slide Deck
+</p>
+
+<p>
+<a href="lib/exe/fetch.php%3Fid=strawman%253Aconcurrency&amp;cache=cache&amp;media=strawman:roadmap.pdf" class="urlextern" title="strawman:roadmap.pdf" style="background-image: url(lib/images/fileicons/pdf.png)" onclick="return svchk()" onkeypress="return svchk()">Draft ES6,ES7,ES8... Roadmap</a> Slide Deck 
+</p>
+
+</div>
+<!-- SECTION [29121-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/c/cccae91ec991f5e7289ecb9569d459f1.xhtml used -->
+</body>
+</html>

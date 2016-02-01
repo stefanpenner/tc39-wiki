@@ -1,0 +1,117 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=globalization:prioritizelocales&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=globalization" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=globalization:prioritizelocales&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=globalization:prioritizelocales&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=globalization:prioritizelocales&amp;do=export_html.html#prioritizelocales" class="toc">PrioritizeLocales</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=globalization:prioritizelocales&amp;do=export_html.html#use_cases" class="toc">Use cases</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=globalization:prioritizelocales&amp;do=export_html.html#proposed_api" class="toc">Proposed API</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=globalization:prioritizelocales&amp;do=export_html.html#raw_approach" class="toc">Raw approach</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=globalization:prioritizelocales&amp;do=export_html.html#discussion" class="toc">Discussion</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=globalization:prioritizelocales&amp;do=export_html.html#references" class="toc">References</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="prioritizelocales"></a><h1>PrioritizeLocales</h1>
+<div class="level1">
+
+<p>
+ This is a proposal to add an <acronym title="Application Programming Interface">API</acronym> to provide simple language negotiation algorithm that matches internal Intl negotiation.
+</p>
+
+</div>
+<!-- SECTION [1-156] -->
+<a name="use_cases"></a><h2>Use cases</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Client side localization frameworks need a way to negotiate between requested and available locales</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [157-286] -->
+<a name="proposed_api"></a><h2>Proposed API</h2>
+<div class="level2">
+<pre class="code javascript">&nbsp;
+&nbsp;
+&nbsp;
+<span class="coMULTI">/**
+ * Build a fallback chain list of available locales matching the requested locales
+ * displayLocale {LocaleList|String} Locale in which names are displayed.
+ * availableLocales {LocaleList} List of available locales provided by the application
+ * requestedLocales {LocaleList} Ordered list of locales provided by the user
+ * defaultLocale {String} An ultimate fallback locale, used as a last resort
+ *
+ * returns: An ordered {LocaleList} of availableLocales that match user preference
+ */</span>
+ 
+Intl.<span class="me1">PrioritizeLocales</span><span class="br0">&#40;</span>availableLocales, requestedLocales, defaultLocale<span class="br0">&#41;</span>;
+&nbsp;</pre>
+</div>
+<!-- SECTION [287-914] -->
+<a name="raw_approach"></a><h2>Raw approach</h2>
+<div class="level2">
+
+<p>
+ Alternatively, we could expose ECMA 402 functions needed by prioritizeLocales and let frameworks build the wrapper by themselves.
+</p>
+
+<p>
+For that, we will need: 
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="doku.php%3Fid=globalization:expose_canonicalize.html" class="urlextern" target="_blank" title="http://wiki.ecmascript.org/doku.php?id=globalization:expose_canonicalize" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow"> Expose Canonicalize*</a> functions</div>
+</li>
+<li class="level1"><div class="li"> Intl.LookupAvailableLocales - <acronym title="Application Programming Interface">API</acronym> very similar to <a href="http://ecma-international.org/ecma-402/1.0/#sec-9.2.6" class="urlextern" target="_blank" title="http://ecma-international.org/ecma-402/1.0/#sec-9.2.6" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow"> LookupSupportedLocales</a> but returning available codes, not requested ones.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [915-1400] -->
+<a name="discussion"></a><h2>Discussion</h2>
+<div class="level2">
+
+<p>
+  * requestedLocales may be based on <a href="https://www.w3.org/Bugs/Public/show_bug.cgi?id=23517" class="urlextern" target="_blank" title="https://www.w3.org/Bugs/Public/show_bug.cgi?id=23517" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow"> navigator.languages</a> list
+</p>
+
+</div>
+<!-- SECTION [1401-1546] -->
+<a name="references"></a><h2>References</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="https://github.com/l20n/l20n.js/blob/master/lib/l20n/intl.js#L434" class="urlextern" target="_blank" title="https://github.com/l20n/l20n.js/blob/master/lib/l20n/intl.js#L434" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow"> PriorizeLocales used in L20n</a></div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1547-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/0/05eaeaa19312135ce26ff748250f5324.xhtml used -->
+</body>
+</html>

@@ -1,0 +1,748 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:iterators_and_generators&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:iterators_and_generators&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:iterators_and_generators&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:iterators_and_generators&amp;do=export_html.html#iterators_and_generators" class="toc">Iterators and Generators</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:iterators_and_generators&amp;do=export_html.html#iteration_protocol" class="toc">Iteration Protocol</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:iterators_and_generators&amp;do=export_html.html#enumeration" class="toc">Enumeration</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:iterators_and_generators&amp;do=export_html.html#itemization" class="toc">Itemization</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:iterators_and_generators&amp;do=export_html.html#compatibility" class="toc">Compatibility</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:iterators_and_generators&amp;do=export_html.html#coherence" class="toc">Coherence</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:iterators_and_generators&amp;do=export_html.html#generators" class="toc">Generators</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:iterators_and_generators&amp;do=export_html.html#comprehensions" class="toc">Comprehensions</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:iterators_and_generators&amp;do=export_html.html#example" class="toc">Example</a></span></li>
+</ul>
+</div>
+</div>
+
+<p>
+(Also see the <a href="doku.php%3Fid=discussion:iterators_and_generators.html" class="wikilink1" title="discussion:iterators_and_generators" onclick="return svchk()" onkeypress="return svchk()">discussion page</a>.)
+</p>
+
+<a name="iterators_and_generators"></a><h1>Iterators and Generators</h1>
+<div class="level1">
+
+<p>
+ This proposal extends the <code>for-in</code> loop in ES1-3 and the <code>for-each-in</code> loop from E4X (ECMA-357) by imitating Python&rsquo;s <a href="http://www.python.org/peps/pep-0234.html" class="urlextern" target="_blank" title="http://www.python.org/peps/pep-0234.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">iteration protocol</a>. It builds on this protocol with support for generators (see <a href="http://www.python.org/peps/pep-0255.html" class="urlextern" target="_blank" title="http://www.python.org/peps/pep-0255.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">PEP 255</a> and <a href="http://www.python.org/peps/pep-0342.html" class="urlextern" target="_blank" title="http://www.python.org/peps/pep-0342.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">PEP 342</a>) and array comprehensions modeled on Python&rsquo;s <a href="http://www.python.org/peps/pep-0202.html" class="urlextern" target="_blank" title="http://www.python.org/peps/pep-0202.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">list
+comprehensions</a> (full grammar <a href="http://www.python.org/doc/current/ref/lists.html#l2h-238" class="urlextern" target="_blank" title="http://www.python.org/doc/current/ref/lists.html#l2h-238" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">here</a>). Where language differences or sufficiently better ideas provide strong enough reason, this proposal differs in substance from the Python prior art.
+</p>
+
+<p>
+The premises of this proposal are: 
+</p>
+<ul>
+<li class="level1"><div class="li"> The <code>for-in</code> loop is broken, because it does <strong>enumeration</strong>, not <strong>iteration</strong>, of property identifiers.</div>
+<ul>
+<li class="level2"><div class="li"> As under-specified in ES1-3, enumeration visits properties in an implementation-defined order. In reality, browser inter-operation requires visiting in creation order, since Netscape 2.</div>
+</li>
+<li class="level2"><div class="li"> Enumeration skips DontEnum properties. Prior to ES4, you could not set a DontEnum property, so user-set properties can break <code>for-in</code> loops and are anathema to <a href="http://erik.eae.net/archives/2005/06/06/22.13.54/" class="urlextern" target="_blank" title="http://erik.eae.net/archives/2005/06/06/22.13.54/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Ajax gurus</a>.</div>
+</li>
+<li class="level2"><div class="li"> Enumeration walks the prototype chain, skipping enumerable but &ldquo;shadowed&rdquo; properties (where a property of the same name exists ahead of the shadowed property on the prototype object).</div>
+</li>
+<li class="level2"><div class="li"> Enumeration coerces the property name to <code>string</code> type, when it could more usefully remain, e.g., <code>uint</code> for <code>Array</code> elements.</div>
+</li>
+<li class="level2"><div class="li"> Enumeration skips properties that existed at the start of the loop but that were deleted before visited.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Iteration over a well-ordered sequence of values is what most users want when they write <code>for-in</code> loops.</div>
+<ul>
+<li class="level2"><div class="li"> Inspecting existing objects via <code>for-in</code> should work as before.</div>
+</li>
+<li class="level2"><div class="li"> New ES4 and user-defined objects may customize iteration.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <code>for-each-in</code> loops (from E4X) also enumerate, but (this is the first premise again) were intended to iterate.</div>
+<ul>
+<li class="level2"><div class="li"> In E4X they iterate in a well-defined (natural number) order over <code>XMLList</code> element values.</div>
+</li>
+<li class="level2"><div class="li"> Any iteration over enumerable prototype property values is unintended and such user-set proto-properties will break E4X scripts.</div>
+</li>
+<li class="level2"><div class="li"> A common confusion, or request for enhancement: that <code>for-in</code> iterates over <code>Array</code> values, not indexes. Resolvable by using <code>for-each-in</code>, but more usably fixed if the language supported customizable iteration.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Compelling use cases for a special form of a function that can yield values to a caller (directly to the caller, no arbitrary stack unwinding and rewinding) exist in common ES embeddings.</div>
+</li>
+<li class="level1"><div class="li"> Conserving syntax should be done if the revised meaning is a <a href="doku.php%3Fid=proposals:bug_fixes.html" class="wikilink1" title="proposals:bug_fixes" onclick="return svchk()" onkeypress="return svchk()">bug fix</a> (i.e., more likely to please than frustrate).</div>
+</li>
+<li class="level1"><div class="li"> Sharing syntax with Python is a secondary but still worthy goal.</div>
+</li>
+</ul>
+
+<p>
+ The conclusion embodied by this proposal is that there should be an iteration protocol used by the <code>for-in</code> loop for all object types, defaulting to enumeration, which may be overridden. The ES4 spec and new code may define objects that are <strong>iterators</strong>, which implement the protocol. Further, there should be a way to write <strong>generator</strong> functions that yield values via special syntax, and that may participate in the iteration protocol. Finally, <strong>comprehension</strong> syntax for populating arrays from iterators is proposed as a nicety familiar to Python and other programmers.
+</p>
+
+</div>
+<!-- SECTION [74-3625] -->
+<a name="iteration_protocol"></a><h2>Iteration Protocol</h2>
+<div class="level2">
+
+<p>
+ <strong>Spec location:</strong> <a href="doku.php%3Fid=spec:chapter_6_types.html#iterator_types" class="wikilink1" title="spec:chapter_6_types" onclick="return svchk()" onkeypress="return svchk()">Chapter 6 Types: Iterator types</a>
+</p>
+
+<p>
+Let <code>iterator</code> name a built-in namespace:
+</p>
+<pre class="code javascript"><span class="kw2">namespace</span> iterator;</pre>
+<p>
+In this proposal, the following pragma is in effect except where overridden explicitly:
+</p>
+<pre class="code javascript"><span class="kw2">use</span> <span class="kw2">default</span> <span class="kw2">namespace</span> iterator;</pre>
+<p>
+Let <code>Iterable</code> be the following structural type:
+</p>
+<pre class="code javascript">type Iterable.&lt;T&gt; = <span class="br0">&#123;</span>
+  iterator::get: <span class="kw2">function</span> <span class="br0">&#40;</span>boolean=<span class="br0">&#41;</span> : Iterator.&lt;T&gt;
+<span class="br0">&#125;</span>;</pre>
+<p>
+The <code>iterator::get</code> method finds or creates an iterator for the iterable. Its <code>boolean</code> parameter, which by convention defaults to <code>false</code>, controls whether the iterator considers prototype objects. Getting an iterator for an iterable is thus delegated to the iterable&rsquo;s implementation.
+</p>
+
+<p>
+Let <code>Iterator</code> be the following structural type:
+</p>
+<pre class="code javascript">type Iterator.&lt;T&gt; = <span class="br0">&#123;</span>
+  next: <span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> : T
+<span class="br0">&#125;</span>;</pre>
+<p>
+By convention, an iterator is iterable and returns itself as the result of its <code>iterator::get</code> method. So viewed as an iterable, an iterator is its own iterator.
+</p>
+
+<p>
+Not all iterables are iterators.  Only those iterables that both 
+</p>
+<ul>
+<li class="level1"><div class="li"> return themselves from their <code>iterator::get</code> methods, and</div>
+</li>
+<li class="level1"><div class="li"> match <code>Iterator</code>, that is, have a <code>next</code> method taking no arguments and returning a value of a given type</div>
+</li>
+</ul>
+
+<p>
+ are iterators.
+</p>
+
+<p>
+Let <code>StopIteration</code> be a global constant pre-bound to a singleton exception object:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> StopIterationClass <span class="br0">&#123;</span>
+  <span class="kw2">public</span> <span class="kw2">function</span> toString<span class="br0">&#40;</span><span class="br0">&#41;</span> : string 
+    <span class="st0">"[object StopIteration]"</span>;
+<span class="br0">&#125;</span>
+<span class="kw2">public</span> <span class="kw2">const</span> StopIteration : StopIterationClass = <span class="kw2">new</span> StopIterationClass;</pre>
+<p>
+An iterator returns zero or more values from its <code>next</code> method, throwing <code>StopIteration</code> when it is exhausted.  Repeated calls to <code>next</code> on an exhausted iterator throw <code>StopIteration</code> for each call.
+</p>
+
+<p>
+Note that there is no <code>Iterator</code> nominal type (contrast with <a href="http://developer.mozilla.org/en/docs/New_in_JavaScript_1.7#Iterators" class="urlextern" target="_blank" title="http://developer.mozilla.org/en/docs/New_in_JavaScript_1.7#Iterators" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">JS1.7</a>). It is misleading to programmers unfamiliar with structural type systems to have such a type; such programmers are likely to want to subclass <code>Iterator</code> to implement an iterator type, when there is no such requirement.
+</p>
+
+<p>
+The <code>for-in</code> loop specified in ES3 12.6.4 can be written as a <code>while</code> loop using the iteration protocol:
+</p>
+<pre class="code javascript"><span class="kw1">for</span> <span class="br0">&#40;</span>i <span class="kw1">in</span> o<span class="br0">&#41;</span>
+  ...</pre>
+<p>
+is equivalent to:
+</p>
+<pre class="code javascript"><span class="br0">&#123;</span>
+  let $it = iterator::GET<span class="br0">&#40;</span>o, <span class="kw2">true</span><span class="br0">&#41;</span>;
+  <span class="kw1">while</span> <span class="br0">&#40;</span><span class="kw2">true</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">try</span> <span class="br0">&#123;</span>
+      i = $it.<span class="me1">next</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span> <span class="kw1">catch</span> <span class="br0">&#40;</span>e : iterator::StopIterationClass<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">break</span>;
+    <span class="br0">&#125;</span>
+    ...
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+where <code>$it</code> is guaranteed not to collide with any name bound in <code>...</code>, or shadow any name used in <code>...</code>. The function <code>iterator::GET</code> is defined (in the <code>iterator</code> namespace) as:
+</p>
+<pre class="code javascript"><span class="kw2">const</span> <span class="kw2">function</span> GET<span class="br0">&#40;</span>start: Object!, deep: boolean<span class="br0">&#41;</span>: Iterator.&lt;*&gt;
+  <span class="br0">&#40;</span>start like iterator::Iterable.&lt;*&gt;<span class="br0">&#41;</span>
+  ? start.<span class="me1">iterator</span>::get<span class="br0">&#40;</span>deep<span class="br0">&#41;</span>
+  : iterator::DEFAULT_GET<span class="br0">&#40;</span>start, deep<span class="br0">&#41;</span>;</pre>
+</div>
+<!-- SECTION [3626-6612] -->
+<a name="enumeration"></a><h2>Enumeration</h2>
+<div class="level2">
+
+<p>
+ <code>Enumerator</code> is a parameterized class that may be instantiated with the iteration result type <code>T</code>. Once instantiated, an <code>Enumerator.&lt;T&gt;</code> type may be constructed via <code>new</code> with a result function <code>f</code> to get an iterator over the enumerable properties of an object <code>v</code>, and optionally (depending on the <code>e</code> flag) of objects along the initial object&rsquo;s prototype chain. Each iteration step invokes the result function on the property&rsquo;s identifier and the initial object value passed to the constructor (<code>v</code>, if it is of type <code>Object!</code>). The <code>Enumerator</code> class is callable as a shorthand for constructing a new instance.
+</p>
+<pre class="code javascript">type EnumerableId      = <span class="br0">&#40;</span>string, <span class="kw3">Name</span><span class="br0">&#41;</span>;
+type EnumerableIdArray = <span class="br0">&#91;</span>EnumerableId<span class="br0">&#93;</span>;
+&nbsp;
+<span class="kw2">class</span> Enumerator.&lt;T&gt; <span class="br0">&#123;</span>
+  type ResultFun = <span class="kw2">function</span><span class="br0">&#40;</span>EnumerableId, Object!<span class="br0">&#41;</span> : T;
+&nbsp;
+  <span class="kw2">function</span> Enumerator<span class="br0">&#40;</span>v, f : ResultFun, e : boolean = <span class="kw2">false</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    initial_obj = <span class="br0">&#40;</span>v <span class="kw1">is</span> Object<span class="br0">&#41;</span> ? v : <span class="kw2">null</span>;
+    current_obj = initial_obj;
+    current_ids = magic::getEnumerableIds<span class="br0">&#40;</span>initial_obj<span class="br0">&#41;</span>;
+    result_fun = f;
+    enumerate = e;
+  <span class="br0">&#125;</span>
+&nbsp;
+  meta static <span class="kw2">function</span> invoke<span class="br0">&#40;</span>v<span class="br0">&#41;</span> : Iterator.&lt;T&gt;
+    <span class="kw2">new</span> Enumerator<span class="br0">&#40;</span>v<span class="br0">&#41;</span>;
+&nbsp;
+  iterator <span class="kw2">function</span> get<span class="br0">&#40;</span>e : boolean = <span class="kw2">false</span><span class="br0">&#41;</span> : Iterator.&lt;T&gt;
+    <span class="br0">&#40;</span>e == enumerate<span class="br0">&#41;</span> ? <span class="kw1">this</span> : <span class="kw2">new</span> Enumerator.&lt;T&gt;<span class="br0">&#40;</span>inital_obj, result_fun, e<span class="br0">&#41;</span>;
+&nbsp;
+  <span class="kw2">public</span> <span class="kw2">function</span> next<span class="br0">&#40;</span><span class="br0">&#41;</span> : T <span class="br0">&#123;</span>
+    <span class="kw1">if</span> <span class="br0">&#40;</span>current_obj === <span class="kw2">null</span><span class="br0">&#41;</span>
+      <span class="kw1">throw</span> StopIteration;
+&nbsp;
+  loop:
+    <span class="kw1">while</span> <span class="br0">&#40;</span><span class="kw2">true</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">if</span> <span class="br0">&#40;</span>current_index === current_ids.<span class="me1">length</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">if</span> <span class="br0">&#40;</span>!enumerate<span class="br0">&#41;</span>
+          <span class="kw1">throw</span> StopIteration;
+&nbsp;
+        <span class="co1">// No more properties in current_obj: try walking up the prototype chain.</span>
+        current_obj = magic::getPrototype<span class="br0">&#40;</span>current_obj<span class="br0">&#41;</span>;
+        <span class="kw1">if</span> <span class="br0">&#40;</span>current_obj === <span class="kw2">null</span><span class="br0">&#41;</span>
+          <span class="kw1">throw</span> StopIteration;
+ 
+        current_ids = magic::getEnumerableIds<span class="br0">&#40;</span>current_obj<span class="br0">&#41;</span>;
+        current_index = <span class="nu0">0</span>;
+      <span class="br0">&#125;</span>
+&nbsp;
+      let id : EnumerableId = current_ids<span class="br0">&#91;</span>current_index++<span class="br0">&#93;</span>;
+&nbsp;
+      <span class="co1">// Check for a shadowing property from initial_obj to current_obj on the prototype chain.</span>
+      <span class="kw1">for</span> <span class="br0">&#40;</span>let obj : Object = initial_obj; obj !== current_obj; obj = magic::getPrototype<span class="br0">&#40;</span>obj<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">if</span> <span class="br0">&#40;</span>magic::hasOwnProperty<span class="br0">&#40;</span>obj, id<span class="br0">&#41;</span><span class="br0">&#41;</span>
+          <span class="kw1">continue</span> loop;
+      <span class="br0">&#125;</span>
+ 
+      <span class="co1">// Check whether name is still bound in order to skip deleted properties.</span>
+      <span class="kw1">if</span> <span class="br0">&#40;</span>magic::hasOwnProperty<span class="br0">&#40;</span>current_obj, id<span class="br0">&#41;</span><span class="br0">&#41;</span>
+        <span class="kw1">return</span> result_fun<span class="br0">&#40;</span>id, initial_obj<span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span>
+&nbsp;
+  <span class="kw2">private</span> <span class="kw2">var</span> initial_obj   : Object,
+              current_obj   : Object,
+              current_ids   : EnumerableIdArray,
+              current_index : uint,
+              result_fun    : ResultFun,
+              enumerate     : boolean;
+<span class="br0">&#125;</span></pre>
+<p>
+The <code>magic::getEnumerableIds</code> primitive has type <code>function (Object) : EnumerableIdArray</code> and returns an array of values identifying enumerable properties in its argument object, or an empty array for <code>null</code>. The identifiers are arrayed in property creation order. If an identifier fits in <code>int</code>, it is stored using type <code>int</code>, likewise for <code>uint</code>; otherwise it is stored as a <code>string</code> unless it is a namespace-qualified identifier, in which case it is stored as a <code><a href="doku.php%3Fid=proposals:name_objects.html" class="wikilink1" title="proposals:name_objects" onclick="return svchk()" onkeypress="return svchk()">Name object</a></code> (this is prefigured by the <code>QName</code> object in E4X).
+</p>
+
+<p>
+The <code>magic::getEnumerableIds</code> primitive is a specification device only. Implementations may avoid ever allocating anything like the array that it returns, so long as they observably behave the same as the reference implementation that is based on this primitive.
+</p>
+
+<p>
+All objects are iterable by the <code>for-in</code> loop. If an object does not define <code>iterator::get</code>, it delegates to the <code>iterator::DEFAULT_GET</code> constant function, which is defined as follows (once again, in default namespace <code>iterator</code>):
+</p>
+<pre class="code javascript"><span class="kw2">const</span> <span class="kw2">function</span> DEFAULT_GET<span class="br0">&#40;</span>start: Object!, deep: boolean = <span class="kw2">false</span><span class="br0">&#41;</span>: Iterator.&lt;string&gt;
+  <span class="kw2">new</span> Enumerator.&lt;string&gt;<span class="br0">&#40;</span>start,
+                          <span class="kw2">function</span> <span class="br0">&#40;</span>id: string, obj: Object!<span class="br0">&#41;</span>: string
+                            <span class="br0">&#40;</span>id <span class="kw1">is</span> <span class="kw3">Name</span><span class="br0">&#41;</span> ? id.<span class="me1">identifier</span> : string<span class="br0">&#40;</span>id<span class="br0">&#41;</span>,
+                          deep<span class="br0">&#41;</span>;</pre>
+<p>
+Thus the <code>for-in</code> loop enumerates as specified by prose in ECMA-262 Edition 3, section 12.6.4, the last two paragraphs. In contrast to ES1-3, the current proposal specifies and implements enumeration using self-hosted code based on only the <span class="curid"><a href="doku.php%3Fid=proposals:iterators_and_generators.html#iteration_protocol" class="wikilink1" title="proposals:iterators_and_generators" onclick="return svchk()" onkeypress="return svchk()">iteration protocol</a></span> and the new <code>magic::getEnumerableIds</code> primitive.
+</p>
+
+<p>
+Note that <code>Object.prototype.iterator::get</code> is left undefined. This proposal modifies the logic underlying <code>for-in</code> loops to test whether the object on the right of <code>in</code> is <code>like iterator::Iterable.&lt;*&gt;</code>, and to default to enumeration if not. This is similar to how Python detects its <code>__iter__</code> method, which is not defined for all Python types. Expressed in ES4 terms, a loop of the form <code>for (i in o) ...</code> tests whether <code>o like iterator::Iterable.&lt;*&gt;</code>. If the <code>like</code> test succeeds, it calls <code>o.iterator::get(true)</code>; if the test fails, <code>iterator::DEFAULT_GET(o, true)</code>.
+</p>
+
+</div>
+<!-- SECTION [6613-11548] -->
+<a name="itemization"></a><h2>Itemization</h2>
+<div class="level2">
+
+<p>
+ E4X specifies the <code>for-each-in</code> loop as iterating over values of enumerable properties, rather than names (see ECMA-357 section 12.3 and note the erratum: deleted properties not yet visited MUST NOT be visited, per ECMA-262 12.6.4, the next-to-last paragraph). Call this kind of iteration &ldquo;itemization&rdquo;. Since ES4&rsquo;s grammar includes <code>for each</code> loop syntax, and it is part of several existing implementations (AS3, JS1.6+), we propose to support it as follows:
+</p>
+<pre class="code javascript">type KeyType   = EnumerableId,
+     ValueType = *,
+     ItemType  = <span class="br0">&#91;</span>KeyType, ValueType<span class="br0">&#93;</span>;
+&nbsp;
+<span class="kw2">const</span> <span class="kw2">function</span> values<span class="br0">&#40;</span>v: *, deep: boolean = <span class="kw2">false</span><span class="br0">&#41;</span>: Iterator.&lt;ValueType&gt; <span class="br0">&#123;</span>
+  <span class="kw1">if</span> <span class="br0">&#40;</span>v <span class="kw1">is</span> Itemizable.&lt;KeyType, ValueType, ItemType&gt;<span class="br0">&#41;</span>
+    <span class="kw1">return</span> v.<span class="me1">iterator</span>::getValues<span class="br0">&#40;</span>deep<span class="br0">&#41;</span>;
+  <span class="kw1">if</span> <span class="br0">&#40;</span>v <span class="kw1">is</span> Object!<span class="br0">&#41;</span>
+    <span class="kw1">return</span> DEFAULT_GET_VALUES<span class="br0">&#40;</span>v, deep<span class="br0">&#41;</span>;
+  <span class="kw1">return</span> <span class="kw2">null</span>;
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">const</span> <span class="kw2">function</span> DEFAULT_GET_VALUES<span class="br0">&#40;</span>start: Object!, deep: boolean = <span class="kw2">false</span><span class="br0">&#41;</span>: Iterator.&lt;ValueType&gt;
+  <span class="kw2">new</span> Enumerator.&lt;ValueType&gt;<span class="br0">&#40;</span>start,
+                             <span class="kw2">function</span> <span class="br0">&#40;</span>id: EnumerableId, obj: Object!<span class="br0">&#41;</span>: ValueType
+                               obj<span class="br0">&#91;</span>id<span class="br0">&#93;</span>,
+                             deep<span class="br0">&#41;</span>;</pre>
+<p>
+As with <code>iterator::get</code>, the <code>iterator::DEFAULT_GET_VALUES</code> function is used when an object does not define or inherit its own <code>iterator::getValues</code> property.
+</p>
+
+<p>
+Using <code>iterator::values</code>, a <code>for-each-in</code> loop can be rewritten as a <code>for-in</code> loop.  This loop:
+</p>
+<pre class="code javascript"><span class="kw1">for</span> each <span class="br0">&#40;</span>v <span class="kw1">in</span> o<span class="br0">&#41;</span>
+  ...</pre>
+<p>
+is equivalent to this loop:
+</p>
+<pre class="code javascript"><span class="kw1">for</span> <span class="br0">&#40;</span>v <span class="kw1">in</span> iterator::values<span class="br0">&#40;</span>o<span class="br0">&#41;</span><span class="br0">&#41;</span>
+  ...</pre>
+<p>
+The <a href="doku.php%3Fid=proposals:destructuring_assignment.html" class="wikilink1" title="proposals:destructuring_assignment" onclick="return svchk()" onkeypress="return svchk()">destructuring assignment</a> proposal introduces another variant of the <code>for-in</code> loop:
+</p>
+<pre class="code javascript"><span class="kw1">for</span> <span class="br0">&#40;</span><span class="br0">&#91;</span>k, v<span class="br0">&#93;</span> <span class="kw1">in</span> o<span class="br0">&#41;</span>
+  ...</pre>
+<p>
+This form iterates <code>k</code> and <code>v</code> over the key (index, identifier, or qualified name) and value of each enumerable property in <code>o</code>. To generalize it via the iteration protocol, we introduce <code>iterator::DEFAULT_GET_ITEMS</code> in the same way that <code>iterator::DEFAULT_GET_VALUES</code> back-stops <code>for-each-in</code>:
+</p>
+<pre class="code javascript"><span class="kw2">const</span> <span class="kw2">function</span> items<span class="br0">&#40;</span>v, deep: boolean = <span class="kw2">false</span><span class="br0">&#41;</span>: Iterator.&lt;ItemType&gt; <span class="br0">&#123;</span>
+  <span class="kw1">if</span> <span class="br0">&#40;</span>v <span class="kw1">is</span> Itemizable.&lt;KeyType, ValueType, ItemType&gt;<span class="br0">&#41;</span>
+    <span class="kw1">return</span> v.<span class="me1">iterator</span>::getItems<span class="br0">&#40;</span>deep<span class="br0">&#41;</span>;
+  <span class="kw1">if</span> <span class="br0">&#40;</span>v <span class="kw1">is</span> Object!<span class="br0">&#41;</span>
+    <span class="kw1">return</span> DEFAULT_GET_ITEMS<span class="br0">&#40;</span>v, deep<span class="br0">&#41;</span>;
+  <span class="kw1">return</span> <span class="kw2">null</span>;
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">const</span> <span class="kw2">function</span> DEFAULT_GET_ITEMS<span class="br0">&#40;</span>start: Object!, deep: boolean = <span class="kw2">false</span><span class="br0">&#41;</span>: Iterator.&lt;ItemType&gt;
+  <span class="kw2">new</span> Enumerator.&lt;ItemType&gt;<span class="br0">&#40;</span>start,
+                            <span class="kw2">function</span> <span class="br0">&#40;</span>id: EnumerableId, obj: Object!<span class="br0">&#41;</span>: ItemType
+                              <span class="br0">&#91;</span>id, obj<span class="br0">&#91;</span>id<span class="br0">&#93;</span><span class="br0">&#93;</span>,
+                            deep<span class="br0">&#41;</span>;</pre>
+<p>
+Users of JS1.7 (see <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=366941" class="urlextern" target="_blank" title="https://bugzilla.mozilla.org/show_bug.cgi?id=366941" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Mozilla bug 366941</a>) want general destructuring of iterated values, e.g. <code>for ([s,v,o] in triple_db) ...</code> and are surprised that using a <code>[k, v]</code> pattern has special meaning, or is the only destructuring pattern allowed.
+</p>
+<ul>
+<li class="level1"><div class="li"> Should general destructuring be allowed?</div>
+</li>
+<li class="level1"><div class="li"> If so, should there be a <code>[k, v]</code> itemization special case?</div>
+</li>
+<li class="level1"><div class="li"> If so, how should general destructuring interact with the <code>[k, v]</code> itemization special form?</div>
+</li>
+</ul>
+
+<p>
+ This proposal specifies that general destructuring <strong>is</strong> allowed, but that there <strong>is not</strong> a <code>[k, v]</code> special case. Thus, in general, <code>for-in</code> loops with destructuring patterns on the left of <code>in</code> rewrite from:
+</p>
+<pre class="code javascript"><span class="kw1">for</span> <span class="br0">&#40;</span>pattern <span class="kw1">in</span> o<span class="br0">&#41;</span>
+  ...</pre>
+<p>
+to:
+</p>
+<pre class="code javascript"><span class="br0">&#123;</span>
+  let $it = iterator::GET<span class="br0">&#40;</span>o, <span class="kw2">true</span><span class="br0">&#41;</span>;
+  <span class="kw1">while</span> <span class="br0">&#40;</span><span class="kw2">true</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">try</span> <span class="br0">&#123;</span>
+      pattern = $it.<span class="me1">next</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span> <span class="kw1">catch</span> <span class="br0">&#40;</span>e : iterator::StopIterationClass<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">break</span>;
+    <span class="br0">&#125;</span>
+    ...
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+Users who want to iterate over key-value items must write <code>for ([k, v] in iterator::items(o)) ...</code> or equivalent. This avoids any confusing double-meaning of the length-2 array pattern.
+</p>
+
+<p>
+For symmetry with <code>values</code> and <code>items</code>, there is a <code>keys</code> function in <code>iterator</code>, which delegates to a <code>getKey</code> method on its <code>v</code> parameter:
+</p>
+<pre class="code javascript"><span class="kw2">function</span> keys<span class="br0">&#40;</span>v, deep: boolean = <span class="kw2">false</span><span class="br0">&#41;</span>: Iterator.&lt;KeyType&gt; <span class="br0">&#123;</span>
+  <span class="kw1">if</span> <span class="br0">&#40;</span>v <span class="kw1">is</span> Itemizable.&lt;KeyType, ValueType, ItemType&gt;<span class="br0">&#41;</span>
+    <span class="kw1">return</span> v.<span class="me1">iterator</span>::getKeys<span class="br0">&#40;</span>deep<span class="br0">&#41;</span>;
+  <span class="kw1">if</span> <span class="br0">&#40;</span>v <span class="kw1">is</span> Object!<span class="br0">&#41;</span>
+    <span class="kw1">return</span> DEFAULT_GET_KEYS<span class="br0">&#40;</span>v, deep<span class="br0">&#41;</span>;
+  <span class="kw1">return</span> <span class="kw2">null</span>;
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">const</span> <span class="kw2">function</span> DEFAULT_GET_KEYS<span class="br0">&#40;</span>start: Object!, deep: boolean = <span class="kw2">false</span><span class="br0">&#41;</span>: Iterator.&lt;KeyType&gt;
+  <span class="kw2">new</span> Enumerator.&lt;KeyType&gt;<span class="br0">&#40;</span>start,
+                           <span class="kw2">function</span> <span class="br0">&#40;</span>id: EnumerableId, obj: Object!<span class="br0">&#41;</span>: KeyType
+                             id,
+                           deep<span class="br0">&#41;</span>;</pre>
+<p>
+The <code>iterator::DEFAULT_GET_KEYS</code> method is used when the iterable object has no <code>iterator::getKeys</code> property.
+</p>
+
+<p>
+The <code>getKeys</code>, <code>getValues</code>, and <code>getItems</code> protocols imply a structural type for itemizable objects:
+</p>
+<pre class="code javascript">type Itemizable.&lt;K, V, I&gt; = <span class="br0">&#123;</span>
+  iterator::getKeys:   <span class="kw2">function</span> <span class="br0">&#40;</span>boolean=<span class="br0">&#41;</span> : Iterator.&lt;K&gt;,
+  iterator::getValues: <span class="kw2">function</span> <span class="br0">&#40;</span>boolean=<span class="br0">&#41;</span> : Iterator.&lt;V&gt;,
+  iterator::getItems:  <span class="kw2">function</span> <span class="br0">&#40;</span>boolean=<span class="br0">&#41;</span> : Iterator.&lt;I&gt;
+<span class="br0">&#125;</span>;</pre>
+<p>
+Given the default functions used for these names, all objects are itemizable. But if an object were to override any method name with an incompatibly-typed value, that object would no longer be itemizable. This may be desirable, e.g., for an unordered set data type.
+</p>
+
+<p>
+Using the itemizable protocol, collection classes can customize all the loop forms. To customize <code>for-in</code>, set <code>iterator::get</code> and <code>iterator::getKeys</code> to the same function that yields keys. To customize <code>for-each-in</code>, set <code>iterator::getValues</code>. To customize <code>for ([k, v] in o)</code> loops and comprehensions, set <code>iterator::getItems</code>.
+</p>
+
+<p>
+In any event, <code>iterator::get</code> may be set to make the shortest kind of <code>for-in</code> loop perform the default or natural iteration for the given type on the right of <code>in</code>. Some types will want <code>for-in</code> to iterate values by default, others keys &ndash; still others items. This proposal intentionally supports all combinations.
+</p>
+
+</div>
+<!-- SECTION [11549-17369] -->
+<a name="compatibility"></a><h2>Compatibility</h2>
+<div class="level2">
+
+<p>
+ As specified above under <span class="curid"><a href="doku.php%3Fid=proposals:iterators_and_generators.html#enumeration" class="wikilink1" title="proposals:iterators_and_generators" onclick="return svchk()" onkeypress="return svchk()">Enumeration</a></span>, <code>magic::getPropertyIds</code> returns an array of values identifying properties indexed in the order in which those properties were created. This matches behavior required for inter-operation among browser-based ES1-3 implementations.
+</p>
+
+<p>
+Strict compatibility with ES1-3 as written (see 12.6.4 step 3, and 9.9 <code>ToObject</code>) requires that a <code>TypeError</code> be thrown for any loop over <code>null</code> or <code>undefined</code>, but inter-operation on the Web imposes an additional requirement beyond visiting properties in creation order: browser implementations must tolerate <code>for (i in null)</code> and <code>for (i in undefined)</code>, iterating zero times. ES4 should take this <a href="doku.php%3Fid=proposals:bug_fixes.html" class="wikilink1" title="proposals:bug_fixes" onclick="return svchk()" onkeypress="return svchk()">bug fix</a> by amending the <span class="curid"><a href="doku.php%3Fid=proposals:iterators_and_generators.html#iteration_protocol" class="wikilink1" title="proposals:iterators_and_generators" onclick="return svchk()" onkeypress="return svchk()">translation</a></span> from <code>for (i in o)</code> loop to a <code>while</code> loop as follows:
+</p>
+<pre class="code javascript"><span class="br0">&#123;</span>
+  let $v = o;
+  <span class="kw1">if</span> <span class="br0">&#40;</span>$v !== <span class="kw2">null</span> &amp;&amp; $v !== undefined<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    let $it = iterator::GET<span class="br0">&#40;</span>$v, <span class="kw2">true</span><span class="br0">&#41;</span>;
+    <span class="kw1">while</span> <span class="br0">&#40;</span><span class="kw2">true</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">try</span> <span class="br0">&#123;</span>
+        i = $it.<span class="me1">next</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span> <span class="kw1">catch</span> <span class="br0">&#40;</span>e : iterator::StopIterationClass<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">break</span>;
+      <span class="br0">&#125;</span>
+      ...
+    <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+Note that ES3 specifies the <code>in</code> operator as throwing a <code>TypeError</code> on <code>null</code> and <code>undefined</code>, and no inter-operation pressure exists to change its behavior on these inputs. Thus <code>for-in</code> and <code>in</code> disagree at these edge cases. See <a href="http://bugs.ecmascript.org/ticket/241" class="urlextern" target="_blank" title="http://bugs.ecmascript.org/ticket/241" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">#241</a>.
+</p>
+
+</div>
+<!-- SECTION [17370-18853] -->
+<a name="coherence"></a><h2>Coherence</h2>
+<div class="level2">
+
+<p>
+ Apart from the <code>null</code> and <code>undefined</code> edge cases, <code>for-in</code> and the <code>in</code> operator agree by default when enumerating.  That is,
+</p>
+<pre class="code javascript">let a = <span class="br0">&#91;</span><span class="nu0">3</span>, <span class="nu0">4</span>, <span class="nu0">5</span><span class="br0">&#93;</span>;
+&nbsp;
+<span class="kw1">for</span> <span class="br0">&#40;</span>let i <span class="kw1">in</span> a<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  assert<span class="br0">&#40;</span>i <span class="kw1">in</span> a<span class="br0">&#41;</span>;
+  assert<span class="br0">&#40;</span>a.<span class="me1">indexOf</span><span class="br0">&#40;</span>a<span class="br0">&#91;</span>i<span class="br0">&#93;</span><span class="br0">&#41;</span> != -<span class="nu0">1</span><span class="br0">&#41;</span>;
+<span class="br0">&#125;</span></pre>
+<p>
+Iteration and <code>in</code>-tested membership are <strong>coherent</strong>.
+</p>
+
+<p>
+E4X&rsquo;s <code>for-each-in</code> did not alter <code>in</code> or add an <code>each in</code> (sic) operator, resulting in loss of coherent meaning of <code>in</code> when itemizing:
+</p>
+<pre class="code javascript"><span class="kw1">for</span> each <span class="br0">&#40;</span>let v <span class="kw1">in</span> a<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  let i = a.<span class="me1">indexOf</span><span class="br0">&#40;</span>v<span class="br0">&#41;</span>;
+  assert<span class="br0">&#40;</span>i != -<span class="nu0">1</span><span class="br0">&#41;</span>;
+  assert<span class="br0">&#40;</span>i <span class="kw1">in</span> a<span class="br0">&#41;</span>;
+<span class="br0">&#125;</span></pre>
+<p>
+Customization of the iteration protocol can result in similarly incoherent <code>in</code> operator results. Therefore ES4 supports a companion protocol for extending the <code>in</code> operator, which is distinct from the <a href="doku.php%3Fid=proposals:operators.html" class="wikilink1" title="proposals:operators" onclick="return svchk()" onkeypress="return svchk()">operators</a> that can be overridden using static class methods. This difference is intended to facilitate retrofitting, e.g.:
+</p>
+<pre class="code javascript">Array.<span class="me1">prototype</span>.<span class="me1">iterator</span>::get      = iterator::DEFAULT_GET_VALUES;
+Array.<span class="me1">prototype</span>.<span class="me1">iterator</span>::contains = <span class="kw2">function</span> <span class="br0">&#40;</span>v<span class="br0">&#41;</span> <span class="kw1">this</span>.<span class="me1">indexOf</span><span class="br0">&#40;</span>v<span class="br0">&#41;</span> != -<span class="nu0">1</span>;</pre>
+<p>
+Note how operand order from operator <code>in</code> is reversed when calling <code>iterator::contains</code>: <code>a in b</code> may translate to <code>b.iterator::contains(a)</code>.
+</p>
+
+<p>
+The implementation of the <code>in</code> operator checks whether its right operand is <code>like iterator::Container.&lt;*&gt;</code>, and invokes that type&rsquo;s <code>contains</code> method if found. If not found, the <code>iterator::DEFAULT_CONTAINS</code> function is used for backward-compatible <code>in</code> testing:
+</p>
+<pre class="code javascript"><span class="kw2">const</span> <span class="kw2">function</span> DEFAULT_CONTAINS<span class="br0">&#40;</span>obj: Object!, id: EnumerableId<span class="br0">&#41;</span>: boolean <span class="br0">&#123;</span>
+  <span class="kw1">do</span> <span class="br0">&#123;</span>
+    <span class="kw1">if</span> <span class="br0">&#40;</span>magic::hasOwnProperty<span class="br0">&#40;</span>obj, id<span class="br0">&#41;</span><span class="br0">&#41;</span>
+      <span class="kw1">return</span> <span class="kw2">true</span>;
+    obj = magic::getPrototype<span class="br0">&#40;</span>obj<span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span> <span class="kw1">while</span> <span class="br0">&#40;</span>obj !== <span class="kw2">null</span><span class="br0">&#41;</span>;
+  <span class="kw1">return</span> <span class="kw2">false</span>;
+<span class="br0">&#125;</span></pre>
+<p>
+Thus there exists a container structural subtype of the iterable type (in default namespace <code>iterator</code> as usual):
+</p>
+<pre class="code javascript">type Container.&lt;T&gt; = <span class="br0">&#123;</span>
+  iterator::get:      <span class="kw2">function</span> <span class="br0">&#40;</span>boolean=<span class="br0">&#41;</span> : Iterator.&lt;T&gt;,
+  iterator::contains: <span class="kw2">function</span> <span class="br0">&#40;</span>Name|string<span class="br0">&#41;</span> : boolean
+<span class="br0">&#125;</span>;</pre>
+<p>
+For an interesting attempt to unify iteration and contains-testing, see <a href="http://www.cs.cornell.edu/Projects/jmatch/" class="urlextern" target="_blank" title="http://www.cs.cornell.edu/Projects/jmatch/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">JMatch</a>, which uses modal declarations for forward (contains-testing) and backward (iteration) directions of operation; boolean formulas may be used to unify both modes in one expression.
+</p>
+
+</div>
+<!-- SECTION [18854-21212] -->
+<a name="generators"></a><h2>Generators</h2>
+<div class="level2">
+
+<p>
+ Let a new reserved identifier keyword <code>yield</code> introduce a variant of <em>AssignmentExpression</em>:
+</p>
+<pre class="code">
+AssignmentExpression ::= &quot;yield&quot; AssignmentExpression
+</pre>
+
+<p>
+A function containing a <code>yield</code> expression is a generator function, which when called binds formal parameters to actual arguments but evaluates no part of its body.  Instead, it returns a generator-iterator of nominal type <code>Generator</code>:
+</p>
+<pre class="code javascript">interface Generator.&lt;O, I, E&gt; <span class="br0">&#123;</span>
+  <span class="kw2">public</span> <span class="kw2">function</span> next<span class="br0">&#40;</span><span class="br0">&#41;</span> : O;
+  <span class="kw2">public</span> <span class="kw2">function</span> send<span class="br0">&#40;</span>i: I<span class="br0">&#41;</span> : O;
+  <span class="kw2">public</span> <span class="kw2">function</span> <span class="kw1">throw</span><span class="br0">&#40;</span>e : E<span class="br0">&#41;</span> : O;
+  <span class="kw2">public</span> <span class="kw2">function</span> <span class="kw3">close</span><span class="br0">&#40;</span><span class="br0">&#41;</span> : <span class="kw1">void</span>;
+<span class="br0">&#125;</span>;</pre>
+<p>
+The aspects of this interface are as follows:
+</p>
+<ul>
+<li class="level1"><div class="li"> The type <code>O</code> (&rdquo;output&rdquo;) is the type of values being generated via evaluated operands to <code>yield</code>.</div>
+</li>
+<li class="level1"><div class="li"> The type <code>I</code> (&rdquo;input&rdquo;) is the type of values being sent to the generator via parameters to <code>send</code>.</div>
+</li>
+<li class="level1"><div class="li"> The type <code>E</code> (&rdquo;exception&rdquo;) is the type of exceptions being thrown at the generator via parameters to <code>throw</code>.</div>
+</li>
+<li class="level1"><div class="li"> The method call <code>send(x)</code> resumes evaluation of the generator function with the value <code>x</code> as the result of the last <code>yield</code>, and returns the operand of the next <code>yield</code>.</div>
+</li>
+<li class="level1"><div class="li"> The method call <code>next()</code> is equivalent to the method call <code>send(undefined)</code>.</div>
+</li>
+<li class="level1"><div class="li"> The method call <code>throw(x)</code> forces the generator to throw the exception value <code>x</code> in its current suspended context (as if the <code>yield</code> that suspended were a <code>throw x</code> statement), and then returns the result of the next <code>yield</code>.</div>
+</li>
+<li class="level1"><div class="li"> The method call <code>close()</code> forces the generator to close itself. The effect of <code>close()</code> is to &ldquo;return&rdquo; from the generator where it&rsquo;s suspended.  This is so that <code>finally</code> clauses active in the generator function can be run. If such a <code>finally</code> clause throws an exception other than StopIteration, the exception is propagated to the caller of <code>close()</code>.</div>
+</li>
+</ul>
+
+<p>
+ When it is written above that a method call &ldquo;returns the operand of the next yield&rdquo; the call may instead terminate abruptly with a <code>StopIteration</code> exception.
+</p>
+
+<p>
+A generator must be started by a method call to <code>next()</code> or <code>send(undefined)</code>. It is a <code>TypeError</code> to <code>send</code> a value other than <code>undefined</code> to a newborn generator.
+</p>
+
+<p>
+An example that prints the first ten Fibonacci numbers:
+</p>
+<pre class="code javascript"><span class="kw2">function</span> fib<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  let i = <span class="nu0">0</span>, j = <span class="nu0">1</span>;
+  <span class="kw1">while</span> <span class="br0">&#40;</span><span class="kw2">true</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    yield i;
+    <span class="br0">&#91;</span>i, j<span class="br0">&#93;</span> = <span class="br0">&#91;</span>j, i + j<span class="br0">&#93;</span>;
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+let g = fib<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+<span class="kw1">for</span> <span class="br0">&#40;</span>let i = <span class="nu0">0</span>; i &lt; <span class="nu0">10</span>; i++<span class="br0">&#41;</span>
+  <span class="kw3">print</span><span class="br0">&#40;</span>g.<span class="me1">next</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>;</pre>
+<p>
+Another example, a natural number generator:
+</p>
+<pre class="code javascript"><span class="kw2">function</span> naturals<span class="br0">&#40;</span>n : uint<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw1">for</span> <span class="br0">&#40;</span>let i : uint = <span class="nu0">0</span>; i &lt; n; i++<span class="br0">&#41;</span>
+    yield i;
+<span class="br0">&#125;</span></pre>
+<p>
+The method <code>close()</code> is called automatically only for a generator iterator that is started by a <code>for-in</code> or <code>for-each-in</code> loop or comprehension, upon normal or abrupt termination of the loop. All but the first call to <code>close()</code> have no effect. Thus the <code>for-in</code> loop over a generator iterator can be translated from:
+</p>
+<pre class="code javascript"><span class="kw1">for</span> <span class="br0">&#40;</span>i <span class="kw1">in</span> naturals<span class="br0">&#40;</span><span class="nu0">20</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+  ...</pre>
+<p>
+to:
+</p>
+<pre class="code javascript"><span class="br0">&#123;</span>
+  let $gen = naturals<span class="br0">&#40;</span><span class="nu0">20</span><span class="br0">&#41;</span>;
+  <span class="kw1">try</span> <span class="br0">&#123;</span>
+    <span class="kw1">while</span> <span class="br0">&#40;</span><span class="kw2">true</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">try</span> <span class="br0">&#123;</span>
+        i = $gen.<span class="me1">next</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span> <span class="kw1">catch</span> <span class="br0">&#40;</span>e : iterator::StopIterationClass<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">break</span>;
+      <span class="br0">&#125;</span>
+      ...
+    <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span> <span class="kw1">finally</span> <span class="br0">&#123;</span>
+    $gen.<span class="kw3">close</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+Note that <code>close</code> is called whether or not the generator iterator denoted by <code>$gen</code> can be reached via other references.
+</p>
+
+<p>
+This translation is a specification device only. Implementations cannot analyze all <code>for-in</code> loops and discern generator iteration statically, so must check at runtime for a newborn generator iterator on the right of <code>in</code>.
+</p>
+
+</div>
+<!-- SECTION [21213-24825] -->
+<a name="comprehensions"></a><h2>Comprehensions</h2>
+<div class="level2">
+
+<p>
+ ES4 provides syntactic sugar for common ways of populating a new <code>Array</code> instance.  The initializer below shows an example of an array comprehension:
+</p>
+<pre class="code javascript">let squares = <span class="br0">&#91;</span>i * i <span class="kw1">for</span> <span class="br0">&#40;</span>i <span class="kw1">in</span> naturals<span class="br0">&#40;</span><span class="nu0">10</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#93;</span>;</pre>
+<p>
+The <code>squares</code> declaration is equivalent to:
+</p>
+<pre class="code javascript">let $arr = <span class="br0">&#91;</span><span class="br0">&#93;</span>;
+<span class="kw1">for</span> <span class="br0">&#40;</span>let i <span class="kw1">in</span> naturals<span class="br0">&#40;</span><span class="nu0">10</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+    $arr<span class="br0">&#91;</span>$arr.<span class="me1">intrinsic</span>::length<span class="br0">&#93;</span> = i * i;
+let squares = $arr;</pre>
+<p>
+(Again assume that <code>$arr</code> is a generated, non-colliding name.)
+</p>
+
+<p>
+Note that the variable <code>i</code> is scoped as if by <code>for (let i ...)</code>, so its scope is confined to the body of the comprehension. Note also the evaluation of the expression <code>i * i</code> in the body of the loop, and the use of <code>intrinsic::length</code>.
+</p>
+
+<p>
+Syntactically, an array comprehension is a special form of array initializer.  The square brackets contain an initializing expression followed by one or more <code>for</code>, <code>for each</code>, <code>if</code>, and/or <code>let</code> clauses.
+</p>
+<pre class="code">
+ArrayComprehension
+    ::= AssignmentExpression(allowColon, allowIn)  ComprehensionExpression
+
+ComprehensionExpression
+    ::= for  (  TypedPattern(noIn)  in  CommaExpression(allowColon, allowIn)  )  ComprehensionClause
+      | for  each  (  TypedPattern(noIn)  in  CommaExpression(allowColon, allowIn)  )  ComprehensionClause
+      | let  (  LetBindingList  )  ComprehensionClause
+      | if  ParenExpression  ComprehensionClause
+
+ComprehensionClause
+    ::= «empty»
+      | ComprehensionExpression 
+</pre>
+
+<p>
+The semantics of an array comprehension may be described by expanding it to an equivalent expression that initializes the array procedurally.  (The exact rules for this expansion are best given in ML, but in short, an array comprehension <code>[</code><em>expr</em><code> </code><em>clauses</em><code>]</code> expands to <code>(function () { let $arr = []; </code><em>clauses</em><code> $arr[$arr.intrinsic::length] = </code><em>expr</em><code>; return $arr; }())</code> where <code>$arr</code> is a fresh variable.  <code>let</code> is inserted after <code>for (</code> or <code>for each (</code> in <em>clauses</em>.  Lastly, each instance the form <code>let (</code><em>bindings</em><code>) </code><em>statement</em>, which is not an ES4 statement, is replaced with <code>{ let </code><em>bindings</em><code>; </code><em>statement</em><code> }</code>.)
+</p>
+
+<p>
+<code>for-in</code> loop heads may be nested within a comprehension:
+</p>
+<pre class="code javascript">let flat_mat = <span class="br0">&#91;</span>i * j <span class="kw1">for</span> <span class="br0">&#40;</span>i <span class="kw1">in</span> naturals<span class="br0">&#40;</span><span class="nu0">8</span><span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="kw1">for</span> <span class="br0">&#40;</span>j <span class="kw1">in</span> naturals<span class="br0">&#40;</span><span class="nu0">8</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#93;</span>;</pre>
+<p>
+A <code>for each</code> clause iterates over values rather than names when itemizing:
+</p>
+<pre class="code javascript">let odd_squares = <span class="br0">&#91;</span>i * i <span class="kw1">for</span> each <span class="br0">&#40;</span>i <span class="kw1">in</span> <span class="br0">&#91;</span><span class="nu0">1</span>, <span class="nu0">3</span>, <span class="nu0">5</span>, <span class="nu0">7</span><span class="br0">&#93;</span><span class="br0">&#41;</span><span class="br0">&#93;</span>;</pre>
+<p>
+An <code>if (</code><em>condition</em><code>)</code> clause filters elements out of the resulting array:
+</p>
+<pre class="code javascript">let funny_mat = <span class="br0">&#91;</span>i * j <span class="kw1">for</span> <span class="br0">&#40;</span>i <span class="kw1">in</span> naturals<span class="br0">&#40;</span><span class="nu0">8</span><span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="kw1">for</span> <span class="br0">&#40;</span>j <span class="kw1">in</span> naturals<span class="br0">&#40;</span><span class="nu0">8</span><span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="kw1">if</span> <span class="br0">&#40;</span>i != <span class="nu0">0</span> &amp;&amp; j != <span class="nu0">0</span><span class="br0">&#41;</span><span class="br0">&#93;</span>;
+&nbsp;
+let adminAddrs = <span class="br0">&#91;</span>addr
+                   <span class="kw1">for</span> each <span class="br0">&#40;</span>user <span class="kw1">in</span> users<span class="br0">&#41;</span>
+                     <span class="kw1">if</span> <span class="br0">&#40;</span>user.<span class="me1">isAdministrator</span><span class="br0">&#41;</span>
+                       <span class="kw1">for</span> each <span class="br0">&#40;</span>addr <span class="kw1">in</span> user.<span class="me1">addresses</span><span class="br0">&#41;</span><span class="br0">&#93;</span>;
+&nbsp;
+<span class="co1">// A leading &quot;if&quot; clause is useful in functions accepting optional arguments.</span>
+<span class="co1">// Here bag.values() is not called if bag is undefined.</span>
+<span class="kw1">this</span>.<span class="me1">names</span> = <span class="br0">&#91;</span><span class="kw1">item</span>.<span class="kw3">name</span> <span class="kw1">if</span> <span class="br0">&#40;</span>bag != undefined<span class="br0">&#41;</span> <span class="kw1">for</span> each <span class="br0">&#40;</span><span class="kw1">item</span> <span class="kw1">in</span> bag.<span class="me1">values</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#93;</span>;
+&nbsp;
+<span class="kw1">this</span>.<span class="me1">vals</span> = <span class="br0">&#91;</span>start <span class="kw1">if</span> <span class="br0">&#40;</span>start != undefined<span class="br0">&#41;</span><span class="br0">&#93;</span>;   <span class="co1">// 0 or 1 element(s)</span></pre>
+<p>
+Lastly, a <code>let (</code><em>bindings</em><code>)</code> clause, like a <code>let</code> expression, evaluates expressions and binds the resulting values to names in a new scope:
+</p>
+<pre class="code javascript">admins = <span class="br0">&#91;</span>user.<span class="kw3">name</span> <span class="kw1">for</span> each <span class="br0">&#40;</span>id <span class="kw1">in</span> userIds<span class="br0">&#41;</span>
+                      let <span class="br0">&#40;</span>user = lookupUser<span class="br0">&#40;</span>id<span class="br0">&#41;</span><span class="br0">&#41;</span>
+                        <span class="kw1">if</span> <span class="br0">&#40;</span>user.<span class="me1">isAdministrator</span><span class="br0">&#41;</span><span class="br0">&#93;</span></pre>
+<p>
+The variables introduced by <code>for</code>, <code>for each</code>, and <code>let</code> clauses are lexically bound within new block scopes introduced by those clauses.  Note that the scope of the variable <code>user</code> in this example includes the controlling expression of the <code>if</code> clause, as well as the initializing expression <code>user.name</code>, but not the controlling expression of the <code>for each</code> clause.
+</p>
+
+<p>
+Each variable name in a <code>for</code>, <code>for each</code>, or <code>let</code> clause may be followed by an optional type annotation.
+</p>
+
+</div>
+<!-- SECTION [24826-28780] -->
+<a name="example"></a><h1>Example</h1>
+<div class="level1">
+
+<p>
+ Here&rsquo;s an example of a common <acronym title="Document Object Model">DOM</acronym> programming style that&rsquo;s made simpler with iterators and generators: imagine an animation that flashes a <acronym title="Document Object Model">DOM</acronym> element on and off <em>n</em> times:
+</p>
+<pre class="code javascript"><span class="kw2">function</span> animate<span class="br0">&#40;</span>n<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    let i = <span class="nu0">0</span>;
+    let id = window.<span class="me1">setInterval</span><span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+                                    <span class="kw1">if</span> <span class="br0">&#40;</span>i &gt;= n<span class="br0">&#41;</span>
+                                        window.<span class="me1">clearInterval</span><span class="br0">&#40;</span>id<span class="br0">&#41;</span>;
+                                    <span class="kw1">else</span> <span class="br0">&#123;</span>
+                                        <span class="kw1">if</span> <span class="br0">&#40;</span>isHighlighted<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+                                            unhighlight<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+                                        <span class="kw1">else</span> <span class="br0">&#123;</span>
+                                            highlight<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+                                            i++;
+                                        <span class="br0">&#125;</span>
+                                    <span class="br0">&#125;</span>
+                                <span class="br0">&#125;</span>,
+                                <span class="nu0">100</span><span class="br0">&#41;</span>;
+<span class="br0">&#125;</span>
+&nbsp;
+animate<span class="br0">&#40;</span><span class="nu0">3</span><span class="br0">&#41;</span>;</pre>
+<p>
+Using <code>yield</code>, we could implement this with a loop instead:
+</p>
+<pre class="code javascript">let id;
+&nbsp;
+<span class="kw2">function</span> makeAnimator<span class="br0">&#40;</span>n<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    let i = <span class="nu0">0</span>;
+    <span class="kw1">while</span> <span class="br0">&#40;</span>i &lt;= n<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">if</span> <span class="br0">&#40;</span>isHighlighted<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+            unhighlight<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+        <span class="kw1">else</span> <span class="br0">&#123;</span>
+            highlight<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+            i++;
+        <span class="br0">&#125;</span>
+        yield;
+    <span class="br0">&#125;</span>
+    window.<span class="me1">clearInterval</span><span class="br0">&#40;</span>id<span class="br0">&#41;</span>;
+<span class="br0">&#125;</span>
+&nbsp;
+id = window.<span class="me1">setInterval</span><span class="br0">&#40;</span>makeAnimator<span class="br0">&#40;</span><span class="nu0">3</span><span class="br0">&#41;</span>, <span class="nu0">100</span><span class="br0">&#41;</span>;</pre>
+<p>
+(This assumes a slight <acronym title="Document Object Model">DOM</acronym> extension for <code>window.setInterval</code> to accept an <code>Iterator</code> as its first argument. Otherwise you&rsquo;d just use <code>function(){animator.next()}</code>.) 
+</p>
+
+</div>
+<!-- SECTION [28781-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/2/285f28d0d4269442f62ca6e953d27946.xhtml used -->
+</body>
+</html>

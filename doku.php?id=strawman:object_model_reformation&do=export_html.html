@@ -1,0 +1,652 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:object_model_reformation&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:object_model_reformation&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:object_model_reformation&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:object_model_reformation&amp;do=export_html.html#object_model_reformationdecoupling_and_property_access" class="toc">Object Model Reformation: Decoupling [ ] and Property Access</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:object_model_reformation&amp;do=export_html.html#the_basics_of_decoupling" class="toc">The Basics of Decoupling</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:object_model_reformation&amp;do=export_html.html#a_side_note_on_private_name_usage" class="toc">A side note on private name usage.</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:object_model_reformation&amp;do=export_html.html#a_side_note_on_reflective_property_access" class="toc">A side note on reflective property access</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:object_model_reformation&amp;do=export_html.html#the_new_semantics_of" class="toc">The New Semantics of [ ]</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:object_model_reformation&amp;do=export_html.html#usage_examples" class="toc">Usage Examples</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:object_model_reformation&amp;do=export_html.html#a_string_keyed_map" class="toc">A String Keyed Map</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:object_model_reformation&amp;do=export_html.html#updated_weakmap_and_map_interface" class="toc">Updated WeakMap and Map Interface</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:object_model_reformation&amp;do=export_html.html#implementing_built-in_array_semantics_without_using_proxy" class="toc">Implementing Built-in Array Semantics Without using Proxy</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:object_model_reformation&amp;do=export_html.html#emulating_es5_indexed_string_access_semantics_without_using_internal_methods" class="toc">Emulating ES5 Indexed String Access Semantics Without using Internal Methods</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:object_model_reformation&amp;do=export_html.html#reformed_array" class="toc">Reformed Array</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:object_model_reformation&amp;do=export_html.html#an_property_mirror_api" class="toc">An Property Mirror API</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:object_model_reformation&amp;do=export_html.html#rationalizing_dom_htmlcollections" class="toc">Rationalizing DOM HTMLCollections</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:object_model_reformation&amp;do=export_html.html#possible_extensions" class="toc">Possible Extensions</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:object_model_reformation&amp;do=export_html.html#multi-valued_indices" class="toc">Multi-valued Indices</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:object_model_reformation&amp;do=export_html.html#what_about_the_in_operator" class="toc">What about the in operator?</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:object_model_reformation&amp;do=export_html.html#precedents" class="toc">Precedents</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:object_model_reformation&amp;do=export_html.html#feedback" class="toc">Feedback</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="object_model_reformationdecoupling_and_property_access"></a><h1>Object Model Reformation: Decoupling [ ] and Property Access</h1>
+<div class="level1">
+
+<p>
+Summary: The typical usage of object properties to define dynamic data collections in ECMAScript conflates  concepts from the application data domain (the data manipulated by the program) and the program definition domain (the actual program text) in ways that are sometimes confusing and error prone. For example, a key  of a data collection may conflict with the name of a method of the collection object, making the method inaccessable. This proposal provides a means for defining dynamic data collections in ECMAScript that disentangle those concepts.  It retains both program and conceptual backwards compatibility while presenting a more powerful and less error-prone way for ECMAScript programmers to define collections objects.
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+ ES objects and their properties have always had a dual nature.  They can be used as both (semi-) fixed-shape object abstraction where the properties are the member names and they can be used as open ended data collections where property names are used as key values for accessing data in the collections.
+</p>
+
+<p>
+This dual use is reflected in the two different syntactic forms of property access available in the language, obj.propName and obj[expr]. The dot form uses a property key that is provided by the program author and fixed in the program code. The [ ] uses a runtime computed property key that is typically not known when the program is written.
+</p>
+
+<p>
+Using a single semantic concept for both these purposes is problematic in  several ways:
+</p>
+<ol>
+<li class="level1"><div class="li"> It conflates the application data domain with the program definition domain.  This is a pretty clear abstraction layering violation</div>
+</li>
+<li class="level1"><div class="li"> It is confusing to programmer coming to <acronym title="JavaScript">JS</acronym> from other language who think of . and [ ] as distinctly different operations.</div>
+</li>
+<li class="level1"><div class="li"> It makes it difficult to define real collection objects.  If [ ] is used for collection access then collection elements must be represented as properties and their keys may conflict with actual property names. There are also other issues such as implicitly restricting collection keys to be string values.</div>
+</li>
+</ol>
+
+<p>
+ The fundamental details of ECMAScript object model is at the heart of these issues and correcting it requires a reexamination of some fundamental assumptions about the object model.
+</p>
+
+<p>
+ECMAScript has always a very simple conceptual object model: 
+</p>
+<ul>
+<li class="level1"><div class="li"> An ECMAScript object is essentially just a bag of &ldquo;properties&rdquo; where properties are key/value pairs with String values used as their keys. Properties key strings are most commonly identifiers and are typically accessed using <code>obj.propName</code> syntax. However, any string value can be a property key and <code>obj[expr]</code> syntax allows any value that can be converted to a string value to be used as a property key. Most ECMAScript programmers understand its object model from the perspective that <code>obj.propName</code> and <code>obj[&rdquo;propName&rdquo;]</code>  always mean exactly the same thing.</div>
+</li>
+</ul>
+
+<p>
+ While the simplistically of this object has its merits it also creates issues. For example, properties are used to represent methods and to store internal state of ECMAScript objects.  Properties are also frequently used as data maps (ie, dictionaries) that are used to store and retrieve data using dynamically generated string property key values.  Such values can easily conflict with the property names used for methods or internal state of such map objects.  The <code>obj[expr]</code> syntax  is a natural way to express access to dynamic data collections and a syntax that is generally familiar to programmers who know other languages. However, the strict duality of <code>obj.propName</code> and <code>obj[&rdquo;propName&rdquo;]</code> greatly limits the utility of using this syntax for collection access in ECMAScript. This limitation is severe enough that both the core language itself as well as the most wide used ECMAScript framework use extra-lingual means to extend/modify the semantics of <code>obj[expr]</code> in ways that can not be directly expressed in the language.  Examples of this include Array object, String objects,  argument objects, and the various variants of <acronym title="Document Object Model">DOM</acronym> HTMLCollection. Extending <code>obj[expr]</code> semantics is clearly very useful, but it is a capability that is not available to the everyday ECMAScript programmer or framework developer.
+</p>
+
+<p>
+This deficiency can be fixed in a manner that preserves comparability with all existing ECMAScript code while allowing new code to use <code>obj[expr]</code> syntax to access rich data collections. However, the fix breaks the universal correspondence between <code>obj.propName</code> and <code>obj[&rdquo;propName&rdquo;]</code>. It will only be feasible if ECMAScript programmers are willing to revise their understanding of the ECMAScript object model. They need a reformed object model that can encompass both traditional ECMAScript objects and new objects that use <code>[ ]</code> in new ways. Here is a a summary of the reformed model: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Every ECMAScript object  has  two facets, a property bag and a data collection. The property bag facet is a set of key/value pairs where the keys are either String or private name values. Properties may be dynamically added and removed from the property bag, but typically property keys are identifiers (or a private name, bound to an identifier) selected by a programmer and directly expressed in the program&rsquo;s code. Such properties  are normally accessed using <code>obj.propName</code> syntax.  The data collection facet of an object is a flexible data store for key/value pairs that is normally dynamically populated during program execution. The actual key values are typically dynamically computed and key/value pairs are normally accessed using <code>obj[expr]</code> syntax. The types of an object&rsquo;s data store keys and values and the rules for accessing them may be completely controlled by the ECMAScript code for the object.  However, unless explicitly defined otherwise, an object&rsquo;s property bag and data collection facets are  both views upon the same backing store. This means that for such objects, the keys of the data store are also property keys, that all its properties  may be accessed as data store key/value pairs, and that all its data store key/value pairs can be accessed as properties.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1-6174] -->
+<a name="the_basics_of_decoupling"></a><h2>The Basics of Decoupling</h2>
+<div class="level2">
+
+<p>
+ ES5 11.2.1 currently couples . and [ ] by saying that
+</p>
+<pre class="code"> MemberExpresson : MemberExpresson . IdentifierName</pre>
+
+<p>
+desugars to 
+</p>
+<pre class="code"> MemberExpresson : MemberExpression [ &lt;identifier-name-string&gt; ]</pre>
+
+<p>
+ where &lt;identifier-name-string&gt; is simply the string literal corresponding to the characters of the <em>IndetifierName</em>. We start decoupling by eliminating the above desugaring and instead simply use for
+</p>
+<pre class="code"> MemberExpresson : MemberExpresson . IdentifierName</pre>
+
+<p>
+the existing 11.2.1 semantics (in a slightly simplified form because we know the property name is already a string).
+</p>
+
+<p>
+We then give
+</p>
+<pre class="code"> MemberExpresson : MemberExpression [ Expression ]</pre>
+
+<p>
+a new semantics.  Here is the initial skeleton of this new semantics: 
+</p>
+<pre class="code">  if MemberExpression is an object that defines data store access methods return the result of invoking the appropiate  &quot;data store access method&quot;
+  else perfrom the algorithm from ES5 11.2.1</pre>
+
+<p>
+ (in the actual ES.next specification this would be expressed in terms of a special kind of Reference value and GetValue/PutValue.)
+</p>
+
+<p>
+So to make the above skeleton semantics more meaningful we need to define what we really mean by &ldquo;data store access method&rdquo;.  
+</p>
+
+<p>
+To support data store access, three predefined private name object values are provided. These values may be imported from a built-in module.  For this strawman we will assume they are provided by the &lsquo;name&rsquo; module.  Let&rsquo;s further assume that the private names values are exported using the names elementGet, elementSet, and elementDelete.  
+</p>
+<hr noshade="noshade" size="1" />
+<hr noshade="noshade" size="1" />
+
+</div>
+<!-- SECTION [6175-7721] -->
+<a name="a_side_note_on_private_name_usage"></a><h3>A side note on private name usage.</h3>
+<div class="level3">
+
+<p>
+ Two syntactic forms have been discussed recently on how private named properties could be defined and access.  The [ ] form and the @ form.
+</p>
+
+<p>
+Assume that pname is a variable whose value is a private name created, for example as:  
+</p>
+<pre class="code javascript">module <span class="kw3">Name</span> from <span class="st0">"@name"</span>;
+<span class="kw2">const</span> pname = <span class="kw3">Name</span>.<span class="me1">create</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;</pre>
+<p>
+ using the [ ] convention, a private name property would be defined and accessed as follows: 
+</p>
+<pre class="code javascript">let obj = <span class="br0">&#123;</span>
+   <span class="br0">&#91;</span>pname<span class="br0">&#93;</span>: <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;
+obj<span class="br0">&#91;</span>pname<span class="br0">&#93;</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;</pre>
+<p>
+ using the @ private name syntax, the same thing would be expressed as: 
+</p>
+<pre class="code javascript">let obj = <span class="br0">&#123;</span>
+   @pname: <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;
+obj.@pname<span class="br0">&#40;</span><span class="br0">&#41;</span>;</pre>
+<p>
+Because this proposal is about changing the semantics of [ ] property access,  @ is used for private name access throughout the rest of this strawman proposal,
+</p>
+<hr noshade="noshade" size="1" />
+<hr noshade="noshade" size="1" />
+
+</div>
+<!-- SECTION [7722-8574] -->
+<a name="a_side_note_on_reflective_property_access"></a><h3>A side note on reflective property access</h3>
+<div class="level3">
+
+<p>
+ The <a href="doku.php%3Fid=harmony:reflect_api.html" class="wikilink1" title="harmony:reflect_api" onclick="return svchk()" onkeypress="return svchk()">reflect api</a> strawman proposal defines <code>Reflect.get</code> and <code>Reflect.set</code> functions that support full reflective read/write access of an object&rsquo;s (possibly inherited) properties.  The semantics of these function are essentially identical to the  [[Get]] and [[Put]] internal methods used within the ECMAScript specification to specify property access.  This strawman proposal assumes the existence of those <a href="doku.php%3Fid=harmony:reflect_api.html" class="wikilink1" title="harmony:reflect_api" onclick="return svchk()" onkeypress="return svchk()">reflect api</a> functions and also the functions  <code>Reflect.delete</code> and <code>Reflect.has</code>. 
+</p>
+<hr noshade="noshade" size="1" />
+<hr noshade="noshade" size="1" />
+
+</div>
+<!-- SECTION [8575-9169] -->
+<a name="the_new_semantics_of"></a><h2>The New Semantics of [ ]</h2>
+<div class="level2">
+
+<p>
+ Here are the new semantics of [ ] described as a desugaring:
+</p>
+
+<p>
+The expression 
+</p>
+<pre class="code javascript">obj<span class="br0">&#91;</span>index<span class="br0">&#93;</span></pre>
+<p>
+desugars into
+</p>
+<pre class="code javascript"><span class="br0">&#40;</span>Reflect.<span class="me1">has</span><span class="br0">&#40;</span>obj,elementGet<span class="br0">&#41;</span> ? obj.@elementGet<span class="br0">&#40;</span>index<span class="br0">&#41;</span> : Reflect.<span class="me1">get</span><span class="br0">&#40;</span>obj,index<span class="br0">&#41;</span><span class="br0">&#41;</span></pre>
+<p>
+and the expression 
+</p>
+<pre class="code javascript">obj<span class="br0">&#91;</span>index<span class="br0">&#93;</span>=value</pre>
+<p>
+ desugars into 
+</p>
+<pre class="code javascript"><span class="br0">&#40;</span>Reflect.<span class="me1">has</span><span class="br0">&#40;</span>obj,elementSet<span class="br0">&#41;</span> ? obj.@elementSet<span class="br0">&#40;</span>index,value<span class="br0">&#41;</span> : Object.<span class="me1">set</span><span class="br0">&#40;</span>obj,index,value<span class="br0">&#41;</span><span class="br0">&#41;</span></pre>
+<p>
+An expression of the form: 
+</p>
+<pre class="code javascript"><span class="kw1">delete</span> obj<span class="br0">&#91;</span>index<span class="br0">&#93;</span></pre>
+<p>
+ desugars into 
+</p>
+<pre class="code javascript"><span class="br0">&#40;</span>Reflect.<span class="me1">has</span><span class="br0">&#40;</span>obj,elementDelete<span class="br0">&#41;</span> ? obj.@elementDelete<span class="br0">&#40;</span>index<span class="br0">&#41;</span> : Reflect.<span class="me1">deleteProperty</span><span class="br0">&#40;</span>obj,index<span class="br0">&#41;</span><span class="br0">&#41;</span></pre>
+<p>
+Within the actual ES specification, the above semantics would be expressed using an extension of the Reference internal data type.
+</p>
+
+<p>
+In addition, the following three built-in methods are defined on <code>Object.prototype</code>:
+</p>
+<pre class="code javascript">module Reflect from <span class="st0">"@reflect"</span>;
+Object.<span class="me1">prototype</span>.@elementGet = <span class="kw2">function</span><span class="br0">&#40;</span>index<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> Reflect.<span class="me1">get</span><span class="br0">&#40;</span><span class="kw1">this</span>, index<span class="br0">&#41;</span><span class="br0">&#125;</span>;
+Object.<span class="me1">prototype</span>.@elementSet = <span class="kw2">function</span><span class="br0">&#40;</span>index,value<span class="br0">&#41;</span> <span class="br0">&#123;</span>Reflect.<span class="me1">set</span><span class="br0">&#40;</span><span class="kw1">this</span>,index,value<span class="br0">&#41;</span><span class="br0">&#125;</span>;
+Object.<span class="me1">prototype</span>.@elementDelete = <span class="kw2">function</span><span class="br0">&#40;</span>index<span class="br0">&#41;</span> <span class="br0">&#123;</span>Reflect.<span class="me1">deleteProperty</span><span class="br0">&#40;</span><span class="kw1">this</span>,index<span class="br0">&#41;</span><span class="br0">&#125;</span>;
+<span class="co1">//note that as built-ins the above functions will directly access the primordial Reflect get/set/deleteProperty functions.</span></pre>
+<p>
+The above methods of Object.prototype are defined to be {writable: false, configurable: false} in order to ensure that property access can not be broadly hijacked by replacing them. 
+</p>
+
+<p>
+Because of the <code>Object.prototype.@elementGet</code>, <code>Object.prototype.@elementSet</code>, and <code>Object.prototype.@elementDelete</code> methods, the &ldquo;missing method&rdquo; branch of the desugaring will seldom be taken. They are provided for the rare situations where an object does not inherit from <code>Object.prototype</code> or when the built-in methods have been deleted. <strong>The only time that an object will expose behavior for [ ] that is different from the standard ES 1-5 behavior is when that object or one of its prototypes has explicitly defined an over-riding <code>@elementSet</code>,  <code>@elementGet</code>, or <code>@elementDelete</code> method.</strong>
+</p>
+
+</div>
+<!-- SECTION [9170-11304] -->
+<a name="usage_examples"></a><h2>Usage Examples</h2>
+<div class="level2">
+
+</div>
+<!-- SECTION [11305-11334] -->
+<a name="a_string_keyed_map"></a><h3>A String Keyed Map</h3>
+<div class="level3">
+
+<p>
+ Here is an implementation of a string-keyed map that has  same interface as used in the <a href="doku.php%3Fid=harmony:simple_maps_and_sets.html" class="wikilink1" title="harmony:simple_maps_and_sets" onclick="return svchk()" onkeypress="return svchk()">simple maps and sets</a> proposal, except that <code>[ ]</code> is used instead of get/set methods for element access. Note that there is no conflict between element names and method names such as &ldquo;size&rdquo; and &ldquo;has&rdquo;.  It uses as backing store a regularly object that acts as an string-keyed hash table.
+</p>
+<pre class="code javascript">module <span class="kw3">Name</span> from <span class="st0">"@name"</span>;
+<span class="kw2">import</span> <span class="br0">&#123;</span>elementGet,elementSet,elementDelete<span class="br0">&#125;</span> from <span class="kw3">Name</span>;
+<span class="kw2">import</span> iterator from <span class="st0">"@iter"</span>;
+&nbsp;
+<span class="kw2">const</span> backingStore = <span class="kw3">Name</span>.<span class="me1">create</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+<span class="kw2">export</span> <span class="kw2">function</span> StringKeyedMap<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+   <span class="kw1">this</span>.@backingStore = Object.<span class="me1">create</span><span class="br0">&#40;</span><span class="kw2">null</span><span class="br0">&#41;</span>;  <span class="co1">//note @backingStore object is a &quot;normal object&quot; and  [ ] on it does regular property access</span>
+<span class="br0">&#125;</span>
+StringKeyedMap.<span class="me1">prototype</span>.@elementGet = <span class="kw2">function</span><span class="br0">&#40;</span>k<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw1">this</span>.@backingStore<span class="br0">&#91;</span>k<span class="br0">&#93;</span><span class="br0">&#125;</span>  <span class="co1">//alternatively Reflect.get(this.@backingStore,k)</span>
+StringKeyedMap.<span class="me1">prototype</span>.@elementSet = <span class="kw2">function</span><span class="br0">&#40;</span>k,v<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">this</span>.@backingStore<span class="br0">&#91;</span>k<span class="br0">&#93;</span>=v;<span class="br0">&#125;</span>    <span class="co1">//alternatively Reflect.set(this.@backingStore,k,v)</span>
+StringKeyedMap.<span class="me1">prototype</span>.<span class="me1">size</span> = <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>Object.<span class="me1">getOwnPropertyNames</span><span class="br0">&#40;</span><span class="kw1">this</span>.@backingStore<span class="br0">&#41;</span>.<span class="me1">length</span><span class="br0">&#125;</span>;  <span class="co1">//I'm lazy</span>
+StringKeyedMap.<span class="me1">prototype</span>.<span class="me1">has</span> = <span class="kw2">function</span><span class="br0">&#40;</span>k<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>.<span class="me1">hasOwnProperty</span>.<span class="me1">call</span><span class="br0">&#40;</span><span class="kw1">this</span>.@backingStore,k<span class="br0">&#125;</span>;
+StringKeyedMap.<span class="me1">prototype</span>.@elementDelete = <span class="kw2">function</span><span class="br0">&#40;</span>k<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw1">delete</span> <span class="kw1">this</span>.@backingStore<span class="br0">&#91;</span>k<span class="br0">&#93;</span><span class="br0">&#125;</span>
+StringKeyedMap.<span class="me1">prototype</span>.@iterator=  <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+   <span class="co1">// iteration yields key/value pairs</span>
+   let self = <span class="kw1">this</span>;
+   let backing = <span class="kw1">this</span>.@backingStore;
+   <span class="kw1">return</span> <span class="br0">&#40;</span><span class="kw2">function</span>*<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">for</span> <span class="br0">&#40;</span>let x <span class="kw1">in</span> backing<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">if</span> <span class="br0">&#40;</span>self.<span class="me1">has</span><span class="br0">&#40;</span>x<span class="br0">&#41;</span><span class="br0">&#41;</span> yield <span class="br0">&#91;</span>x, backing<span class="br0">&#91;</span>x<span class="br0">&#93;</span><span class="br0">&#93;</span><span class="br0">&#125;</span><span class="br0">&#125;</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+<span class="br0">&#125;</span></pre>
+<p>
+Note that because a regular object with default [ ] semantics  is used as the backing store for StringKeyMap, all key values are automatically converted to strings. 
+</p>
+<pre class="code javascript">let m = <span class="kw2">new</span> StringKeyedMap;
+&nbsp;
+let someObj = <span class="br0">&#123;</span><span class="br0">&#125;</span>;
+m<span class="br0">&#91;</span><span class="st0">'foo'</span><span class="br0">&#93;</span> = someObj;
+m<span class="br0">&#91;</span><span class="st0">'size'</span><span class="br0">&#93;</span> = <span class="st0">"can I clobber a property"</span>;
+&nbsp;
+<span class="kw3">print</span><span class="br0">&#40;</span>m<span class="br0">&#91;</span><span class="st0">'size'</span><span class="br0">&#93;</span><span class="br0">&#41;</span>;           <span class="co1">//prints: can I clobber a property</span>
+<span class="kw3">print</span><span class="br0">&#40;</span>m.<span class="me1">size</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>;            <span class="co1">//prints: 2</span>
+<span class="kw3">print</span><span class="br0">&#40;</span>m<span class="br0">&#91;</span><span class="st0">'foo'</span><span class="br0">&#93;</span> === someObj<span class="br0">&#41;</span>;<span class="co1">//prints: true</span>
+<span class="kw3">print</span><span class="br0">&#40;</span>m.<span class="me1">has</span><span class="br0">&#40;</span><span class="st0">'size'</span><span class="br0">&#41;</span><span class="br0">&#41;</span>;       <span class="co1">//prints: true</span>
+<span class="kw3">print</span><span class="br0">&#40;</span>m.<span class="me1">has</span><span class="br0">&#40;</span><span class="st0">'has'</span><span class="br0">&#41;</span><span class="br0">&#41;</span>;        <span class="co1">//prints: false</span>
+<span class="kw1">for</span> <span class="br0">&#40;</span><span class="kw2">var</span> p <span class="kw1">in</span> m<span class="br0">&#41;</span> <span class="kw3">print</span><span class="br0">&#40;</span>p<span class="br0">&#41;</span>   <span class="co1">//prints: size has</span>
+    <span class="co1">//should have made those methods non-enumerable</span>
+<span class="kw1">for</span> <span class="br0">&#40;</span>let <span class="br0">&#91;</span>k<span class="br0">&#93;</span> of m<span class="br0">&#41;</span> <span class="kw3">print</span><span class="br0">&#40;</span>k<span class="br0">&#41;</span> <span class="co1">//prints foo size </span></pre>
+<p>
+Note that because a regular object with default [ ] semantics  is used as the backing store for StringKeyMap, all key values are automatically converted to strings. Using this techniques all sorts of &ldquo;collection&rdquo; classes could be build including array-like collections with domain restrictions of their element values.
+</p>
+
+<p>
+Finally, note that collections such as StringKeyMap are fully &ldquo;subclassable&rdquo;:
+</p>
+<pre class="code javascript">let ShortStringKeyedMap = ShortStringKeyedMap &lt;| <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw2">super</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#125;</span>;
+ShortStringKeyMap.<span class="me1">prototype</span>.<span class="br0">&#123;</span>
+   @elementSet<span class="br0">&#40;</span>k,v<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">if</span> <span class="br0">&#40;</span>String<span class="br0">&#40;</span>k<span class="br0">&#41;</span>.<span class="me1">length</span> &gt; <span class="nu0">10</span> <span class="kw1">throw</span> <span class="st0">"Key too long"</span>;
+      <span class="kw2">super</span>.@elementSet<span class="br0">&#40;</span>k,v<span class="br0">&#41;</span>;
+   <span class="br0">&#125;</span>,
+   @elementGet<span class="br0">&#40;</span>k<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">if</span> <span class="br0">&#40;</span>String<span class="br0">&#40;</span>k<span class="br0">&#41;</span>.<span class="me1">length</span> &gt; <span class="nu0">10</span> <span class="kw1">throw</span> <span class="st0">"Key too long"</span>;
+      <span class="kw1">return</span> <span class="kw2">super</span>.@elementGet<span class="br0">&#91;</span>k<span class="br0">&#93;</span>;
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;
+&nbsp;</pre>
+</div>
+<!-- SECTION [11335-14352] -->
+<a name="updated_weakmap_and_map_interface"></a><h3>Updated WeakMap and Map Interface</h3>
+<div class="level3">
+
+<p>
+ As shown in the previous example, [ ] can be used instead of named get/set methods for accessing elements of a collection using a key value. If this strawman is adopted, the public interfaces of WeakMap and Map should be modified to use this technique.  Note that unlike ES5 semantics for [ ], in this proposal the index operand is not automatically converted to a string value.  That means that a object can be passed as an key value for accessing map entries using [ ]. Only if such accesses were delegated to Reflect.get or Reflect.set would the key value be converted to a string.
+</p>
+
+<p>
+For example, using this update interface the <a href="doku.php%3Fid=harmony:weak_maps.html" class="wikilink1" title="harmony:weak_maps" onclick="return svchk()" onkeypress="return svchk()">weak maps</a> Unique Labeler example would look like this: 
+</p>
+<pre class="code javascript">  <span class="kw2">function</span> Labeler<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">const</span> et = WeakMap<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+    let count = <span class="nu0">0</span>;
+    <span class="kw1">return</span> Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+      label: <span class="kw2">function</span><span class="br0">&#40;</span>obj<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw2">const</span> result = et<span class="br0">&#91;</span>obj<span class="br0">&#93;</span>;
+        <span class="kw1">if</span> <span class="br0">&#40;</span>result<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> result; <span class="br0">&#125;</span>
+        et<span class="br0">&#91;</span>obj<span class="br0">&#93;</span> = ++count<span class="br0">&#41;</span>;
+        <span class="kw1">return</span> count;
+      <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [14353-15390] -->
+<a name="implementing_built-in_array_semantics_without_using_proxy"></a><h3>Implementing Built-in Array Semantics Without using Proxy</h3>
+<div class="level3">
+
+<p>
+ The built-in JavaScript Array object type  stores array elements as regular properties using the string value of each elements index as the property name.  However, Array also maintains an invariant that the value of its  &ldquo;length&rdquo; property  is greater than any such array element property index.  This requires monitoring every property creation to see if the value of length has to be updated.  In ES5 and earlier editions of ECMAScript there is no way to do such property monitoring using ECMAScript code.  Current proposal for ES.next require the use of a Proxy in order to implement such behavior.  This strawman provides a lighter-weight way to accomplish the same thing.  
+</p>
+<pre class="code javascript">module <span class="kw3">Name</span> from <span class="st0">"@name"</span>;
+module Reflect from <span class="st0">"@reflect"</span>;
+<span class="kw2">import</span> <span class="br0">&#123;</span>elementSet<span class="br0">&#125;</span> from <span class="kw3">Name</span>;
+&nbsp;
+&nbsp;
+<span class="kw2">const</span> privateLength = <span class="kw3">Name</span>.<span class="me1">create</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+<span class="kw2">const</span> nArrayPrototype = Array.<span class="me1">prototype</span> &lt;| <span class="br0">&#123;</span>
+   @elementSet<span class="br0">&#40;</span>index, value<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       let i = index &gt;&gt;&gt; <span class="nu0">0</span>;  <span class="co1">//Uint32 conversion</span>
+       let len = <span class="kw1">this</span>.<span class="me1">length</span>;
+       let indexUi32 = index &gt;&gt;&gt;<span class="nu0">0</span>;
+       <span class="kw1">if</span> <span class="br0">&#40;</span>indexUi32 != <span class="nu0">4294967295</span> &amp;&amp; String<span class="br0">&#40;</span>indexUi32<span class="br0">&#41;</span> === index<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+           <span class="kw1">if</span> <span class="br0">&#40;</span>indexUi32 &gt; len<span class="br0">&#41;</span> <span class="br0">&#123;</span> 
+               <span class="kw1">if</span> <span class="br0">&#40;</span>!Object.<span class="me1">getOwnPropertyDescriptor</span><span class="br0">&#40;</span><span class="kw1">this</span>,<span class="st0">'length'</span><span class="br0">&#41;</span>.<span class="me1">writable</span><span class="br0">&#41;</span> <span class="kw1">return</span>;
+               <span class="kw1">this</span>.<span class="me1">length</span> = indexUi32+<span class="nu0">1</span>;
+           <span class="br0">&#125;</span>
+           <span class="kw2">super</span>.@setElement<span class="br0">&#40;</span>indexUi32,value<span class="br0">&#41;</span>;  <span class="co1">//wrap numeric indexes </span>
+       <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="kw2">super</span>.@setElement<span class="br0">&#40;</span>index,value<span class="br0">&#41;</span>;   <span class="co1">//use default property storage otherwise</span>
+   <span class="br0">&#125;</span>,
+   get length<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw1">this</span>.@privateLength<span class="br0">&#125;</span>,
+   set length<span class="br0">&#40;</span>value<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      let newLength = value &gt;&gt;&gt; <span class="nu0">0</span>;
+      let ownLength = <span class="kw1">this</span>.@privateLength;
+      <span class="kw1">if</span> <span class="br0">&#40;</span>newLen != Number<span class="br0">&#40;</span>value<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="kw1">throw</span> <span class="kw2">new</span> RangeError;
+      <span class="kw1">if</span> <span class="br0">&#40;</span>newLen &gt;= oldLength<span class="br0">&#41;</span> <span class="kw1">return</span> <span class="kw1">this</span>.<span class="me1">oldLength</span> = newLength;
+      <span class="kw1">while</span> <span class="br0">&#40;</span>oldLength &gt; newLength<span class="br0">&#41;</span> Reflect.<span class="me1">deleteProperty</span><span class="br0">&#40;</span><span class="kw1">this</span>, --obdLength<span class="br0">&#41;</span>;
+      <span class="kw1">this</span>.@privateLength = newLength;
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>         
+       
+<span class="kw2">export</span> <span class="kw2">function</span> NArray<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+   let instance = Object.<span class="me1">create</span><span class="br0">&#40;</span>nArrayPrototype<span class="br0">&#41;</span>;
+   instance.@privateLength = <span class="nu0">0</span>;
+   <span class="kw1">return</span> instance
+<span class="br0">&#125;</span></pre>
+<p>
+ Note that  instance of NArray, in addition to fully supporting the Array length invariants, also inherit from the normal Array.prototype and fully supports all of the built-in Array.prototype methods.
+</p>
+
+</div>
+<!-- SECTION [15391-17636] -->
+<a name="emulating_es5_indexed_string_access_semantics_without_using_internal_methods"></a><h3>Emulating ES5 Indexed String Access Semantics Without using Internal Methods</h3>
+<div class="level3">
+
+<p>
+ ECMAScript 5 added the ability to access the individual characters of a string wrapper object as if they were object properties. The only way to accomplish this in the ES5 specification was to redefine the internal [[GetOwnProperty]] method of String objects.  There was no way this semantics could be implemented by a ECMAScript programmer for String or any similar objects.
+</p>
+<pre class="code javascript">module Reflect from <span class="st0">"@reflect"</span>;
+module <span class="kw3">Name</span> from <span class="st0">"@name"</span>;
+<span class="kw2">import</span> <span class="br0">&#123;</span>elementGet<span class="br0">&#125;</span> from <span class="kw3">Name</span>;
+&nbsp;
+String.<span class="me1">prototype</span>.@elementGet = <span class="kw2">function</span><span class="br0">&#40;</span>indx<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+   <span class="kw1">if</span> <span class="br0">&#40;</span>Reflect.<span class="me1">has</span><span class="br0">&#40;</span><span class="kw1">this</span>,indx<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="kw1">return</span> Reflect.<span class="me1">get</span><span class="br0">&#40;</span><span class="kw1">this</span>,indx<span class="br0">&#41;</span>;
+   let n = Math.<span class="me1">floor</span><span class="br0">&#40;</span>indx;
+   <span class="kw1">if</span> <span class="br0">&#40;</span>n&lt;<span class="nu0">0</span> || n&gt;= <span class="kw1">this</span>.<span class="me1">length</span><span class="br0">&#41;</span> <span class="kw1">return</span> undefined;
+   <span class="kw1">return</span> <span class="kw1">this</span>.<span class="me1">charAt</span><span class="br0">&#40;</span>n<span class="br0">&#41;</span>;
+<span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [17637-18437] -->
+<a name="reformed_array"></a><h3>Reformed Array</h3>
+<div class="level3">
+
+<p>
+ Because native ECMAScript Arrays use object properties to represent numerically indexed array elements, such arrays exhibit various behavioral oddities.  For example, consider:
+</p>
+<pre class="code javascript">let a = <span class="br0">&#91;</span> <span class="br0">&#93;</span>;
+a<span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>=<span class="nu0">1</span>;
+a<span class="br0">&#91;</span><span class="nu0">1</span>.<span class="nu0">0</span><span class="br0">&#93;</span>=<span class="nu0">2</span>;
+a<span class="br0">&#91;</span><span class="st0">"1.0"</span><span class="br0">&#93;</span>=<span class="nu0">3</span>;
+<span class="kw3">print</span><span class="br0">&#40;</span>Object.<span class="me1">getOwnPropertyNames</span><span class="br0">&#40;</span>a<span class="br0">&#41;</span><span class="br0">&#41;</span>;
+                <span class="co1">//prints:  length,1,1.0</span>
+<span class="kw3">print</span><span class="br0">&#40;</span>a<span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span><span class="br0">&#41;</span>;    <span class="co1">//prints:  2</span>
+                <span class="co1">//    a[1.0] and a[1] reference the same element</span>
+<span class="kw3">print</span><span class="br0">&#40;</span>a<span class="br0">&#91;</span><span class="st0">"1.0"</span><span class="br0">&#93;</span><span class="br0">&#41;</span>;<span class="co1">//prints:  3</span>
+                <span class="co1">//    a[1.0] and a[&quot;1.0&quot;] reference different elements</span></pre>
+<p>
+these anomalies occur because of the conversion of non-string property keys into string keys. the number 1.0 converts to the string &ldquo;1&rdquo; while the string &ldquo;1.0&rdquo; is used as a property key without conversions.
+</p>
+
+<p>
+Using the features of this proposal, any type conversions of data store element keys becomes the responsibility of the collection objects.  This  permits the definition of a reformed Array object type that actually used numeric indices instead of strings-valued keys.
+</p>
+<pre class="code javascript">module <span class="kw3">Name</span> from <span class="st0">"@name"</span>;
+<span class="kw2">import</span> <span class="br0">&#123;</span>elementSet, elementGet, elementDelete<span class="br0">&#125;</span> from <span class="kw3">Name</span>;
+&nbsp;
+&nbsp;
+<span class="kw2">const</span> backing = <span class="kw3">Name</span>.<span class="me1">create</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+<span class="kw2">const</span> internalLength = <span class="kw3">Name</span>.<span class="me1">create</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+<span class="kw2">const</span> rArrayPrototype = Array.<span class="me1">prototype</span> &lt;| <span class="br0">&#123;</span>
+   @elementSet<span class="br0">&#40;</span>index, value<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       let i = Number<span class="br0">&#40;</span>index<span class="br0">&#41;</span>;
+       <span class="kw1">if</span> <span class="br0">&#40;</span>i&lt;<span class="nu0">0</span> || i&gt;= <span class="kw1">this</span>.@internalLength<span class="br0">&#41;</span> <span class="kw1">throw</span> <span class="kw2">new</span> RangeError<span class="br0">&#40;</span><span class="st0">"Array bounds error"</span><span class="br0">&#41;</span>;
+       <span class="kw1">this</span>.@backing<span class="br0">&#91;</span>Math.<span class="me1">floor</span><span class="br0">&#40;</span>i<span class="br0">&#41;</span><span class="br0">&#93;</span> = value;
+   <span class="br0">&#125;</span>,
+   @elementGet<span class="br0">&#40;</span>index<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       let i = Number<span class="br0">&#40;</span>index<span class="br0">&#41;</span>;
+       <span class="kw1">if</span> <span class="br0">&#40;</span>i&lt;<span class="nu0">0</span> || i&gt;= <span class="kw1">this</span>.@internalLength<span class="br0">&#41;</span> <span class="kw1">throw</span> <span class="kw2">new</span> RangeError<span class="br0">&#40;</span><span class="st0">"Array bounds error"</span><span class="br0">&#41;</span>;
+       <span class="kw1">return</span> <span class="kw1">this</span>.@backing<span class="br0">&#91;</span>Math.<span class="me1">floor</span><span class="br0">&#40;</span>i<span class="br0">&#41;</span><span class="br0">&#93;</span>;
+   <span class="br0">&#125;</span>,
+   @elementDelete<span class="br0">&#40;</span>index<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       <span class="kw1">throw</span> <span class="st0">"Cannot delete reformed array elements"</span>;
+   <span class="br0">&#125;</span>,
+   get length<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw1">this</span>.@internalLength<span class="br0">&#125;</span>
+<span class="br0">&#125;</span>         
+       
+<span class="kw2">export</span> <span class="kw2">function</span> ReformedArray<span class="br0">&#40;</span>size<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+   let instance = Object.<span class="me1">create</span><span class="br0">&#40;</span>rArrayPrototype<span class="br0">&#41;</span>;
+   let len = Math.<span class="me1">floor</span><span class="br0">&#40;</span>Math.<span class="me1">abs</span><span class="br0">&#40;</span>Number<span class="br0">&#40;</span>size<span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>;
+   instance.@privateLength = len;
+   instance.@backing = <span class="kw2">new</span> Array<span class="br0">&#91;</span>len<span class="br0">&#93;</span>;
+       <span class="co1">//We'll cheat by using a legacy array as backing, it would be better to have a dense fixed size vector to use</span>
+   <span class="kw1">return</span> instance
+<span class="br0">&#125;</span></pre>
+<p>
+This example, defines an Reformed array that is allocated to a fixed size and which has normalized 0-origin indices. Other variations of well behaved arrays could be defined including dense arrays with non-zero base indices and various forms of dynamically sizable arrays.
+</p>
+
+</div>
+<!-- SECTION [18438-20853] -->
+<a name="an_property_mirror_api"></a><h3>An Property Mirror API</h3>
+<div class="level3">
+
+<p>
+ A Mirror object is an object that provides a reflective <acronym title="Application Programming Interface">API</acronym> upon another object.  It permits the stratification of reflection and application logic. (for example, see <a href="http://www.wirfs-brock.com/allen/posts/228" class="urlextern" target="_blank" title="http://www.wirfs-brock.com/allen/posts/228" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Experimenting with Mirrors for JavaScript</a>).
+</p>
+
+<p>
+Here is the definition of a property mirror object that uses  [ ] to access the properties of the mirrored object.  In this design, the properties of the reflected object are exposed as the elements of the mirror object&rsquo;s data collection.
+</p>
+<pre class="code javascript">module Reflect from <span class="st0">"@reflect"</span>;
+module <span class="kw3">Name</span> from <span class="st0">"@name"</span>;
+<span class="kw2">import</span> <span class="br0">&#123;</span>elementGet, elementSet, elementDelete<span class="br0">&#125;</span> from <span class="kw3">Name</span>;
+&nbsp;
+<span class="kw2">const</span> target = <span class="kw3">Name</span>.<span class="me1">create</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+&nbsp;
+<span class="kw2">const</span> propMirrorProto = <span class="br0">&#123;</span>
+   @elementGet<span class="br0">&#40;</span>indx<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> Reflect.<span class="me1">get</span><span class="br0">&#40;</span><span class="kw1">this</span>.@target,indx<span class="br0">&#41;</span><span class="br0">&#125;</span>,
+   @elementSet<span class="br0">&#40;</span>indx,value<span class="br0">&#41;</span> <span class="br0">&#123;</span>Reflect.<span class="me1">set</span><span class="br0">&#40;</span><span class="kw1">this</span>.@target,indx,value<span class="br0">&#41;</span><span class="br0">&#125;</span>,
+   @elementDelete<span class="br0">&#40;</span>indx<span class="br0">&#41;</span> <span class="br0">&#123;</span>Reflect.<span class="me1">deleteProperty</span><span class="br0">&#40;</span><span class="kw1">this</span>.@target,indx<span class="br0">&#41;</span><span class="br0">&#125;</span>;
+   defineProperty<span class="br0">&#40;</span>key,desc<span class="br0">&#41;</span> <span class="br0">&#123;</span>Reflect.<span class="me1">defineProperty</span><span class="br0">&#40;</span><span class="kw1">this</span>.@target,key,desc<span class="br0">&#41;</span>; <span class="kw1">return</span> <span class="kw1">this</span><span class="br0">&#125;</span>,
+   getOwnPropertyDescriptor<span class="br0">&#40;</span>key<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> Reflect.<span class="me1">getOwnPropertyDescriptor</span><span class="br0">&#40;</span><span class="kw1">this</span>.@target,key<span class="br0">&#41;</span><span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">export</span> <span class="kw2">function</span> PropertyMirror<span class="br0">&#40;</span>obj<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+   <span class="kw1">return</span> propMirrorProto &lt;|<span class="br0">&#123;</span>@target: obj<span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+&nbsp;</pre>
+<p>
+such a mirror might be used as: 
+</p>
+<pre class="code javascript">let obj = <span class="br0">&#123;</span>a:<span class="nu0">1</span>, b:<span class="nu0">2</span><span class="br0">&#125;</span>;
+&nbsp;
+let mrr = <span class="kw2">new</span> PropertyMirror<span class="br0">&#40;</span>obj<span class="br0">&#41;</span>;
+<span class="kw3">print</span><span class="br0">&#40;</span>mrr<span class="br0">&#91;</span><span class="st0">'a'</span><span class="br0">&#93;</span><span class="br0">&#41;</span>;    <span class="co1">//prints: 1</span>
+mrr<span class="br0">&#91;</span><span class="st0">'c'</span><span class="br0">&#93;</span> = <span class="nu0">3</span>;
+<span class="kw3">print</span><span class="br0">&#40;</span>obj.<span class="me1">c</span><span class="br0">&#41;</span>;       <span class="co1">//prints: 3</span>
+<span class="kw1">delete</span> mrr<span class="br0">&#91;</span><span class="st0">'c'</span><span class="br0">&#93;</span>;
+<span class="kw3">print</span><span class="br0">&#40;</span>obj.<span class="me1">c</span><span class="br0">&#41;</span>;       <span class="co1">//prints:  undefined</span>
+<span class="kw1">delete</span> mrr<span class="br0">&#91;</span><span class="st0">'getOwnPropertyDescriptor'</span><span class="br0">&#93;</span>;
+<span class="kw3">print</span><span class="br0">&#40;</span>JSON.<span class="me1">stringify</span><span class="br0">&#40;</span>mrr.<span class="me1">getOwnPropertyDescrptor</span><span class="br0">&#40;</span><span class="st0">'a'</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>;
+                    <span class="co1">//prints: {'a': {'value':1, 'writable':true, 'enumerable': true, 'configurable': true}}</span></pre>
+</div>
+<!-- SECTION [20854-22517] -->
+<a name="rationalizing_dom_htmlcollections"></a><h3>Rationalizing DOM HTMLCollections</h3>
+<div class="level3">
+
+<p>
+ The <acronym title="World Wide Web Consortium">W3C</acronym> <acronym title="Document Object Model">DOM</acronym> includes the concept of HTMLCollections which are collections of <acronym title="HyperText Markup Language">HTML</acronym> elements.  HTMLColletion supported both array-like access of elements using numeric indices and keyed access using the <acronym title="HyperText Markup Language">HTML</acronym> id or name attribute value.  JavaScript implementation of HTMLCollection used [ ] for both the indexed and keyed access to the collection elements.  This create several issues.  First there is the issue of what happens if the key value (the id or name value) of an element is the same as a own or inherited property of the HTMLColleciton.  For example, the key of a collection element might be &ldquo;toString&rdquo;.  The draft WebIDL has a complicated mechanism to deal with whether or not specific properties may or may not be shadowed by element keys and visa versa. There are also ambiguity that can occur if an element key string is the same as an an index value.  For example &ldquo;1&rdquo;.
+</p>
+
+<p>
+A HTMLCollection type might be defined, using this proposal as follows:
+</p>
+<pre class="code javascript">module Reflect from <span class="st0">"@reflect"</span>;
+module <span class="kw3">Name</span> from <span class="st0">"@name"</span>;
+<span class="kw2">import</span> <span class="br0">&#123;</span>elementGet<span class="br0">&#125;</span> from <span class="kw3">Name</span>;
+&nbsp;
+&nbsp;
+<span class="kw2">const</span> stringIndex = <span class="kw3">Name</span>.<span class="me1">create</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+<span class="kw2">const</span> numericIndex = <span class="kw3">Name</span>.<span class="me1">create</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+<span class="kw2">const</span> domReadonlyCollectionPrototype =  <span class="br0">&#123;</span> <span class="co1">//writable is exercise for the reader</span>
+   @elementGet<span class="br0">&#40;</span>index<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">if</span> <span class="br0">&#40;</span><span class="kw1">typeof</span> index == <span class="st0">"number"</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+          <span class="co1">// numeric index access //</span>
+          <span class="kw1">return</span> <span class="kw1">this</span>.@numericIndex<span class="br0">&#91;</span>index<span class="br0">&#93;</span>
+      <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="kw1">if</span> <span class="br0">&#40;</span><span class="kw1">typeof</span> index == <span class="st0">"string"</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+          <span class="co1">//string index is id/name lookup</span>
+          <span class="kw1">return</span> <span class="kw1">this</span>.@stringIndex<span class="br0">&#91;</span>index<span class="br0">&#93;</span>
+      <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="kw1">throw</span> DOMError<span class="br0">&#40;</span><span class="st0">"Invalid HTMLCollection element"</span><span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span>,
+    get length<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw1">this</span>.@numericIndex.<span class="me1">length</span><span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+       
+<span class="kw2">export</span> <span class="kw2">function</span> HTMLCollectionArray<span class="br0">&#40;</span>...<span class="me1">nodes</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+   let instance = Object.<span class="me1">create</span><span class="br0">&#40;</span>domReadonlyCollectionPrototype<span class="br0">&#41;</span>;
+   <span class="kw1">this</span>.@numericIndex = <span class="br0">&#91;</span><span class="br0">&#93;</span>; 
+   <span class="kw1">this</span>.@stringIndex = Object.<span class="me1">create</span><span class="br0">&#40;</span><span class="kw2">null</span><span class="br0">&#41;</span>;
+   <span class="kw1">for</span> <span class="br0">&#40;</span>let i = <span class="nu0">0</span>; i&lt;nodes.<span class="me1">length</span>; ++i<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      let node = nodes<span class="br0">&#91;</span>i<span class="br0">&#93;</span>;
+      <span class="kw1">this</span>.@numericIndex<span class="br0">&#91;</span>i<span class="br0">&#93;</span> = node;
+      let symbolicKey = node.<span class="me1">id</span>;
+      <span class="kw1">if</span> <span class="br0">&#40;</span>!symbolicKey<span class="br0">&#41;</span> symbolicKey = node.<span class="kw3">name</span>;
+      <span class="kw1">if</span> <span class="br0">&#40;</span>symbolicKey<span class="br0">&#41;</span> Reflect.<span class="me1">set</span><span class="br0">&#40;</span><span class="kw1">this</span>@stringIndex,symbolicKey,node<span class="br0">&#41;</span>; <span class="co1">//or: this@stringIndex[symbolicKey]=node</span>
+   <span class="br0">&#125;</span>     
+   <span class="kw1">return</span> instance;
+<span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [22518-24709] -->
+<a name="possible_extensions"></a><h2>Possible Extensions</h2>
+<div class="level2">
+
+</div>
+<!-- SECTION [24710-24744] -->
+<a name="multi-valued_indices"></a><h3>Multi-valued Indices</h3>
+<div class="level3">
+
+<p>
+ Syntactically 
+</p>
+<pre class="code"> MemberExpression: MemberExpression [ Expression ]</pre>
+
+<p>
+could be modified to be
+</p>
+<pre class="code"> MemberExpression : MemberExpression [ ArgumentList ]</pre>
+
+<p>
+ In this case, the signatures @elementGet, @elementSet, and @elementDelete would be defined as
+</p>
+<pre class="code javascript"><span class="kw2">function</span> @elementGet<span class="br0">&#40;</span>...<span class="me1">indices</span><span class="br0">&#41;</span>
+<span class="kw2">function</span> @elementSet<span class="br0">&#40;</span>value, ...<span class="me1">indices</span><span class="br0">&#41;</span>
+<span class="kw2">function</span> @elementDelete<span class="br0">&#40;</span>...<span class="me1">indices</span><span class="br0">&#41;</span></pre>
+<p>
+This would permit the definition of with collections such matrices that result multiple key index values to access elements.
+</p>
+
+<p>
+This might appear to introduce incompatibilities with existing code, but if the default behavior is to only use the final element of the arguments list then this extension should remain compatible with existing code that uses the comma operator in an index Expression.
+</p>
+
+<p>
+The original 2001 ES4 draft specification apparently permitted such multiple value indexes.
+</p>
+
+</div>
+<!-- SECTION [24745-25645] -->
+<a name="what_about_the_in_operator"></a><h3>What about the in operator?</h3>
+<div class="level3">
+
+<p>
+ The <strong><code>in</code></strong> operator is another mechanism that is available in EcmaScript that programs can use to test if an object has a specified property.  For example:
+</p>
+<pre class="code javascript"><span class="co1">//test if a method exists</span>
+<span class="kw1">if</span> <span class="br0">&#40;</span><span class="st0">"forEach"</span> <span class="kw1">in</span>  obj<span class="br0">&#41;</span> obj.<span class="me1">forEach</span><span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span>elememnt<span class="br0">&#41;</span> <span class="br0">&#123;</span>doSomething<span class="br0">&#40;</span>element<span class="br0">&#41;</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;
+&nbsp;
+<span class="co1">//test if a key is in a collection</span>
+<span class="kw1">if</span> <span class="br0">&#40;</span>nextCandidate <span class="kw1">in</span> memoStore<span class="br0">&#41;</span> <span class="kw1">return</span> memoStore<span class="br0">&#91;</span>nextCandidate<span class="br0">&#93;</span>;</pre>
+<p>
+ As the above examples show, <strong><code>in</code></strong> might be used to test either the property bag or data collection aspect of an object. However, unlike <strong><code>.</code></strong> and <strong><code>[ ]</code></strong> there are no direct syntactic clues as to the programmer&rsquo;s intent. It can, at best, be inferred from the form of the left operand or the usage that is predicated by the test. Because of this dual usage, it isn&rsquo;t clear that it is wise to further over-load the <strong><code>in</code></strong> operator when defining new collection abstractions. For that reason we have, so far, chosen to not include an <code>@elementIn</code> method than can be over-ridden to redefine the meaning of <strong><code>in</code></strong> for collections and instead, in our examples, have defined distinct methods on collections for membership testing.
+</p>
+
+<p>
+Alternatively, we could provide <code>@elementIn</code> and promote the <strong><code>in</code></strong> operator as the preferred means to test membership in data collections.  In that case some other mechanism such as <code>Reflect.has</code> should be promoted as the preferred way to test for property existence.
+</p>
+
+</div>
+<!-- SECTION [25646-27102] -->
+<a name="precedents"></a><h2>Precedents</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> C++ permits overload operator[]</div>
+</li>
+<li class="level1"><div class="li"> C# supports indexes and uses them extensive to define its collections <a href="http://msdn.microsoft.com/en-us/library/6x16t2tx%28v=vs.80%29.aspx" class="urlextern" target="_blank" title="http://msdn.microsoft.com/en-us/library/6x16t2tx%28v=vs.80%29.aspx" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Indexers (C# Programming Guide)</a></div>
+</li>
+<li class="level1"><div class="li"> Dart implements [] and []= as user definable <a href="http://www.dartlang.org/language-tour/#op-methods" class="urlextern" target="_blank" title="http://www.dartlang.org/language-tour/#op-methods" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">operator method</a> calls and uses it in the implementation of its standard collection classes such as <a href="http://api.dartlang.org/dart_core/List.html" class="urlextern" target="_blank" title="http://api.dartlang.org/dart_core/List.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">List</a> and <a href="http://api.dartlang.org/dart_core/Map.html" class="urlextern" target="_blank" title="http://api.dartlang.org/dart_core/Map.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Map</a>.</div>
+</li>
+<li class="level1"><div class="li"> According to Waldemar, the original ES4 design included user definable index operations including multiple index values.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [27103-27777] -->
+<a name="feedback"></a><h2>Feedback</h2>
+<div class="level2">
+
+<p>
+<a href="https://mail.mozilla.org/pipermail/es-discuss/2011-November/017961.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2011-November/017961.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">https://mail.mozilla.org/pipermail/es-discuss/2011-November/017961.html</a> <br/>
+ A prototype implementation: <a href="https://mail.mozilla.org/pipermail/es-discuss/2011-November/018259.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2011-November/018259.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">https://mail.mozilla.org/pipermail/es-discuss/2011-November/018259.html</a>
+</p>
+
+</div>
+<!-- SECTION [27778-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/c/c4908dc369365deaab7a179387e45436.xhtml used -->
+</body>
+</html>

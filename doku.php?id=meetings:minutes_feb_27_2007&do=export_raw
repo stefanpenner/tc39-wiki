@@ -1,0 +1,66 @@
+== Attendance ==
+
+  * Dave Herman
+  * Jeff Dyer
+  * Cormac Flanagan
+  * Graydon Hoare
+  * Brian Crowder
+  * Doug Crockford
+  * Chris Pine
+  * Francis Cheng
+
+== Question on Standard Mode ==
+
+What should be the behavior of the following program in
+standard mode? Should the evaluator remember the type of g,
+and enforce it at calls? But that might then imply that
+the evaluator needs to dynamically infer a type for each
+sub-expression. 
+<code>
+type BoolFn = function (boolean):boolean;
+
+function f(g:BoolFn):* {
+   g(4);
+   
+   // a more complicated version is
+   // ((function (h:BoolFn):BoolFn { return h; })(g))(4)
+}
+
+function id(x:*):* { return x; }
+
+f(id);
+</code>
+
+Also, the following program should not be statically rejected 
+in strict mode, but how should the checks work at run-time?
+The evaluator could again remember the type of g,
+or the verifier could insert a <boolean> check around the call to g.
+
+<code>
+type BoolFn = function ():boolean;
+
+function f(g:BoolFn):* {
+   g();
+   
+   // A more complicated version is
+   // ((function (h:BoolFn):BoolFn { return h; })(g))()
+}
+
+function four():* { return 4; }
+
+f(four);
+</code>
+
+
+ --- //[[cormac@soe.ucsc.edu|Cormac Flanagan]] 2007/02/26 14:06//
+
+We discussed this and came up with 3 plausible solutions (including cases induced by slot read/write on structural types wherein the expression evaluates through
+ a compatible-but-different type than the referent):
+
+  * The evaluator's intermediate value type(s) can carry implied types. This would be the REF type for assignment LHSs, as well as the VAL type returned for RHSs.
+  * The verifier (or a stage slightly thereafter) could reduce the statements to a normal form such that all assignments and calls pass through typed TEMP fixtures.
+  * The verifier (or a stage slightly thereafter) could insert explicit casts inside complex expressions to cover all "implied" temporaries.
+
+We did not agree on which of these strategies to adopt, but none of them seem terribly disruptive (as far as not requiring a change to the AST).
+
+ --- //[[graydon@mozilla.com|graydon]] 2007/02/27 09:21//

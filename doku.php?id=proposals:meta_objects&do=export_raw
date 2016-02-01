@@ -1,0 +1,123 @@
+====== Meta-objects ======
+
+See also [[discussion:meta_objects|the discussion page]].
+
+This proposal is to amend the spec with a normative set of meta-objects which must be present in any program and accessible at runtime. The meta-objects may be immutable, and they may be constructed lazily, but in all other respects they should appear to the programmer as "normal" objects.
+
+There is a function:
+
+<code>
+intrinsic function typeOf(e: *): intrinsic::Type;
+</code>
+
+Which, for any expression ''e'', returns a //type meta-object// which is a runtime description of the type of ''e''. Type meta-objects have the following signature:
+
+<code>
+use default namespace intrinsic;
+
+interface Type 
+{
+  function canConvertTo(t: Type): Boolean;
+  function isSubtypeOf(t: Type): Boolean;
+}
+
+interface Field
+{
+  function namespace() : String;
+  function name(): String;
+  function type(): Type;
+}
+
+type FieldIterator = iterator::IteratorType.<Field>;
+
+interface NominalType extends Type
+{
+  function name(): String;
+  function namespace(): String;
+  function superTypes(): IteratorType.<ClassType>;
+  function publicMembers(): FieldIterator;
+  function publicStaticMembers(): FieldIterator;
+}
+
+interface InterfaceType extends NominalType
+{
+  function implementedBy():IteratorType.<ClassType>
+}
+
+type TypeIterator = iterator::IteratorType.<Type>;
+type ValueIterator = iterator::IteratorType.<*>;
+
+interface ClassType extends NominalType
+{
+  function construct(typeArgs: TypeIterator, valArgs: ValueIterator): Object;
+}
+
+interface UnionType extends Type
+{
+  function members(): TypeIterator;
+  function construct(typeArgs: TypeIterator, valArgs: ValueIterator): *;
+}
+
+interface FieldValue
+{
+  function namespace() : String;
+  function name(): String;
+  function value(): *;
+}
+
+type FieldValueIterator = iterator::IteratorType.<FieldValue>;
+
+interface RecordType extends Type
+{
+  function fields(): FieldIterator;
+  function construct(typeArgs: TypeIterator, valArgs: FieldValueIterator): Object;
+}
+
+interface FunctionType extends Type
+{
+  function hasBoundThis(): Boolean;
+  function returnType(): Type;
+  function argTypes(): TypeIterator;
+  function construct(typeArgs: TypeIterator, valArgs: ValueIterator): *;
+  function apply(typeArgs: TypeIterator, thisArg: Object?, valArgs: ValueIterator): *;
+}
+</code>
+
+Implementations may choose to provide further extensions to these interfaces, to provide richer reflective capabilities. Clients wishing to use extended meta-object interfaces can perform runtime downcasts on the basic meta-objects provided by this spec.
+
+
+====== Examples ======
+
+The dynamic values of the built-in classes are instances of ''ClassType''.
+
+<code javascript>
+Object is ClassType
+String is ClassType
+</code>
+
+The dynamic values of structural types are instances of ''ObjectType'', ''FunctionType'', ''UnionType'', or ''ArrayType''.
+
+<code javascript>
+(type {x:int})         is ObjectType
+(type function(int):*) is FunctionType
+(type (int,String))    is UnionType
+(type [int])           is ArrayType
+</code>
+
+
+Since the reflective meta-type API is given as interfaces, then the //runtime value// of each of these meta-types is an ''InterfaceType''.
+
+<code javascript>
+Type         is InterfaceType
+NominalType  is InterfaceType
+ClassType    is InterfaceType
+FunctionType is InterfaceType
+UnionType    is InterfaceType
+ArrayType    is InterfaceType
+</code>
+
+====== References ======
+
+Looks like this follows the principles in [[http://bracha.org/mirrors.pdf]].
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/01/04 14:36//

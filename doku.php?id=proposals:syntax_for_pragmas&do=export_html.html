@@ -1,0 +1,226 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:syntax_for_pragmas&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:syntax_for_pragmas&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:syntax_for_pragmas&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:syntax_for_pragmas&amp;do=export_html.html#common_syntax_and_semantics_for_pragmas" class="toc">Common syntax and semantics for pragmas</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:syntax_for_pragmas&amp;do=export_html.html#common_semantics" class="toc">Common semantics</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:syntax_for_pragmas&amp;do=export_html.html#standard_pragmas" class="toc">Standard pragmas</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:syntax_for_pragmas&amp;do=export_html.html#namespace" class="toc">Namespace</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:syntax_for_pragmas&amp;do=export_html.html#default_namespace" class="toc">Default Namespace</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:syntax_for_pragmas&amp;do=export_html.html#decimal_double_int_uint_number" class="toc">Decimal, double, int, uint, Number</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:syntax_for_pragmas&amp;do=export_html.html#precision" class="toc">Precision</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:syntax_for_pragmas&amp;do=export_html.html#rounding" class="toc">Rounding</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:syntax_for_pragmas&amp;do=export_html.html#strict" class="toc">Strict</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:syntax_for_pragmas&amp;do=export_html.html#standard" class="toc">Standard</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:syntax_for_pragmas&amp;do=export_html.html#safe_unsafe" class="toc">Safe / Unsafe</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="common_syntax_and_semantics_for_pragmas"></a><h1>Common syntax and semantics for pragmas</h1>
+<div class="level1">
+<pre class="code">
+
+Pragmas	:
+	Pragma
+	Pragmas  Pragma
+	
+Pragma :
+	UsePragma  SemicolonFull
+	ImportPragma  SemicolonFull
+	
+UsePragma :
+	use  PragmaItems
+	
+PragmaItems :
+	PragmaItem
+	PragmaItems  ,  PragmaItem
+	
+PragmaItem :
+	PragmaIdentifier
+	PragmaIdentifier  PragmaArgument
+	
+PragmaIdentifier :	
+        decimal
+        default namespace
+        double
+        int
+        namespace
+        Number
+        precision
+        rounding
+        safe
+        standard
+        strict
+        uint
+        unsafe
+	
+PragmaArgument :
+	true
+	false
+        eval
+	Number
+	-  Number
+	String
+	SimpleQualifiedIdentifier
+	
+ImportPragma :
+	import  ImportName
+	import  Identifier  =  ImportName
+	
+ImportName :
+	PackageIdentifier  .  PropertyIdentifier
+
+</pre>
+
+</div>
+<!-- SECTION [1-789] -->
+<a name="common_semantics"></a><h2>Common semantics</h2>
+<div class="level2">
+
+<p>
+ Pragmas are scoped and have effect in the entire syntactic unit in which they occur.
+</p>
+
+<p>
+Implementations that do not recognize a pragma not defined in this standard <em>must</em> reject the program that uses that pragma.  (<em>Rationale</em>: Unlike C or C++ the standard pragmas in ECMAScript have effects on program meaning, so the only safe behavior is to reject programs that contain unknown pragmas.)
+</p>
+
+</div>
+<!-- SECTION [790-1213] -->
+<a name="standard_pragmas"></a><h2>Standard pragmas</h2>
+<div class="level2">
+
+<p>
+ (This section is now somewhat advisory; semantics are properly defined in proposals linked from here.)
+</p>
+
+</div>
+<!-- SECTION [1214-1347] -->
+<a name="namespace"></a><h3>Namespace</h3>
+<div class="level3">
+
+<p>
+ The <code>namespace</code> pragma takes one or more arguments, each of which is interpreted as an expression that must evaluate to constants of type <code>Namespace</code> at compile time.  The pragma adds these namespaces to the set of open namespaces for the syntactic unit.  See section 16.4 in the January 2006 draft.
+</p>
+
+</div>
+<!-- SECTION [1348-1676] -->
+<a name="default_namespace"></a><h3>Default Namespace</h3>
+<div class="level3">
+
+<p>
+ The <code>default namespace</code> pragma takes one argument, which is one of: <code>public</code>, <code>internal</code> or <code>intrinsic</code>.  The pragma makes the given namespace the default namespace for all definitions that are in the scope of the current block, and adds the namespace to the list of currently open namespaces (the system default is the package internal namespace). The argument is limited to one of three builtin namespaces because to be useful this pragma must occur at the top-level of a program where the environment has only built-in namespaces. Also, the primary use cases are for implementing built-ins using <code>intrinsic</code> and compatibility with ES3 using <code>public</code>. ISSUE: should we make it a syntax error to use this pragma anywhere but at the top-level?
+</p>
+
+<p>
+See <a href="doku.php%3Fid=proposals:meta_objects.html" class="wikilink1" title="proposals:meta_objects" onclick="return svchk()" onkeypress="return svchk()">meta objects</a> for one compelling use-case.
+</p>
+
+</div>
+<!-- SECTION [1677-2513] -->
+<a name="decimal_double_int_uint_number"></a><h3>Decimal, double, int, uint, Number</h3>
+<div class="level3">
+
+<p>
+ These pragmas take no arguments.  They state that &ldquo;all&rdquo; arithmetic in the syntactic unit should be performed using the kind of arithmetic chosen in the pragma, and that numeric literals should be interpreted as ditto literals.
+</p>
+
+<p>
+(We need to clarify exactly which operators are affected by this pragma, and how literals are interpreted.  See <a href="doku.php%3Fid=proposals:decimal.html" class="wikilink1" title="proposals:decimal" onclick="return svchk()" onkeypress="return svchk()">decimal</a> and <a href="doku.php%3Fid=proposals:numbers.html" class="wikilink1" title="proposals:numbers" onclick="return svchk()" onkeypress="return svchk()">numbers</a> for much more of this story.)
+</p>
+
+</div>
+<!-- SECTION [2514-2980] -->
+<a name="precision"></a><h3>Precision</h3>
+<div class="level3">
+
+<p>
+ The <code>precision</code> pragma takes one argument N which is a number.  It controls the number of decimal digits in the coefficient fields of decimal arithmetic operands and results. N may be any positive integer between 1 and 34 inclusive. Coefficient results will be rounded to N decimal digits. See <a href="doku.php%3Fid=proposals:decimal.html" class="wikilink1" title="proposals:decimal" onclick="return svchk()" onkeypress="return svchk()">decimal</a> proposal for details
+</p>
+
+</div>
+<!-- SECTION [2981-3341] -->
+<a name="rounding"></a><h3>Rounding</h3>
+<div class="level3">
+
+<p>
+ The <code>rounding</code> pragma takes one argument which is interpreted case-insensitively without evaluation as the name of a rounding mode.  It states that all decimal arithmetic in the syntactic unit should use that rounding mode.
+</p>
+
+<p>
+(We need to clarify exactly which rounding mode names exist, the <a href="doku.php%3Fid=proposals:decimal.html" class="wikilink1" title="proposals:decimal" onclick="return svchk()" onkeypress="return svchk()">decimal</a> proposal has more.)
+</p>
+
+</div>
+<!-- SECTION [3342-3696] -->
+<a name="strict"></a><h3>Strict</h3>
+<div class="level3">
+
+<p>
+ The <code>strict</code> pragma states that the program should be compiled in strict mode.  The pragma may only appear at the beginning of the program.  Implementations are free to ignore this pragma.
+</p>
+
+<p>
+(See also <a href="doku.php%3Fid=proposals:strict_and_standard_modes.html" class="wikilink1" title="proposals:strict_and_standard_modes" onclick="return svchk()" onkeypress="return svchk()">strict and standard modes</a>.)
+</p>
+
+</div>
+<!-- SECTION [3697-3959] -->
+<a name="standard"></a><h3>Standard</h3>
+<div class="level3">
+
+<p>
+ The <code>standard</code> pragma states that the code in the scope of the pragma should be interpreted as being in the standard dialect (as opposed to the strict dialect).
+</p>
+
+<p>
+(See also <a href="doku.php%3Fid=proposals:strict_and_standard_modes.html" class="wikilink1" title="proposals:strict_and_standard_modes" onclick="return svchk()" onkeypress="return svchk()">strict and standard modes</a>.)
+</p>
+
+</div>
+<!-- SECTION [3960-4196] -->
+<a name="safe_unsafe"></a><h3>Safe / Unsafe</h3>
+<div class="level3">
+
+<p>
+ The <code>safe</code> pragma states that the uses of the feature named by the pragma argument shall have the &ldquo;safe&rdquo; semantics of that feature. The <code>unsafe</code> pragma states that uses of the feature named shall have the &ldquo;unsafe&rdquo;, backward compatible semantics. Currently the only feature with safe and unsafe modes is <code>eval</code>
+</p>
+
+<p>
+(See also <a href="doku.php%3Fid=proposals:resurrected_eval.html" class="wikilink1" title="proposals:resurrected_eval" onclick="return svchk()" onkeypress="return svchk()">resurrected eval</a>.) 
+</p>
+
+</div>
+<!-- SECTION [4197-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/6/657c078885be9b13bc1349d455e671e8.xhtml used -->
+</body>
+</html>

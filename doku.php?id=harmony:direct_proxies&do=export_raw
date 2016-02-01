@@ -1,0 +1,372 @@
+====== Direct Proxies ======
+
+**This proposal has progressed to the Draft ECMAScript 6 Specification (Sept. 2013 draft Sections [[https://people.mozilla.org/~jorendorff/es6-draft.html#sec-proxy-object-internal-methods-and-internal-data-properties|9.3]] and [[https://people.mozilla.org/~jorendorff/es6-draft.html#sec-proxy-objects|26.2]]), which is available for review here: [[harmony:specification_drafts]]. Any new issues relating to them should be filed as bugs at [[http://bugs.ecmascript.org]]. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.**
+
+
+This Proxy API replaces the earlier [[harmony:proxies]] API.
+A summary of the major differences between this API and the previous API can be found on [[strawman:direct_proxies|the old strawman page]].
+
+
+
+===== API =====
+
+To construct a proxy that wraps a given ''target'' object:
+
+<code javascript>
+var proxy = Proxy(target, handler);
+</code>
+
+Both ''target'' and ''handler'' must be proper Objects.
+It is not necessary to use ''new'' to create new proxy objects.
+
+The ''handler'' is an object that may implement the following API (name denotes a property name, -> is followed by return type, [t] means array-of-t, etc.):
+
+<code javascript>
+{
+  getOwnPropertyDescriptor: function(target,name) -> desc | undefined          // Object.getOwnPropertyDescriptor(proxy,name)
+  getOwnPropertyNames:      function(target) -> [ string ]                     // Object.getOwnPropertyNames(proxy) 
+  getPrototypeOf:           function(target) -> any                            // Object.getPrototypeOf(proxy)
+  defineProperty:           function(target,name, desc) -> boolean             // Object.defineProperty(proxy,name,desc)
+  deleteProperty:           function(target,name) -> boolean                   // delete proxy[name]
+  freeze:                   function(target) -> boolean                        // Object.freeze(proxy)
+  seal:                     function(target) -> boolean                        // Object.seal(proxy)
+  preventExtensions:        function(target) -> boolean                        // Object.preventExtensions(proxy)
+  isFrozen:                 function(target) -> boolean                        // Object.isFrozen(proxy)
+  isSealed:                 function(target) -> boolean                        // Object.isSealed(proxy)
+  isExtensible:             function(target) -> boolean                        // Object.isExtensible(proxy)
+  has:                      function(target,name) -> boolean                   // name in proxy
+  hasOwn:                   function(target,name) -> boolean                   // ({}).hasOwnProperty.call(proxy,name)
+  get:                      function(target,name,receiver) -> any              // receiver[name]
+  set:                      function(target,name,val,receiver) -> boolean      // receiver[name] = val
+  enumerate:                function(target) -> iterator                       // for (name in proxy) (iterator should yield all enumerable own and inherited properties)
+  keys:                     function(target) -> [string]                       // Object.keys(proxy)  (return array of enumerable own properties only)
+  apply:                    function(target,thisArg,args) -> any               // proxy(...args)
+  construct:                function(target,args) -> any                       // new proxy(...args)
+}
+</code>
+
+Each of the above methods is called a "trap". The first argument to each trap is a reference to the ''target'' object wrapped by the proxy that triggered the trap. The comment behind each trap signature shows example code that may trigger the trap.
+
+All traps are optional. If missing (more precisely, if ''handler[trapName]'' returns ''undefined''), the proxy defaults to forwarding the intercepted operation to its ''target'' object.
+
+**Non-interceptable operations**
+Some operations are insensitive to proxies, and are implicitly applied to the proxy's ''target'' instead:
+
+<code javascript>
+typeof proxy                 // equivalent to typeof target
+proxy instanceof F           // equivalent to target instanceof F
+</code>
+
+**Identity**
+A proxy has its own identity, which is distinct from its target. Hence ''proxy !== target'' and for any WeakMap ''wm'', ''wm.get(proxy)'' is not necessarily equal to ''wm.get(target)''.
+
+**Functions**
+The ''apply'' and ''construct'' traps are triggered //only// if ''typeof target === "function"''. Otherwise, trying to call or construct a proxy fails just like when trying to call/construct a non-function object.
+
+Note the role of the 2nd ''thisArg'' argument to the ''apply'' trap:
+
+<code javascript>
+var fun = function(){};
+var proxy = Proxy(fun, handler);
+
+proxy(...args); // triggers handler.apply(fun, undefined, args)
+var obj = { m: proxy }; obj.m(...args); // triggers handler.apply(fun, obj, args)
+Function.prototype.apply.call(proxy, thisArg, args); // triggers handler.apply(fun,thisArg,args)
+</code>
+
+
+
+
+
+
+===== Wrapping irregular Objects =====
+
+A proxy may wrap irregular objects such as functions, arrays, Date objects and host objects.
+In such cases, a proxy acquires any internal properties (other than the standard internal properties for regular Objects) from its wrapped target.
+
+Some standard internal properties on regular Objects are always shared with the wrapped target: this includes the %%[[Class]]%% internal property:
+  * calling ''Object.prototype.toString.call(proxy)'' uses the ''target'''s %%[[Class]]%% in the result string
+  * ''typeof proxy'' is equal to ''typeof target''.
+
+A proxy does not have a %%[[Prototype]]%% internal property. Prototype access should instead trigger the ''getPrototypeOf'' trap, and check if the return value of that trap is consistent with the %%[[Prototype]]%% value of the proxy's %%[[Target]]%% (see invariant enforcement, below).
+
+A proxy does not have an %%[[Extensible]]%% internal property. Accessing this internal property should instead trigger the ''isExtensible'' trap, and check if the return value of that trap is consistent with the %%[[Extensible]]%% value of the proxy's %%[[Target]]%% (see invariant enforcement, below).
+
+**Date**
+Example:
+
+<code javascript>
+var d = new Date();
+var p = Proxy(d, {});
+Object.prototype.toString.call(p) // "[object Date]"
+Object.getPrototypeOf(p) // Date.prototype
+typeof p // "object"
+p === d // false
+</code>
+
+**Function**
+When the wrapped ''target'' is a Function:
+  * ''Object.prototype.toString.call(proxy)'' returns ''"[object Function]"''
+  * ''Function.prototype.toString.call(proxy)'' returns ''Function.prototype.toString.call(target)''
+  * ''Function.prototype.apply.call(proxy, rcvr, args)'' triggers ''handler.apply(target, rcvr, args)''
+  * ''Function.prototype.call.call(proxy, rcvr, ...args)'' triggers ''handler.apply(target, rcvr, args)''
+  * ''Function.prototype.bind.call(proxy, rcvr, ...args)'' returns a currying of the proxy
+
+The %%[[Call]]%% and %%[[Construct]]%% behavior of a proxy ''p'' is governed by the following rule:
+  * If ''typeof target === "function"'', then so is ''typeof p'' and calling/constructing the proxy always traps the ''apply/construct'' trap.
+  * If ''typeof target !== "function"'', then so is ''typeof p'' and any attempt to call/construct ''p'' raises a ''TypeError'' as usual, stating that ''p'' is not a function. The ''apply'' or ''construct'' traps are never invoked.
+
+This upholds the constraints that:
+  * The result of ''typeof'' is stable: it depends only on ''typeof target'', not on the presence or absence of the ''apply'' or ''construct'' traps.
+  * An object is callable if and only if ''typeof obj === "function"''.
+
+The second restriction could be revisited if there exist host objects that are not ''typeof "function"'' but that are callable/constructable.
+
+**Array**
+
+<code javascript>
+var target = [];
+var p = Proxy(target, handler);
+Object.prototype.toString.call(p) // "[object Array]"
+Object.getPrototypeOf(p) // Array.prototype
+typeof p // "object"
+Array.isArray(p) // true
+p[0] // triggers handler.get(target, "0", p)
+</code>
+
+**Non-generic built-in functions**
+
+As noted in the "open issues" below, it is not yet clear how proxies should behave when passed as the ''this''-binding of built-in methods like ''Date.prototype.getTime'':
+
+<code javascript>
+var d = new Date();
+var p = new Proxy(d,{});
+Date.prototype.getTime.call(p); // forward to d or fail?
+</code>
+
+The ideal solution would be for ''Date.prototype.getTime'' and similar methods to be specified as //generic// methods (i.e. methods applicable to any object), which use the new [[harmony:private_name_objects|private symbol]] mechanism to lookup state that is unique to Date instances. However, the [[strawman:proxy_symbol_decoupled|interaction between proxies and private symbols]] is still under discussion.
+
+====== Virtual Objects ======
+
+Since this Proxy API requires one to pass an existing object as a ''target'' to wrap, it may seem that this API precludes the creation of fully "virtual" objects that are not represented by an existing JSObject. It's easy to create such "virtual" proxies: just pass a fresh empty object as the target to ''Proxy'' and implement all the handler traps so that none of them defaults to forwarding, or otherwise touches the ''target''.
+
+As long as the virtual proxy doesn't expose non-configurable properties or becomes non-extensible, the target object is fully ignored (except to acquire internal properties such as the target's %%[[Class]]%%).
+
+To accomodate such virtual object abstractions, and to keep these abstractions in sync with future editions of the spec, we propose built-in library support in the form of a [[harmony:virtual object api]].
+
+====== reflect module ======
+
+Direct proxies are made accessible from a new [[harmony:reflect api|"@reflect" module]]. This module also contains "helper" functions that correspond one-to-one to each of the trap methods of the handler API. They enable Proxy handlers to conveniently forward an operation to their target object. These methods can also be useful for general reflection use.
+
+====== Interaction with Prototypal Inheritance ======
+
+Proxies may be used as prototypes of other objects, e.g. by calling ''Object.create(proxy)''.
+When a proxy is used as a prototype, some of its traps may get triggered not because the proxy itself was "touched" by external code, but rather an object that inherits (directly or indirectly) from the proxy:
+
+<code javascript>
+var proxy = Proxy(target, handler);
+var child = Object.create(proxy);
+
+child[name]                   // triggers handler.get(target,name,child)
+child[name] = val             // triggers handler.set(target,name,val,child)
+name in child                 // triggers handler.has(target,name)
+for (var prop in child) {...} // triggers handler.enumerate(target)
+</code>
+
+Note that the ''get'' and ''set'' traps get access to the ''child'' on which the original property access or assignment took place. This is in contrast to an "own" property access, which gets passed a reference to the proxy itself:
+
+<code javascript>
+var proxy = Proxy(target, handler);
+proxy[name] // triggers handler.get(target,name,proxy)
+</code>
+
+
+====== Invariant enforcement ======
+
+A proxy ensures that its handler and its target do not contradict each other as far as non-configurability and non-extensibility are concerned. That is: the direct proxy inspects the return values from the handler traps, and checks whether these return values make sense given the current state of its target. If the handler and the target are always consistent, then the enforcement will have no observable effects. Otherwise, upon detection of an invariant violation, the proxy will throw a ''TypeError''.
+
+Below is a list of invariants for Objects based on the ES5 spec.
+
+Definitions:
+  * A //sealed property// is a non-configurable own property of the target.
+  * A //frozen property// is a non-configurable non-writable own property of the target.
+  * A //new property// is a property that does not exist on a non-extensible target.
+  * Two property descriptors ''desc1'' and ''desc2'' for a property ''name'' are //incompatible// if ''desc1 = Object.getOwnPropertyDescriptor(target,name)'' and ''Object.defineProperty(target,name,desc2)'' would throw a ''TypeError''.
+
+**getOwnPropertyDescriptor**
+
+  * Non-configurability invariant: cannot return incompatible descriptors for sealed properties 
+  * Non-extensibility invariant: must return undefined for new properties
+  * Invariant checks:
+    * if trap returns undefined, check if the property is configurable
+    *  if property exists on target, check if the returned descriptor is compatible
+    * if returned descriptor is non-configurable, check if the property exists on the target and is also non-configurable
+
+**defineProperty**
+
+  * Non-configurability invariant: cannot succeed (return true) for incompatible changes to sealed properties 
+  * Non-extensibility invariant: must reject (return false) for new properties
+  * Invariant checks:
+    * on success, if property exists on target, check if existing descriptor is compatible with argument descriptor
+    * on success, if argument descriptor is non-configurable, check if the property exists on the target and is also non-configurable
+
+**getOwnPropertyNames**
+
+  * Non-configurability invariant: must report all sealed properties
+  * Non-extensibility invariant: must not list new property names 
+  * Invariant checks:
+    * check whether all sealed target properties are present in the trap result
+    * If the target is non-extensible, check that no new properties are listed in the trap result
+
+**deleteProperty**
+
+  * Non-configurability invariant: cannot succeed (return true) for sealed properties
+  * Invariant checks:
+    * on success, check if the target property is configurable
+
+**getPrototypeOf**
+
+  * Invariant check: check whether the target's prototype and the trap result are identical (according to the [[harmony:egal]] operator)
+
+**freeze | seal | preventExtensions**
+
+  * Invariant checks:
+    * on success, check if isFrozen(target), isSealed(target) or !isExtensible(target)
+
+**isFrozen | isSealed | isExtensible**
+
+  * Invariant check: check whether the boolean trap result is equal to isFrozen(target), isSealed(target) or isExtensible(target)
+
+**hasOwn**
+
+  * Non-configurability invariant: cannot return false for sealed properties
+  * Non-extensibility invariant: must return false for new properties 
+  * Invariant checks:
+    * if false is returned, check if the target property is configurable
+    * if false is returned, the property does not exist on target, and the target is non-extensible, throw a TypeError
+
+**has**
+
+  * Non-configurability invariant: cannot return false for sealed properties
+  * Invariant checks:
+    * if false is returned, check if the target property is configurable
+
+**get**
+
+  * Non-configurability invariant: cannot return inconsistent values for frozen data properties, and must return undefined for sealed accessors with an undefined getter 
+  * Invariant checks:
+    * if property exists on target as a data property, check whether the target property's value and the trap result are identical (according to the [[harmony:egal]] operator)
+    * if property exists on target as an accessor, and the accessor's ''get'' attribute is undefined, check whether the trap result is also undefined.
+
+**set**
+
+  * Non-configurability invariant: cannot succeed (return true) for frozen data properties or sealed accessors with an undefined setter 
+  * Invariant checks:
+    * on success, if property exists on target as a data property, check whether the target property's value and the update value are identical (according to the [[harmony:egal]] operator)
+    * on success, if property exists on target as an accessor, check whether the accessor's ''set'' attribute is not undefined
+
+**keys**
+
+  * Non-configurability invariant: must report all enumerable sealed properties
+  * Non-extensibility invariant: must not list new property names
+  * Invariant checks:
+    * Check whether all enumerable sealed target properties are listed in the trap result
+    * If the target is non-extensible, check that no new properties are listed in the trap result
+
+**enumerate**
+
+  * Non-configurability invariant: must report all enumerable sealed properties
+  * Invariant checks:
+    * Check whether all enumerable sealed target properties are listed in the trap result
+
+More information about these invariants can be found in the header documentation of the [[http://code.google.com/p/es-lab/source/browse/trunk/src/proxies/DirectProxies.js#92|prototype implementation]].
+
+====== Revocable Proxies ======
+
+[[strawman:revokable_proxies|Revocable proxies]] are proxies whose ''target''-link can be nulled out, allowing for the target (and the handler) to become eligible for garbage-collection. Revocable proxies are created by calling the factory method ''Proxy.revocable'':
+
+<code javascript>
+let { proxy, revoke } = Proxy.revocable(target, handler);
+proxy.foo // traps as usual
+revoke()  // revokes the proxy, always returns undefined
+proxy.foo // throws TypeError: "proxy is revoked"
+</code>
+
+  * The factory method ''Proxy.revocable(target, handler)'' returns an object ''{proxy: proxy, revoke: revoke}''.
+  * ''revoke'' is a zero-argument function that, when called, revokes its associated proxy.
+  * Revoking an already revoked proxy has no effect.
+  * Once a proxy is revoked, it remains forever revoked.
+  * Revoking a proxy is equivalent to replacing the handler such that all handler traps throw a ''TypeError'' unconditionally.
+
+====== Draft Spec ======
+
+See the [[harmony:proxies spec]].
+
+====== Open Issues ======
+  
+  * Removed ''iterate()'' trap as iterators can be defined on any old object via an ''iterate'' unique name. See discussion at [[harmony:iterators]]. A proxy will intercept the request for its iterator via the ''get'' trap, which is passed the unique ''iterator'' name as argument.
+
+=== Discussed during TC39 September 2012 Meeting, NorthEastern U., Boston ===
+
+  * [[https://mail.mozilla.org/pipermail/es-discuss/2012-September/024826.html|Enumerate trap signature]]: consider making the ''enumerate()'' trap return an iterator rather than an array of strings. To retain the benefits of an iterator (no need to store collection in memory), we might need to waive the duplicate properties check. Resolution: accepted (duplicate properties check is waived in favor of iterator return type)
+
+  * [[strawman:proxies_names|proxies and private names]] strawman: discusses how proxies and private names should interact. Resolution: consensus on adding a new third "whitelist" argument to ''Proxy'' to control interaction with private names.
+
+  * [[strawman:revokable_proxies|revokable proxies]] strawman: required to implement caretaker proxies that can release their target, so that it can be garbage-collected. Resolution:
+    * Consensus on the need for revocable proxies.
+    * Further discussion is needed on whether frozen objects (and in particular: tests such as isFrozen) should be revocable, either via revocable proxies or via traps that throw.
+
+=== Discussed during TC39 July 2012 Meeting, Microsoft, Redmond ===
+
+**proto and proxies**
+
+  * If %%__proto__%% is specified normative mandatory per the May TC39 meeting, consider adding a ''getPrototypeOf'' trap. This would simplify membranes. Writable %%__proto__%% already destroys the invariant that the %%[[Prototype]]%% link is stable. Engines already need to accomodate.
+  * ''Object.getPrototypeOf(proxy) // => handler.getPrototypeOf(target)''
+  * Invariant enforcement: trap must return same prototype object as its target (so the trap by itself doesn't introduce mutable prototype chains)
+  * MarkM: even with mutable %%__proto__%%, there are still some invariants to be preserved:
+    - non-extensible objects should have a stable prototype link
+    - deleting %%Object.prototype.__proto__%% should remove the ability to modify the prototype of objects
+  * Membranes can use the trap to keep their "shadow" target in-sync with their "real" target: if %%realTarget.[[Prototype]]%% changed, membrane can set shadowTarget's %%[[Prototype]]%% to a wrapped version, then return the wrapped version.
+  * Spec should be refactored so that instead of an internal %%[[Prototype]]%% property, there exists an internal method (%%[[GetProto]]%%?). Each use of %%[[GetProto]]%% in the spec would trigger the ''getPrototypeOf'' trap.
+  * Do we need a corresponding ''setPrototypeOf'' trap? Depends on how we end up specifying %%__proto__%%: if as special data prop, there won't be an observable capability to set prototypes on objects. If as an accessor, then the %%__proto__%% setter applied to a proxy would trigger such a trap. We could also poison the setter, at which point there is no need for ''setPrototypeOf''.
+  * Regardless of how we spec %%__proto__%%, %%proxy.__proto__%% should just trigger the proxy's ''get'' trap (similar for ''set''). The handler gets to decide whether this property name is magical or not.
+
+**trapping instanceof**
+
+  * Thread on [[https://mail.mozilla.org/pipermail/es-discuss/2012-June/023676.html|es-discuss]]: should ''instanceof'' trap? See earlier [[http://wiki.ecmascript.org/doku.php?id=strawman:proxy_instanceof|strawman]] for how this could work. Does giving the RHS function access to the LHS instance consistute a serious capability leak?
+  * ''x instanceof Proxy(t,h) => h.hasInstance(t,x)''
+  * Proposed solution is OK but maybe better done via a private name? Discussion: how do we decide on private name vs. trap? If it has invariants associated with it, definitely need a trap.
+  * On the issue of the "capability leak" of giving the RHS access to the LHS: there is little or no legacy capability-secure code that would rely on the current expectation that LHS and RHS don't get access to each other. In going forward, we can just explain ''instanceof'' as sending a message to the RHS, passing LHS as argument (explicit capability grant rather than a "leak").
+
+**trapping isSealed and friends**
+
+  * Make ''Object.{isExtensible, isSealed, isFrozen}'' trappable for direct proxies. This would again simplify membranes (makes it possible to maintain the extensibility state of the wrapped target across a membrane). Invariant enforcement would check whether the return value of these traps is consistent with the state of the target.
+
+**nativeCall trap**
+
+  * Built-in methods applied to proxies: for Date, agreed that it would be sensible to "unwrap" the proxy (e.g. ''Date.prototype.getTime.call(Proxy(aDate, handler)) => aDate.getTime()''). This seems fine as long as such built-ins don't return an object but just a primitive value. 
+  * Instead of auto-unwrapping, could delegate to a generic trap that can decide to forward or do something else: ''Date.prototype.getYear.call(Proxy(t, h)) => h.nativeCall(t, Date.prototype.getYear, [])''
+  * potential capability leak: the trap gets access to the function, which could be a closely held capability that shouldn't be leaked to the proxy.
+  * Conclusion: let's not introduce such a trap. Instead, wherever we think we need this trap, try to turn the non-generic method into a generic method so that the method becomes applicable to Objects/Proxies.
+  * Example: for Date.prototype methods, we might represent %%[[PrimitiveValue]]%% as a unique name, so any object with the unique name could mimic Date instances and be a valid this-binding of the ''Date.prototype'' methods.
+
+**Proxies and private names**
+
+  * ''proxy[name]'' triggers ''handler.getName(target, name.public)'' trap
+  * trap returns either:
+    - ''[ name, value ]'' : by returning the name object, handler can "prove" to the proxy that it indeed knows about the private name, and can provide the corresponding value
+    - ''undefined'': handler signals to proxy "I don't know about this private name, please forward to the target"
+  * For all traps that take a property name string, we now need an equivalent trap that takes a 'name object'. All of these "Name" traps have the same interface as getName: they consume the .public property of a Name, and must provide either a tuple with the original Name, or undefined to auto-forward.
+
+**VirtualHandler**
+
+  * Fundamental traps in the VirtualHandler: change from "abstract" methods that throw to forwarding to the target.
+  * Rename VirtualHandler to just Handler.
+
+**defaultValue**
+
+  * Do we want a ''defaultValue'' trap that intercepts internal invocations to the built-in %%[[DefaultValue]]%% method on Proxies, or do we want to expose it via a privately named property, or just inherit the default Object behavior for Proxies? Sentiment at the July TC39 meeting was against adding a trap -- with [[strawman:value objects]] we'd want more choices than number and string as return types.
+
+====== References ======
+
+  * [[https://github.com/tvcutsem/harmony-reflect|Prototype implementation]] based on the old Proxy API as implemented in Firefox 4/Chrome 17: after loading this file, the page effectively has access to the Proxy API as specified here.

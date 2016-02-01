@@ -1,0 +1,96 @@
+====== Dynamic diagnostic primitives ======
+
+The more I consider this proposal, the more I think it "foundational". I believe that the provision of appropriate "diagnostic primitives" permits moving many proposed dynamic checking aspects of the language into library code, or at very least open-coded uses of the primitives inserted by the compiler.
+
+===== A source-extent type =====
+
+There should be a primitive type for describing an extent of the input source text. This type should be lightweight and copyable, perhaps just an N-tuple of numbers. Each object should have a runtime method which can produce an extent which contains it; higher-performance implementations will return coarse-granularity extents, such as class definitions. Slower, diagnostic modes or less performance-oriented implementations may retain fine-granularity extents such as line and column numbers.
+
+===== Stack frame walking =====
+
+There should be a runtime method for acquiring the current stack frame -- to acquire its source extent -- as well as the caller's stack frame, and so on through various callers. This permits generating stack traces, implementing debugging and profiling facilities, and assigning blame for dynamic type-check or contract-check violations. 
+
+===== Circular log buffers =====
+
+There should be a built-in type of efficient circular log buffer, capable of recording timestamps, numeric events and formatted string segments efficiently, at high speed. Facilities for naming, building and accessing such buffers are secondary, and can be done in library code; the important point is making a high-performance (low-penalty) host object. 
+
+===== Hooks / debugging-MOP =====
+
+There should be a means of "hooking" events which the runtime performs, such that library code can interpose checks, debugging, logging and profiling actions. Hooks should be able to exist at the granularity of runtime typechecking and slot lookup, but a hook should not necessarily be able to do anything other than throw an error or log a result (we can avoid specifying a full MOP).
+
+====== Anti-proposals ======
+
+This proposal is meant to incorporate or supercede the following proposals:
+
+  * [[proposals:proper_tail_calls]]: I do not believe this has a place in ECMAScript: we are adding generators, we don't have a macro system (and probably won't for some time), we don't do CPS transforms, and few people program ECMAScript in highly mutually-recursive style. Tail calls are lovely in some languages, but I don't think they matter enough here to require them.
+  * [[proposals:contracts]]: can be done with hooks, stack walking and source extents.
+  * [[proposals:stack_inspection]]: marking is too complex and requires changes to code; users will not understand or use.
+
+----
+
+Lars probably favors specifying proper tail calls for the same reason I do.  In the browser, there is a place for them given the severe execution model and stack depth limits, even if we add generators.  You're right that only the //cognoscenti// would know to use them, but I'm surprised by how much FP knowledge is trickling down to modern JS hackers.  It's encouraging!  Anyway, I'm with Lars (and obviously Dave) in wanting [[proposals:proper tail calls]] to be normative.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/15 19:15//
+
+----
+
+Hmm. I completely accept the argument that proper tail calls are a space optimization, and that they might be very attractive from that perspective. I also accept that a moderate-to-large amount of FP style is showing up in Javascript libraries; it was too judgmental of me to dismissively say that "few people" program ECMAScript that way. If they're the primary library-ecosystem maintainers, they're an important few.
+
+That said, I feel that two points remain strongly in favour of //not// requiring proper tail calls:
+
+  * Users do use stack traces as a primary way of thinking about the dynamic context of a security check, failed assertion or typecheck, thrown exception, or general diagnostic task (eg. inside a debugger). Removing that context will hurt them. They've learned to rely on that context existing, in almost every language we're going to be seeing users coming from.
+  * The alternative proposal of building up a stack trace by using marks has serious problems:
+    * It requires rewriting all library code; tail calls in existing code which fail to push marks silently vanish from the mark-accumulated context.
+    * It might require new syntax, or a syntax change.
+    * It's new. Users have never seen it before. +1 on the surprise-o-meter.
+    * It's not clear to me how the marking abstraction arranges for marks to be cleared.
+    * It doesn't actually build a stack trace. If you have A calling X calling A calling Y calling A, you will only see ''...X,Y,A'' in your mark set. This is a distortion of the actual execution context, and if there is anything like a central dispatching routine in your program, it could seriously confuse a user.
+
+I'm emotionally sympathetic to the fact that tail calls are space-efficient. And I'm emotionally fond of stack-allocated iterators, since they are more efficient than heap-allocated coroutines too. And ''alloca()'' is a great primitive to have in a language when done safely. Yet we're shying away from these efficiency-motivated things because they complicate the language, surprise users, and we have existing, more general (and more expensive) ways of expressing the same things. 
+
+Between coroutines and first class functions, I believe we already have a rich menu of control-abstraction building blocks. Can you think of many tail-call-requiring patterns which //can't// be done readily with generators and first class functions? I might just not have a broad enough imagination.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/03/15 22:12//
+
+----
+
+''alloca()'' and proper tail calls do not mesh at all, in fact stack-allocated variables are not possible in the
+general case in the presence of proper tail calls.  I don't think that necessarily prevents an implementation from stack-allocating iterators for a 'for' statement, for example, but an implementation must be conservative.
+
+The main use cases for proper tail calls are interpreters and state machines, I think.
+  * State machines you model as a set of mutually tail-recursive functions, a call is a goto that passes parameters.  This leads to rather pretty code that is also modular.
+  * Interpreters are just fancy state machines.  If you're writing an interpreter for a little language you can compile it to a tree of closures that evaluates the program when invoked.  This is modular, fast, and also rather pretty, and it works with both direct style and CPS.  Proper tail calls allow you to reason about the space use of your interpreter: it accumulates stack space only when the program in the little language does.  (For CPS this is crucial, for direct style a significant convenience.)
+
+"Users have learned to rely on the stack context existing": if by "users" you mean ECMAScript programmers then I'm not so sure, since there's no standard way to inspect the stack.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/16 05:24//
+
+Sorry, I wasn't arguing that we add ''alloca()'', just arguing by analogy that there are a lot of "nice efficient things" which I like but which I'm not pushing for in this language. Efficiency isn't top priority (for me).
+
+Your examples are good, and I'll try to keep them in mind while discussing this. 
+
+I'm not certain that they can't be modeled by returning thunks to an outer function which repeatedly calls the returned value (''function main() { var f = init(); while (f) { f = f(); } }'') but I'll readily admit that's not the most efficient pattern.
+
+Wrt. users expecting there to be a stack context: I mean "contemporary programmers", in any language with a bit more introspection than C. Java, C#, Perl, Python, Ruby, VB, the whole menagerie. I believe it comes as a horrifying shock to these programmers when they realize how hard it is to debug Javascript, say: the standard idiom is missing! It's like the lack of decent diagnostic logging: debugging via ''alert()'' is still sadly common.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/03/16 10:37//
+
+Sad but true about ''alert'' ([[http://www.mochikit.org/|MochiKit]] has a nice logging system).
+
+It looks like Python is finally getting some kind of [[http://lambda-the-ultimate.org/node/1331|tail call "optimization"]].
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/16 10:51//
+
+Haha no. Or ... I hope you don't take that hack seriously! If that counts as a tail call optimization -- consing an exception, packing your self-args into it, throwing it, catching it, unpacking and recalling -- then maybe we can do the same using one of our magic ''[attributes]'' preceeding declarations. [[http://w3future.com/weblog/2006/02/#tailCallEliminationInJavascript|Here's a version in Javascript]]. But I doubt this sort of thing will make anyone on this page happy: 
+
+  * it allocates an exception on the heap (so is no more efficient than returning thunks)
+  * it //uses// the stack-walking facility I'm arguing for here
+  * it doesn't work for mutually-recursive sets of functions, only direct tail recursion (''f'' calling ''f'')
+
+There //is// some interesting discussion on the LtU page, though. For example, the note that MIT scheme uses a fixed-size FIFO of tail-call frames, or that you might be able to satisfy users' diagnostic requirements by merely pushing a fixed-size counter of the number of elided tail-call frames (or those which fell of the end of the FIFO) any time you make such calls. 
+
+From a diagnostic perspective, such devices might be enough: they don't actually //lie// to the user, they just tell the user where context vanishes due to optimization. Presumably a knob could even be put in to control the size of the FIFO or such. Debuggers will need to be modified to understand what such elided-frame markers mean, but could still peek into the "last N callers".
+
+From a security perspective, I'm not sure this will be sufficient for stack-inspection-based security mechanisms. I'm not sure I //like// stack-inspection-based security, but it's been discussed. Perhaps if the security check is based on //finding// a magic token, then an elided frame holding a security token makes a security check fail, so can only represent a false-negative permission, never a false-positive, and maybe we consider that good enough. Or perhaps we can have a fixed table at the end of a frame FIFO which collects specially marked locals as frames expire, overwriting in place, as in the marking scheme. I'm open to some sort of compromise.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/03/16 11:11//

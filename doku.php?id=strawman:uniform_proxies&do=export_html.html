@@ -1,0 +1,157 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:uniform_proxies&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:uniform_proxies&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:uniform_proxies&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:uniform_proxies&amp;do=export_html.html#uniform_api_unifying_object_and_function_proxies" class="toc">Uniform API unifying object and function proxies</a></span><ul class="toc">
+<li class="level4"><span class="li"><a href="doku.php%3Fid=strawman:uniform_proxies&amp;do=export_html.html#iscallable" class="toc">IsCallable</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=strawman:uniform_proxies&amp;do=export_html.html#prototype" class="toc">Prototype</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=strawman:uniform_proxies&amp;do=export_html.html#class" class="toc">Class</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=strawman:uniform_proxies&amp;do=export_html.html#fixing_uniform_proxies" class="toc">Fixing Uniform Proxies</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=strawman:uniform_proxies&amp;do=export_html.html#tostring" class="toc">toString</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="uniform_api_unifying_object_and_function_proxies"></a><h3>Uniform API unifying object and function proxies</h3>
+<div class="level3">
+
+<p>
+ This page describes an alternative <acronym title="Application Programming Interface">API</acronym> that gets rid of the distinct function proxies created by <code>Proxy.createFunction</code>. We will refer to the <a href="doku.php%3Fid=harmony:proxies.html" class="wikilink1" title="harmony:proxies" onclick="return svchk()" onkeypress="return svchk()">previous API</a> that distinguishes object from function proxies explicitly as the &ldquo;non-uniform&rdquo; <acronym title="Application Programming Interface">API</acronym> and to this alternative as the &ldquo;uniform&rdquo; <acronym title="Application Programming Interface">API</acronym>.
+</p>
+
+<p>
+In the uniform <acronym title="Application Programming Interface">API</acronym>, there is no separate <code>Proxy.createFunction</code> method. Instead, the handler protocol is extended with two additional fundamental traps: 
+</p>
+<pre class="code javascript">call: <span class="kw2">function</span><span class="br0">&#40;</span>thisBinding, ...<span class="me1">args</span><span class="br0">&#41;</span> -&gt; any <span class="co1">// reifies proxy(...args)</span>
+construct: <span class="kw2">function</span><span class="br0">&#40;</span>...<span class="me1">args</span><span class="br0">&#41;</span> -&gt; object      <span class="co1">// reifies new proxy(...args) </span></pre>
+<p>
+Additionally, the uniform <acronym title="Application Programming Interface">API</acronym> allows proxies to virtualize <code>typeof</code> by passing a third (optional) argument to <code>Proxy.create</code>: 
+</p>
+<pre class="code javascript"><span class="kw2">var</span> p = Proxy.<span class="me1">create</span><span class="br0">&#40;</span>handler, prototype, type<span class="br0">&#41;</span>;</pre>
+<p>
+The <code>type</code> argument could be either &ldquo;object&rdquo; (the default), &ldquo;function&rdquo; or any string except &ldquo;undefined&rdquo;, &ldquo;boolean&rdquo;, &ldquo;number&rdquo; or &ldquo;string&rdquo; (cf. section 11.4.3, The <code>typeof</code> operator).
+</p>
+
+<p>
+Using the uniform proxy <acronym title="Application Programming Interface">API</acronym>, a generic no-op proxy that works for both objects and functions can be created as follows (assuming that <code>handlerMaker</code> also defines <code>call</code> and <code>construct</code> traps): 
+</p>
+<pre class="code javascript"><span class="kw2">function</span> wrap<span class="br0">&#40;</span>target<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw1">return</span> Proxy.<span class="me1">create</span><span class="br0">&#40;</span>handlerMaker<span class="br0">&#40;</span>target<span class="br0">&#41;</span>,
+                      Object.<span class="me1">getPrototypeOf</span><span class="br0">&#40;</span>target<span class="br0">&#41;</span>,
+                      <span class="kw1">typeof</span> Object<span class="br0">&#40;</span>target<span class="br0">&#41;</span><span class="br0">&#41;</span>;
+<span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [1-1482] -->
+<a name="iscallable"></a><h4>IsCallable</h4>
+<div class="level4">
+
+<p>
+ In the non-uniform proposal, function proxies were callable and object proxies were not. But when is a uniform proxy callable? In the ES5 spec, Object values that implement <code>[[Call]]</code> are callable (sec 9.11, IsCallable). One way to define IsCallable on proxies is to &ldquo;feature test&rdquo; the handler, as if by evaluating <code>&ldquo;call&rdquo; in handler</code>, to test whether it implements the <code>call</code> trap. This is undesirable for two reasons:
+</p>
+<ul>
+<li class="level1"><div class="li"> it allows arbitrary user code to run anywhere the spec currently tests for callability, as the handler can itself be a proxy.</div>
+</li>
+<li class="level1"><div class="li"> it breaks a desirable invariant of the non-uniform <acronym title="Application Programming Interface">API</acronym>: in that <acronym title="Application Programming Interface">API</acronym>, the proxy only ever interacts with its handler by <em>invoking</em> its traps. Feature testing the handler would imply that, even at the &ldquo;meta-level&rdquo;, not every operation can be reified as a message send. This prohibits the &ldquo;double lifting&rdquo; technique used in the <a href="doku.php%3Fid=harmony:proxies.html#a_simple_membrane" class="wikilink1" title="harmony:proxies" onclick="return svchk()" onkeypress="return svchk()">membrane example</a>, requiring a proxy on a handler to override the <code>has</code> trap in addition to the <code>invoke</code> trap.</div>
+</li>
+</ul>
+
+<p>
+ Instead, we propose to have <code>IsCallable(aProxy)</code> return <code>true</code> iff the <code>type</code> argument passed to <code>Proxy.create</code> equals <code>&ldquo;function&rdquo;</code>.
+</p>
+
+</div>
+<!-- SECTION [1483-2690] -->
+<a name="prototype"></a><h4>Prototype</h4>
+<div class="level4">
+
+<p>
+ In the non-uniform <acronym title="Application Programming Interface">API</acronym>, the [[Prototype]] of function proxies is guaranteed to refer to <code>Function.prototype</code>. This constraint was enforced because in the ES5 spec, every value for which <code>typeof value</code> equals &ldquo;function&rdquo; will have <code>Function.prototype</code> as its prototype. Uniform proxies can violate this constraint (e.g. <code>Proxy.create(h, Object.prototype, &lsquo;function&rsquo;)</code>). If we don&rsquo;t want uniform proxies to violate this constraint, <code>Proxy.create</code> could perform a sanity check, requiring its <code>prototype</code> argument to be <code>Function.prototype</code> if its <code>type</code> argument equals &ldquo;function&rdquo;.
+</p>
+
+</div>
+<!-- SECTION [2691-3308] -->
+<a name="class"></a><h4>Class</h4>
+<div class="level4">
+
+<p>
+ What is the [[Class]] of a uniform proxy? In the non-uniform <acronym title="Application Programming Interface">API</acronym>, the [[Class]] of a function proxy is &ldquo;Function&rdquo;. One possibility is to derive the [[Class]] from the <code>type</code> parameter as follows:
+</p>
+<ul>
+<li class="level1"><div class="li"> if the <code>type</code> argument equals &ldquo;function&rdquo;, the proxy&rsquo;s [[Class]] is &ldquo;Function&rdquo;</div>
+</li>
+<li class="level1"><div class="li"> otherwise, the proxy&rsquo;s [[Class]] is &ldquo;Object&rdquo;</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [3309-3675] -->
+<a name="fixing_uniform_proxies"></a><h4>Fixing Uniform Proxies</h4>
+<div class="level4">
+
+<p>
+ In the uniform <acronym title="Application Programming Interface">API</acronym>, the fixing protocol becomes more complex. In the non-uniform <acronym title="Application Programming Interface">API</acronym>, fixing a function proxy generates a function object whose [[Call]] and [[Construct]] methods are fixed to the <code>callTrap</code> and the <code>constructTrap</code> passed as arguments to <code>Proxy.createFunction</code>. For the uniform <acronym title="Application Programming Interface">API</acronym>, we could make [[Call]] and [[Construct]] refer to the corresponding handler traps, but again this would require the proxy implementation to interact with the handler object by means of an operation other than message sending (in this case, property access, e.g. <code>handler.call</code>), again prohibiting the &ldquo;double lifting&rdquo; technique.
+</p>
+
+<p>
+We could make the <code>fix</code> trap return three values instead of just a single property map:
+</p>
+<pre class="code javascript">fix: <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw2">var</span> pdMap = ...;
+  <span class="kw2">var</span> callTrap = ...;
+  <span class="kw2">var</span> constructTrap = ...;
+  <span class="kw1">return</span> <span class="br0">&#123;</span>
+    properties: pdMap,
+    call: callTrap,
+    construct: constructTrap
+  <span class="br0">&#125;</span>;
+<span class="br0">&#125;</span></pre>
+<p>
+The <code>call</code> and <code>construct</code> properties of the return value are only required if the <code>type</code> argument to <code>Proxy.create</code> equals <code>&ldquo;function&rdquo;</code>.
+</p>
+
+</div>
+<!-- SECTION [3676-4803] -->
+<a name="tostring"></a><h4>toString</h4>
+<div class="level4">
+
+<p>
+ In the non-uniform <acronym title="Application Programming Interface">API</acronym>, <code>Function.prototype.toString.call(aFunctionProxy)</code> could delegate the call to the function proxy&rsquo;s <code>callTrap</code>. It is not clear what the result should be on uniform proxies. 
+</p>
+
+</div>
+<!-- SECTION [4804-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/c/cf28f2611878efbef7b3405f8c2da440.xhtml used -->
+</body>
+</html>

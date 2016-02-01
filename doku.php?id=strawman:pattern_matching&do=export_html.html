@@ -1,0 +1,265 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:pattern_matching&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:pattern_matching&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:pattern_matching&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:pattern_matching&amp;do=export_html.html#pattern_matching" class="toc">Pattern matching</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:pattern_matching&amp;do=export_html.html#patterns" class="toc">Patterns</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:pattern_matching&amp;do=export_html.html#syntax" class="toc">Syntax</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:pattern_matching&amp;do=export_html.html#static_validation" class="toc">Static validation</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:pattern_matching&amp;do=export_html.html#refutable_semantics" class="toc">Refutable semantics</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:pattern_matching&amp;do=export_html.html#irrefutable_semantics" class="toc">Irrefutable semantics</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:pattern_matching&amp;do=export_html.html#pattern_matching_switch" class="toc">Pattern matching switch</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:pattern_matching&amp;do=export_html.html#syntax" class="toc">Syntax</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:pattern_matching&amp;do=export_html.html#semantics" class="toc">Semantics</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:pattern_matching&amp;do=export_html.html#destructuring_assignment" class="toc">Destructuring assignment</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:pattern_matching&amp;do=export_html.html#irrefutable_matching_contexts" class="toc">Irrefutable matching contexts</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="pattern_matching"></a><h1>Pattern matching</h1>
+<div class="level1">
+
+<p>
+ <acronym title="JavaScript">JS</acronym> 1.7 destructuring is almost pattern matching, but it lacks the refutable semantics needed to support a conditional pattern matching form. This strawman adds a notion of <em>refutable matching</em> and adds certain contexts to the language where matching is interpreted refutably. Other contexts perform a looser, irrefutable matching.
+</p>
+
+</div>
+<!-- SECTION [1-366] -->
+<a name="patterns"></a><h1>Patterns</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [367-390] -->
+<a name="syntax"></a><h2>Syntax</h2>
+<div class="level2">
+
+<p>
+ This is written in parameterized BNF for conciseness. (Think of it as a grammar macro which could be pre-expanded to produce the full grammar.)
+</p>
+
+<p>
+The grammar is factored into <em>PrimaryPattern</em> and <em>Pattern</em>. The former does not admit outermost parentheses; this disambiguates between e.g. <code>let</code> expressions and <code>let</code> declarations.
+</p>
+<pre class="code">
+PrimaryPattern(refutable) ::= &quot;*&quot;
+                           |  [if refutable] Literal
+                           |  Identifier(refutable)
+                           |  ArrayPattern(refutable)
+                           |  TuplePattern(refutable)
+                           |  ObjectPattern(refutable)
+                           |  RecordPattern(refutable)
+                           |  [if refutable] PrimaryPattern(refutable) &quot;if&quot; AssignmentExpression
+
+Pattern(refutable) ::= PrimaryPattern(refutable)
+                    |  &quot;(&quot; Pattern(refutable) &quot;)&quot;
+                    |  [if refutable] &quot;(&quot; Pattern(refutable) &quot;)&quot; &quot;if&quot; AssignmentExpression
+
+ArrayPattern(refutable) ::= &quot;[&quot; (EllipsisPattern(refutable) &quot;,&quot;)? (ElementPattern(refutable) (&quot;,&quot; ElementPattern(refutable))*)? &quot;]&quot;
+                         |  &quot;[&quot; ElementPattern(refutable) (&quot;,&quot; ElementPattern(refutable))* (&quot;,&quot; EllipsisPattern(refutable)) &quot;]&quot;
+
+EllipsisPattern(refutable) ::= &quot;...&quot; Pattern(refutable)
+
+TuplePattern(refutable) ::= &quot;#&quot; &quot;[&quot; EllipsisPattern(refutable) &quot;]&quot;
+                         |  &quot;#&quot; &quot;[&quot; (EllipsisPattern(refutable) &quot;,&quot;)? (ElementPattern(refutable) (&quot;,&quot; ElementPattern(refutable))*)? &quot;]&quot;
+                         |  &quot;#&quot; &quot;[&quot; ElementPattern(refutable) (&quot;,&quot; ElementPattern(refutable))* (&quot;,&quot; EllipsisPattern(refutable))? &quot;]&quot;
+
+ElementPattern(refutable) ::= Pattern(refutable)?
+
+ObjectPattern(refutable) ::= &quot;{&quot; (PropertyPattern(refutable) (&quot;,&quot; PropertyPattern(refutable))*)? &quot;}&quot;
+
+RecordPattern(refutable) ::= &quot;#&quot; &quot;{&quot; EllipsisPattern(refutable) &quot;}&quot;
+                          |  &quot;#&quot; &quot;{&quot; PropertyPattern(refutable) (&quot;,&quot; PropertyPattern(refutable))* (&quot;,&quot; EllipsisPattern(refutable))? &quot;}&quot;
+                          |  &quot;#&quot; &quot;{&quot; (PropertyPattern(refutable) (&quot;,&quot; PropertyPattern(refutable))*)? &quot;}&quot;
+
+PropertyPattern(refutable) ::= PropertyName &quot;:&quot; Pattern(refutable)
+
+GuardedPattern(refutable) ::= Pattern(refutable) &quot;if&quot; AssignmentExpression
+</pre>
+
+</div>
+<!-- SECTION [391-2671] -->
+<a name="static_validation"></a><h2>Static validation</h2>
+<div class="level2">
+
+<p>
+ If a pattern binds the same variable name in multiple positions, a compile-time error must be raised.
+</p>
+
+</div>
+<!-- SECTION [2672-2805] -->
+<a name="refutable_semantics"></a><h2>Refutable semantics</h2>
+<div class="level2">
+
+<p>
+ Roughly: 
+</p>
+<ul>
+<li class="level1"><div class="li"> &ldquo;*&rdquo;: match anything, bind nothing</div>
+</li>
+<li class="level1"><div class="li"> Literal: match if the value is equal to the value of the literal (using <code>===</code>), bind nothing</div>
+</li>
+<li class="level1"><div class="li"> Identifier: match anything, bind the value to the identifier</div>
+</li>
+<li class="level1"><div class="li"> ArrayPattern:</div>
+<ul>
+<li class="level2"><div class="li"> if <code>typeof</code> the value is not &ldquo;object&rdquo;, fail</div>
+</li>
+<li class="level2"><div class="li"> if value has no <code>length</code> property, fail</div>
+</li>
+<li class="level2"><div class="li"> let len = ToUint32(<code>length</code>)</div>
+</li>
+<li class="level2"><div class="li"> if pattern starts with ellipsis:</div>
+<ul>
+<li class="level3"><div class="li"> let n be the number of elements (empty or non-empty) in the pattern after the ellipsis</div>
+</li>
+<li class="level3"><div class="li"> for each i&rsquo;th non-empty element in the pattern, match pattern[i] against value[length - n + i]</div>
+</li>
+</ul>
+</li>
+<li class="level2"><div class="li"> else if pattern ends with ellipsis:</div>
+<ul>
+<li class="level3"><div class="li"> let n be the index of the last (empty or non-empty) element in the pattern</div>
+</li>
+<li class="level3"><div class="li"> if length &lArr; n, fail</div>
+</li>
+<li class="level3"><div class="li"> for each i&rsquo;th non-empty element in the pattern, match pattern[i] against value[i]</div>
+</li>
+<li class="level3"><div class="li"> let a = slice.call(value, n + 1) where slice is the original value of Array.prototype.slice</div>
+</li>
+<li class="level3"><div class="li"> match a against the sub-pattern of the ellipsis</div>
+</li>
+</ul>
+</li>
+<li class="level2"><div class="li"> otherwise:</div>
+<ul>
+<li class="level3"><div class="li"> let n be the index of the last non-empty element in the pattern</div>
+</li>
+<li class="level3"><div class="li"> if length &lArr; n, fail</div>
+</li>
+<li class="level3"><div class="li"> for each i&rsquo;th non-empty element in the pattern, match pattern[i] against value[i]</div>
+</li>
+</ul>
+</li>
+<li class="level2"><div class="li"> match if all the sub-patterns matched, and bind all their collected bindings</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> TuplePattern: similar to array pattern but require it to be a tuple</div>
+</li>
+<li class="level1"><div class="li"> ObjectPattern:</div>
+<ul>
+<li class="level2"><div class="li"> if <code>typeof</code> the value is not &ldquo;object&rdquo;, fail</div>
+</li>
+<li class="level2"><div class="li"> test that each property pattern is in the object and match its [[Get]] result agains its sub-pattern</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> RecordPattern: similar to object pattern, but require it to be a record, and also match a new record of remaining elements against ellipsis sub-pattern</div>
+</li>
+<li class="level1"><div class="li"> GuardedPattern: match subpattern and create bindings, then run the guard expression with just those bindings (not any from surrounding pattern) in local scope, and fail if the result is falsey</div>
+</li>
+</ul>
+
+<p>
+ Note that any time any of these operations triggers code that raises an exception, the exception is <em>not</em> converted to a failure; the exception propagates as the result of the pattern match.
+</p>
+
+</div>
+<!-- SECTION [2806-4939] -->
+<a name="irrefutable_semantics"></a><h2>Irrefutable semantics</h2>
+<div class="level2">
+
+<p>
+ Roughly: do the same as the refutable semantics, but if failure occurs at any point, bind all variables to the undefined value and succeed.
+</p>
+
+</div>
+<!-- SECTION [4940-5115] -->
+<a name="pattern_matching_switch"></a><h1>Pattern matching switch</h1>
+<div class="level1">
+
+<p>
+ This section adds a switch expression form for pattern matching that is grammatically unambiguous from switch statements, even in the context of a statement expression.
+</p>
+
+</div>
+<!-- SECTION [5116-5324] -->
+<a name="syntax"></a><h2>Syntax</h2>
+<div class="level2">
+<pre class="code">
+SwitchExpression ::= &quot;switch&quot; &quot;(&quot; Expression &quot;)&quot; &quot;{&quot; MatchClause+ DefaultBlockClause? &quot;}&quot;
+
+MatchClause ::= &quot;match&quot; Pattern(true) Block
+
+DefaultBlockClause ::= &quot;default&quot; Block
+</pre>
+
+</div>
+<!-- SECTION [5325-5535] -->
+<a name="semantics"></a><h2>Semantics</h2>
+<div class="level2">
+
+<p>
+ Perform each match refutably in sequence until one of them succeeds, then evaluate the RHS expression with the environment extended with the bindings of the match. If at any point a pattern match raises an exception, that exception propagates as the result of the switch expression. The RHS expressions are block statements but are evaluated for their completion value.
+</p>
+
+</div>
+<!-- SECTION [5536-5929] -->
+<a name="destructuring_assignment"></a><h1>Destructuring assignment</h1>
+<div class="level1">
+
+<p>
+ Destructuring assignment is parsed as an <code>LHSExpression</code> but then post-processed as a <code>Pattern(<strong>false</strong>)</code>. Note that this non-terminal represents a subset of <code>LHSExpression</code>.
+</p>
+
+</div>
+<!-- SECTION [5930-6152] -->
+<a name="irrefutable_matching_contexts"></a><h1>Irrefutable matching contexts</h1>
+<div class="level1">
+
+<p>
+ Binding contexts which are not conditional use the irrefutable pattern syntax and matching semantics. These include: 
+</p>
+<ul>
+<li class="level1"><div class="li"> formal parameters (<code>Pattern(<strong>false</strong>)</code>)</div>
+</li>
+<li class="level1"><div class="li"> <code>let</code>/<code>var</code>/<code>const</code> bindings (<code>PrimaryPattern(<strong>false</strong>)</code>)</div>
+</li>
+<li class="level1"><div class="li"> assignment (<code>LHSExpression</code>, reinterpreted as <code>Pattern(<strong>false</strong>)</code>)</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [6153-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/6/67d0508026a3267ca50974b9ef4eccaf.xhtml used -->
+</body>
+</html>

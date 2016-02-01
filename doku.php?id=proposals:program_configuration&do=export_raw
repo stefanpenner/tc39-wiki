@@ -1,0 +1,283 @@
+====== Program configuration ======
+
+
+This is a proposal to add a facility for program configuration to the language. If it is too late for edition 4, then we should at least try to agree on the design and defer it to edition 5. ActionScript will likely support such a feature in the ES4 time frame.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2007/05/11 14:24//
+
+===== Uses =====
+
+
+  * Optional inclusion of debugging and instrumenting code
+  * Configuring APIs
+  * Excluding whole APIs
+  * Conditionally including data
+
+
+===== Design Goals & Constraints =====
+
+  * Compatibility with the existing language
+  * Minimal – easy to use and easy to implement
+  * Reliability – results should be easily predicted
+  * Configuration names should be in their own namespace
+
+
+
+===== Syntax =====
+
+
+  *	Name definition – Configuration symbols are defined as ‘const’ vars in a namespace (e.g. ‘CONFIG’) reserved for compile-time constants. The initializer is required and a type annotation is optional. Configuration names shall only be defined in top-level code of a program (compilation unit) and are in scope from the point of definition to the end of the compilation unit. In other words, forward references to definitions are not allowed. Here are some examples of configuration name definitions,
+
+<code>
+CONFIG const Debug = true
+CONFIG const Profile = “Lite”
+CONFIG const tblsize = 10000
+</code>
+
+  *	Configuration namespace definitions – Users may define configuration namespaces using the pragma ‘config namespace …’ at the top level of a program. Example,
+
+
+<code>
+
+config namespace PROFILER
+
+PROFILER const speed = true
+PROFILER const stack = false
+
+PROFILER::speed {
+    // instrument for speed
+    …
+}
+
+</code>
+
+There is one standard pre-defined configuration namespace named CONFIG. The CONFIG namespace is internal and therefore unique to each compilation unit. 
+
+It is a compiler error to define a configuration namespace anywhere except the top-level code of a compilation unit.
+
+It is a compiler error to shadow a configuration namespace with another name. For example,
+
+<code>
+config namespace PROFILER
+PROFILER const Speed = true
+
+function f()
+{
+   var PROFILER  ← error, defn conflict
+   
+   PROFILER::Speed { … }
+}
+</code>
+
+  *	Name access – The value of a configuration name is read like any other variable. However it is a compiler error if a reference to a configuration variable is not in scope. Here’s a simple example,
+
+<code>
+CONFIG const tblsize = 1000;
+…
+CONFIG::tblsize / 2;   // okay
+
+
+CONFIG::PI * diameter;   // error, forward ref
+…
+CONFIG const PI = 3.1415
+</code>
+
+
+  *	Expression language – In addition to configuration names, the usual boolean, string and numeric literals and operators can be used to compute configuration values. The operators are:
+
+<code>
+Boolean: ! || && != ==
+String: + != ==
+Numeric: + - * / % < <= > >= != == << >> >>> & | ^
+</code>
+
+  *	Configuration attributes – A configuration expression that consists of a configuration name only may be used as an attribute to conditionally include or exclude a definition, component of an array or object literal or structural type, or block statement. A configuration attribute must be the first attribute if more than one is used, and it may be followed by a newline (a semi-colon is not automatically inserted after it). For example,
+
+
+<code>
+CONFIG::Debug
+public class C {
+  …
+}
+</code>
+
+Configuration attributes may be used to control the definition of configuration names. For example the following is allowed,
+
+<code>
+
+CONFIG::Debug
+CONFIG const Profile = true
+
+CONFIG::Release
+CONFIG const Profile = false
+</code>
+
+
+  *	Configuration attributes in literals and structural types – Configuration attributes are allowed in object and array literals, and in object and array types. A newline is allowed between the attribute and the following literal field or element. For example,
+
+<code>
+type arr_type = [
+    int,
+    CONFIG::Debug
+    int,
+    int ]
+
+var arr = [
+    1,
+    CONFIG::Debug 
+    2,
+    3 ] : arr_type      
+         
+type obj_type = {
+    x : int,
+    CONFIG::Debug
+    y : int,
+    z : int }
+
+var obj = {
+  x:1,
+  CONFIG::Debug 
+  y:2,
+  z:3 } : obj_type
+</code>
+
+  *	Configuration attributes on block statements – A block statement may be guarded by a configuration attribute. A block statement that is prefixed by a configuration attribute that has a value ‘false’ will be erased from the program before verification. A block statement guarded with a configuration attribute that evaluates to ‘true’ will be included along with the enclosing braces. A newline is allowed between a configuration attribute and a block statement.
+
+
+
+===== Semantics =====
+
+
+  *	Configuration values throughout a program – Except when used as an attribute of a definition, literal array element, literal object field, array element type, object field type or block statement, a configuration expression is treated as a normal program expression.
+
+  *	Undefined configuration names – it is a compiler error to refer to a configuration name that is not in scope.
+
+  *	Explicit qualification of configuration names – configuration names shall always be qualified by their configuration namespace. It is not possible to “open” a configuration namespace, and is a compiler error to name a configuration namespace in a ‘use namespace’ pragma.
+
+  *	Erasure – a part of a program that is unreachable after evaluation of a configuration attribute (on a definition or block or literal component or structural type) must be erased from the program before verification or evaluation. A configuration expression not used as a configuration attribute is treated as an ordinary program expression and does not result in the erasure of any part of the program. Sophisticated compilers may compile out unreachable code that results from non-attribute expressions, but must report verification errors that would have resulted from code.
+
+  *	Name scope – a configuration name is in scope from the point of its definition to the end of the current block (compilation unit). It is a compiler error to refer to a configuration name that is not in scope.
+
+  *	Variable hoisting – normal variable (i.e. var, const, function, class, and interface) hoisting occurs after program configuration. Configuration variables are erased after configuration and have no effect on the program after that stage.
+
+  *	Numerics – configuration values that include numbers are computed using the same semantics defined for numbers in the full language. This includes the use of numeric modes.
+
+  *	Meta configuration namespace – the ‘config’ attribute used to define configuration namespaces can be thought of as a namespace of namespaces. The meaning of ‘config’ is implied by the syntax and semantics described above. The effect the ‘config’ namespace has on dependent namespaces and names can be summarized like this:
+    *	Namespace is internal to the current file
+    *	Namespace is erased after configuration
+    *	Namespace shall not be shadowed by another name
+    *	Qualified name has a known value at configuration time
+    *	Qualified name used as an attribute causes its subject to be compiled out before verification if its value is ‘false’
+
+
+===== Bigger Example =====
+
+
+<code>
+  config namespace CONFIG
+
+  CONFIG const as3 = true
+  CONFIG const debug = false
+  CONFIG const debug_as3 = CONFIG::debug || CONFIG::as3
+  CONFIG const release_as3 = !debug_as3
+  CONFIG const tblsize = 10000
+
+  CONFIG::debug_as3 
+  class C 
+  {
+      var A = new Array( CONFIG::tblsize )
+      ...
+  }
+
+  CONFIG::debug_as3 
+  class Debug extends C 
+  { 
+      ... 
+      if (CONFIG::as3) {
+          var x = as3::x;
+      }
+  }
+
+  CONFIG::release_as3 
+  class C {
+      var A = new Array( CONFIG::tblsize/2 )
+      ...
+  }
+</code>
+
+
+====== Discussion ======
+
+
+===== Rejected Designs / Features =====
+
+
+The following features have been discussed and rejected:
+
+  *	The use of normal program control flow to configure programs. Uniform use of configuration attributes on definitions, literal elements, structural type elements, and block statements leads to a simpler design than the mixed use of configuration attributes and control flow statements.
+
+  *	The use of ‘!’, ‘true’ and ‘false’ in configuration attributes and conditions. 
+
+//[ISSUE: the former might lead to clutter, and the latter might lead to the user expectation that other literal values can be used (e.g. ‘if (0) …). Let just keep it simple]//
+
+  *	Program introspection – an operator to query the compiler to see what program names have been defined. 
+
+<code>
+(DEFINED RegExp)
+</code>
+
+//[ISSUE: it is difficult to understand the dominance rules that are used to determine whether or not a definition would produce a name that is considered to be defined by this operator. Also, see Lars’ note below about practical usefulness of such expressions]//
+
+  *	IF/ELSE blocks – for separation of the configuration language from the normal language, it has been suggested that we use all caps keywords. However, the introduction of new keyword is incompatible with existing ES3/AS3 programs. E.g.
+
+<code>
+function IF (x) { }
+IF (true)   ← call or configuration block?
+{
+}
+</code>
+
+  *	Allow mixing of configuration expressions and normal expressions. 
+
+//[ISSUE: only in the head of an if statement is the mixing of configuration values and normal program values disallowed. I wonder if this will be too subtle for users to understand. The alternative is to allow the mixing and risk inadvertent inclusion of code because of the presence of a normal expression] //
+
+
+===== Other Guidance =====
+
+  * [Lars] #define, -D, -U, #ifdef, and #undef are significant mistakes that should not be propagated.  #define and #undef are essentially assignment forms in a global name space, and like other imperative forms they tend to make your program unreadable.  They work great for smaller examples (limited configuration needs).  Once you have a real code base you're (IME) much better off in a declarative world giving explicit boolean values (on/off, true/false) to your controlling names, requiring names always to be defined for the program to compile at all.  Controlling something based on the presence or absence of a definition is brittle because it's too easy to forget to define it / too hard to find out what can be defined.
+
+  * [Lars] You almost never want values from the underlying language to propagate into the configuration language (the only example I can think of is that people invariably want to know if they're on a 32 bit or 64 bit system by testing the value of sizeof(int)).
+
+  * [Lars] You want values to flow from the configuration language to the source language in a controlled way, because you don't in general want your configuration variables to pollute your program.
+
+  * [Lars] I know a lot of C-based software relies (by means of #ifdef) on compiler-defined or library-defined #defines to control how the program is compiled, getting a limited flavor of an introspection facility, and they're finding it useful, but IME that's a portability nightmare.  Every system picks a different name for the same feature, some systems reserve some names but not others (try defining your own BOOL or BIG_ENDIAN on a Mac).  Consider "if (defined RegExp)" -- it's probably not the question you want to ask, instead you're interested in whether there's the full engine or a subset engine, whether the engine has the ES4 extensions, and so on.
+
+  * [Lars] Opera has hundreds of features that can be controlled by CPP, and we struggled a lot to control how features were defined and used.  If I were to design a reliable language facility for features it would have at least these aspects:
+    * visually distinct from the source language being controlled
+    * names/values defined by the facility would only be visible in the source language in controlled ways
+    * clean bracketing - the program fragment under control of an expression is always syntactically valid in isolation
+    * strong, static typing of control expressions (always boolean)
+    * flexible expression language with numbers and booleans to compute the control values
+
+  * [Lars] CPP won't do, and I think a variation on CPP will be confusing to people who know CPP.
+
+  * [Pratap] We should consider using the mechanism currently provided by JScript.
+Rationale:
+  - minimize divergence among ECMAScript dialects. Unless there is an overriding technical problem with the precedent, we should consider following it. This will lead to dialect convergence; having a new and different mechanism leads to dialect divergence.
+  - How will we handle the forward syntax compatibility problem? It appears that the text in conditionally excluded blocks must be parsable as valid ES4 syntax. This is the same problem we have today using runtime if’s to exclude version dependent code. The JScript conditional compilation technique deals with this problem because it operates at the lexical rather than syntactic level.
+
+Here are relevant links into the current JScript support for conditional compilation:
+  * [[http://msdn2.microsoft.com/en-us/library/121hztk3.aspx|Conditional Compilation (JScript 5.6)]]
+  * [[http://msdn2.microsoft.com/en-us/library/s59bkzce.aspx|Conditional Compilation Variables (JScript 5.6)]]
+
+---
+
+Convergence between dialects is good, but only if the language converged on is dersirable. The JScript feature described here has some undesirable characteristics, including incompatibility with E4X which is supported by other implementations.
+
+Forward syntax compatibility is only an issue for implementations that do not track the standard. Those that do not need to be shielded from compliant code would only need to support the already standard comment syntax. On the other hand, if IE chooses not to support some of ES4, the web can use this IE specific feature to shield IE from unsupported language. I suppose other vendors that do not implement all of ES4 could choose to support this feature instead.
+
+Just to be clear, I don't see this MS proposal as a competitor to the original Adobe proposal on program configuration. While they seem similar, their stated design goals are clearly very different.
+
+Let's discuss f2f.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2007/06/21 10:07//

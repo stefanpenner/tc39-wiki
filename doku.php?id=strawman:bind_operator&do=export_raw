@@ -1,0 +1,66 @@
+====== Examples ======
+
+Native syntax for ''f.bind(self)'':
+
+<code javascript>
+const hasOwnProperty = Object.prototype.hasOwnProperty;
+function hasOwn(obj, key) {
+    return obj::hasOwnProperty(key);
+}
+</code>
+
+Calling a superclass constructor:
+
+<code javascript>
+function MySubClass(x, y, z) {
+    this::SuperClass(x);
+    this.y = y;
+    this.z = z;
+}
+</code>
+
+Bound-method extraction:
+
+<code javascript>
+var method = obj::obj.foo;
+</code>
+
+Bound-method extraction with implicit object:
+
+<code javascript>
+var method = ::obj.foo;
+</code>
+
+====== Syntax ======
+
+Roughly:
+
+<code javascript>
+Expression ::= ...
+            |  Expression "::" Expression
+</code>
+
+Precedence: should bind just barely weaker than "."
+
+//**TODO**//: grammar details
+
+====== Semantics ======
+
+Essentially, ''e1::e2'' is equivalent to ''do { let obj=e1; e2.bind(obj) }'' with the original meaning of ''.bind'' (the ''let''-binding ensures left-to-right evaluation).
+
+And ''::e'' uses the base of the reference, or ''null'' if the base is not an object.
+
+====== Rationale ======
+
+  * better usability for method extraction + ''this''-binding
+  * better usability for ''Function.prototype.call''
+  * don't have to worry about ''.bind'' or ''.call'' being shadowed/mutated
+  * addresses some ''super'' use cases without need for implicit lexical binding
+  * static syntax means no dynamic tests (e.g. for mutation of ''.bind'' or ''.call'') => better performance
+  * important for code generators that don't want to be penalized for generating ''.call''
+
+====== References ======
+
+  * [[https://mail.mozilla.org/pipermail/es-discuss/2011-November/017860.html|Erik Corry proposal]] for ''super'' (take 1)
+  * [[https://plus.google.com/u/1/114952216726212307316/posts/VeQqmV8gDWJ|Erik Corry proposal]] for ''super'' (take 2)
+  * Gavin Barraclough had the idea of allowing the implicit ''this'' binding using references

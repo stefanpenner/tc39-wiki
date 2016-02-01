@@ -1,0 +1,43 @@
+====== Extraction and formatting ======
+
+
+
+===== Extract as XML =====
+
+One option is to extract the wiki content into an XML structure and then lay out the XML using CSS.  There exist commercial tools (http://www.princexml.com is one I know about) that allow the XML+CSS structure to be formatted to PDF, allowing for traditional document presentation and distribution.
+
+Almost more important, in my opinion, is that the spec will become web-readable if we go this route.
+
+I have experimented with this idea.  I took chapter 5 from the spec namespace and extracted the text from the "edit" view.  I then transformed this text mechanically (EMACS macro) into a simple XML structure, using HTML markup tags (since PrinceXML has an XHTML stylesheet that I could then use directly).  I wrote some new style rules, and though some work remains, and though a custom stylesheet from the start may be better than the XHTML sheet, the resulting PDF is remarkably similar to the draft spec.  It looks good on the web too.
+
+Examples on http://people.opera.com/lth/tc39-tg1/index.html.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/10 03:45//
+
+
+
+===== Extract as HTML and merge with code excerpts =====
+
+The approach that I am currently taking is to extract the wiki contents as HTML and merge the contents with the grammar and relevant portions of code from the reference implementation.  
+
+
+
+==== Export Script written in Perl ====
+I have written a [[spec:wikiexportscript|perl script]] that takes your wiki username/password along with the location of your SML/NJ code and does the following:
+
+  - Parses the latest source file for the grammar, which is stored in doc/grammar.xls in the ES4 Monotone repository.
+  - Logs in to the ES4 wiki and walks through the spec namespace to download every HTML page in the namespace.
+  - Parses the reference implementation code. Currently the script does not download the latest reference implementation so you must download the latest SMLNJ code manually.
+  - Merges the three sources into an XHTML file and appends a “.doc” suffix to the file. 
+
+==== Special markup in the spec namespace ====
+The perl script merges based on special tags applied in the ES4 Wiki's 'spec' namespace. 
+  * To insert part of the grammar into the document, use the code tag and specify “grammar” as in the following example:
+%%<code grammar>LabeledStatement<sup>&omega;</sup></code>%%
+  * To insert SML/NJ code from the reference implementation, use the code tag and specify “insert_ml” along with the name of the function, as in the following example:
+%%<code insert_ml>evalExpr</code>%%
+
+==== Manually apply Ecma template ====
+The last step is to take an Ecma template with the proper formatting and paste the script’s XHTML output into the template document. At that point, a PDF is produced.
+
+--- //[[fcheng@adobe.com|Francis Cheng]] 2007/06/20 20:25//

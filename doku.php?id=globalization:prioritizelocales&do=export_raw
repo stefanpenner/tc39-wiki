@@ -1,0 +1,55 @@
+====== PrioritizeLocales ======
+
+This is a proposal to add an API to provide simple language negotiation algorithm that matches internal Intl negotiation.
+
+===== Use cases =====
+
+  * Client side localization frameworks need a way to negotiate between requested and available locales
+ 
+
+===== Proposed API =====
+
+<code javascript>
+
+
+
+/**
+ * Build a fallback chain list of available locales matching the requested locales
+ * displayLocale {LocaleList|String} Locale in which names are displayed.
+ * availableLocales {LocaleList} List of available locales provided by the application
+ * requestedLocales {LocaleList} Ordered list of locales provided by the user
+ * defaultLocale {String} An ultimate fallback locale, used as a last resort
+ *
+ * returns: An ordered {LocaleList} of availableLocales that match user preference
+ */
+ 
+Intl.PrioritizeLocales(availableLocales, requestedLocales, defaultLocale);
+
+</code>
+
+
+===== Raw approach =====
+
+Alternatively, we could expose ECMA 402 functions needed by prioritizeLocales and let frameworks build the wrapper by themselves.
+
+For that, we will need:
+
+  * [[http://wiki.ecmascript.org/doku.php?id=globalization:expose_canonicalize | Expose Canonicalize*]] functions
+  * Intl.LookupAvailableLocales - API very similar to [[http://ecma-international.org/ecma-402/1.0/#sec-9.2.6 | LookupSupportedLocales]] but returning available codes, not requested ones.
+
+
+===== Discussion =====
+
+ * requestedLocales may be based on [[https://www.w3.org/Bugs/Public/show_bug.cgi?id=23517 | navigator.languages]] list
+
+
+===== References =====
+  * [[https://github.com/l20n/l20n.js/blob/master/lib/l20n/intl.js#L434 | PriorizeLocales used in L20n]]
+
+
+
+
+
+
+
+

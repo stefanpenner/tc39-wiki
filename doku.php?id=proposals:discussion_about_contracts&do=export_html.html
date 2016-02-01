@@ -1,0 +1,167 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:discussion_about_contracts&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:discussion_about_contracts&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:discussion_about_contracts&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="dave_s_contracts_for_js_sketch"></a><h3>Dave's contracts for JS sketch</h3>
+<div class="level3">
+<pre class="code">
+class Integer {
+  ...
+  function isNatural(): Boolean {...}
+}
+
+function repeat(n: Integer@isNatural,
+                s: String)
+  : [String | hasLength(n * s.length)]
+{
+}
+
+function hasLength(n) {
+  return this.length == n
+}
+</pre>
+
+<p>
+A function signature with contract refinements to types: 
+</p>
+<pre class="code">function[this:String,Integer@isNatural]:Boolean</pre>
+
+<p>
+ Note that <code>this</code> must be type-constrained here.
+</p>
+
+<p>
+Static analysis can erase the contract parts.  The <code>@</code> syntax makes that easy for readers and parsers to distinguish.
+</p>
+
+</div>
+<!-- SECTION [1-563] -->
+<a name="notes_from_conversation_with_dave"></a><h3>Notes from conversation with Dave</h3>
+<div class="level3">
+
+<p>
+ Dave&rsquo;s summary:
+</p>
+
+<p>
+Type system soundness requires runtime semantic soundness.
+</p>
+
+<p>
+<acronym title="JavaScript">JS</acronym> wasn&rsquo;t designed with a static type system in mind, which thwarts reasoning about static type (e.g., o[m] for member reference, global object expandos).
+</p>
+
+<p>
+Can have top type only, or punt to runtime to check, or change the language incompatibly &ndash; or just extend it &ldquo;incompatibly&rdquo; (e.g. <code>class</code> restricts dynamism).
+</p>
+
+<p>
+So a static type system, but with runtime checks for things that can&rsquo;t be expressed (this is common, e.g. divide by zero).
+</p>
+
+<p>
+Contract systems allow expressive, blame-fingering runtime checks.  Extending from static to dynamic with contracts can be done (hybrid a la Cormac Flanagan et al.).  <acronym title="JavaScript">JS</acronym> is dynamic in Edition 3, can we go the other way?
+</p>
+
+<p>
+Split <acronym title="JavaScript">JS</acronym> up into <acronym title="JavaScript">JS</acronym>[d] and <acronym title="JavaScript">JS</acronym>[s], specify <acronym title="JavaScript">JS</acronym>[s] in terms of <acronym title="JavaScript">JS</acronym>[d] using AST reflection.
+</p>
+
+<p>
+Objection: specifying sound semantics for Edition 3 is hard, Dave has tried it.
+</p>
+
+<p>
+Formal operational semantics for <acronym title="JavaScript">JS</acronym>[d] and <acronym title="JavaScript">JS</acronym>[s], and showing correspondence between the two.  Lot of work, diminishing returns, may pay to do subset that depends on type system soundness, leave full semantics for later and/or for other people.
+</p>
+
+<p>
+But Mozilla and Opera want one implementation, interpreted.  Adobe wants compilation as well, or first.
+</p>
+
+<p>
+Dave didn&rsquo;t know the plan was to have one syntax for types, annotations, etc. So <acronym title="JavaScript">JS</acronym>[d] would perform the same type checks as <acronym title="JavaScript">JS</acronym>[s] for every reached type annotation or operation, and miss those that weren&rsquo;t executed.  But, it&rsquo;s not clear to him how to have a sound type system.
+</p>
+
+<p>
+A static type system requires a different kind of soundness proof from a dynamic (contract) system
+</p>
+
+<p>
+Exchange with group to talk about how things are more unified/similar in the language as proposed.
+</p>
+
+<p>
+Try this:
+</p>
+
+<p>
+Core language is dynamic without type annotations, <acronym title="JavaScript">JS</acronym>[c].
+</p>
+
+<p>
+One fork, <acronym title="JavaScript">JS</acronym>[s], adds static type annotations, static type system, static checks.  Describe soundness of that fork in terms of core language.
+</p>
+
+<p>
+The other fork, <acronym title="JavaScript">JS</acronym>[d], adds type annotations as sugar for extra assertions, contracts.  Describe soundness in terms of added core language expressions that may throw.
+</p>
+
+<p>
+Dave also wants to pitch that contracts and static types work well together. Take int plus is-prime.  Should be possible to distinguish syntactically the static part from the contract part of the annotations, without requiring two kinds of annotations to be written.
+</p>
+
+<p>
+Contracts are not in general decidable.  So typecase can&rsquo;t switch on them. Robbie Findler shows lazy higher-order contract checking.  Typecase could do static only, or static plus first-order contracts, but not all contracts.
+</p>
+
+<p>
+Restating: we don&rsquo;t want a contract system that has any status in the static type system.  We may well want a contract system.  ES3 lacks even filename, line number, and a stack backtrace for uncaught exceptions.
+</p>
+
+<p>
+See above for contract sketch.
+</p>
+
+<p>
+Macros:
+</p>
+
+<p>
+Automatic hygiene is important.  Could have a gensym operator at a minimum, but we really want to make it foolproof for newbies, avoid automatic variable capture hazards.
+</p>
+
+<p>
+The &lsquo;with&rsquo; statement is problematic.  Adding leading dot syntax as in <acronym title="Visual Basic">VB</acronym> would help to avoid typechecking and macro evaluation interleaving.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/02/15 14:44</em> 
+</p>
+
+</div>
+<!-- SECTION [564-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/c/c42bd7f75ee82ed65ab4ddab7b55669c.xhtml used -->
+</body>
+</html>

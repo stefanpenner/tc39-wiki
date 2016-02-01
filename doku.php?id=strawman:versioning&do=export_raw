@@ -1,0 +1,40 @@
+=== Good News ===
+
+Excellent proposal from dherman coming very soon.
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/12/31 21:09//
+
+=== Prior Work ===
+
+See [[proposals:versioning]] for the back-story.
+
+
+
+=== Goal Thoughts ===
+
+The goal is to allow new versions of ES with syntactic and non-syntactic extensions to degrade gracefully in downrev browsers, while upgrading the user experience for uprev browsers without taxing developers too much.
+
+Audiences competing here include implementors, developers, and ultimately users who benefit from progressive enhancement. On the Web, with Ajax apps, progressive enhancement may mean the regressive experience is slighly less shiny (no CSS transition), or perhaps a "Web 1.0" window-popup or form field instead of CSS popup or editable text widget.
+
+For JS hackers wanting to use new versions of ES, the problems consist of selecting and detecting support for the new version and compensating with fallback for lack of new features. For browser implementors, complexity and version combination explosion may be overriding.
+
+
+=== Issue Dump ===
+
+This is a brain-dump or laundry-list. It might better be factored into audience-specific use-cases from which we can derive requirements.
+
+  * Object model extensions generally fly under "the default version" you get with ''<script>...</script>''.
+    * Developers can object-detect in order to feature-detect, they do not need to use ''<script>'' attributes or extra ''version=...'' parameters.
+    * We should try to continue this to avoid explosive combination of feature-hiding code in implementations.
+    * But for new syntax, developers need to hide ''<script>'' content using that syntax from downrev browsers.
+  * Script tag [[http://www.rfc-editor.org/rfc/rfc4329.txt|version]] parameter values should be well-defined for ES standards.
+  * Script tag version parameter values defined also for multi-vendor experimental versions if it makes sense.
+  * In-language version selection via a ''use version ''//n//'';'' pragma. This wins for many developers who are not good script-tag configurators.
+  * Something like [[proposals:versioning]]'s ''%%__MAX_ECMASCRIPT_VERSION__%%'' property, for runtime script version selection.
+  * A different notion of "max", for frame-wise restriction to a maximum version of the language to preserve security proofs.
+    * Crock points out this could be abused and tend to freeze progress.
+  * A frame-wise version selection that sets the default for all script tags and event handlers was [[http://www.w3.org/TR/REC-html40/interact/scripts.html#default-script|specified]] in HTML4 but not implemented by all browsers.
+    * We might want an HTML5 solution that is easier to express than an HTTP header equated via a ''<meta>'' tag!
+    * "Min" as well as "Max" version stipulation might be necessary for certain web apps or pages.
+    * Better syntax with alternative content than the old ''<script>'' tag, which has no fallback markup within its container, might be appropriate.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2009/09/23 22:52//

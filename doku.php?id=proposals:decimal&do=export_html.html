@@ -1,0 +1,232 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:decimal&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:decimal&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:decimal&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:decimal&amp;do=export_html.html#decimal_arithmetic" class="toc">Decimal arithmetic</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:decimal&amp;do=export_html.html#examples" class="toc">Examples</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:decimal&amp;do=export_html.html#basic_declarations" class="toc">Basic declarations</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:decimal&amp;do=export_html.html#interactions" class="toc">Interactions</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:decimal&amp;do=export_html.html#pragmas" class="toc">Pragmas</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:decimal&amp;do=export_html.html#rounding_pragma" class="toc">Rounding pragma</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="decimal_arithmetic"></a><h1>Decimal arithmetic</h1>
+<div class="level1">
+
+<p>
+ (See also the <a href="doku.php%3Fid=discussion:decimal.html" class="wikilink1" title="discussion:decimal" onclick="return svchk()" onkeypress="return svchk()">discussion page</a> for this proposal)
+</p>
+
+<p>
+(See also the <a href="doku.php%3Fid=proposals:numbers.html" class="wikilink1" title="proposals:numbers" onclick="return svchk()" onkeypress="return svchk()">numbers</a> proposal, which ties together the various number representations and their interactions.) 
+</p>
+<ul>
+<li class="level1"><div class="li"> A new non-normalizing <code>decimal</code> type, corresponding to the 128-bit decimal type described in the forthcoming IEEE754r document, and providing the arithmetic operations and rules set forth in that document.</div>
+</li>
+<li class="level1"><div class="li"> The potential to promote <code>double</code> (64-bit binary fp) and integral operands to <code>decimal</code> in some contexts; see the <a href="doku.php%3Fid=proposals:numbers.html" class="wikilink1" title="proposals:numbers" onclick="return svchk()" onkeypress="return svchk()">numbers</a> proposal for precise contextual rules.</div>
+<ul>
+<li class="level2"><div class="li"> A note that a very small amount of precision which may be present in a double-precision binary fp number is lost during a double &rarr; decimal promotion, but that:</div>
+<ul>
+<li class="level3"><div class="li"> No precision is lost in an integral &rarr; decimal promotion.</div>
+</li>
+<li class="level3"><div class="li"> Reading a numeric lexeme as a decimal preserves <em>more</em> precision than reading it as a double.</div>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> A new decimal literal lexeme ending with <code>m</code>, which produces a decimal constant in every context.</div>
+</li>
+<li class="level1"><div class="li"> Operator-<code>to</code> functions for converting decimal to double, double to int, and decimal to int.</div>
+</li>
+<li class="level1"><div class="li"> A <code>decimal</code> pragma item, for setting the default interpretation of floating point literals <em>and</em> the standard arithmetic operators to &ldquo;decimal semantics&rdquo;. See the <a href="doku.php%3Fid=proposals:numbers.html" class="wikilink1" title="proposals:numbers" onclick="return svchk()" onkeypress="return svchk()">numbers</a> proposal for the meaning of the pragma.</div>
+</li>
+<li class="level1"><div class="li"> A <code>decimal_rounding MODE</code> pragma item for controlling <a href="http://www2.hursley.ibm.com/decimal/dncont.html" class="urlextern" target="_blank" title="http://www2.hursley.ibm.com/decimal/dncont.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">rounding mode</a> in any decimal arithmetic which <em>may</em> occur in scope; orthogonal to the <code>use decimal</code> pragma. MODE may be one of:</div>
+<ul>
+<li class="level2"><div class="li"> CEILING</div>
+</li>
+<li class="level2"><div class="li"> FLOOR</div>
+</li>
+<li class="level2"><div class="li"> UP</div>
+</li>
+<li class="level2"><div class="li"> DOWN</div>
+</li>
+<li class="level2"><div class="li"> HALF_UP</div>
+</li>
+<li class="level2"><div class="li"> HALF_DOWN</div>
+</li>
+<li class="level2"><div class="li"> HALF_EVEN</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> A <code>decimal_precision N</code> pragma item for controlling the number of decimal digits in the coefficient fields of decimal arithmetic operands and results. N may be any positive integer between 1 and 34 inclusive. Coefficient results will be rounded to N decimal digits; decimal exponents range over [-6143,6144]. </div>
+</li>
+<li class="level1"><div class="li"> Some suggestive language shall be included about possible consequences of low precision, such as the following suggested by Mike Cowlishaw: </div>
+<ul>
+<li class="level2"><div class="li"> <strong>Note</strong> that small values of N (for example, values less than 6) are generally only useful for very specialized applications. The setting of N affects all decimal computations, so even the operation of loops may be affected by rounding if small values are used.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1-2439] -->
+<a name="examples"></a><h2>Examples</h2>
+<div class="level2">
+
+</div>
+<!-- SECTION [2440-2461] -->
+<a name="basic_declarations"></a><h3>Basic declarations</h3>
+<div class="level3">
+<pre class="code">
+var a = 1m;                  // a: decimal
+var b = 1.0m                 // b: decimal
+var c : decimal = 1;         // widens int -&gt; decimal
+var d : decimal = 1.0;       // widens double -&gt; decimal
+</pre>
+
+</div>
+<!-- SECTION [2462-2703] -->
+<a name="interactions"></a><h3>Interactions</h3>
+<div class="level3">
+<pre class="code">
+var a = 1.0;                 // a: double
+var b = 1;                   // b: int
+var c = 1m;                  // c: decimal
+var d = a + b;               // widens operands to double, then adds
+var e = a + c;               // widens operands to decimal, then adds
+var f: decimal = a + b;      // widens operands to double, then adds, 
+                             // then widens to decimal.
+</pre>
+
+</div>
+<!-- SECTION [2704-3132] -->
+<a name="pragmas"></a><h3>Pragmas</h3>
+<div class="level3">
+<pre class="code">
+var a = 1.0;                 // a: double
+var b = 2;                   // b: int
+{
+  use decimal;
+  var c = 1.0;               // c: decimal
+  var d = 1;                 // d: decimal
+  var e = a / b;             // e: decimal, a and b widened to decimal, then divided. 
+}
+var f = 1.0;                 // f: double
+var g = 1;                   // g: int
+</pre>
+
+</div>
+<!-- SECTION [3133-3520] -->
+<a name="rounding_pragma"></a><h3>Rounding pragma</h3>
+<div class="level3">
+<pre class="code">
+{
+  use decimal_rounding CEILING;        // round towards +inf
+  var u =  2/3;                        // u:decimal =  0.666...6667
+  var v =  5/9;                        // v:decimal =  0.555...5556
+  var w =  4/9;                        // w:decimal =  0.444...4445
+  var x = -4/9;                        // x:decimal = -0.444...4444
+  var y = -5/9;                        // y:decimal = -0.555...5555
+  var z = -2/3;                        // z:decimal = -0.666...6666
+}
+{
+  use decimal_rounding DOWN;           // round towards 0
+  var u =  2/3;                        // u:decimal =  0.666...6666
+  var v =  5/9;                        // v:decimal =  0.555...5555
+  var w =  4/9;                        // w:decimal =  0.444...4444
+  var x = -4/9;                        // x:decimal = -0.444...4444
+  var y = -5/9;                        // y:decimal = -0.555...5555
+  var z = -2/3;                        // z:decimal = -0.666...6666
+}
+{
+  use decimal_rounding FLOOR;          // round towards -inf
+  var u =  2/3;                        // u:decimal =  0.666...6666
+  var v =  5/9;                        // v:decimal =  0.555...5555
+  var w =  4/9;                        // w:decimal =  0.444...4444
+  var x = -4/9;                        // x:decimal = -0.444...4445
+  var y = -5/9;                        // y:decimal = -0.555...5556
+  var z = -2/3;                        // z:decimal = -0.666...6667
+}
+{
+  use decimal_rounding HALF_DOWN;      // round to nearest, or down if tie
+  var u =  2/3;                        // u:decimal =  0.666...6667
+  var v =  5/9;                        // v:decimal =  0.555...5556
+  var w =  4/9;                        // w:decimal =  0.444...4444
+  var x = -4/9;                        // x:decimal = -0.444...4444
+  var y = -5/9;                        // y:decimal = -0.555...5556
+  var z = -2/3;                        // z:decimal = -0.666...6667
+}
+{
+  use decimal_rounding HALF_EVEN;      // round to nearest, or to even if tie
+  var u =  2/3;                        // u:decimal =  0.666...6667
+  var v =  5/9;                        // v:decimal =  0.555...5556
+  var w =  4/9;                        // w:decimal =  0.444...4444
+  var x = -4/9;                        // x:decimal = -0.444...4444
+  var y = -5/9;                        // y:decimal = -0.555...5556
+  var z = -2/3;                        // z:decimal = -0.666...6667
+
+  // These two do not demonstrate the difference between HALF_UP and 
+  // HALF_EVEN; as both round up (the exact answer is not ...50000...)
+  var p =  5/11;                       // p:decimal =  0.454...5455
+  var q = -5/11;                       // q:decimal = -0.454...5455
+}
+{
+  use decimal_rounding HALF_UP;        // round to nearest, or up if tie
+  var u =  2/3;                        // u:decimal =  0.666...6667
+  var v =  5/9;                        // v:decimal =  0.555...5556
+  var w =  4/9;                        // w:decimal =  0.444...4444
+  var x = -4/9;                        // x:decimal = -0.444...4444
+  var y = -5/9;                        // y:decimal = -0.555...5556
+  var z = -2/3;                        // z:decimal = -0.666...6667
+
+  // These two demonstrate the difference between HALF_UP and HALF_EVEN
+  var p =  5/11;                       // p:decimal =  0.454...5455
+  var q = -5/11;                       // q:decimal = -0.454...5455
+}
+{
+  use decimal_rounding UP;             // round away from 0
+  var u =  2/3;                        // u:decimal =  0.666...6667
+  var v =  5/9;                        // v:decimal =  0.555...5556
+  var w =  4/9;                        // w:decimal =  0.444...4445
+  var x = -4/9;                        // x:decimal = -0.444...4445
+  var y = -5/9;                        // y:decimal = -0.555...5556
+  var z = -2/3;                        // z:decimal = -0.666...6667
+}
+</pre>
+
+</div>
+<!-- SECTION [3521-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/9/92467119d7dc22f24a13d8d4396edfdf.xhtml used -->
+</body>
+</html>

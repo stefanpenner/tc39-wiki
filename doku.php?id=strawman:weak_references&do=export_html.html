@@ -1,0 +1,286 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:weak_references&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:weak_references&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:weak_references&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:weak_references&amp;do=export_html.html#weak_references_and_post_mortem_finalization" class="toc">Weak References and Post Mortem Finalization</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:weak_references&amp;do=export_html.html#safe_post_mortem_notification" class="toc">Safe Post Mortem Notification</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:weak_references&amp;do=export_html.html#abstract_gc_algorithm" class="toc">Abstract GC Algorithm</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:weak_references&amp;do=export_html.html#weak_reference_patterns" class="toc">Weak Reference Patterns</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:weak_references&amp;do=export_html.html#distributed_acyclic_garbage_collection" class="toc">Distributed Acyclic Garbage Collection</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:weak_references&amp;do=export_html.html#a_weakvaluemap" class="toc">A WeakValueMap</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:weak_references&amp;do=export_html.html#comments" class="toc">Comments</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<p>
+This proposal is based on Jackson et.al.&rsquo;s <em>weak references and post-mortem finalization</em>. Post-mortem finalization is a gc notification rule safe from resurrection bugs, since computation only proceeds among non-condemned objects. We specify the proposed <acronym title="Application Programming Interface">API</acronym> in terms of a new function: <code>makeWeakRef</code>. Pending an accepted <a href="doku.php%3Fid=harmony:modules.html" class="wikilink1" title="harmony:modules" onclick="return svchk()" onkeypress="return svchk()">modules</a> proposal, we do not yet specify in what namespace this constructor is found. Note that <code>makeWeakRef</code> is not safe for general access since it grants access to the non-determinism inherent in observing garbage collection. The resulting side channel reveals information that may violate the <a href="doku.php%3Fid=strawman:gc_semantics.html#confidentiality" class="wikilink1" title="strawman:gc_semantics" onclick="return svchk()" onkeypress="return svchk()">confidentiality assumptions</a> of other programs.
+</p>
+
+<p>
+One conventional use of weak references is to build weak-key tables, in order to implement soft fields. However, such weak-key tables have a surprising memory leaked which cannot be fixed without additional primitives. Separately, we propose <a href="doku.php%3Fid=harmony:weak_maps.html" class="wikilink1" title="harmony:weak_maps" onclick="return svchk()" onkeypress="return svchk()">weak maps</a> as an improved weak-key table.
+</p>
+
+<p>
+TODO: Unify this page and <a href="doku.php%3Fid=strawman:weak_refs.html" class="wikilink1" title="strawman:weak_refs" onclick="return svchk()" onkeypress="return svchk()">weak_refs</a> into one strawman.
+</p>
+
+<a name="weak_references_and_post_mortem_finalization"></a><h1>Weak References and Post Mortem Finalization</h1>
+<div class="level1">
+<pre class="code javascript">  <span class="kw2">var</span> holdem = <span class="br0">&#91;</span><span class="br0">&#93;</span>; <span class="co1">// not exported. Used only to delay GC.</span>
+  BETWEEN_TURNS<span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> holdem = <span class="br0">&#91;</span><span class="br0">&#93;</span>; <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+&nbsp;
+  <span class="kw2">function</span> makeWeakRef<span class="br0">&#40;</span>target<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">if</span> <span class="br0">&#40;</span>isValueType<span class="br0">&#40;</span>target<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">throw</span> <span class="kw2">new</span> TypeError<span class="br0">&#40;</span>...<span class="br0">&#41;</span>; <span class="br0">&#125;</span>
+    holdem.<span class="me1">push</span><span class="br0">&#40;</span>target<span class="br0">&#41;</span>;
+    let executors = <span class="br0">&#91;</span><span class="br0">&#93;</span>; <span class="co1">// As in &quot;executor of the estate of the deceased&quot;.</span>
+&nbsp;
+    <span class="kw2">function</span> get<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw2">const</span> result = PRIM_GET<span class="br0">&#40;</span><span class="br0">&#41;</span>; <span class="co1">// returns target if not yet gc'ed, else undefined.</span>
+      <span class="kw1">if</span> <span class="br0">&#40;</span>result<span class="br0">&#41;</span> <span class="br0">&#123;</span> holdem.<span class="me1">push</span><span class="br0">&#40;</span>result<span class="br0">&#41;</span>; <span class="br0">&#125;</span>
+      <span class="kw1">return</span> result;
+    <span class="br0">&#125;</span>
+    <span class="kw2">function</span> register<span class="br0">&#40;</span>executor<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      executor = <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span>executor<span class="br0">&#40;</span><span class="br0">&#41;</span>;<span class="br0">&#125;</span>; <span class="co1">// executor can only be called</span>
+      <span class="kw1">if</span> <span class="br0">&#40;</span>get<span class="br0">&#40;</span><span class="br0">&#41;</span> === undefined<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        POSTPONE<span class="br0">&#40;</span>executor<span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="br0">&#123;</span>
+        executors.<span class="me1">push</span><span class="br0">&#40;</span>executor<span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span>
+    PRIM_REGISTER<span class="br0">&#40;</span>target, register, <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      executors.<span class="me1">forEach</span><span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span>executor<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        POSTPONE<span class="br0">&#40;</span>executor<span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+      executors = <span class="kw2">null</span>;
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+    <span class="kw1">return</span> Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span>get, register<span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span></pre>
+<p>
+The above specification assumes <code>BETWEEN_TURNS</code>, <code>PRIM_GET</code>, <code>PRIM_REGISTER</code>, and <code>POSTPONE</code> functions available only within this implementation. 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>PRIM_REGISTER(ref, register, primExecutor)</code> registers the <code>[ref,register,primExecutor]</code> triple with the garbage collector, so that the garbage collector will notify the <code>primExecutor</code> once it collects <code>ref</code> given that it has not yet collected <code>register</code>. Once <code>register</code> is collected, then all such triples containing <code>register</code> as their second element can be collected as well, since their <code>primExecutor</code>s will never be invoked.</div>
+</li>
+</ul>
+
+<p>
+ If <code>get()</code> is present in the above <acronym title="Application Programming Interface">API</acronym>, then a target object that is potentially collectable but that has not yet been collected can become non-collectable. We need to ensure that the reference it reveals is never observed to go from non-collected to collected within one turn (i.e., without the stack having become empty between these observations). To achieve this, we assume two more explanatory primitives.
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>BETWEEN_TURNS(callback)</code> only calls its callback between turns, when the stack is empty.</div>
+</li>
+<li class="level1"><div class="li"> <code>PRIM_GET()</code> returns either the target, if the target has not yet been collected, or <code>undefined</code> if it has.</div>
+</li>
+</ul>
+
+<p>
+If <code>get()</code> is omitted, then once an object is collectable it is always thereafter either collectable or collected. In either case, since notification is post-mortem, we do not need to distinguish <em>condemned</em> vs. <em>collected</em>. Once an object has become condemned, it can never again be reachable. 
+</p>
+
+<p>
+In the absence of <code>makeWeakRef</code>, garbage collection decisions are not observable and so need not have a precise semantics. The presence of <code>makeWeakRef</code>, with or without <code>get()</code> does make these decisions observable. However, we do not wish the semantics to require precise garbage collection as that may not be feasible for JavaScript as embedded into some other platforms. Rather, we define reachability in order to define what objects the garbage collector MAY collect without ever saying what objects it MUST collect. Since our semantics never requires collection, a garbage collector that never collects, or that always traces weak references and never observably collects, would still conform to this spec.
+</p>
+
+</div>
+<!-- SECTION [1094-4351] -->
+<a name="safe_post_mortem_notification"></a><h2>Safe Post Mortem Notification</h2>
+<div class="level2">
+
+<p>
+ Notifications, if any, happen via a <code>POSTPONE()</code> function assumed internal to the implementation. POSTPONE must guarantee that these notifications, if they occur at all, happen only when the activation stack is empty, rather than being interleaved with any ongoing sequential computation, in order to avoid plan interference hazards. For example, the forEach loop above need not snapshot the executors array, since it can assume that POSTPONE cannot cause a reentry of <code>register</code> during the loop. In an environment such as a browser supporting <a href="doku.php%3Fid=strawman:concurrency.html" class="wikilink1" title="strawman:concurrency" onclick="return svchk()" onkeypress="return svchk()">event-loop concurrency</a> via <code>setTimeout</code>, POSTPONE may be implemented as the equivalent of
+</p>
+<pre class="code javascript">  <span class="kw2">function</span> POSTPONE<span class="br0">&#40;</span>executor<span class="br0">&#41;</span> <span class="br0">&#123;</span> setTimeout<span class="br0">&#40;</span>executor, <span class="nu0">0</span><span class="br0">&#41;</span>; <span class="br0">&#125;</span></pre>
+<p>
+except using the initial binding of <code>setTimeout</code> rather than the current one. Alternatively, in for example a sequential execution context, POSTPONE may merely drop the executors, allowing them to become collectable immediately if not otherwise referenced.
+</p>
+
+<p>
+Were POSTPONE allowed to deliver notifications during execution of other code, even if execution of that other code were suspended during the notification, then POSTPONE would raise all the consistency problems familiar from Unix signal handlers. To cope with these problems, common wisdom among Unix programmers is that signal handlers should only set a global scalar variable, to be tested by polling at safe points in the execution of the main program. The &ldquo;empty stack&rdquo; rule above automatically provides the safety provided by that pattern.
+</p>
+
+</div>
+<!-- SECTION [4352-5953] -->
+<a name="abstract_gc_algorithm"></a><h2>Abstract GC Algorithm</h2>
+<div class="level2">
+
+<p>
+ This elaborates the <a href="doku.php%3Fid=harmony:weak_maps.html#abstract_gc_algorithm" class="wikilink1" title="harmony:weak_maps" onclick="return svchk()" onkeypress="return svchk()">weak maps abstract GC algorithm</a> to account for the co-existence of weak references and weak maps within one system.
+</p>
+<pre class="code">
+ While any objects are fringe {
+  While any objects are fringe, pick a fringe object x {
+   If (x is the register() function of a weak reference) {
+    Note each prim-registered [ref,register,primExecutor] triple whose second member is this register() function.
+    Color that primExecutor fringe.
+   } else if (x is the get() function of a weak map) {
+    Note this weak map.
+   } else {
+    For all y's directly reachable from x {
+      if y is untraced, color it fringe.
+    }
+   }
+   Color x retained.
+  }
+
+  For each noted weak map wm {
+   For each k,v pair in wm {
+    If k is retained and v is untraced, color v fringe
+   }
+  }
+ }
+ 
+ For each noted [ref,register,primExecutor] triple {
+  If (ref is untraced) {
+    Ensure that the PRIM_GET() function of that weak references returns undefined.
+    call primExecutor();
+  }
+ }
+</pre>
+
+</div>
+<!-- SECTION [5954-7020] -->
+<a name="weak_reference_patterns"></a><h1>Weak Reference Patterns</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [7021-7060] -->
+<a name="distributed_acyclic_garbage_collection"></a><h2>Distributed Acyclic Garbage Collection</h2>
+<div class="level2">
+
+<p>
+ As an illustrative component of a distributed object system. When a proxy is locally gc&rsquo;ed, it notifies its counterparty connection so that it can drop its corresponding export.
+</p>
+
+<p>
+The following example got too complex to explain the point. Must simplify. In the meantime, this code is explained at <a href="https://mail.mozilla.org/pipermail/es-discuss/2013-November/034656.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2013-November/034656.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">https://mail.mozilla.org/pipermail/es-discuss/2013-November/034656.html</a>.
+</p>
+<pre class="code javascript">  <span class="kw2">const</span> importTable = <span class="br0">&#91;</span><span class="br0">&#93;</span>;
+  <span class="kw2">function</span> ImportHandler<span class="br0">&#40;</span>i<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    let importHandler = importTable<span class="br0">&#91;</span>i<span class="br0">&#93;</span>;
+    <span class="kw1">if</span> <span class="br0">&#40;</span>importHandler === undefined<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      let importCount = <span class="nu0">0</span>;
+      let proxyRef = undefined;
+      <span class="kw2">function</span> executor<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="co1">// is it still dead?</span>
+        let proxy = proxyRef &amp;&amp; proxyRef.<span class="me1">get</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+        <span class="kw1">if</span> <span class="br0">&#40;</span>proxy === undefined<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+          sendGCReport<span class="br0">&#40;</span>i, importCount<span class="br0">&#41;</span>;
+          importCount = <span class="nu0">0</span>;
+        <span class="br0">&#125;</span>
+      <span class="br0">&#125;</span>
+      importHandler = Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+        <span class="co1">//... normal proxy handler traps ...</span>
+        importProxy: <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+          importCount++;
+          let proxy = proxyRef &amp;&amp; proxyRef.<span class="me1">get</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+          <span class="kw1">if</span> <span class="br0">&#40;</span>proxy === undefined<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+            proxy = Proxy.<span class="me1">create</span><span class="br0">&#40;</span>importHandler<span class="br0">&#41;</span>;
+            proxyRef = makeWeakRef<span class="br0">&#40;</span>proxy<span class="br0">&#41;</span>;
+            proxyRef.<span class="me1">register</span><span class="br0">&#40;</span>executor<span class="br0">&#41;</span>;
+          <span class="br0">&#125;</span>
+          <span class="kw1">return</span> proxy;
+        <span class="br0">&#125;</span>
+      <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+      importTable<span class="br0">&#91;</span>i<span class="br0">&#93;</span> = importHandler;
+    <span class="br0">&#125;</span>
+    <span class="kw1">return</span> importHandler;
+  <span class="br0">&#125;</span>
+  <span class="kw2">function</span> <span class="kw2">Import</span><span class="br0">&#40;</span>i<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> ImportHandler<span class="br0">&#40;</span>i<span class="br0">&#41;</span>.<span class="me1">importProxy</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span></pre>
+<p>
+A realistic example is at <a href="http://code.google.com/p/caja-captp/source/browse/trunk/src/captp.js#453" class="urlextern" target="_blank" title="http://code.google.com/p/caja-captp/source/browse/trunk/src/captp.js#453" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">SwissTable</a>. That example also points out the need for a WeakValueMap. 
+</p>
+
+</div>
+<!-- SECTION [7061-8674] -->
+<a name="a_weakvaluemap"></a><h2>A WeakValueMap</h2>
+<div class="level2">
+
+<p>
+ A WeakValueMap, mapping from keys to weakly held values. WeakValueMap can be built from weak references and <a href="doku.php%3Fid=harmony:weak_maps.html" class="wikilink1" title="harmony:weak_maps" onclick="return svchk()" onkeypress="return svchk()">weak maps</a>. Unlike weak maps by themselves, a WeakValueMap reveals the non-determinism (or determinism, given a particular implementation and a controlled execution history) of GC.
+</p>
+<pre class="code javascript">  <span class="kw2">function</span> WeakValueMap<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">const</span> valueRefs = WeakMap<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+    <span class="kw1">return</span> Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+      get: <span class="kw2">function</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw2">const</span> ref = valueRefs.<span class="me1">get</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span>;
+        <span class="kw1">return</span> ref &amp;&amp; ref.<span class="me1">get</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span>, 
+      set: <span class="kw2">function</span><span class="br0">&#40;</span>key, value<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        valueRefs.<span class="me1">set</span><span class="br0">&#40;</span>key, makeWeakRef<span class="br0">&#40;</span>value<span class="br0">&#41;</span><span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>; 
+  <span class="br0">&#125;</span></pre>
+<p>
+The code above has a memory leak: Once a value becomes unreachable, if its key is still reachable, the association from the key to a now-empty weak reference will remain in the valueRefs table. We can use post-mortem finalization to avoid this leak as follows.
+</p>
+<pre class="code javascript">  <span class="kw2">function</span> WeakValueMap<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">const</span> valueRefs = WeakMap<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+    <span class="kw1">return</span> Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+      get: <span class="kw2">function</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw2">const</span> ref = valueRefs.<span class="me1">get</span><span class="br0">&#40;</span>key<span class="br0">&#41;</span>;
+        <span class="kw1">return</span> ref &amp;&amp; ref.<span class="me1">get</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span>, 
+      set: <span class="kw2">function</span><span class="br0">&#40;</span>key, value<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw2">const</span> ref = makeWeakRef<span class="br0">&#40;</span>value<span class="br0">&#41;</span>;
+        valueRefs.<span class="me1">set</span><span class="br0">&#40;</span>key, ref<span class="br0">&#41;</span>;
+        <span class="kw2">const</span> keyRef = makeWeakRef<span class="br0">&#40;</span>key<span class="br0">&#41;</span>;
+        ref.<span class="me1">register</span><span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+          <span class="kw2">const</span> k = keyRef.<span class="me1">get</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+          <span class="kw1">if</span> <span class="br0">&#40;</span>k<span class="br0">&#41;</span> <span class="br0">&#123;</span> valueRefs.<span class="kw1">delete</span><span class="br0">&#40;</span>k<span class="br0">&#41;</span>; <span class="br0">&#125;</span>
+        <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>; 
+  <span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [8675-10125] -->
+<a name="comments"></a><h2>Comments</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> I suggest using <code>Ref</code> not <code>Ptr</code> in the naming scheme. The latter connotes unsafe machine address more than the former, and it is spelled in the cybercrud tradition of dropping vowels and even secondary/interior consonants.</div>
+</li>
+</ul>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2011/11/21 22:47</em>
+</p>
+<ul>
+<li class="level1"><div class="li"> Done &ndash;MarkM </div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [10126-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/7/7deab75e9d469c93d89324c543e7f37c.xhtml used -->
+</body>
+</html>

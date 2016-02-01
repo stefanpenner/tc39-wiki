@@ -1,0 +1,61 @@
+====== SIMD ======
+
+SIMD (Single Instruction Multiple Data) immutable value types and operations. 
+
+====== Contact ======
+
+  * John McCutchan (Google)
+  * Peter Jensen (Intel)
+
+====== Engine Implementation Status ======
+
+|              ^ Polyfill             ^ V8                 ^ SpiderMonkey          ^
+^ Test suite    | Yes          | ?        | ? |
+^ Accelerated Implementation    | Never | In progress                   | In progress |
+
+====== TypedArray Extensions ======
+
+===== Table 36 (The TypedArray Constructors) =====
+
+^Constructor Name^Element Type^Element Size^Conversion Operation^Description                     ^Equivalent C type^
+| Float32x4Array | float32x4  | 16         |                    | 4 x 32-bit IEEE floating point | m128          |
+| Uint32x4Array  | uint32x4   | 16         |                    | 4 x unsigned int               | m128i         |
+
+====== float32x4 ======
+
+An immutable value type that contains 4 32-bit IEEE 754 floating point numbers. Values are mapped to lanes labelled "x", "y", "z", and "w". Note that "w" is the 4th lane.
+
+===== float32x4 Constructors =====
+
+After a float32x4 has been constructed. Lane values for "x", "y", "z", and "w" will be initialized.
+
+** float32x4(x, y, z, w) **
+
+This operation performs the following steps:
+
+  - The result of ToNumber(x) is converted to IEEE 754 single precision and stored in the "x" lane.
+  - The result of ToNumber(y) is converted to IEEE 754 single precision and stored in the "y" lane.
+  - The result of ToNumber(z) is converted to IEEE 754 single precision and stored in the "z" lane.
+  - The result of ToNumber(w) is converted to IEEE 754 single precision and stored in the "w" lane.
+
+** float32x4.zero() **
+
+  - 0.0 is converted to IEEE 754 single precision and stored in the "x" lane.
+  - 0.0 is converted to IEEE 754 single precision and stored in the "y" lane.
+  - 0.0 is converted to IEEE 754 single precision and stored in the "z" lane.
+  - 0.0 is converted to IEEE 754 single precision and stored in the "w" lane.
+
+** float32x4.splat(v) **
+
+  - The result of ToNumber(v) is converted to IEEE 754 single precision and stored in the "x", "y", "z", and "w" lanes.
+
+
+====== uint32x4 ======
+
+An immutable value type that contains 4 32-bit unsigned integer numbers. Values are mapped to lanes “x”, “y”, “z”, and “w”.
+
+
+====== SIMD module ======
+
+====== Polyfill Implementation ======
+An [[https://github.com/johnmccutchan/ecmascript_simd|initial implementation]] based on [[http://www.khronos.org/registry/typedarray/specs/latest/|typed arrays]].

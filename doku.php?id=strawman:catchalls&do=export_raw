@@ -1,0 +1,93 @@
+===== Background =====
+
+  * [[proposals:catchalls|ES4 catchalls proposal page]]
+  * [[discussion:catchalls|ES4 catchalls discussion page]]
+  * [[http://bugs.ecmascript.org/ticket/196|Ticket #196]]
+  * [[http://bugs.ecmascript.org/ticket/214|Ticket #214]]
+
+===== Goals =====
+
+  * Support property has, get, set, and delete
+  * Support both:
+    * first set (set only when property does not exist), and
+    * every set (needed for Array length emulation)
+  * Support invocation (subsume SpiderMonkey's %%__noSuchMethod__%%)
+  * Support construction
+  * Rule out runaway recursion hazards by design
+  * Make it easy to delegate to the default behavior for the operation
+  * Zero performance penalty for objects without catchalls
+  * Avoid %%__%% name mangling as ugly and reserved by secure subsets
+  * Preserve object identity under catchall configuration (no detectable proxies or wrappers)
+
+===== Non-goals =====
+
+  * Tiered virtualization with "inner ring" code having high privilege:
+    * factor this into the existing ES5 integrity features, plus
+    * further work to support isolation and high privilege, and thereby
+    * let users choose and compose per their own requirements
+
+===== Sketch =====
+
+  * This is in the spirit of the ES5 ''Object.defineProperty'' and other reflective meta-programming APIs
+  * In the following, the ''obj'' parameter is a target object whose accesses and other operations should be caught
+  * To keep this example simple, ''obj'' forwards caught operations to a ''peer'' object
+  * The ''set'' catchall shows ''obj'' and ''peer'' having an array-like ''length'' property
+  * Factor ''add'' out of ''set'' to distinguish first-set from every-set
+  * The ''construct'' function below uses the [[harmony:spread]] operator to apply ''new'' to a peer function
+
+<code>
+Object.defineCatchAll(obj, {
+    has:       function (id)        { return peer.hasOwnProperty(id); },
+    get:       function (id)        { return peer[id]; },
+    set:       function (id, value) { if ((id >>> 0) === id && id >= peer.length)
+                                          peer.length = 1 + id;
+                                      peer[id] = value; },
+    add:       function (id)        { Object.defineProperty(obj, id,
+                                                            { get: function ()      { return peer[id]; },
+                                                              set: function (value) { peer[id] = value); },
+                                                              ... }); }
+    delete:    function (id)        { delete peer[id]; },
+    invoke:    function (id, args)  { return peer[id].apply(peer, args); },
+    construct: function (id, args)  { return new peer[id](...args); },
+
+});
+</code>
+
+  * There shall be an ''Object.getCatchAllDescriptor(obj)'' method to query ''obj'' for its catchalls
+  * Any of the action-name properties may be omitted, which has the effect of restoring the default action for that action-name if it was configured
+    * The alternative of unspecified action-name leaving a configured non-default catchall would imply an ''Object.removeCatchAll'' API
+    * This way, to add complementary catchalls via successive calls to ''Object.defineCatchAll'', one must call ''Object.getCatchAllDescriptor(obj)'' and update the descriptor
+    * Thus we avoid another API method and bias toward the use-cases where a single call to ''Object.defineCatchAll'' suffices to configure all wanted catchalls for a given object
+    * And ''Object.defineCatchAll(obj, {})'' removes all catchalls, restoring default actions
+  * Catchalls cannot be defined on an object if its ''%%[[Extensible]]%%'' internal property is false (in ES5 terms, ''%%[[DefineOwnProperty]]%%'' is called with //Reject//'' = true'', resulting in a ''TypeError'' throw)
+
+===== Issues =====
+
+  * Naming: ''defineCatchAll'' is awkward, but more precise by virtue of the idiom than (say) ''defineHandler''. Let's bikeshed a bit (via twitter, for least cost -- kidding! :-P)
+  * Defaulting: sometimes a catchall wants to defer to the default action specified by the language's semantics, e.g. delegate to a prototype object for a ''get''. The ES4 proposal, inspired by Python and ES4/JS1.7+ iteration protocol design, provided a singleton exception object, denoted by a constant binding, ''DefaultAction'', for the catchall to throw. This can be efficiently implemented and it does not preempt the return value.
+  * Runaway prevention: should a catchall, while its call is active, be automatically suppressed from re-entering itself for the given id on the target object?
+  * Catchalls are sometimes thought of as being called for every access to a property, whether the property exists or not.
+    * (Obvious exception in this proposal: ''add'' is called only for non-existent properties about to be created via first-set.)
+    * But for ''has'', ''get'', and ''invoke'' is calling in the existent property case desirable? Not for ''%%__noSuchMethod__%%'' emulation, in the ''invoke'' case.
+    * Doing so requires ''has'', ''get'', and ''invoke'' to perform the default action (throw ''DefaultAction'' per earlier Issue) for existent properties that do not require special handling.
+    * It depends on what you mean by "all". Ruby's "method_missing" suggests "invoke_missing" vs. "invoke", "get_missing" vs. "get", etc.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2009/05/04 22:20//
+ --- //[[Allen.Wirfs-Brock@microsoft.com|Allen Wirfs-Brock]] 2009/05/05 01:09//
+
+===== Feedback =====
+
+  * In the function defined for the example's invoke item the first argument to apply probably should be obj rather than peer.
+  * I would be inclined to specify an additional argument (probably the first) for each handler function that would be passed the "this" value.  Closure capture like is done in the example works but my intuition is that there will be situations where it would be handy to use the same catch-all descriptor for several objects.
+  * Overall, I like this general design direction.
+
+ --- //[[Allen.Wirfs-Brock@microsoft.com|Allen Wirfs-Brock]] 2009/05/05 01:09//
+
+  * Catchalls climb the meta ladder. Primitive actions such as checking for the existence of a property when climbing the prototype chain can now run arbitrary code. This is unacceptable in some situations and makes the ES5 meta-object methods non-primitive, so we will need yet another level of such methods. It is likely to open another area for security attacks to hide in.
+  * ES5 relies on has, get, etc. being consistent with each other, has returning the same results if called twice, etc. The spec is not prepared to deal with contradictions in their results.
+  * In the presence of prototypes, catchalls become a form of "with": Lookups of common methods such as toString will proceed to the prototype unless a catchall decides to override it in its search of some other object. Whether this logic is explicit in the catchall API or implicit inside the catchall doesn't really matter; the net effect is the same kind of weird shadowing that "with" does.
+  * Compatibly adding properties to an existing class with catchalls is problematic.
+  * Catchalls, as defined above, don't handle for-in.
+
+ --- //[[waldemar@google.com|Waldemar Horwat]] 2009/05/14 01:25//
+

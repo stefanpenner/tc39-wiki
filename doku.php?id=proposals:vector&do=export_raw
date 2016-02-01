@@ -1,0 +1,83 @@
+====== Vectors ======
+
+
+
+===== Motivation =====
+
+Code that cares about performance will wish to have access to a reliable array type with different bells and whistles than ''Array''.  The ''Vector'' class is a dense typed 0-based one-dimensional array type with bounds checking and optional fixed length; implementations are expected to support it natively.
+
+
+===== Proposal =====
+
+The ''Vector'' class is parameterized over an element type ''T'':
+
+<code>
+    final class Vector.<T> {
+        ....
+    }
+</code>
+
+There is a constructor and a converter from ''Array''.  For the constructor, an initial length can be given, along with a flag for whether the array is fixed-length or variable-length:
+
+<code>
+    function Vector(length:uint=0, fixed:boolean=false);
+
+    meta static function convert(a:Array!);
+</code>
+
+There are getters and setters for the length:
+
+<code>
+    function get length(): uint;
+    function set length(v:uint);
+</code>
+
+Setting ''length'' can extend or shrink the array if the array is not fixed.
+
+The ''fixed'' flag is read/write:
+
+<code>
+    var fixed:boolean;
+</code>
+
+There are catchall getters and setters for ''uint'' type property names:
+
+<code>
+    meta function get(idx: uint): T;
+    meta function set(idx: uint, v:T);
+</code>
+
+Attempts to read beyond ''length-1'' or write beyond ''length'' results in an exception being thrown.  If one writes to element ''length'' then the array is extended by that element, if it is not marked as fixed length.
+
+The class has a suite of useful methods which mirrors the method suite of ''Array'', but none of which are generic or defined on the prototype object.  For many applications, current uses of ''Array'' can probably be replaced by similar uses of ''Vector''.
+
+<code>
+    function concat(...items);
+    function join(separator: string): string;
+    function pop() : T;
+    function push(x: T);
+    function reverse();
+    function shift();
+    function slice(start: int, end: int) : Vector.<T>;
+    function sort(compare: function(T,T): int);
+    function splice(start, deleteCount, ...items)
+    function unshift(...items);
+</code>
+
+All behave as for ''Array'', except that (a) they are not generic and (b) ''sort()'' requires the comparator function.  (It would be possible to provide a sensible default here for built-in primitive types, though.)  The ''concat'', ''unshift'', and ''splice'' methods are defined on arbitrary item types, which must be convertible to the base type ''T''.
+
+Iteration and enumeration on ''Vector'' are across the index range, from low to high indices.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/07/24 09:27//
+
+Any reason to leave out the [[proposals:static generics|Array extras]]?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/07/31 18:21//
+
+Presumably you mean the methods, not the static generic versions.  I just forgot them.  Consider them added.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/08/01 03:21//
+
+Yes, the methods -- thanks.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/08/01 13:27//

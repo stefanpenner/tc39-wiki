@@ -1,0 +1,345 @@
+====== Refutable Patterns ======
+
+This proposal fleshes out a //refutable// semantics for patterns, as discussed in the Jan 2013 meeting. Specific points of the design are:
+
+  * No implicit conversions.
+
+  * Pattern mismatch causes an exception by default.
+
+  * Irrefutable semantics can be requested by explicitly annotating a (sub)pattern with ''?'' (and unlike patterns in the previous [[harmony:destructuring]] proposal, such patterns are //always// irrefutable).
+
+  * Compatibility with a potential future pattern matching switch.
+
+
+====== Patterns ======
+
+===== Syntax =====
+
+The simplified grammar below takes the liberty to gloss over the issue of syntactic precedence of different Pattern forms.
+
+<code>
+Pattern ::=
+   Identifier
+   "{" PropertyPatterns? "}"
+   "[" ElementPatterns? "]"
+   "?" Pattern
+   Pattern "=" AssignmentExpression
+   "(" Pattern ")"
+
+PropertyPatterns ::=
+   PropertyPattern ("," PropertyPatterns)?
+
+PropertyPattern ::=
+   "?"? PropertyName ":" Pattern
+   "?"? "[" Expression "]" ":" Pattern
+   "?"? Identifier ("=" AssignmentExpression)?    // short for "?"? Identifier ":" Identifier ("=" AssignmentExpression)?
+
+ElementPatterns ::=
+   ElementPattern ("," ElementPatterns)?
+   "..." Pattern
+
+ElementPattern ::=
+   "?"? Pattern
+</code>
+
+Note: There is a subtle difference between the patterns ''{name: ?pat}'' and ''{?name: pat}'' -- both make ''pat'' irrefutable, but the former requires the ''name'' property to exist on the object (but its value may be ''undefined''), while the latter also succeeds if the property does not exist. Question: Do we actually need that distinction? (The syntax is even ambiguous in the case of array patterns. A ''?'' there always ought to be taken as part of the ''ElementPattern'', and the other semantics can only be selected by parenthesising, as in ''[?a, (?b)]''.)
+
+
+
+
+===== Runtime Semantics =====
+
+We define the semantics of patterns by a meta function ''Match'' that "evaluates" a pattern against a given value. The result is either ''SUCCESS'' or ''FAILURE'' (a simplification for the sake of clarity; the proper spec would need to return a Completion Record that incorporates ''failure'' as a new completion type). ''Match'' expects that all bound names of the pattern have been created in the current LexicalEnvironment beforehand and initialises them accordingly. Temporal dead zones apply as usual.
+
+To account for irrefutable patterns, matching is also parameterised by a //soft// flag which is set to true inside ''?''-patterns.
+
+<code>
+Match(Pattern, value, soft) =
+   case Pattern of
+      Identifier =>
+         let env = runningExecutionContext.LexicalEnvironment
+         env.InitializeBinding(Identifier, value)
+         SUCCESS
+      "{" PropertyPatterns? "}" =>
+         if IsObject(value) or soft then
+            if PropertyPattern present then
+               let value' = if IsObject(value) then value else {}
+               Match(PropertyPatterns, value', soft)
+            else
+               SUCCESS
+         else
+            FAILURE
+      "[" ElementPatterns? "]" =>
+         if IsObject(value) or soft then
+            if ElementPatterns present then
+               let value' = if IsObject(value) then value else []
+               Match(ElementPatterns, value', 0, soft)
+            else
+               SUCCESS
+         else
+            FAILURE
+      "?" Pattern' =>
+         Match(Pattern', value, true)
+      Pattern' "=" AssignmentExpression =>
+         let value' = if value === undefined then Eval(AssignmentExpression) else value
+         Match(Pattern', value', soft)
+      "(" Pattern' ")" =>
+         Match(Pattern', value, soft)
+
+Match(PropertyPatterns, value, soft) =
+   case PropertyPatterns of
+      PropertyPattern =>
+         Match(PropertyPattern, value, soft)
+      PropertyPattern "," PropertyPatterns =>
+         if Match(PropertyPattern, value, soft) = SUCCESS then
+            Match(PropertyPatterns, value, soft)
+         else
+            FAILURE
+
+Match(PropertyPattern, value, soft) =
+   assert IsObject(value)
+   case PropertyPattern of
+      "?"? PropertyName ":" Pattern =>
+         let soft' = soft or "?" present
+         if value.[[Has]](PropertyName) or soft' then
+            let value' = value.[[Get]](PropertyName)
+            Match(Pattern, value', soft')
+         else
+            FAILURE
+      "?"? "[" Expression "]" ":" Pattern =>
+         let name = ToString(Eval(Expression))
+         let soft' = soft or "?" present
+         if value.[[Has]](name) or soft' then
+            let value' = value.[[Get]](name)
+            Match(Pattern, value', soft')
+         else
+            FAILURE
+
+Match(ElementPatterns, value, index, soft) =
+   assert IsObject(value)
+   case ElementPatterns of
+      ElementPattern =>
+         Match(ElementPattern, value, index, soft)
+      ElementPattern "," ElementPatterns =>
+         if Match(ElementPattern, value, index, soft) = SUCCESS then
+            Match(ElementPatterns, value, index + 1, soft)
+         else
+            FAILURE
+      "..." Pattern =>
+         if value.[[Has]]("length") then
+            let length = ToUint32(value.[[Get]]("length"))
+            let value' = []
+            for i in {index..length-1} do
+               let name = ToString(i)
+               if value.[[Has]](name) then
+                  value'.[[Set]](ToString(i - index), value.[[Get]](name))
+            Match(Pattern, value', soft)
+         else if soft then
+            Match(Pattern, [], soft)
+         else
+            FAILURE
+
+Match(ElementPattern, value, index, soft) =
+   assert IsObject(value)
+   let name = ToString(Index)
+   case ElementPattern of
+      "?"? Pattern =>
+         let soft' = soft or "?" present
+         if IsObject(value) value.[[Has]](name) then
+            let value' = value.[[Get]](name)
+            Match(Pattern, value', soft')
+         else if soft' then
+            Match(Pattern, undefined, soft')
+         else
+            FAILURE
+</code>
+
+
+===== Open Issues =====
+
+The prefix ''?'' syntax for soft patterns is tentative. Both prefix and postfix ''?'' syntax cause parsing problems (e.g. in combination with semicolon insertion). It is not clear yet which one is the better choice and how those issues can be resolved.
+
+
+====== Destructuring ======
+
+Pattern matching as defined above implements destructuring declarations.
+
+===== Syntax =====
+
+<code>
+Declaration ::=
+   ...
+   "let" Binding+
+   "const" Binding+
+
+Binding ::=
+   Pattern "=" AssignmentExpression
+   Pattern   // short for Pattern "=" "undefined"
+</code>
+
+
+===== Runtime Semantics =====
+
+<code>
+Eval(LetDeclaration) =
+   case LetDeclaration of
+      "let" Binding+, "const" Binding+ =>
+         for each Binding in Binding+ do
+             Eval(Binding)
+
+Eval(Binding) =
+   case Binding of
+      Pattern "=" AssignmentExpression =>
+         let value = Eval(AssignmentExpression)
+         if Match(Pattern, value, false) = FAILURE then
+            throw MatchError
+</code>
+
+
+===== Examples =====
+
+<code>
+let {a: x} = {}              // throw
+let ?{a: x} = {}             // x = undefined
+let ?{a: x} = 0              // x = undefined
+let {?a: x} = {}             // x = undefined
+let {?a: x} = 0              // throw
+
+let ?{a: x = 1} = undefined  // x = 1
+let {?a: x = 1} = undefined  // throw
+let {?a: x = 1} = {}         // x = 1
+
+let {a: x, b: {c: y}, d: z} = {a: 1, b: {}, d: 2}    // throw
+let {a: x, b: ?{c: y}, d: z} = {a: 1, b: 0, d: 2}    // x = 1, y = undefined, z = 2
+let ?{a: x, b: {c: y}, d: z} = {b: {}, d: 2}         // x = undefined, y = undefined, z = 2
+
+let [] = {}                           // success
+let [x] = [2, 3]                      // x = 2
+let [x] = {'0': 4}                    // x = 4
+let [x, y, z] = [1, 2]                // throw
+let ?[x, y, z] = [1, 2]               // x = 1, y = 2, z = undefined
+let [x, y, ?z] = [1, 2]               // x = 1, y = 2, z = undefined
+let [x, y, z] = [, 2, 3]              // throw
+let ?[x, y, z] = [, 2, 3]             // x = undefined, y = 2, z = 3
+let [?x, y, z] = [, 2, 3]             // x = undefined, y = 2, z = 3
+
+let [x, ...y] = [1]                   // x = 1, y = []
+let [x, ...y] = [1, 2]                // x = 1, y = [2]
+let [x, y, ...z] = [1]                // throw
+let ?[x, y, ...z] = [1]               // x = 1, y = undefined, z = []
+let [x, ?y, ...z] = [1]               // x = 1, y = undefined, z = []
+let [x, ...y] = [1, , 2, , 3]         // x = 1, y = [,2,,3]
+let [x, ...y] = {'0': 1}              // throw
+let [x, ...y] = {'0': 1, length: 3}   // x = 1, y = [,,]
+</code>
+
+Note how in the last examples, ''d'' is still destructured after matching earlier parts of the pattern has failed.
+
+====== Pattern Matching Switch ======
+
+Given the defined matching semantics, a general pattern matching construct would be straightforward to define in a unified manner.
+
+Note: This section is just for clarification of future-proofness, it should not be understood as part of the proposal proper. The syntax is based on the [[strawman:pattern matching]] strawman.
+
+===== Syntax =====
+
+<code>
+MatchStatement ::=
+   "switch" "(" Expression ")" "{" MatchCases "}"
+
+MatchCases ::=
+   "match" Pattern ":" Statement MatchCases?
+   "match" Pattern "," Pattern ("," Pattern)* ":" Statement MatchCases?    // short for "match" Pattern ":" Statement "match" Pattern ("," Pattern)* ":" Statement MatchCases?
+</code>
+
+Note: A generalisation of a ''match'' with multiple patterns (here simply treated as syntactic sugar) could be supporting //alternative patterns// of the form ''Pattern1 | Pattern2''.
+
+
+===== Static Semantics =====
+
+All ''Pattern''s in a single ''match'' must have the same set of bound names.
+
+
+===== Runtime Semantics =====
+
+<code>
+Eval(MatchStatement) =
+   case MatchStatement of
+      "switch" "(" Expression ")" "{" MatchCases "}" =>
+         let value = eval(Expression)
+         Eval(MatchCases, value)
+
+Eval(MatchCases, value) =
+   case MatchCases of
+      "match" Pattern ":" Statement MatchCases'? =>
+         let oldEnv = runningExecutionContext.LexicalEnvironment
+         let env = NewDeclarativeEnvironment(oldEnv)
+         for name in BoundNames(Pattern) do
+            env.CreateImmutableBinding(name)
+         runningExecutionContext.PushLexicalEnvironment(env)
+         if Match(Pattern, value, false) = SUCCESS then
+            let result = Eval(Statement)
+            runningExecutionContext.PopLexicalEnvironment()
+            result
+         else
+            runningExecutionContext.PopLexicalEnvironment()
+            if MatchCases' present
+                Eval(MatchCases', value)
+            else
+                throw MatchError
+</code>
+
+
+===== Extending the Pattern Language =====
+
+Pattern matching becomes far more useful with a slightly richer pattern language. To that end, it makes sense to add wildcards, literal patterns and pattern guards.
+
+<code>
+Pattern ::=
+   // ...
+   "*"
+   Literal
+   Pattern "if" AssignmentExpression
+</code>
+
+The runtime semantics of these new forms is straightforward:
+
+<code>
+Match(Pattern, value, soft) =
+   case Pattern of
+      // ...
+      "*" =>
+         SUCCESS
+      Literal =>
+         let literal = Eval(Literal)
+         if SameValue(value, literal) or soft then
+            SUCCESS
+         else
+            FAILURE
+      Pattern' "if" AssignmentExpression =>
+         if Match(Pattern', value, soft) = SUCCESS and
+            ToBoolean(Eval(AssignmentExpression)) = true or soft
+         then
+            SUCCESS
+         else
+            FAILURE
+</code>
+
+
+===== Undefined =====
+
+Moving to refutable pattern matching, and extending the language with literal patterns, opens the door for reforming ''undefined''. In particular, there is a chance that we can get away with making ''undefined'' a proper keyword. In a pattern, it would simply act as a literal that is only matched by itself.
+
+That change would still allow existing defensive programming patterns like
+
+<code>
+var undefined = void 0
+</code>
+
+or even
+
+<code>
+var undefined
+</code>
+
+to continue working.

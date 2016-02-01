@@ -1,0 +1,123 @@
+====== Private Names in Extended Object Initialisers ======
+//This is one of several related [[strawman:object_initialiser_extensions|Object Initialiser Extensions]].// \\
+//This extension builds upon concepts introduced in [[strawman:Obj_initialiser_meta|Object Initialiser Meta Properties]], [[strawman:Obj_initialiser_methods|Method Properties]],  [[strawman:Obj_initialiser_const|Other Object Initialiser Property Modifiers]], and [[strawman:obj_initialiser_class_abstraction|Class Initialisers]]//
+
+[[Private Names]] can be used to support information hiding within extended object initialisers and class initialisers. If an object or class initialiser is within the scope of a //PrivateDeclaration// then any occurrence of that declaration's private identifier as a //PropertyName// within the initaliser will use the associated private name value as the //PropertyName// value.  [[Private Names]] can be used in conjunction with [[Instance Variables]] within such initialisers if strict information hiding is desired.
+
+The following example shows private names used with a basic ES5-style object initialiser to limit access to properties of a specific object:
+<code javascript>
+function createObjectWithPrivateProperties (x) {
+      private privateVar, privateFunction;
+      return {
+		//private properties
+		privateVar: x,
+		privateFunction: function (arg) {…},
+
+		//public properties
+		get prop1() {return this.privateFunction(this.privateVar)}
+      }
+}
+</code>
+Each call of the ''createObjectWithPrivateProperties'' function will associate unique private name values with ''privateVar'' and ''privateFuction'', so each object that is created will have uniquely named ''privateVar'' and ''privateFunction'' properties that are only accessable via that object's unique ''prop1'' accessor property. In this example, ''priavateVar'' and ''privateFunction'' are "instance private" properties.
+
+A minor variation turns the properties into "class private" members that are accessable to all objects created via this factory function:
+<code javascript>
+private privateVar, privateFunction;
+function createObjectWithClassPrivateProperties (x) {
+      return {
+		//class private properties
+		privateVar: x,
+		privateFunction: function (arg) {…},
+
+		//public properties
+		get prop1() {return this.privateFunction(this.privateVar)},
+		prop2: function(another) {return another.privateFunction(another.privateVar)}
+      }
+}
+</code>
+
+Because the private name declarations are in a scope that surrounds the factory function, each invocation of the factory will use the same private name values and hence any code within the object initialiser can access these private properties of any of the instances that are created.  The ''prop2'' method is an example of such access. 
+
+This pattern has a problem from a software engineering perspective.  The private name declarations are not encapsulated within the object initialiser.  The presents a refactoring hazard.  If a programmer changes the factory function or moves the object initialiser they may forget to carry along the associated private declarations. This problem is greater for the "class private" use case because the private declarations are likely to be more remote from the object initialiser and hence more likely to be missed or forgotten.
+
+The "class private" use case also creates a hazard of the private names being unintentionally (or even maliciously) used in other functions and resulting in an information hiding leak. 
+
+These issues can be overcome, by allowing the private name declarations to occur within the object or class initialiser:
+
+<code javascript>
+function createObjectWithPrivateProperties (x) {
+       return {
+		//instance private names
+                private privateVar,
+                private privateFunction,
+
+                //private properties
+		privateVar: x,
+		privateFunction: function (arg) {…},
+			 
+		//public properties
+		get prop1() {return this.privateFunction(this.privateVar)}
+       }
+}
+
+class ObjectWithClassPrivateProperties {
+      //class private names
+      private privateVar,
+      private privateFunction,
+
+      //class private properties
+      privateVar: undefined,  //place holder in prototype
+      privateFunction: function (arg) {…},
+
+      //public properties
+      prop2: function(another) {return another.privateFunction(another.privateVar)},
+
+      new (x) {
+           privateVar : x
+      }                  
+}
+</code>
+With this extension, object and class initialisers introduce a new scope contour that is only used to bind private names. If an initialiser includes any private name declarations, that private identifier is bound within the scope of the initialiser. All components of the initialiser except for the meta properties are within this scope. In the case of class initialisers, this means that such private names are shared among the constructor, prototype, and instance objects.
+
+Such private name declarations must be the first declarations within the initialiser, immediately following the meta properties definition if it is present. They are required to occur first to allow initialiser to be processed in a single pass.
+
+A class initialiser can introduce both class private and instance private names.  Instance private names are created by including one or more //PrivateDeclaration// in the **''new''** body.
+
+As with statement level private name declarations, ''private'' declarations within an initialiser can associate a private identifier with an already existing private name value. This is useful to disambiguate distinct but like-named private names. This is done by using a ''private'' declaration of the form:
+
+ **''private''** //Identifier// **'':''** //AssignmentExpression// **'',''** \\ 
+
+If //AssignmentExpression// does not evaluate to a private name value, a TypeError exception is thrown.
+
+No support is currently proposed for constructor private names. It would be straightforward to allow ''**class private**'' name declarations and an addition scope contour that surrounded **''class''** all property declarations.  However, it isn't clear that there would be enough use of them to justify their inclusion.
+
+
+
+===== SYNTAX =====
+
+ObjectLiteral : \\
+**{** //Block//<sub>opt</sub> **}**\\
+**{** MetaProperties **}**\\
+**{** MetaProperties **,**  //Block//<sub>opt</sub> **}**\\
+**{** MetaProperties **,** //PrivateNamesList<sub>opt</sub>// PropertyNameAndValueList **}**\\
+**{** MetaProperties **,** //PrivateNamesList<sub>opt</sub>// PropertyNameAndValueList **,**  //Block//<sub>opt</sub> **}**\\
+**{** //PrivateNamesList<sub>opt</sub>// PropertyNameAndValueList **}**\\
+**{** //PrivateNamesList<sub>opt</sub>// PropertyNameAndValueList **,** **}**\\
+
+//ClassBody//\\
+**{ }**\\
+**{** //ClassMetaProperties// **}**\\
+**{** //ClassMetaProperties// **, }**\\
+**{** //ClassMetaProperties// **,**  //PrivateNamesList<sub>opt</sub>//  //ClassPropertyNameAndValueList// **}**\\
+**{** //ClassMetaProperties// **,**  //PrivateNamesList<sub>opt</sub>//  //ClassPropertyNameAndValueList// **, }**\\
+**{** //PrivateNamesList<sub>opt</sub>// //ClassPropertyNameAndValueList// **}**\\
+**{** //PrivateNamesList<sub>opt</sub>// //ClassPropertyNameAndValueList// **, }**\\
+
+//PrivateNamesList// :\\
+//PrivateName// \\
+//PrivateNamesList//  //PrivateName//\\
+
+//PrivateName// :\\
+**''private''** //identifier// **,**\\
+**''private''** //identifier// **'':''** //AssignmentExpression **,**//
+

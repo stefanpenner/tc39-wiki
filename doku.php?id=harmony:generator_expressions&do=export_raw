@@ -1,0 +1,92 @@
+**This proposal has progressed to the Draft ECMAScript 6 Specification, which is available for review here: [[harmony:specification_drafts]]. Any new issues relating to them should be filed as bugs at [[http://bugs.ecmascript.org]]. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.**
+
+
+
+
+====== Overview ======
+
+Generator expressions were introduced in [[https://developer.mozilla.org/en/Core_JavaScript_1.5_Guide/Iterators_and_Generators#Generator_expressions|JavaScript 1.8]]. Generator expressions are a convenient, declarative form for creating generators with a syntax based on [[array comprehensions]]. Generator expressions also provide a convenient refactoring pattern, making it easy to switch between eager and on-demand generation of values in a sequence simply by changing the bracketing.
+
+Because generator expressions desugar to an application of [[harmony:iterators]], the surface syntax uses ''for''-''of'' rather than ''for''-''in''.
+
+====== Examples ======
+
+Extracting pages on demand from an array of URL’s:
+
+<code javascript>
+(xhrGet(url) for (url of getURLs()))
+</code>
+
+Filtering a sequence:
+
+<code javascript>
+(x for (x of generateValues()) if (x.color === ‘blue’))
+</code>
+
+Lazy cartesian product
+
+<code javascript>
+(xhrGet(row, column) for (row of rows()) for (column of columns()))
+</code>
+
+
+====== Syntax ======
+
+<code>
+PrimaryExpression ::= ...
+                   |  "(" Expression ("for" "(" LHSExpression "of" Expression")")+ ("if" "(" Expression ")")? ")"
+</code>
+
+====== Translation ======
+
+A generator expression:
+
+**(** //Expression<sub>0</sub>// **for (** //LHSExpression<sub>1</sub>// **of** //Expression<sub>1</sub>// **)** ... **for (** //LHSExpression<sub>n</sub>// **) if (** //Expression// **)**<sub>//opt//</sub> **)**
+
+can be defined by expansion to the expression:
+
+**(function () {** \\
+    **for (let **//LHSExpression<sub>1</sub>// **of** //Expression<sub>1</sub>// **) {** \\
+        ... \\
+        **for (let **//LHSExpression<sub>n</sub>// **of** //Expression<sub>n</sub>// **) {** \\
+            **if (** //Expression// **)**<sub>//opt//</sub> \\
+                **yield (**//Expression<sub>0</sub>//**);** \\
+            **}** \\
+        **}** \\
+    **}** \\
+**})()**
+
+
+
+
+====== Notes ======
+
+Background motivation for the syntactic sugar afforded by generator expressions:
+
+  * Peter Norvig's [[http://norvig.com/sudoku.html|Sudoku solver]] based on constraint propagation, written in Python
+  * My [[https://bug380237.bugzilla.mozilla.org/attachment.cgi?id=266577|port]] of Peter's solver to [[https://developer.mozilla.org/en/Core_JavaScript_1.5_Guide/Iterators_and_Generators#Generator_expressions|JS1.8]]
+
+The critical uses of generator expressions, e.g., the actual parameter to ''all'' in:
+<code js>
+    if (all(eliminate(values, s, d2) for (d2 of values[s]) if (d2 != d)))
+        return values;
+</code>
+can only be desugared to generation function applications or an equivalent lazy iterator construct. They cannot be replaced with [[strawman:array comprehensions]] or any such eager construct without the solver taking exponential time and space creating eagerly populated arrays where it would have stopped early using lazy generator expressions, thanks to constraint propagation. Note how ''all'' is defined:
+
+<code js>
+function all(seq) {
+    for (let e in seq)
+        if (!e)
+            return false;
+    return true;
+}
+</code>
+so as to stop as soon as a value in the iterated sequence is falsy.
+
+The JS1.8 version has some XXX comments and helper functions that show where methods such as the Array extras (''Array.prototype.every'' instead of the custom ''all'' shown above, e.g.) are not iterator-friendly. This suggests the need for more generic methods that abstract over arrays and iterators.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2010/06/27 19:47//
+
+Another note: ''yield'' is verboten in a generator expression, to uphold TCP.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/03/24 18:12//

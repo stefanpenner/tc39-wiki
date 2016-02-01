@@ -1,0 +1,68 @@
+==== Uniform API unifying object and function proxies ====
+
+This page describes an alternative API that gets rid of the distinct function proxies created by ''Proxy.createFunction''. We will refer to the [[harmony:proxies|previous API]] that distinguishes object from function proxies explicitly as the "non-uniform" API and to this alternative as the "uniform" API.
+
+In the uniform API, there is no separate ''Proxy.createFunction'' method. Instead, the handler protocol is extended with two additional fundamental traps:
+<code javascript>
+call: function(thisBinding, ...args) -> any // reifies proxy(...args)
+construct: function(...args) -> object      // reifies new proxy(...args) 
+</code>
+
+Additionally, the uniform API allows proxies to virtualize ''typeof'' by passing a third (optional) argument to ''Proxy.create'':
+<code javascript>
+var p = Proxy.create(handler, prototype, type);
+</code>
+
+The ''type'' argument could be either "object" (the default), "function" or any string except "undefined", "boolean", "number" or "string" (cf. section 11.4.3, The ''typeof'' operator).
+
+Using the uniform proxy API, a generic no-op proxy that works for both objects and functions can be created as follows (assuming that ''handlerMaker'' also defines ''call'' and ''construct'' traps):
+<code javascript>
+function wrap(target) {
+  return Proxy.create(handlerMaker(target),
+                      Object.getPrototypeOf(target),
+                      typeof Object(target));
+}
+</code>
+
+=== IsCallable ===
+
+In the non-uniform proposal, function proxies were callable and object proxies were not. But when is a uniform proxy callable? In the ES5 spec, Object values that implement ''%%[[Call]]%%'' are callable (sec 9.11, IsCallable). One way to define IsCallable on proxies is to "feature test" the handler, as if by evaluating ''"call" in handler'', to test whether it implements the ''call'' trap. This is undesirable for two reasons:
+  * it allows arbitrary user code to run anywhere the spec currently tests for callability, as the handler can itself be a proxy.
+  * it breaks a desirable invariant of the non-uniform API: in that API, the proxy only ever interacts with its handler by //invoking// its traps. Feature testing the handler would imply that, even at the "meta-level", not every operation can be reified as a message send. This prohibits the "double lifting" technique used in the [[harmony:proxies#a_simple_membrane|membrane example]], requiring a proxy on a handler to override the ''has'' trap in addition to the ''invoke'' trap.
+
+Instead, we propose to have ''IsCallable(aProxy)'' return ''true'' iff the ''type'' argument passed to ''Proxy.create'' equals ''"function"''.
+
+=== Prototype ===
+
+In the non-uniform API, the %%[[Prototype]]%% of function proxies is guaranteed to refer to ''Function.prototype''. This constraint was enforced because in the ES5 spec, every value for which ''typeof value'' equals "function" will have ''Function.prototype'' as its prototype. Uniform proxies can violate this constraint (e.g. ''Proxy.create(h, Object.prototype, 'function')''). If we don't want uniform proxies to violate this constraint, ''Proxy.create'' could perform a sanity check, requiring its ''prototype'' argument to be ''Function.prototype'' if its ''type'' argument equals "function".
+
+=== Class ===
+
+What is the %%[[Class]]%% of a uniform proxy? In the non-uniform API, the %%[[Class]]%% of a function proxy is "Function". One possibility is to derive the %%[[Class]]%% from the ''type'' parameter as follows:
+  * if the ''type'' argument equals "function", the proxy's %%[[Class]]%% is "Function"
+  * otherwise, the proxy's %%[[Class]]%% is "Object"
+
+=== Fixing Uniform Proxies ===
+
+In the uniform API, the fixing protocol becomes more complex. In the non-uniform API, fixing a function proxy generates a function object whose %%[[Call]]%% and %%[[Construct]]%% methods are fixed to the ''callTrap'' and the ''constructTrap'' passed as arguments to ''Proxy.createFunction''. For the uniform API, we could make %%[[Call]]%% and %%[[Construct]]%% refer to the corresponding handler traps, but again this would require the proxy implementation to interact with the handler object by means of an operation other than message sending (in this case, property access, e.g. ''handler.call''), again prohibiting the "double lifting" technique.
+
+We could make the ''fix'' trap return three values instead of just a single property map:
+
+<code javascript>
+fix: function() {
+  var pdMap = ...;
+  var callTrap = ...;
+  var constructTrap = ...;
+  return {
+    properties: pdMap,
+    call: callTrap,
+    construct: constructTrap
+  };
+}
+</code>
+
+The ''call'' and ''construct'' properties of the return value are only required if the ''type'' argument to ''Proxy.create'' equals ''"function"''.
+
+=== toString ===
+
+In the non-uniform API, ''Function.prototype.toString.call(aFunctionProxy)'' could delegate the call to the function proxy's ''callTrap''. It is not clear what the result should be on uniform proxies.

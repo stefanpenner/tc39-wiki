@@ -1,0 +1,202 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:operator_overloading_with_double_dispatch&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:operator_overloading_with_double_dispatch&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:operator_overloading_with_double_dispatch&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:operator_overloading_with_double_dispatch&amp;do=export_html.html#operator_overloading_with_double_dispatch" class="toc">Operator Overloading with Double Dispatch</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:operator_overloading_with_double_dispatch&amp;do=export_html.html#operator_overloading" class="toc">Operator Overloading</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:operator_overloading_with_double_dispatch&amp;do=export_html.html#es5.1_11.6.2_the_subtraction_operator" class="toc">ES5.1 11.6.2  The Subtraction Operator:</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:operator_overloading_with_double_dispatch&amp;do=export_html.html#modified_11.6.2_the_overloadable_subtraction_operator" class="toc">Modified 11.6.2  The Overloadable Subtraction Operator</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:operator_overloading_with_double_dispatch&amp;do=export_html.html#explanation" class="toc">Explanation</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:operator_overloading_with_double_dispatch&amp;do=export_html.html#discussion" class="toc">Discussion</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="operator_overloading_with_double_dispatch"></a><h1>Operator Overloading with Double Dispatch</h1>
+<div class="level1">
+
+<p>
+<a href="doku.php%3Fid=strawman:value_types.html" class="wikilink1" title="strawman:value_types" onclick="return svchk()" onkeypress="return svchk()">value types</a> discuss requires for adding to ECMAScript additional value types that overload the existing operators. <a href="doku.php%3Fid=strawman:value_objects.html" class="wikilink1" title="strawman:value_objects" onclick="return svchk()" onkeypress="return svchk()">value objects</a> proposed a fixed set of immutable value types proposes incorporating the operator overload semantics for this set directly into ES specifications operator semantics.
+</p>
+
+<p>
+The following proposal can be viewed as both an alternative and an adjunct to <a href="doku.php%3Fid=strawman:value_objects.html" class="wikilink1" title="strawman:value_objects" onclick="return svchk()" onkeypress="return svchk()">value objects</a>. It is an alternative in that rather than building overload semantics for specific types into the ES operator semantics, it redefines the operator semantics in a manner that can support an open-ended set of types.  It is an adjunct in that the specific types and representations proposed in <a href="doku.php%3Fid=strawman:value_objects.html" class="wikilink1" title="strawman:value_objects" onclick="return svchk()" onkeypress="return svchk()">value objects</a> could be supported by this extensible mechanism in a manner that should be amendable to to the same general implementation and optimization techniques as assume in the <a href="doku.php%3Fid=strawman:value_objects.html" class="wikilink1" title="strawman:value_objects" onclick="return svchk()" onkeypress="return svchk()">value objects</a> proposal.
+</p>
+
+</div>
+<!-- SECTION [1-1007] -->
+<a name="operator_overloading"></a><h2>Operator Overloading</h2>
+<div class="level2">
+
+<p>
+ The set of operators to be overloaded is discussed in <a href="doku.php%3Fid=strawman:value_types.html" class="wikilink1" title="strawman:value_types" onclick="return svchk()" onkeypress="return svchk()">value types</a>. Identification of the exact set is not essential to understand this proposal.  It is sufficient to understand that the vast majority of ES Chapter 11 operators will be overloadable and the the same general technique will be applied for all overloadable operators. For the result of this proposal I will use the binary subtraction operator (-) as an example, but the same general idea would be applied for specifying all of the overloaded operators. 
+</p>
+
+</div>
+<!-- SECTION [1008-1572] -->
+<a name="es5.1_11.6.2_the_subtraction_operator"></a><h3>ES5.1 11.6.2  The Subtraction Operator:</h3>
+<div class="level3">
+<ol>
+<li class="level1"><div class="li"> Let <em>lref</em> be the result of evaluating <em>AdditiveExpression</em>.</div>
+</li>
+<li class="level1"><div class="li"> Let <em>lval</em> be GetValue(<em>lref</em>).</div>
+</li>
+<li class="level1"><div class="li"> Let <em>rref</em> be the result of evaluating <em>MultiplicativeExpression</em>.</div>
+</li>
+<li class="level1"><div class="li"> Let <em>rval</em> be GetValue(<em>rref</em>).</div>
+</li>
+<li class="level1"><div class="li"> Let <em>lnum</em> be ToNumber(<em>lval</em>).</div>
+</li>
+<li class="level1"><div class="li"> Let <em>rnum</em> be ToNumber(<em>rval</em>).</div>
+</li>
+<li class="level1"><div class="li"> Return the result of applying the subtraction operation to <em>lnum</em> and <em>rnum</em>. See the note below 11.6.3.</div>
+</li>
+</ol>
+
+</div>
+<!-- SECTION [1573-2042] -->
+<a name="modified_11.6.2_the_overloadable_subtraction_operator"></a><h3>Modified 11.6.2  The Overloadable Subtraction Operator</h3>
+<div class="level3">
+<ol>
+<li class="level1"><div class="li"> Let <em>lref</em> be the result of evaluating <em>AdditiveExpression</em>.</div>
+</li>
+<li class="level1"><div class="li"> Let <em>lval</em> be GetValue(<em>lref</em>).</div>
+</li>
+<li class="level1"><div class="li"> Let <em>rref</em> be the result of evaluating <em>MultiplicativeExpression</em>.</div>
+</li>
+<li class="level1"><div class="li"> Let <em>rval</em> be GetValue(<em>rref</em>).</div>
+</li>
+<li class="level1"><div class="li"> If Type(<em>lval</em>) is Number and Type(<em>rval</em>) is Number, then  </div>
+<ol>
+<li class="level2"><div class="li"> Return the result of applying the subtraction operation to <em>lval</em> and <em>rval</em>. See the note below 11.6.3.</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Let <em>dispatchable</em> be the result of calling the [[Get]] internal methods of <em>lval</em> with the private name @operatorMinus as argument.</div>
+</li>
+<li class="level1"><div class="li"> If IsCallable(<em>dispatchable</em>) is <strong>true</strong>, then</div>
+<ol>
+<li class="level2"><div class="li"> Return the result of calling the [[Call]] internal method of <em>dispatchable</em> with providing <em>lval</em> as the <strong>this</strong> value and <em>rval</em> as the argument.</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Let <em>lnum</em> be ToNumber(<em>lval</em>).</div>
+</li>
+<li class="level1"><div class="li"> Let <em>rnum</em> be ToNumber(<em>rval</em>).</div>
+</li>
+<li class="level1"><div class="li"> Return the result of applying the subtraction operation to <em>lnum</em> and <em>rnum</em>. See the note below 11.6.3.</div>
+</li>
+</ol>
+
+</div>
+<!-- SECTION [2043-3073] -->
+<a name="explanation"></a><h3>Explanation</h3>
+<div class="level3">
+
+<p>
+ The modification to the algorithm can be summarized as:
+</p>
+<ul>
+<li class="level1"><div class="li"> If both operands are numbers IEEE substraction is performed (just like in ES5.1)</div>
+</li>
+<li class="level1"><div class="li"> If not, and the first operand has a method for overloading -, that method is called and its result is the result of evaluating the binary - operator.</div>
+</li>
+<li class="level1"><div class="li"> Otherwise, do exactly what ES5.1 did.</div>
+</li>
+</ul>
+
+<p>
+ Note that <em>@operatorMinus</em> is a new algorithm convention for expressing a private name value that is both known to the implementation and made publicly available to ECMAScrpt code. In a primordial ECMAScript environment no ES5.1 built-in objects would have either own or inherited  private named operator methods. So the above algorithm changes have no semantic impact on existing code that does not explicitly add such operator methods to built-in or user defined objects. 
+</p>
+
+<p>
+Note that an implementation could treat lines 8-10 as the body of a default fallback @operatorMinus method.  This enables the generic – operator to be code generated as a guarded double subtract with a fall back to a PIC-able method call.
+</p>
+
+<p>
+Similar modification would need to be made to the definition of all the chapter 11 operators.  These are essentially the only changes that need to be made to the core language semantics to support over-loadable operators.  All support for any new data types that over-load the operators is provided library methods and functions (either standard, implementation, or user provided libraries).  In particular, all (beyond what exits in ES5.1) type promotion and coercion semantics is implemented in the library code and is not part of the base language operator semantics.  If the libraries are implemented in ES then any inter-procedural optimization techniques available in an implementation are fully applicable to them. 
+</p>
+
+<p>
+An operator method can be implemented to do anything that is desired and appropriate for its operands.  For example, such a method might do explicit type analysis on the this value and the argument value to determine what operation to perform based upon a closed ended set of types.   Note that the type of the first <em>lval</em> is typically implicitly known by the operator method based upon the property lookup that was performed to retrieve the method. The method can then apply the “double dispatch” technique with the argument to invoke a  “minus” function that is appropriate to that specific operator combination.   Use of this technique allows operator over-loading of an open-ended set of extensible numeric types.
+</p>
+
+<p>
+For example:
+</p>
+<pre class="code javascript"><span class="co1">// overload – with two over-loads:</span>
+<span class="co1">//          perform scalar subtraction from array elements</span>
+<span class="co1">//          compute element-by-element subtraction of two arrays</span>
+&nbsp;
+&nbsp;
+<span class="kw2">import</span> operatorMinus from <span class="st0">"@builtinOperators"</span>;  <span class="co1">//operatorMinus is a built-in private name.</span>
+<span class="kw2">export</span> <span class="kw2">const</span> subFromArray = <span class="kw3">Name</span>.<span class="me1">create</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;  <span class="co1">//this is a new private name, we export it</span>
+                                            <span class="co1">//to allow further extensions.</span>
+&nbsp;
+&nbsp;
+Array.<span class="me1">prototype</span>.@operatorMinus = <span class="kw2">function</span> <span class="br0">&#40;</span>rval<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> rval.@subFromArray<span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span><span class="br0">&#125;</span>;
+&nbsp;
+Number.<span class="me1">prototype</span>.@subFromArray = <span class="kw2">function</span><span class="br0">&#40;</span>minuend<span class="br0">&#41;</span> <span class="br0">&#123;</span>“<span class="kw2">use</span> strict”;
+     <span class="co1">// array-number subtracts number from each minuend element and returns a new array</span>
+     <span class="kw2">var</span> self = <span class="kw1">this</span>;
+     <span class="kw1">return</span> anArray.<span class="me1">map</span><span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span>v<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> minuend-self<span class="br0">&#125;</span><span class="br0">&#41;</span>;
+<span class="br0">&#125;</span>
+&nbsp;
+Array.<span class="me1">prototype</span>.@subFromArray<span class="br0">&#40;</span>minuend<span class="br0">&#41;</span>
+     <span class="co1">// array-array subtracts corresponding elements and collects in a new array</span>
+     <span class="kw2">var</span> result = <span class="kw2">new</span> Array;
+     <span class="kw1">for</span> <span class="br0">&#40;</span><span class="kw2">var</span> i = Math.<span class="me1">max</span><span class="br0">&#40;</span><span class="kw1">this</span>.<span class="me1">length</span>, minuend.<span class="me1">length</span><span class="br0">&#41;</span>-<span class="nu0">1</span>; i&gt;= <span class="nu0">0</span>; i--<span class="br0">&#41;</span>
+         result<span class="br0">&#91;</span>i<span class="br0">&#93;</span> = minuend<span class="br0">&#91;</span>i<span class="br0">&#93;</span>-<span class="kw1">this</span><span class="br0">&#91;</span>i<span class="br0">&#93;</span>;
+     <span class="kw1">return</span> result;
+<span class="br0">&#125;</span>
+&nbsp;</pre>
+<p>
+Note that while monkey patching such is an easy way to extend existing objects to support operator double dispatch for new types, it is not the only extensibility mechanisms that can be used.  Side-tables can also be used to accomplish the same result. 
+</p>
+
+<p>
+Finally, there are no restrictive requirements imposed upon the objects that implement operator methods. In particular, they need not be immutable.  However, if a standard library defines certain classes of immutable objects that include support for operator methods then an implementation might choose to recognize such objects in the generic or specialized code emitted for operators.  
+</p>
+
+</div>
+<!-- SECTION [3074-7325] -->
+<a name="discussion"></a><h2>Discussion</h2>
+<div class="level2">
+
+<p>
+(please contribute)
+</p>
+
+</div>
+<!-- SECTION [7326-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/a/a459431383be64df5d915aefef181037.xhtml used -->
+</body>
+</html>

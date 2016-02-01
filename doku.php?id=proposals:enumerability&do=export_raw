@@ -1,0 +1,28 @@
+==== Proposal ====
+
+(Also see the [[discussion:enumerability|discussion page]] for this proposal)
+
+All that is needed is a way to set the magic internal DontEnum bit.  Extend Object.prototype.propertyIsEnumerable() so you can query, set, or clear the internal DontEnum bit.  The E parmeter has positive sense even though the ECMAScript spec DontEnum bit has negative sense.
+
+<code>
+   function propertyIsEnumerable(P, E=undefined):Boolean
+   {
+       var old = !DontEnum(P)
+       if (!DontDelete(P)) {
+          if (E is Boolean)
+              DontEnum(P) = !E
+       }
+       return old
+   }
+</code>
+
+----
+
+Need to specify:
+  * Interaction with for-in, probably
+
+----
+
+Interaction with ''for-in'' should be well-specified by [[iterators and generators]] based on DontEnum.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/05/29 10:33//

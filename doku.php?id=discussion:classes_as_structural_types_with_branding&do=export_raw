@@ -1,0 +1,94 @@
+====== Modeling classes as structural types with brands ======
+
+  * I think the notion of modeling classes as "structural types with brands" is a very good idea. The mapping is as follows: 
+    * Structural type rules (equality and subtyping) are the default.
+    * We introduce a namespace ''brandname'', reserved by the system.
+    * The type introduced by ''class NS::C'' is a record type with a slot ''const brandname::"NS::C" : void''.
+    * The type introduced by ''interface NS::I'' is a record type with a slot ''const brandname::"NS::I" : void''.
+    * Inheritence is modeled as "setwise union of parent brands". For example: 
+<code javascript>
+interface I {};              // contains const brandname::I : void
+interface J {};              // contains const brandname::J : void
+
+class C implements I {};     // contains const brandname::C : void, const brandname::I : void
+
+class D implements J         // contains const brandname::C : void, const brandname::I : void
+        extends C {};        //          const brandname::D : void, const brandname::J : void
+</code>
+
+  * We may wish to support an automatically-defined constructor for structural record and array types which take a structurally compatible input object of type 'Object'. For example:
+<code javascript>
+  type T = {f:int};
+  var x:Object = {f:int};
+  var y:T = x;             // I believe we agreed to treat this as an error.
+  var z:T = new T(x);      // Maybe we should permit this, which makes a copy.
+</code>
+
+  * We may wish to support parametric names in structural types as we do in classes. For example:
+<code javascript>
+  type Pair[|T|] = [T,T];
+</code>
+
+  * We should make a //careful and clear// note about variance in structural subtyping. For example, in the following code:
+    * ''Duck <: Bird'' holds, because the ''quack'' function is just record extension.
+    * ''LayingDuck <: LayingBird'' holds, since the ''layEgg'' method can be return-covariant.
+    * ''MatingDuck <: MatingBird'' does //not// hold, since the ''mate'' field is writable, cannot be covariant.
+<code javascript>
+  type Bird = {beak:Beak}
+  type LayingBird = {beak:Beak, layEgg:function():Bird}
+  type MatingBird = {beak:Beak, mate:Bird} 
+
+  type Duck = {beak:Beak, quack:function():*}
+  type LayingDuck = {beak:Beak, layEgg:function():Duck, quack:function():*}
+  type MatingDuck = {beak:Beak, mate:Duck, quack:function():*}
+</code>
+
+Although this is perhaps not the best example since it uses recursive types and possibly ''this'' types. 
+
+In the July meeting, we decided on covariant subtyping, 
+so ''MatingDuck <: MatingBird'' does indeed hold.
+
+  * Our proposed structural array types, with their "tail end type", are somewhat like a simple version of [[http://xduce.sf.net|XDuce]] / [[http://cduce.org|CDuce]] / [[http://relaxng.org|RelaxNG]] regular types; I can imagine that providing useful types for E4X might be possible if we went the full way.
+
+(A further reading reference: the [[http://www.hpl.hp.com/techreports/Compaq-DEC/SRC-RR-52.pdf|Modula 3 report]])
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/04/22 12:43//
+
+I just want to note the following:
+
+I know I brought up the idea of expressing named types as structural types with branding, but after skimming [[http://www.cis.upenn.edu/~bcpierce/tapl/index.html|Pierce's book]] just a little, I'm not so sure.  Nominal types are easily understood and handled; recursive structural types less so.
+
+I need to read more.  Cormac and Dave presumably already know this and should really comment here.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/26 03:43//
+
+**Branding**
+
+I don't think this is a good idea, for several reasons. Primarily: it's modeling the class system at the wrong level of abstraction. There are basic properties of the class system that are direct consequences of the structure of the class table (e.g., classes are singly inherited, or the parent class of C is D) that get "compiled away" in the translation to structural types, now hidden in the layout of the structural types. Those invariants now require extra theorems in order to prove that they hold.
+
+It's like modeling the entire object system in terms of the pure lambda calculus, just because we can and it simplifies the number of definitions in the language. It may reduce the number of core forms, but it trades simplicity of definition for complexity of theorems. A semantics is about modeling at the level of specification, not about clever representations.
+
+There are concrete technical issues as well. For example, there are places in the semantics where we //need// to distinguish nominal types from structural types: for example, how do you express the fact that a class can't extend a structural type? Also, it forces our hand in the decision of whether to allow recursive types.
+
+**Recursive structural types**
+
+I believe this may be possible, but it's significantly more complicated. The algorithms for recursive subtyping are intricate and not terribly efficient. The original algorithm of [[http://research.microsoft.com/Users/luca/Papers/SRT.pdf|Amadio and Cardelli]] is exponential, but [[http://www.cs.ucla.edu/~palsberg/paper/mscs95-kps.pdf|Kozen, Palsberg, and Schwartzbach]] give an O(n<sup>2</sup>) algorithm. I'm not as concerned about efficiency, though, as complexness. These are not easy algorithms.
+
+There are a number of issues to consider when it comes to recursive structural types. I think I have solutions to most of the issues I've come up with so far.
+
+  * We must restrict the language of types not to allow types without unique least fixed points such as ''type T = T''. (solution: syntactic restriction on the "type tree")
+  * We must have a decidable implementation of ''is'' that terminates even for cyclic data (solution: Amadio and Cardelli or Kozen, Palsberg and Schwarzbach)
+  * We probably need a reasonable runtime representation of recursive types for reflective operations such as ''type(x)''
+    * higher-order abstract syntax (non-solution. too opaque; can't be compared for equality or subtyping)
+    * mu-types with explicit parameter names (non-solution. no practical or efficient notion of equivalence up to bound type parameter names)
+    * graphs (probably best solution, but may depend on subtyping algorithm)
+
+I'm not sure if there are issues related to generics as well -- I still need to think about that.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2006/05/01 22:13//
+
+Your concrete objections to modelling nominal types as structural types with brands are convincing enough to me; consider my suggestion of it retracted. 
+
+I'm glad you're giving thought to recursive structural types, or at least how best to phrase a prohibition of them.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/05/02 08:53//

@@ -1,0 +1,155 @@
+====== Simple Module Functions ======
+
+
+
+===== The problem =====
+
+Here we propose an enhancement to [[strawman:simple modules]] to cope with the problems created by its combination of mutable static state and the second-classness of its modules. To understand the problem, consider its example of  [[strawman:simple_modules_examples#shared state]]:
+
+<code javascript>
+module Counter {
+    var counter = 0;
+    export function increment() { return counter++ }
+    export function current() { return counter }
+}
+</code>
+
+This could be imported by
+
+<code javascript>
+    import Counter.{increment,current};
+</code>
+
+or loaded by
+
+<code javascript>
+    module Counter = /*MRL or Counter.js*/;
+</code>
+
+(Note that the simple modules strawman may change the concrete syntactic details shown above, but this does not affect the points made here.)
+
+This is similar to the following pre-module code, intended to be "imported" by evaling it and using its completion value as the module instance:
+
+<code javascript>
+// Counter.js
+(function(){
+    var counter = 0;
+    return Object.freeze({
+        increment: function() { return counter++ },
+        current: function() { return counter }
+    });
+})();
+</code>
+
+Say this text has already been fetched by XHR and stored in the variable ''CounterSrc''. The corresponding load operation would then be
+
+<code javascript>
+    var Counter = eval(CounterSrc);
+</code>
+
+In almost all ways, the new module-based way of doing this is better than the old eval-based way. (Both are better than present practice of linkage via global variables.) However, the new module-based way does have one comparative problem. In both cases, the original Counter module has made a choice that [[strawman:simple_module_functions#reasons_to_avoid_mutable_static_state|many consider bad practice]]: the use of top level static mutable state. The customer of the Counter module may wish to avoid this choice in the system into which they import the Counter module, by nesting the load within a multiply instantiable context, such as a function body:
+
+<code javascript>
+    function Something() {
+        //...
+        module Counter = /*MRL or Counter.js*/;
+        //...
+    }
+</code>
+
+or
+
+<code javascript>
+    function Something() {
+        //...
+        var Counter = eval(CounterSrc);
+        //...
+    }
+</code>
+
+However, the first module-based nested load is illegal, in order to preserve the second-class nature of modules and be able to report early errors, as explained in the modules strawman.
+
+The design of [[strawman:simple modules]] makes it possible to multiply instantiate a module by using [[strawman:module loaders#dynamic evaluation]]: 
+
+<code javascript>
+    function Something() {
+        CurrentModuleLoader.evalSrc(
+            "//..." +
+            "module Counter = /*MRL or Counter.js*/;" +
+            "//...");
+    }
+</code>
+
+The normal early errors here are postponed until the evalSrc happens. The problem is that the above synchronous evalSrc is not actually possible (without further mechanism) under the normal event-loop concurrency constraints, because the module can no longer static tell that the importing "Something" module synchronously depends on the contents of /*MRL or Counter.js*/, and therefore cannot know that it needs to prefetch it before execution begins.
+
+
+
+
+===== The proposal =====
+
+We enhance the grammar at [[strawman:simple_modules#syntax]] with the following additional productions. In all cases, "..." means the present right hand side of an existing production.
+
+<code>
+    ModuleDeclaration ::= ... |   'module' ModuleFunctionDefinition
+
+    ModuleFunctionDefinition ::= Identifier '(' (ModuleParameter (',' ModuleParameter)*)? ')' '{' ModuleElement* '}'
+
+    ModuleParameter ::= FormalParameter | 'module' FormalParameter
+
+    QualifiedPath ::= ... | ModuleFunctionCall
+
+    ModuleFunctionCall ::= QualifiedPath Arguments
+</code>
+
+A module function is a parameterized module definition. A module function call to a module function results in a module instance. By analogy with parameterized types, we can see that this need not violate the second class nature of modules. Regarding the time of error reporting, the body of a module function is still like the previous ''evalSrc'' call -- a "static" module error within the module function body is thrown on entry to the module function.
+
+We can now express our previous example as
+
+<code javascript>
+    module Something() {
+        //...
+        module Counter = /*MRL or Counter.js*/;
+        //...
+    }
+</code>
+
+Using an explicit abstraction form is notationally more pleasant that combining an eval form and an inline literal string. We also see a more fundamental advantage: It is now statically apparent that the importing "Something" module synchronously depends on /*MRL or Counter.js*/, and so the module system can know to fetch the code for the latter before starting execution of the former.
+
+Note that the fundamental advantage above may well get fixed by simple modules by other means, in which case simple module functions provides only notational advantages over the ''evalSrc'' pattern.
+
+===== Module parameters =====
+
+(Rough -- to be rewritten) Module loaders also explains [[strawman:module_loaders#module registration]], how to dynamically demote a first class value to a second class module instance, by use of ''attachModule''. In our grammar above, a module parameter annotated with ''module'' serves the same purpose. To a module function's caller, this is just a normal parameter, for which the caller should provide a first class frozen object as argument. The module function does the equivalent of ''attachModule'' of these arguments around the equivalent of ''evalSrc''ing the module function body. This has the effect of binding the parameter name as a module name to this object as module instance.
+
+
+====== See ======
+
+[[strawman:simple modules]]
+
+[[strawman:simple modules examples]]
+
+[[strawman:module loaders]]
+
+
+===== Reasons to avoid mutable static state =====
+
+
+[[http://www.object-oriented-security.org/lets-argue/singletons|Singletons Considered Harmful]] by Kenton Varda.
+
+[[http://gbracha.blogspot.com/2008/02/cutting-out-static.html|Cutting Out Static]] by Gilad Bracha. [[http://lambda-the-ultimate.org/node/2678|Discussion]] on Lambda the Ultimate.
+
+[[http://www.erights.org/talks/asian03/paradigm-revised.pdf|Paradigm Regained: Abstraction Mechanisms for Access Control]] by Mark Miller.
+
+[[http://www.cs.berkeley.edu/~daw/papers/joe-e-ndss10.pdf|Joe-E: A Security-Oriented Subset of Java]] by Adrian Mettler, David Wagner, and Tyler Close.
+
+[[http://googletesting.blogspot.com/2008/08/root-cause-of-singletons.html|Root Cause of Singletons]] by Miško Hevery.
+
+[[http://code.google.com/p/google-singleton-detector/wiki/WhySingletonsAreControversial|Why Singletons Are Controversial]] at the [[http://code.google.com/p/google-singleton-detector/|Google Singleton Detector project]].
+
+[[http://c2.com/cgi/wiki?GlobalVariablesAreBad|Global Variables Are Bad]] and [[http://c2.com/cgi/wiki?SingletonsAreEvil|Singletons Are Evil]] on the c2 wiki.
+
+[[http://blogs.msdn.com/b/scottdensmore/archive/2004/05/25/140827.aspx|Why Singletons are Evil]] perhaps by Scott Densmore.
+
+[[http://portal.acm.org/citation.cfm?doid=1032297.1032303|Re-engineering global variables in Ada]] by Sward and Chamillard.
+
+[[http://corfield.org/entry/Static_is_Evil|Static is Evil]] in ColdFusion.

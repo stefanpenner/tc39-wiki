@@ -1,0 +1,82 @@
+
+This page is obsoleted by specification language in the latest [[harmony:specification drafts]] for ES6. ''Object.is'' is in ES6, but ''is'' and ''isnt'' operators were deferred by TC39 (possibly forever, mainly on the theory of YAGNI).
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2013/12/23 04:12//
+
+====== Object.is(x, y) ======
+
+An egal function simply makes available the internal SameValue function from section 9.12 of the ES5 spec. If two values are egal, then they are not observably distinguishable. Egal can be [[http://code.google.com/searchframe#wBZsFl6bRv8/trunk/src/com/google/caja/ses/repairES5.js|coded]] as ''Object.is'' in ES5 as follows:
+
+<code javascript>
+Object.defineProperty(Object, 'is', {
+  value: function(x, y) {
+    if (x === y) {
+      // 0 === -0, but they are not identical
+      return x !== 0 || 1 / x === 1 / y;
+    }
+
+    // NaN !== NaN, but they are identical.
+    // NaNs are the only non-reflexive value, i.e., if x !== x,
+    // then x is a NaN.
+    // isNaN is broken: it converts its argument to number, so
+    // isNaN("foo") => true
+    return x !== x && y !== y;
+  },
+  configurable: true,
+  enumerable: false,
+  writable: true
+});
+</code>
+
+New collection operations that look up values based on equality should use egal rather than ''===''. It was an unfortunate price of legacy compatibility that ES5's ''Array.prototype.indexOf'' and ''lastIndexOf'' look up by ''==='' rather than egal. The result is that a ''NaN'' in an array cannot be found. In the absence of legacy compatibility constraints, we will avoid repeating this mistake.
+
+The above implementation produces the same results as the ES 5 SamveValue Algorithm (9.12).  The actual specification should be expressed in terms of SameValue to make it clear that this is the same test as used at other places in the specification.
+
+====== is and isnt operators ======
+
+The following restricted-production right-hand sides are added to //EqualityExpression//, and with the necessary changes, to //EqualityExpressionNoIn//:
+
+<code>
+EqualityExpression :
+    . . .
+    EqualityExpression [no LineTerminator here] is RelationalExpression
+    EqualityExpression [no LineTerminator here] isnt RelationalExpression
+</code>
+
+Thus, ''is'' and ''isnt'' are contextual keywords, not reserved in Harmony. No well-formed program can be affected by this change, due to the //[no LineTerminator here]// restriction.
+
+The expression ''x is y'' is equivalent to the desugared expression ''Object.is(x, y)'' using the original value of ''Object.is''.
+
+The expression ''x isnt y'' is equivalent to the desugared expression ''!Object.is(x, y)'' using the original value of ''Object.is''.
+
+====== Rationale ======
+
+We achieved consensus to promote egal from strawman to proposal at the November 2010 meeting. The proposal now contains concrete syntax and naming. Rationale:
+
+  * ''Object.is(x, y)'' as above, to match the operator ''is''.
+  * ''eq'' is not a word, smells of FORTRAN, and has an ugly inverse name ''neq''.
+  * Operators for usability are important (see the decimal discussion).
+  * Inverse operator for usability too, to avoid the ''if (!(obj instanceof Constructor)) ...'' awkwardness.
+  * A quadruple = (''===='') operator is an equal sign too far
+  * Aside from geek cred, there is no usability or teaching win in using the name ''egal''.
+  * ''identical'' is too long for an operator, and the ''Object'' name should match.
+
+====== Open Issues ======
+
+  * Should there be an ''Object.isnt'' method?
+  * Given the operators, do we need the ''Object'' methods?
+
+Comments welcome.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/05/11 20:03//
+
+My thoughts on how to resolve these:
+
+  * Yes, we should have an ''Object.isnt'' method too. See next bullet.
+  * Yes, methods are good for version-free/downrev (JS-in-reality) script usage guarded by method-detection.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/05/31 20:55//
+
+====== References ======
+
+Henry Baker's [[http://home.pipeline.com/~hbaker1/ObjectIdentity.html|Equal Rights for Functional Objects  or, The More Things Change, The More They Are the Same]]

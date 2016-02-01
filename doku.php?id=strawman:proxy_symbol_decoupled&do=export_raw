@@ -1,0 +1,88 @@
+====== Decoupling Private Symbols and Proxies ======
+
+
+
+Problem: [[strawman:proxies_names|the interaction between proxies and private symbols]],
+
+  * A) is awkward/complicated (the ''unknownPrivateSymbol'' trap and extra whitelist argument to the Proxy constructor)
+  * B) diminishes the value of private symbols as a reliable means to store and retrieve state on arbitrary objects (proxies can revoke access by throwing / returning false from unkownPrivateSymbol trap), [[https://mail.mozilla.org/pipermail/es-discuss/2013-January/028313.html|as pointed out by Kevin Smith]] and [[https://mail.mozilla.org/pipermail/es-discuss/2013-January/028414.html|reiterated by Brandon Benvie]].
+
+Below are two proposals to resolve these issues.
+
+Note: this strawman proposes no changes to the way proxies interact with //unique// symbols.
+
+===== 1. Unconditional Forwarding =====
+
+Private symbol access automatically "unwraps" proxies by forwarding the private symbol access to the target without trapping. In code:
+
+<code javascript>
+var s = new PrivateSymbol();
+var t = {};
+var p = Proxy(t, {...});
+t[s] = "foo"
+p[s] // doesn't trap, returns "foo"
+p[s] = "bar" // doesn't trap, sets t[s] = "bar"
+</code>
+
+If the target is itself a proxy, the unwrapping is recursive (until we encounter a non-proxy target object).
+
+Benefits:
+
+  * Gets rid of the ''unknownPrivateSymbol'' trap, and maybe even the whitelist altogether. Proxies would then be entirely oblivious to private symbols.
+  * If built-ins like Date store their %%[[internal]]%% properties using private symbols, then the built-in Date.prototype methods would work unaltered when applied to a proxy for a Date. Similarly for other built-ins or exotics.
+
+Drawbacks:
+
+  * Even though a symbol is immutable, one can no longer share it freely across trust boundaries because it may open a communications channel that cannot be closed/controlled by proxies.
+
+Point in case: private symbols can pierce membranes. This issue could be resolved if:
+
+  * (base case) there are no built-in private symbols in a standard JS environment (i.e. all the built-in symbols are unique)
+  * (inductive case) a membrane intercepts all private symbols that cross the membrane, instead returning a different private symbol to the other side. The membrane keeps a 1-to-1 mapping to maintain the identity of the symbols across the "inside" and "outside" of the membrane.
+
+It's worth noting that revocable proxies (those created using ''Proxy.revocable'') can still stop forwarding private symbol access when revoked. Hence, under this proposal, we solve problem A, but private symbol access remains "unreliable" (we don't solve problem B).
+
+===== 2. Treat proxies as normal objects wrt private symbols  =====
+
+Make proxies have their own private state, such that ''proxy[privateSymbol]'' just accesses the proxy's private state (without trapping to the handler or forwarding to the target).
+
+Under this proposal, there is no a priori relationship between ''proxy[privateSymbol]'' and ''target[privateSymbol]'': they identify two completely unrelated property storage locations. In code:
+
+<code javascript>
+var s = new PrivateSymbol();
+var t = {};
+var p = Proxy(t, {...});
+t[s] = "foo"
+p[s] // doesn't trap, returns undefined
+p[s] = "bar" // doesn't trap, sets p[s] = "bar"
+p[s] // doesn't trap, returns "bar"
+</code>
+
+Benefits:
+  * private symbols are never leaked to proxies
+  * private symbol access is "reliable" (it never throws)
+  * private symbols don't pierce membranes
+  * proxies don't need facilities to interact with private symbols (the whitelist and ''unknownPrivateSymbol'' trap can be removed)
+
+Drawbacks:
+  * Less transparent: replacing an object that stores certain state using private symbols by a proxy, and passing that proxy to a function that expects the original object will not automatically work, unless the proxy is explicitly set up to also "inherit" the private state of its target.
+
+Maybe this transparency was a non-goal anyway: if a method expects a certain exotic object (e.g. element.appendChild expecting a DOM node), passing in a proxy for such an exotic can just be seen as a type error. Transparency is not necessarily wanted in these cases.
+
+Under this proposal, private symbols interact with proxies the same way WeakMaps interact with proxies: proxies have an identity that is distinct from their target, so ''weakmap.get(proxy)'' and ''weakmap.get(target)'' are unrelated. Also, the weakmap lookup doesn't trap. Under this proposal, exactly the same would hold for ''proxy[privateSymbol]'' vs ''target[privateSymbol]''.
+
+This proposal solves both problems A and B: proxies are completely decoupled from private names, and private name access remains reliable (even on a revoked proxy).
+
+===== Discussion =====
+
+Proposal 1 was previously suggested on the list by Allen and was met with some support. My own (Tom VC) preference is solution 2, which was [[https://mail.mozilla.org/pipermail/es-discuss/2013-January/028459.html|suggested]] to the list, but not extensively discussed.
+
+==== Arguments against proposal 1 (unconditional forwarding) ====
+
+  * Private symbols are immutable tokens and should in principle be freely shareable across trust boundaries without membrane protection. Doing so should not open up a communications channel that subverts proxies.
+
+
+==== Arguments against proposal 2 (proxies store symbols) ====
+
+  * One can no longer transparently proxy an object with private symbols at all, even if one has access to known private symbols.
+  * Looking at existing "proxies", like ''WindowProxy'', it does not make sense for each ''WindowProxy'' to store its own private symbol values.

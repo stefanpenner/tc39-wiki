@@ -1,0 +1,50 @@
+===== Multiple globals =====
+
+The ECMAScript spec has never said anything about the presence of multiple global objects interacting with one another, but this has long been the reality on the web. Browsers have not always been interoperable in this area, so it deserves standardization. Some amount of backwards incompatibility may be acceptable, since some of the cases may be fairly rare in practice.
+
+===== Existence of multiple globals =====
+
+Where historically the spec refers to "the global object," this needs to be made more precise by specifying //which// global object.
+
+In past versions of the standard, every closure contains a scope chain that ends with the (a) global object. In SpiderMonkey terminology, this is the closure's "parent." We will use the term "global context."
+
+Since Harmony may not include the global object in the scope chain, this concept needs to be generalized to encompass either the global object (for legacy mode) or the [[strawman:module loaders|module loader]] context associated with the scope chain.
+
+===== Global objects and non-method calls =====
+
+When a function is called as a non-method, the spec is unclear as to which global object ends up bound to ''this''. While ES5 strict passes ''undefined'', legacy mode should still specify which global object is bound to ''this''.
+
+Firefox created precedent for a reasonably consistent and legalistic interpretation of ES3. At top-level, a non-method call ends up with the global object associated with the **caller**, because the callee evaluates to an object reference with the call site's global object as the base of the reference. When nested within a function body, though, a non-method call ends up with the global object associated with the **callee**, because the callee evaluates to an object reference with an activation object as the base of the reference, which is then censored to **null** (ES3) or **undefined** (ES5), and it's in the callee's body that this is replaced with the global object---so SpiderMonkey interprets this as the callee's global object.
+
+This is all consistent with the way the language has been specified, but that doesn't mean we couldn't change it. The fact that function calls behave differently depending on whether they are at top-level or nested is //extremely// subtle.
+
+===== Global objects and eval =====
+
+Jeff Walden raised this [[https://mail.mozilla.org/pipermail/es-discuss/2011-March/012915.html|question about direct and indirect eval]]: what happens when one context reassigns ''eval'' to the ''eval'' function of another context?
+
+<code javascript>
+var indirect = otherGlobal.eval;
+eval = indirect;
+eval("this")     // which global?
+indirect("this") // which global?
+</code>
+
+===== Global objects and navigation =====
+
+On the web, a global object maintains its object identity even following a programmatic navigation to a new location. This swaps out the contents of the global object with a fresh state (recently, Firefox has implemented this with the same part of the engine that implements proxies), and navigating back can recover the previous contents of the global object. Closures that are created on one page are hard-wired to the contents of that page's global object internals, even if navigation moves away from that page. And yet throughout this navigation, that global object maintains one single object identity.
+
+Most of this is web-specific detail that shouldn't be specified in the language standard. But the fact that closures are not actually looking up the contents of the live object, but rather an internal frame that the object delegated to at one point, seems to violate the existing spec.
+
+----
+
+**Update:** This may actually be spec-compliant. A global object can implement whatever behavior it wants for the internal methods; so in principle, it could always respond differently to %%[[%%Get%%]]%% based on the source of the variable lookup. In the spec, there's nothing that identifies the source of the lookup, but that doesn't mean a particular engine can't make that information available. This maybe seems a little fishy, but I'm happy if we can avoid specifying any of the mechanics of navigation in Ecma-262.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2011/03/04 19:40//
+
+===== Terminology question =====
+
+We need good terminology for this concept of "global context" in a way that doesn't confuse with "execution context" as it's traditionally been used in the ECMAScript specs. Our terminology needs to account for:
+
+  * multiple global objects
+  * multiple [[strawman:module loaders]]
+  * multiple modes (legacy, legacy strict, Harmony)

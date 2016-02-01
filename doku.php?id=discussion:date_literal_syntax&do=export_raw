@@ -1,0 +1,59 @@
+This is the discussion page for [[proposals:date_literal_syntax]].
+
+====== Discussion ======
+
+Should there be support for Julian dates (yyyy-ddd format) and a ''Date.prototype.toJulianString'' method?
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/21 09:02//
+
+At the dawn of time, in 1995, the guy who "helped" my ~1.5-week prototype which became "JavaScript 1.0" by porting java.util.Date to C was interested in Julian dates.  I have never heard requests for them since.  Has anyone else?  They are used in spreadsheet data I've seen, and they have advantages, but my first reaction is to say let's leave this for the ecosystem.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/04/24 13:51//
+
+They have been popular for filing purposes in some office environments I've been working in, but that was a while ago.
+
+My proposal was as minimal as possible; we could add syntax for julian dates and week numbers to complete it, and then the ecosystem would probably not have to worry about much more.  But I'm happy not to have to implement it, I suspect they are of fairly limited utility (week numbers are popular, though).
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/25 04:55//
+
+A friend of mine pointed out this proposal for a different [[http://www.nikhilk.net/DateSyntaxForJSON.aspx|syntax for date literals]]. We should maybe consider it or at least address it.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2006/05/23 11:35//
+
+I'm glad this is something people miss.
+
+The main problem with the referenced proposal is that the syntax accepted by Date.parse() is not specified in the ECMAScript spec, and the horse is out of the barn a long time ago on that.  As a result, every web designer's idiosyncratic notion of how to write dates is supported by a good date parser, and it will be thus for a long time to come.  (Of course the parser gets it wrong every so often --- the US is entirely dominant on the web, so xx/yy must mean mm/dd even though it means dd/mm in most of the world.  Etc.  The date parser is a mess.)
+
+I don't much care about the present proposal either way, but if we are going to do anything, it's going to be ISO syntax or nothing.  (Dang it.)  The value of the proposal is partly educational; if we specify that Date.parse must handle the ISO syntax and make the ISO syntax prominent in the language, people will start using it, and the issues with Date.parse will slowly become less important.
+
+As for quoting the string, that makes sense (makes the lexer easier, makes date literals easier to see), but it's not technically necessary.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/23 11:55//
+
+
+The other day we were discussing about the syntax used in C#.
+There is no date literal in C# per se.
+The .NET Framework class System.DateTime can parse strings in various formats and create a Date object.
+Here is a sample C# program using date literals:
+
+using System;
+public class datesample
+{
+    public static void Main(string [] args)
+    {
+        DateTime t1 = DateTime.Parse("19 July 2006");
+        Console.WriteLine(t1);
+        // pass the year, month, day as integers
+        DateTime t2 = new DateTime( 2006, 7, 19 );
+        Console.WriteLine(t2);
+        // extend it to include the time too
+        DateTime t3 = new DateTime( 2006, 7, 19, 12, 0, 0); 
+        Console.WriteLine(t3);
+    }
+}
+
+You can also define your own format and get it parsed (by providing a custom date formatter and the relevant culture information).
+Refer the following MSDN links for details:
+http://msdn2.microsoft.com/en-us/library/2h3syy57.aspx
+http://msdn2.microsoft.com/en-us/library/system.globalization.datetimeformatinfo.aspx
+ --- //[[pratapl@microsoft.com|Pratap Lakshman]] 2006/07/19 09:40//

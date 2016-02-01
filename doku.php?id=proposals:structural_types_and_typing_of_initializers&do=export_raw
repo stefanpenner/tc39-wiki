@@ -1,0 +1,44 @@
+====== Structural types and typing of initializers ======
+
+
+===== Summary =====
+
+We have nonrecursive structural types, introduced by the keyword ''type''.  There are function types, union types, Object types, and Array types.
+
+<code>
+    type F = function (int,Object):int  // a function type
+    type U = (A, B, C)                  // a union type
+    type R = { p: int, q: String }      // an object type
+    type S = [ int, , String!, * ]      // an array type
+
+    type T = { f: int }
+    function f() : T {
+        return { f: 37 } : T;
+    }
+
+    let { f: x } : T = f()             // binds x with type int (from T) with value from f()
+</code>
+
+F, U, R, S, T can be mentioned in expression contexts and yield type objects.
+
+The types don't have to be named by ''type'' definitions, they can be used in type contexts.  The type contexts are at least:
+  * following '':'' in parameter lists, in a function head, and in ''var''/''const''/''let'' statements
+  * in type definitions
+  * the right-hand-side of the ''is'' and ''type'' operators.
+
+Note the definitions of R and S, which say that objects of those types have at least the fields named, but may have more.
+
+The names in a record type can be qualified by a namespace (statically resolvable).
+
+The complete type syntax is defined in [[syntax for type expressions]].
+
+There will be a typecase statement; see the [[switch class]] proposal.
+
+===== Related discussion =====
+
+Aspects of this proposal are discussed in many places:
+  * [[clarification:type system]], lengthy working notes on the type system
+  * [[clarification:formal type system]], work in progress on formalizing the type system
+  * [[syntax for type expressions]], how to write down types
+  * [[type definitions]], how to give names to structural types
+  * [[switch class]], how to pick apart a union on "any" typed value

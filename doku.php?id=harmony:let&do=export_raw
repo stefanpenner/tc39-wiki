@@ -1,0 +1,29 @@
+===== let =====
+
+**Note:** more details on ''let'' at [[block scoped bindings]].
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2010/08/20 15:37//
+
+----
+
+Strong consensus for ''let'' as the new ''var'', with the same syntax but block scope.
+
+We want ''let'' to share the same "temporal dead zone" as [[const]]: no use before declaration. Note however that ''let'' does not require an initializer; the default initial value is ''undefined''.
+
+As with [[const]], ''let x; let x'' is an error (again ignoring initializers).
+
+We think ''let'' should behave like [[const]] when the environment frame is an object and not declarative (at top level in global code, and in ''eval'' called from global code): you get an error if there exists a property of that object with the same name when the ''let'' is evaluated. So in browsers, ''let name = 42'' will throw (due to ''window.name'').
+
+Open issues:
+
+  * What error should be thrown in the previous paragraph?
+  * Should ''a = []; for (let i = 0; i < 3; i++) a.push(function () { return i; }); print(a[0]())'' print ''3'' or ''0''?
+    * Some say yes (Mark did a [[https://mail.mozilla.org/pipermail/es-discuss/2008-October/007819.html|lambda coding]]).
+    * Others say no (and Mozilla's JS1.7 in Rhino and SpiderMonkey implement this, but these could be changed and users might be happier).
+    * Jon Zeppieri [[https://mail.mozilla.org/pipermail/es-discuss/2008-October/007826.html|pointed out]] a big flaw: ''for (let i=0;i<N;i++){...}'' differs from ''let i=0; for (;i<N;i++){...}''.
+  * Same example but using ''for (let i in o)'' -- here everyone agrees that in this form, we want fresh binding per iteration. Same for ''for-of'' (see [[harmony:iterators]]).
+  * Bad old grammar and semantics in ES1-5 that permit ''for (var i = E in o)'' where ''E'' is evaluated before the loop begins.
+    * We are stuck with this closure bug for ''var''.
+    * We agree for ''let'' and ''const'' that the initializer '' = E'' should be forbidden grammatically.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2009/09/24 21:10//

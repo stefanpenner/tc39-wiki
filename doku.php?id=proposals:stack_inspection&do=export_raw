@@ -1,0 +1,221 @@
+(Also see the [[discussion:stack_inspection|discussion page]] for this proposal.)
+
+====== Motivation ======
+
+Stack inspection is useful for e.g.:
+
+  * lightweight implementations of debuggers
+  * stack trace information for exceptions
+  * security mechanisms based on access control lattices
+  * aspect-oriented programming facilities involving control-flow inspection
+  * implementation of dynamic binding mechanisms
+
+There are several requirements:
+
+  * it should be sufficiently low-level to provide useful debugging information and introspection of the control stack
+  * but it should be specified independently of the implementation strategy of a particular EcmaScript runtime, e.g., the particular memory layout of stack frames
+  * using the stack inspection mechanism should not subvert the benefit of [[proper tail calls]]
+  * in the presence of [[proper tail calls]], it should still be possible to implement security based on stack inspection
+
+====== High-level description ======
+
+The stack inspection library allows programmers to annotate the stack with extra data. At any point during execution, a program may annotate the current stack with a piece of data, and at any point it can view the entire set of stack annotations.
+
+In order to provide access control, all annotations are created by an "annotator" object, whose object identity serves as an implicit key. To add and view annotations, a program must have access to this object, which can be kept private by encapsulating the object in a private field or hidden namespace variable. This way, different libraries can use different annotators so their annotations don't interfere with each other.
+
+Now, the implementation of [[proper tail calls]] requires eliminating or reusing stack frames in order to prevent tail calls from accumulating unbounded stack space. But when this happens, we don't necessarily want the current stack annotations to disappear. Consequently, each annotation is stored (at least conceptually) //above// the current stack frame. This way, when we make a tail call, we retain the most recent annotations.
+
+  +-------------+
+  | annotations |
+  +-------------+
+  |             |
+  |    frame    |
+  |             |
+  +-------------+
+  | annotations |
+  +-------------+
+  |             |
+  |    frame    |
+  |             |
+  +-------------+
+  | annotations |
+  +-------------+
+  |             |
+  |    frame    |
+  |             |
+  .             .
+  .             .
+
+Alternatively, an implementation might choose to store the annotations in a property of the parent activation object.
+
+Note that lower-level facilities that require annotations to be made on all function calls, such as stack traces or security annotations, can be implemented by instrumentation. For example, to implement stack traces, an implementation could instrument every function call with a call to save backtrace information via a private ''ControlInspector'' object.
+
+====== Stack Inspection Library ======
+
+The API for the stack inspection library involves a single generic class called ''ControlInspector'':
+
+<code javascript>
+class ControlInspector.<T> {
+    final function annotate(val : T) : void
+    final function getCurrentAnnotation() : ?T
+    final function getAnnotations() : [T]
+}
+</code>
+
+The methods of ''ControlInspector'' have the following behavior:
+
+  * ''ControlInspector.<T>.annotate(val : T) : void''
+
+Annotates the current stack with a new value of type ''T'', implicitly associated with this annotator instance. The annotation is stored conceptually "above" the stack frame of the caller of ''annotate'', so that if the caller performs a tail call, the annotation is preserved for the callee's stack frame.
+
+  * ''ControlInspector.<T>.getCurrentAnnotation() : ?T''
+
+Returns the annotation associated with this annotator instance for the current stack, if any. If there is no annotation associated with this current stack, returns ''null''.
+
+  * ''ControlInspector.<T>.getAnnotations() : [T]''
+
+Returns an array containing all annotations associated with this annotator instance for the entire stack, arranged from most recent (top of the stack) to least recent (bottom of the stack). Modifying the array has no effect on the actual stack annotations.
+
+====== Examples ======
+
+===== Stack-like accumulation =====
+
+In this example, a control inspector stores annotations on a recursive procedure and the annotations accumulate in a stack-like manner.
+
+<code javascript>let lengthInspector = new ControlInspector();
+
+function length(array, index) {
+    if (index >= array.length)
+        return 0;
+
+    lengthInspector.annotate(array[index]);
+    print(lengthInspector.getAnnotations() + '\n');
+    // (non-tail) recursive call
+    return 1 + length(array, index + 1);
+}
+
+length([3,8,6,2], 0)</code>
+
+At each recursive call, the program prints out the current set of annotations, producing the following output:
+
+<code javascript>
+[3]
+[3,8]
+[3,8,6]
+[3,8,6,2]
+</code>
+
+===== Tail recursion =====
+
+In a tail-recursive procedure, only the most recent annotation is preserved.
+
+<code javascript>let lastvalInspector = new ControlInspector();
+
+function lastval(array, index) {
+    if (index == array.length - 1)
+        return array[index];
+
+    print(lastvalInspector.getAnnotations() + '\n');
+    lastvalInspector.annotate(array[index]);
+    // tail-recursive call
+    return lastval(array, index + 1);
+}
+
+lastval([3, 8, 6, 2], 0)</code>
+
+Because each recursive call is a tail call, this program only ever stores at most one annotation on the stack, producing the following output:
+
+<code javascript>
+[]
+[3]
+[8]
+[6]
+</code>
+
+====== Implementation ======
+
+===== Storage of annotations =====
+
+There are several alternative implementation strategies to stack annotations:
+
+  * on the runtime stack in between procedure activation frames (as pictured above)
+
+This is a conceptually simple model, and may be efficient for implementations that expect most frames to be annotated. It might be a difficult strategy for implementations that have constraints on the representation of the stack, such as those that make use of the underlying implementation language's stack.
+
+  * as properties of the parent function activation object
+
+This is probably the simplest implementation, but it may not be very efficient.
+
+  * as a completely separate stack
+
+The benefit of a separate stack is that collecting the current annotations is much more efficient: searching for annotations doesn't require searching through unannotated frames. This is especially efficient if annotations are sparse.
+
+===== Annotation methods =====
+
+Because the annotation methods may themselves consume stack space, implementations must take care to place the annotations in the right place. The solutions are:
+
+  * inline the methods or implement them in such a way that they take no stack space
+  * ensure they always take a single stack frame and offset the location of the annotation accordingly
+  * store the annotations in a separate stack, in which case the exact physical layout of the control stack doesn't affect the layout of the annotation stack
+
+====== Use cases ======
+
+===== Aspect-oriented programming =====
+
+With stack annotations, it's possible to implement aspect-oriented programming idioms such as [[http://citeseer.ist.psu.edu/kiczales01overview.html|AspectJ]]'s ''cflow'' advice. Programs can monitor the behavior of control flow by annotating function calls.
+
+It may be possible to implement some of these automatically without changing program source code by wrapping the ''Function.call'' method with additional behavior that annotates the calls.
+
+===== Lightweight debugging =====
+
+Debuggers can easily instrument programs with annotations that monitor the behavior of control, set breakpoints, etc.
+
+Similarly, debuggers can make dynamic decisions about how to deal with exceptions based on the currently installed exception handlers, which can be saved in stack annotations.
+
+===== Stack traces =====
+
+Stack traces can easily be implemented by instrumenting code with annotations that save backtrace information.
+
+===== Dynamic security =====
+
+To implement a JVM-like security system based on stack inspection, annotators simply overwrite the current annotation (if there is one; this is what ''getCurrentAnnotation'' is for) to the meet of the old permissions and the new permissions.
+
+====== Use patterns ======
+
+When a program makes a tail call, it may be preferable for the new stack frame to keep the old annotation, overwrite the old annotation with a new annotation, or combine the old and new annotations, depending on the particular program.
+
+===== Newest annotation wins =====
+
+The default behavior for a tail call is for the new annotation to overwrite the previous one:
+
+<code javascript>
+a.annotate(...)
+</code>
+
+===== Oldest annotation wins =====
+
+To allow the old annotation to supersede the new one, simply check for the existence of an annotation:
+
+<code javascript>
+if (a.getCurrentAnnotation() == null)
+  a.annotate(...)
+</code>
+
+===== Accumulate all annotations =====
+
+To accumulate all annotations in a series of tail calls, accumulate them in an array:
+
+<code javascript>
+let arr = a.getCurrentAnnotation() || new Array
+arr.push(...)
+a.annotate(arr)
+</code>
+
+
+====== Optional status ======
+
+This library is specified with "optional reflective library" status (see [[meta objects]]), meaning that lightweight implementations may choose not to provide it.
+
+====== References ======
+
+This library is based on the system described by [[http://www.csc.calpoly.edu/~clements|John Clements]] in his [[http://www.csc.calpoly.edu/~clements/papers/dissertation.pdf|dissertation]].

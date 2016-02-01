@@ -1,0 +1,114 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:is_as_to&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:is_as_to&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:is_as_to&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<p>
+ (Also see the <a href="doku.php%3Fid=discussion:is_as_to.html" class="wikilink1" title="discussion:is_as_to" onclick="return svchk()" onkeypress="return svchk()">discussion page</a> for this proposal)
+</p>
+
+<p>
+ <strong>Tickets:</strong> <a href="http://bugs.ecmascript.org/ticket/244" class="urlextern" target="_blank" title="http://bugs.ecmascript.org/ticket/244" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">#244 -- 'like' as an operator</a>
+</p>
+
+<a name="proposed_change"></a><h1>Proposed change</h1>
+<div class="level1">
+
+<p>
+ The proposal is to adjust the meaning of two of the <code>is</code> and <code>to</code> operators, replace the <code>as</code> operator with a <code>cast</code> operator, and adopt a single syntactic type annotation <code>:</code>. So we would have: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Operator <code>cast T(x)</code> which returns <code>x</code> if <code>x is T</code>, else throws (subsuming and renaming operator <code>as</code>). This operator might use some more C-like notation. The important point is that it throws when the cast fails.</div>
+</li>
+<li class="level1"><div class="li"> Operator <code>to</code> which calls a user-provided conversion operator if it exists, else calls <code>cast</code>.</div>
+<ul>
+<li class="level2"><div class="li"> syntax: <code>x to T</code></div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Operator <code>is</code> which is still a boolean predicate.</div>
+</li>
+<li class="level1"><div class="li"> Annotations such as <code> v : T </code> only have meaning in the <em>surface syntax</em> of the language. </div>
+</li>
+<li class="level1"><div class="li"> Writing <code>var v : T = x</code> in the surface language produces identical runtime behavior to having written <code>var v = x to T</code>, with two qualifications:</div>
+<ul>
+<li class="level2"><div class="li"> The slot <code>v</code> carries runtime type information indicating that it is constrained to <code>T</code>; further assignments to <code>v</code> also perform the <code>to T</code> conversion.</div>
+</li>
+<li class="level2"><div class="li"> If the surface syntax is processed in the static translation path, the typechecker is obliged to prove that <code>x</code> has a type which is assignment compatible with <code>T</code>. </div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [163-1401] -->
+<a name="strict_mode"></a><h1>Strict mode</h1>
+<div class="level1">
+
+<p>
+ In strict mode, the annotation <code>x : T = y</code> represents an error unless one of the following holds: 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>y</code> is of type <code>U</code> and <code>T</code> defines a <code>to</code> operator that has an operand type of <code>V</code> and <code>U &lt;: V</code></div>
+</li>
+<li class="level1"><div class="li"> <code>y</code> is of type <code>U</code> and <code>U &lt;: T</code></div>
+</li>
+<li class="level1"><div class="li"> <code>y</code> is of the top &ldquo;unconstrained&rdquo; type</div>
+</li>
+<li class="level1"><div class="li"> <code>T</code> is <code>Boolean</code> (which always gets an implicit conversion)</div>
+</li>
+<li class="level1"><div class="li"> <code>y</code> is of type <code>U</code> and both <code>U &lt;: Number</code> and <code>T &lt;: Number</code></div>
+</li>
+</ul>
+
+<p>
+ This is &ldquo;static typechecking with some implicit conversions&rdquo;. User-provided <code>to</code> operators are used to determine type compatibility for assignment.
+</p>
+
+</div>
+<!-- SECTION [1402-2021] -->
+<a name="syntax"></a><h1>Syntax</h1>
+<div class="level1">
+
+<p>
+ The <code>to</code>, <code>cast</code> and <code>is</code> operators are infix binary &ldquo;type&rdquo; operators that take ordinary expression on the left side and a type expression on the right side. Here are some examples,
+</p>
+<pre class="code">
+x to t
+x is t
+x cast t
+</pre>
+
+<p>
+where <code>t</code> is a type expression.
+</p>
+
+<p>
+An earlier version of this proposal had a prefix forms for computing types from type expressions, and infix forms for computing types from ordinary expressions. This was deemed overly general and redundant and so was simplified to have the current binary forms that compute types from a type expression.
+</p>
+
+</div>
+<!-- SECTION [2022-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/6/65686f939f06cd38782fc75a08df2a81.xhtml used -->
+</body>
+</html>

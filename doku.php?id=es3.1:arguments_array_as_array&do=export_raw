@@ -1,0 +1,57 @@
+//Description//: Make the ''arguments'' array an "Array". arguments should be an object that delegates to ''Array.prototype''. The will allow array methods (particularly the slicing and mapping methods) to be applied to ''arguments''.
+
+The ''arguments'' array is a shallow copy of the actual invocation arguments. It is not joined to the parameters.
+
+Relevant Goal: [[es3.1:es3.1_goals|1]]\\
+Relevant Design Principle: [[es3.1:design_principles|2a, 2b]]\\
+Relevant ES4 proposal: [[proposals:bug_fixes|bug fixes]]\\
+Trac ticket: [[http://bugs.ecmascript.org/ticket/27|#27]]
+
+
+ --- //[[pratapl@microsoft.com|Pratap Lakshman]] 2007/04/15 03:08//
+
+Note, this is incompatible with ES4, which stipulates that the prototype of the arguments object is Array.prototype, but not that the object itself be an array.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/12/18 13:23//
+
+Why is arguments not an array in ES4?
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2008/02/27 16:56//
+
+Because changing it in that fashion would creates a backward compatibility problem.  In ES3, if you change ''length'' on the arguments object then the other properties are left untouched.  If the arguments object is made a true array then reducing ''length'' will delete some of the properties.
+
+Obviously changing the prototype also changes the nature of the object in a sense, but in a way that is explicitly allowed by E262-3.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2008/02/27 22:13//
+
+What is the harm in reducing the ''length''?
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2008/02/28 21:53//
+
+Reducing ''length'' deletes properties named by numbers at the new value of ''length'' and above, that's how an Array works.  Since this was not the case in ES3 -- the ''length'' field on the arguments object being just another property --  the behavior of the arguments object (not just its method suite) will change if it is an Array.  That is deemed not acceptable.
+
+Relevant tickets may be #26, #27.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2008/02/28 23:18//
+
+Why is this not deemed acceptable?
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2008/03/03 22:05//
+
+It's deemed not acceptable because it is extremely likely to break parts of the web.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2008/03/05 23:56//
+
+How about the arguments array be a snapshot-reification of the arguments passed into the function. Then it would not matter if reducing the length causes properties to be deleted.
+
+ --- //[[pratapl@microsoft.com|Pratap Lakshman]] 2008/03/04 15:40//
+
+I assume you are proposing that that snapshot-reification be called "arguments", ie, this new meaning will supplant the old meaning?
+
+If you can ship that change in IE8+ and still have a job afterwards then I will travel on foot to Hyderabad and erect a shrine outside your home.  (Incidentally, it's what ActionScript does.)
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2008/03/05 23:04//
+
+Seriously, the web depends on arguments[0] aliasing bar in ''function foo(bar) { arguments[0] = "baz"; return bar; }''. This is not something to change in a unified engine. Making it a runtime semantic change triggered by opt-in versioning just makes another rule for programmers to try not to forget: another code migration hurdle for little gain. This is not a high-value area in which to innovate -- rest parameters are the better course.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2008/03/06 16:25//

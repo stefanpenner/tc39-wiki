@@ -1,0 +1,483 @@
+====== Object Model Reformation: Decoupling [ ] and Property Access ======
+Summary: The typical usage of object properties to define dynamic data collections in ECMAScript conflates  concepts from the application data domain (the data manipulated by the program) and the program definition domain (the actual program text) in ways that are sometimes confusing and error prone. For example, a key  of a data collection may conflict with the name of a method of the collection object, making the method inaccessable. This proposal provides a means for defining dynamic data collections in ECMAScript that disentangle those concepts.  It retains both program and conceptual backwards compatibility while presenting a more powerful and less error-prone way for ECMAScript programmers to define collections objects.
+----
+ES objects and their properties have always had a dual nature.  They can be used as both (semi-) fixed-shape object abstraction where the properties are the member names and they can be used as open ended data collections where property names are used as key values for accessing data in the collections.
+
+This dual use is reflected in the two different syntactic forms of property access available in the language, obj.propName and obj[expr]. The dot form uses a property key that is provided by the program author and fixed in the program code. The [ ] uses a runtime computed property key that is typically not known when the program is written.
+
+Using a single semantic concept for both these purposes is problematic in  several ways:
+  - It conflates the application data domain with the program definition domain.  This is a pretty clear abstraction layering violation
+  - It is confusing to programmer coming to JS from other language who think of . and [ ] as distinctly different operations.
+  - It makes it difficult to define real collection objects.  If [ ] is used for collection access then collection elements must be represented as properties and their keys may conflict with actual property names. There are also other issues such as implicitly restricting collection keys to be string values.
+
+The fundamental details of ECMAScript object model is at the heart of these issues and correcting it requires a reexamination of some fundamental assumptions about the object model.
+
+ECMAScript has always a very simple conceptual object model:
+
+  * An ECMAScript object is essentially just a bag of "properties" where properties are key/value pairs with String values used as their keys. Properties key strings are most commonly identifiers and are typically accessed using ''obj.propName'' syntax. However, any string value can be a property key and ''obj[expr]'' syntax allows any value that can be converted to a string value to be used as a property key. Most ECMAScript programmers understand its object model from the perspective that ''obj.propName'' and ''obj["propName"]''  always mean exactly the same thing.
+
+While the simplistically of this object has its merits it also creates issues. For example, properties are used to represent methods and to store internal state of ECMAScript objects.  Properties are also frequently used as data maps (ie, dictionaries) that are used to store and retrieve data using dynamically generated string property key values.  Such values can easily conflict with the property names used for methods or internal state of such map objects.  The ''obj[expr]'' syntax  is a natural way to express access to dynamic data collections and a syntax that is generally familiar to programmers who know other languages. However, the strict duality of ''obj.propName'' and ''obj["propName"]'' greatly limits the utility of using this syntax for collection access in ECMAScript. This limitation is severe enough that both the core language itself as well as the most wide used ECMAScript framework use extra-lingual means to extend/modify the semantics of ''obj[expr]'' in ways that can not be directly expressed in the language.  Examples of this include Array object, String objects,  argument objects, and the various variants of DOM HTMLCollection. Extending ''obj[expr]'' semantics is clearly very useful, but it is a capability that is not available to the everyday ECMAScript programmer or framework developer.
+
+This deficiency can be fixed in a manner that preserves comparability with all existing ECMAScript code while allowing new code to use ''obj[expr]'' syntax to access rich data collections. However, the fix breaks the universal correspondence between ''obj.propName'' and ''obj["propName"]''. It will only be feasible if ECMAScript programmers are willing to revise their understanding of the ECMAScript object model. They need a reformed object model that can encompass both traditional ECMAScript objects and new objects that use ''[ ]'' in new ways. Here is a a summary of the reformed model:
+
+  * Every ECMAScript object  has  two facets, a property bag and a data collection. The property bag facet is a set of key/value pairs where the keys are either String or private name values. Properties may be dynamically added and removed from the property bag, but typically property keys are identifiers (or a private name, bound to an identifier) selected by a programmer and directly expressed in the program's code. Such properties  are normally accessed using ''obj.propName'' syntax.  The data collection facet of an object is a flexible data store for key/value pairs that is normally dynamically populated during program execution. The actual key values are typically dynamically computed and key/value pairs are normally accessed using ''obj[expr]'' syntax. The types of an object's data store keys and values and the rules for accessing them may be completely controlled by the ECMAScript code for the object.  However, unless explicitly defined otherwise, an object's property bag and data collection facets are  both views upon the same backing store. This means that for such objects, the keys of the data store are also property keys, that all its properties  may be accessed as data store key/value pairs, and that all its data store key/value pairs can be accessed as properties.
+
+===== The Basics of Decoupling =====
+
+ES5 11.2.1 currently couples . and [ ] by saying that
+   MemberExpresson : MemberExpresson . IdentifierName
+desugars to 
+   MemberExpresson : MemberExpression [ <identifier-name-string> ]
+
+where <identifier-name-string> is simply the string literal corresponding to the characters of the //IndetifierName//. We start decoupling by eliminating the above desugaring and instead simply use for
+   MemberExpresson : MemberExpresson . IdentifierName
+the existing 11.2.1 semantics (in a slightly simplified form because we know the property name is already a string).
+
+We then give
+   MemberExpresson : MemberExpression [ Expression ]
+a new semantics.  Here is the initial skeleton of this new semantics:
+
+    if MemberExpression is an object that defines data store access methods return the result of invoking the appropiate  "data store access method"
+    else perfrom the algorithm from ES5 11.2.1
+
+(in the actual ES.next specification this would be expressed in terms of a special kind of Reference value and GetValue/PutValue.)
+
+So to make the above skeleton semantics more meaningful we need to define what we really mean by "data store access method".  
+
+To support data store access, three predefined private name object values are provided. These values may be imported from a built-in module.  For this strawman we will assume they are provided by the 'name' module.  Let's further assume that the private names values are exported using the names elementGet, elementSet, and elementDelete. 
+
+----
+----
+
+==== A side note on private name usage.====
+
+Two syntactic forms have been discussed recently on how private named properties could be defined and access.  The [ ] form and the @ form.
+
+Assume that pname is a variable whose value is a private name created, for example as: 
+<code javascript>
+module Name from "@name";
+const pname = Name.create();
+</code>
+using the [ ] convention, a private name property would be defined and accessed as follows:
+<code javascript>
+let obj = {
+   [pname]: function() {}
+};
+obj[pname]();
+</code>
+using the @ private name syntax, the same thing would be expressed as:
+<code javascript>
+let obj = {
+   @pname: function() {}
+};
+obj.@pname();
+</code>
+
+Because this proposal is about changing the semantics of [ ] property access,  @ is used for private name access throughout the rest of this strawman proposal,
+----
+----
+
+
+
+==== A side note on reflective property access ====
+
+The [[harmony:reflect api]] strawman proposal defines ''Reflect.get'' and ''Reflect.set'' functions that support full reflective read/write access of an object's (possibly inherited) properties.  The semantics of these function are essentially identical to the  %%[[%%Get]] and %%[[%%Put]] internal methods used within the ECMAScript specification to specify property access.  This strawman proposal assumes the existence of those [[harmony:reflect api]] functions and also the functions  ''Reflect.delete'' and ''Reflect.has''.
+
+----
+----
+
+
+===== The New Semantics of [ ] =====
+
+Here are the new semantics of [ ] described as a desugaring:
+
+The expression 
+
+<code javascript>
+obj[index]
+</code>
+
+desugars into
+
+<code javascript>
+(Reflect.has(obj,elementGet) ? obj.@elementGet(index) : Reflect.get(obj,index))
+</code>
+
+and the expression
+<code javascript>
+obj[index]=value
+</code>
+desugars into
+<code javascript>
+(Reflect.has(obj,elementSet) ? obj.@elementSet(index,value) : Object.set(obj,index,value))
+</code>
+
+An expression of the form:
+<code javascript>
+delete obj[index]
+</code>
+desugars into
+<code javascript>
+(Reflect.has(obj,elementDelete) ? obj.@elementDelete(index) : Reflect.deleteProperty(obj,index))
+</code>
+
+Within the actual ES specification, the above semantics would be expressed using an extension of the Reference internal data type.
+
+In addition, the following three built-in methods are defined on ''Object.prototype'':
+
+<code javascript>
+module Reflect from "@reflect";
+Object.prototype.@elementGet = function(index) {return Reflect.get(this, index)};
+Object.prototype.@elementSet = function(index,value) {Reflect.set(this,index,value)};
+Object.prototype.@elementDelete = function(index) {Reflect.deleteProperty(this,index)};
+//note that as built-ins the above functions will directly access the primordial Reflect get/set/deleteProperty functions.
+</code>
+
+The above methods of Object.prototype are defined to be {writable: false, configurable: false} in order to ensure that property access can not be broadly hijacked by replacing them. 
+
+Because of the ''Object.prototype.@elementGet'', ''Object.prototype.@elementSet'', and ''Object.prototype.@elementDelete'' methods, the "missing method" branch of the desugaring will seldom be taken. They are provided for the rare situations where an object does not inherit from ''Object.prototype'' or when the built-in methods have been deleted. **The only time that an object will expose behavior for [ ] that is different from the standard ES 1-5 behavior is when that object or one of its prototypes has explicitly defined an over-riding ''@elementSet'',  ''@elementGet'', or ''@elementDelete'' method.**
+
+
+===== Usage Examples =====
+
+
+
+==== A String Keyed Map ====
+
+Here is an implementation of a string-keyed map that has  same interface as used in the [[harmony:simple maps and sets]] proposal, except that ''[ ]'' is used instead of get/set methods for element access. Note that there is no conflict between element names and method names such as "size" and "has".  It uses as backing store a regularly object that acts as an string-keyed hash table.
+
+<code javascript>
+module Name from "@name";
+import {elementGet,elementSet,elementDelete} from Name;
+import iterator from "@iter";
+
+const backingStore = Name.create();
+export function StringKeyedMap() {
+   this.@backingStore = Object.create(null);  //note @backingStore object is a "normal object" and  [ ] on it does regular property access
+}
+StringKeyedMap.prototype.@elementGet = function(k) {return this.@backingStore[k]}  //alternatively Reflect.get(this.@backingStore,k)
+StringKeyedMap.prototype.@elementSet = function(k,v) {this.@backingStore[k]=v;}    //alternatively Reflect.set(this.@backingStore,k,v)
+StringKeyedMap.prototype.size = function() {Object.getOwnPropertyNames(this.@backingStore).length};  //I'm lazy
+StringKeyedMap.prototype.has = function(k) {return {}.hasOwnProperty.call(this.@backingStore,k};
+StringKeyedMap.prototype.@elementDelete = function(k) {return delete this.@backingStore[k]}
+StringKeyedMap.prototype.@iterator=  function() {
+   // iteration yields key/value pairs
+   let self = this;
+   let backing = this.@backingStore;
+   return (function*() {for (let x in backing) {if (self.has(x)) yield [x, backing[x]]}})();
+}
+</code>
+
+Note that because a regular object with default [ ] semantics  is used as the backing store for StringKeyMap, all key values are automatically converted to strings.
+<code javascript>
+let m = new StringKeyedMap;
+
+let someObj = {};
+m['foo'] = someObj;
+m['size'] = "can I clobber a property";
+
+print(m['size']);           //prints: can I clobber a property
+print(m.size());            //prints: 2
+print(m['foo'] === someObj);//prints: true
+print(m.has('size'));       //prints: true
+print(m.has('has'));        //prints: false
+for (var p in m) print(p)   //prints: size has
+    //should have made those methods non-enumerable
+for (let [k] of m) print(k) //prints foo size 
+</code>
+
+Note that because a regular object with default [ ] semantics  is used as the backing store for StringKeyMap, all key values are automatically converted to strings. Using this techniques all sorts of "collection" classes could be build including array-like collections with domain restrictions of their element values.
+
+Finally, note that collections such as StringKeyMap are fully "subclassable":
+
+<code javascript>
+let ShortStringKeyedMap = ShortStringKeyedMap <| function() {super()};
+ShortStringKeyMap.prototype.{
+   @elementSet(k,v) {
+      if (String(k).length > 10 throw "Key too long";
+      super.@elementSet(k,v);
+   },
+   @elementGet(k) {
+      if (String(k).length > 10 throw "Key too long";
+      return super.@elementGet[k];
+   }
+};
+
+</code>
+
+
+==== Updated WeakMap and Map Interface ====
+
+As shown in the previous example, [ ] can be used instead of named get/set methods for accessing elements of a collection using a key value. If this strawman is adopted, the public interfaces of WeakMap and Map should be modified to use this technique.  Note that unlike ES5 semantics for [ ], in this proposal the index operand is not automatically converted to a string value.  That means that a object can be passed as an key value for accessing map entries using [ ]. Only if such accesses were delegated to Reflect.get or Reflect.set would the key value be converted to a string.
+
+For example, using this update interface the [[harmony:weak maps]] Unique Labeler example would look like this: 
+
+
+<code javascript>
+  function Labeler() {
+    const et = WeakMap();
+    let count = 0;
+    return Object.freeze({
+      label: function(obj) {
+        const result = et[obj];
+        if (result) { return result; }
+        et[obj] = ++count);
+        return count;
+      }
+    });
+  }
+</code>
+
+==== Implementing Built-in Array Semantics Without using Proxy ====
+
+The built-in JavaScript Array object type  stores array elements as regular properties using the string value of each elements index as the property name.  However, Array also maintains an invariant that the value of its  "length" property  is greater than any such array element property index.  This requires monitoring every property creation to see if the value of length has to be updated.  In ES5 and earlier editions of ECMAScript there is no way to do such property monitoring using ECMAScript code.  Current proposal for ES.next require the use of a Proxy in order to implement such behavior.  This strawman provides a lighter-weight way to accomplish the same thing. 
+<code javascript>
+module Name from "@name";
+module Reflect from "@reflect";
+import {elementSet} from Name;
+
+
+const privateLength = Name.create();
+const nArrayPrototype = Array.prototype <| {
+   @elementSet(index, value) {
+       let i = index >>> 0;  //Uint32 conversion
+       let len = this.length;
+       let indexUi32 = index >>>0;
+       if (indexUi32 != 4294967295 && String(indexUi32) === index) {
+           if (indexUi32 > len) { 
+               if (!Object.getOwnPropertyDescriptor(this,'length').writable) return;
+               this.length = indexUi32+1;
+           }
+           super.@setElement(indexUi32,value);  //wrap numeric indexes 
+       } else super.@setElement(index,value);   //use default property storage otherwise
+   },
+   get length() {return this.@privateLength},
+   set length(value) {
+      let newLength = value >>> 0;
+      let ownLength = this.@privateLength;
+      if (newLen != Number(value)) throw new RangeError;
+      if (newLen >= oldLength) return this.oldLength = newLength;
+      while (oldLength > newLength) Reflect.deleteProperty(this, --obdLength);
+      this.@privateLength = newLength;
+   }
+}         
+       
+export function NArray() {
+   let instance = Object.create(nArrayPrototype);
+   instance.@privateLength = 0;
+   return instance
+}
+</code>
+Note that  instance of NArray, in addition to fully supporting the Array length invariants, also inherit from the normal Array.prototype and fully supports all of the built-in Array.prototype methods.
+
+==== Emulating ES5 Indexed String Access Semantics Without using Internal Methods ====
+
+ECMAScript 5 added the ability to access the individual characters of a string wrapper object as if they were object properties. The only way to accomplish this in the ES5 specification was to redefine the internal %%[[GetOwnProperty]]%% method of String objects.  There was no way this semantics could be implemented by a ECMAScript programmer for String or any similar objects.
+
+<code javascript>
+module Reflect from "@reflect";
+module Name from "@name";
+import {elementGet} from Name;
+
+String.prototype.@elementGet = function(indx) {
+   if (Reflect.has(this,indx)) return Reflect.get(this,indx);
+   let n = Math.floor(indx;
+   if (n<0 || n>= this.length) return undefined;
+   return this.charAt(n);
+}
+</code>
+
+==== Reformed Array ====
+
+Because native ECMAScript Arrays use object properties to represent numerically indexed array elements, such arrays exhibit various behavioral oddities.  For example, consider:
+
+<code javascript>
+let a = [ ];
+a[1]=1;
+a[1.0]=2;
+a["1.0"]=3;
+print(Object.getOwnPropertyNames(a));
+                //prints:  length,1,1.0
+print(a[1]);    //prints:  2
+                //    a[1.0] and a[1] reference the same element
+print(a["1.0"]);//prints:  3
+                //    a[1.0] and a["1.0"] reference different elements
+</code>
+
+these anomalies occur because of the conversion of non-string property keys into string keys. the number 1.0 converts to the string "1" while the string "1.0" is used as a property key without conversions.
+
+Using the features of this proposal, any type conversions of data store element keys becomes the responsibility of the collection objects.  This  permits the definition of a reformed Array object type that actually used numeric indices instead of strings-valued keys.
+
+<code javascript>
+module Name from "@name";
+import {elementSet, elementGet, elementDelete} from Name;
+
+
+const backing = Name.create();
+const internalLength = Name.create();
+const rArrayPrototype = Array.prototype <| {
+   @elementSet(index, value) {
+       let i = Number(index);
+       if (i<0 || i>= this.@internalLength) throw new RangeError("Array bounds error");
+       this.@backing[Math.floor(i)] = value;
+   },
+   @elementGet(index) {
+       let i = Number(index);
+       if (i<0 || i>= this.@internalLength) throw new RangeError("Array bounds error");
+       return this.@backing[Math.floor(i)];
+   },
+   @elementDelete(index) {
+       throw "Cannot delete reformed array elements";
+   },
+   get length() {return this.@internalLength}
+}         
+       
+export function ReformedArray(size) {
+   let instance = Object.create(rArrayPrototype);
+   let len = Math.floor(Math.abs(Number(size)));
+   instance.@privateLength = len;
+   instance.@backing = new Array[len];
+       //We'll cheat by using a legacy array as backing, it would be better to have a dense fixed size vector to use
+   return instance
+}
+</code>
+
+This example, defines an Reformed array that is allocated to a fixed size and which has normalized 0-origin indices. Other variations of well behaved arrays could be defined including dense arrays with non-zero base indices and various forms of dynamically sizable arrays.
+
+
+==== An Property Mirror API ====
+
+A Mirror object is an object that provides a reflective API upon another object.  It permits the stratification of reflection and application logic. (for example, see [[http://www.wirfs-brock.com/allen/posts/228|Experimenting with Mirrors for JavaScript]]).
+
+Here is the definition of a property mirror object that uses  [ ] to access the properties of the mirrored object.  In this design, the properties of the reflected object are exposed as the elements of the mirror object's data collection.
+
+<code javascript>
+module Reflect from "@reflect";
+module Name from "@name";
+import {elementGet, elementSet, elementDelete} from Name;
+
+const target = Name.create();
+
+const propMirrorProto = {
+   @elementGet(indx) {return Reflect.get(this.@target,indx)},
+   @elementSet(indx,value) {Reflect.set(this.@target,indx,value)},
+   @elementDelete(indx) {Reflect.deleteProperty(this.@target,indx)};
+   defineProperty(key,desc) {Reflect.defineProperty(this.@target,key,desc); return this},
+   getOwnPropertyDescriptor(key) {return Reflect.getOwnPropertyDescriptor(this.@target,key)}
+}
+
+export function PropertyMirror(obj) {
+   return propMirrorProto <|{@target: obj}
+}
+
+</code>
+
+such a mirror might be used as:
+<code javascript>
+let obj = {a:1, b:2};
+
+let mrr = new PropertyMirror(obj);
+print(mrr['a']);    //prints: 1
+mrr['c'] = 3;
+print(obj.c);       //prints: 3
+delete mrr['c'];
+print(obj.c);       //prints:  undefined
+delete mrr['getOwnPropertyDescriptor'];
+print(JSON.stringify(mrr.getOwnPropertyDescrptor('a')));
+                    //prints: {'a': {'value':1, 'writable':true, 'enumerable': true, 'configurable': true}}
+</code>    
+
+==== Rationalizing DOM HTMLCollections ====
+
+The W3C DOM includes the concept of HTMLCollections which are collections of HTML elements.  HTMLColletion supported both array-like access of elements using numeric indices and keyed access using the HTML id or name attribute value.  JavaScript implementation of HTMLCollection used [ ] for both the indexed and keyed access to the collection elements.  This create several issues.  First there is the issue of what happens if the key value (the id or name value) of an element is the same as a own or inherited property of the HTMLColleciton.  For example, the key of a collection element might be "toString".  The draft WebIDL has a complicated mechanism to deal with whether or not specific properties may or may not be shadowed by element keys and visa versa. There are also ambiguity that can occur if an element key string is the same as an an index value.  For example "1".
+
+A HTMLCollection type might be defined, using this proposal as follows:
+
+
+<code javascript>
+module Reflect from "@reflect";
+module Name from "@name";
+import {elementGet} from Name;
+
+
+const stringIndex = Name.create();
+const numericIndex = Name.create();
+const domReadonlyCollectionPrototype =  { //writable is exercise for the reader
+   @elementGet(index) {
+      if (typeof index == "number") {
+          // numeric index access //
+          return this.@numericIndex[index]
+      } else if (typeof index == "string") {
+          //string index is id/name lookup
+          return this.@stringIndex[index]
+      } else throw DOMError("Invalid HTMLCollection element");
+    },
+    get length() {return this.@numericIndex.length}
+}
+       
+export function HTMLCollectionArray(...nodes) {
+   let instance = Object.create(domReadonlyCollectionPrototype);
+   this.@numericIndex = []; 
+   this.@stringIndex = Object.create(null);
+   for (let i = 0; i<nodes.length; ++i) {
+      let node = nodes[i];
+      this.@numericIndex[i] = node;
+      let symbolicKey = node.id;
+      if (!symbolicKey) symbolicKey = node.name;
+      if (symbolicKey) Reflect.set(this@stringIndex,symbolicKey,node); //or: this@stringIndex[symbolicKey]=node
+   }     
+   return instance;
+}
+</code>
+
+===== Possible Extensions =====
+
+
+
+==== Multi-valued Indices ====
+
+Syntactically 
+   MemberExpression: MemberExpression [ Expression ]
+could be modified to be
+   MemberExpression : MemberExpression [ ArgumentList ]
+
+In this case, the signatures @elementGet, @elementSet, and @elementDelete would be defined as
+
+<code javascript>
+function @elementGet(...indices)
+function @elementSet(value, ...indices)
+function @elementDelete(...indices)
+</code>
+
+This would permit the definition of with collections such matrices that result multiple key index values to access elements.
+
+This might appear to introduce incompatibilities with existing code, but if the default behavior is to only use the final element of the arguments list then this extension should remain compatible with existing code that uses the comma operator in an index Expression.
+
+The original 2001 ES4 draft specification apparently permitted such multiple value indexes.
+
+==== What about the in operator? ====
+
+The **''in''** operator is another mechanism that is available in EcmaScript that programs can use to test if an object has a specified property.  For example:
+
+<code javascript>
+//test if a method exists
+if ("forEach" in  obj) obj.forEach(function(elememnt) {doSomething(element)});
+
+//test if a key is in a collection
+if (nextCandidate in memoStore) return memoStore[nextCandidate];
+</code>
+As the above examples show, **''in''** might be used to test either the property bag or data collection aspect of an object. However, unlike **''.''** and **''[ ]''** there are no direct syntactic clues as to the programmer's intent. It can, at best, be inferred from the form of the left operand or the usage that is predicated by the test. Because of this dual usage, it isn't clear that it is wise to further over-load the **''in''** operator when defining new collection abstractions. For that reason we have, so far, chosen to not include an ''@elementIn'' method than can be over-ridden to redefine the meaning of **''in''** for collections and instead, in our examples, have defined distinct methods on collections for membership testing.
+
+Alternatively, we could provide ''@elementIn'' and promote the **''in''** operator as the preferred means to test membership in data collections.  In that case some other mechanism such as ''Reflect.has'' should be promoted as the preferred way to test for property existence.
+
+===== Precedents =====
+
+  * C++ permits overload operator[]
+  * C# supports indexes and uses them extensive to define its collections [[http://msdn.microsoft.com/en-us/library/6x16t2tx%28v=vs.80%29.aspx|Indexers (C# Programming Guide)]]
+  * Dart implements [] and []= as user definable [[http://www.dartlang.org/language-tour/#op-methods|operator method]] calls and uses it in the implementation of its standard collection classes such as [[http://api.dartlang.org/dart_core/List.html|List]] and [[http://api.dartlang.org/dart_core/Map.html|Map]].
+  * According to Waldemar, the original ES4 design included user definable index operations including multiple index values.
+
+
+===== Feedback =====
+[[https://mail.mozilla.org/pipermail/es-discuss/2011-November/017961.html]] \\
+A prototype implementation: [[https://mail.mozilla.org/pipermail/es-discuss/2011-November/018259.html]]

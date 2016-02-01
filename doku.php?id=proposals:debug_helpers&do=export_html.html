@@ -1,0 +1,236 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:debug_helpers&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:debug_helpers&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:debug_helpers&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:debug_helpers&amp;do=export_html.html#dynamic_diagnostic_primitives" class="toc">Dynamic diagnostic primitives</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:debug_helpers&amp;do=export_html.html#a_source-extent_type" class="toc">A source-extent type</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:debug_helpers&amp;do=export_html.html#stack_frame_walking" class="toc">Stack frame walking</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:debug_helpers&amp;do=export_html.html#circular_log_buffers" class="toc">Circular log buffers</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:debug_helpers&amp;do=export_html.html#hooks_debugging-mop" class="toc">Hooks / debugging-MOP</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:debug_helpers&amp;do=export_html.html#anti-proposals" class="toc">Anti-proposals</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="dynamic_diagnostic_primitives"></a><h1>Dynamic diagnostic primitives</h1>
+<div class="level1">
+
+<p>
+ The more I consider this proposal, the more I think it &ldquo;foundational&rdquo;. I believe that the provision of appropriate &ldquo;diagnostic primitives&rdquo; permits moving many proposed dynamic checking aspects of the language into library code, or at very least open-coded uses of the primitives inserted by the compiler.
+</p>
+
+</div>
+<!-- SECTION [1-351] -->
+<a name="a_source-extent_type"></a><h2>A source-extent type</h2>
+<div class="level2">
+
+<p>
+ There should be a primitive type for describing an extent of the input source text. This type should be lightweight and copyable, perhaps just an N-tuple of numbers. Each object should have a runtime method which can produce an extent which contains it; higher-performance implementations will return coarse-granularity extents, such as class definitions. Slower, diagnostic modes or less performance-oriented implementations may retain fine-granularity extents such as line and column numbers.
+</p>
+
+</div>
+<!-- SECTION [352-881] -->
+<a name="stack_frame_walking"></a><h2>Stack frame walking</h2>
+<div class="level2">
+
+<p>
+ There should be a runtime method for acquiring the current stack frame &ndash; to acquire its source extent &ndash; as well as the caller&rsquo;s stack frame, and so on through various callers. This permits generating stack traces, implementing debugging and profiling facilities, and assigning blame for dynamic type-check or contract-check violations. 
+</p>
+
+</div>
+<!-- SECTION [882-1254] -->
+<a name="circular_log_buffers"></a><h2>Circular log buffers</h2>
+<div class="level2">
+
+<p>
+ There should be a built-in type of efficient circular log buffer, capable of recording timestamps, numeric events and formatted string segments efficiently, at high speed. Facilities for naming, building and accessing such buffers are secondary, and can be done in library code; the important point is making a high-performance (low-penalty) host object. 
+</p>
+
+</div>
+<!-- SECTION [1255-1645] -->
+<a name="hooks_debugging-mop"></a><h2>Hooks / debugging-MOP</h2>
+<div class="level2">
+
+<p>
+ There should be a means of &ldquo;hooking&rdquo; events which the runtime performs, such that library code can interpose checks, debugging, logging and profiling actions. Hooks should be able to exist at the granularity of runtime typechecking and slot lookup, but a hook should not necessarily be able to do anything other than throw an error or log a result (we can avoid specifying a full MOP).
+</p>
+
+</div>
+<!-- SECTION [1646-2067] -->
+<a name="anti-proposals"></a><h1>Anti-proposals</h1>
+<div class="level1">
+
+<p>
+ This proposal is meant to incorporate or supercede the following proposals: 
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="doku.php%3Fid=proposals:proper_tail_calls.html" class="wikilink1" title="proposals:proper_tail_calls" onclick="return svchk()" onkeypress="return svchk()">proper_tail_calls</a>: I do not believe this has a place in ECMAScript: we are adding generators, we don&rsquo;t have a macro system (and probably won&rsquo;t for some time), we don&rsquo;t do CPS transforms, and few people program ECMAScript in highly mutually-recursive style. Tail calls are lovely in some languages, but I don&rsquo;t think they matter enough here to require them.</div>
+</li>
+<li class="level1"><div class="li"> <a href="doku.php%3Fid=proposals:contracts.html" class="wikilink1" title="proposals:contracts" onclick="return svchk()" onkeypress="return svchk()">contracts</a>: can be done with hooks, stack walking and source extents.</div>
+</li>
+<li class="level1"><div class="li"> <a href="doku.php%3Fid=proposals:stack_inspection.html" class="wikilink1" title="proposals:stack_inspection" onclick="return svchk()" onkeypress="return svchk()">stack_inspection</a>: marking is too complex and requires changes to code; users will not understand or use.</div>
+</li>
+</ul>
+<hr noshade="noshade" size="1" />
+
+<p>
+Lars probably favors specifying proper tail calls for the same reason I do.  In the browser, there is a place for them given the severe execution model and stack depth limits, even if we add generators.  You&rsquo;re right that only the <em>cognoscenti</em> would know to use them, but I&rsquo;m surprised by how much FP knowledge is trickling down to modern <acronym title="JavaScript">JS</acronym> hackers.  It&rsquo;s encouraging!  Anyway, I&rsquo;m with Lars (and obviously Dave) in wanting <a href="doku.php%3Fid=proposals:proper_tail_calls.html" class="wikilink1" title="proposals:proper_tail_calls" onclick="return svchk()" onkeypress="return svchk()">proper tail calls</a> to be normative.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/03/15 19:15</em> 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+Hmm. I completely accept the argument that proper tail calls are a space optimization, and that they might be very attractive from that perspective. I also accept that a moderate-to-large amount of FP style is showing up in Javascript libraries; it was too judgmental of me to dismissively say that &ldquo;few people&rdquo; program ECMAScript that way. If they&rsquo;re the primary library-ecosystem maintainers, they&rsquo;re an important few.
+</p>
+
+<p>
+That said, I feel that two points remain strongly in favour of <em>not</em> requiring proper tail calls: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Users do use stack traces as a primary way of thinking about the dynamic context of a security check, failed assertion or typecheck, thrown exception, or general diagnostic task (eg. inside a debugger). Removing that context will hurt them. They&rsquo;ve learned to rely on that context existing, in almost every language we&rsquo;re going to be seeing users coming from.</div>
+</li>
+<li class="level1"><div class="li"> The alternative proposal of building up a stack trace by using marks has serious problems:</div>
+<ul>
+<li class="level2"><div class="li"> It requires rewriting all library code; tail calls in existing code which fail to push marks silently vanish from the mark-accumulated context.</div>
+</li>
+<li class="level2"><div class="li"> It might require new syntax, or a syntax change.</div>
+</li>
+<li class="level2"><div class="li"> It&rsquo;s new. Users have never seen it before. +1 on the surprise-o-meter.</div>
+</li>
+<li class="level2"><div class="li"> It&rsquo;s not clear to me how the marking abstraction arranges for marks to be cleared.</div>
+</li>
+<li class="level2"><div class="li"> It doesn&rsquo;t actually build a stack trace. If you have A calling X calling A calling Y calling A, you will only see <code>...X,Y,A</code> in your mark set. This is a distortion of the actual execution context, and if there is anything like a central dispatching routine in your program, it could seriously confuse a user.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ I&rsquo;m emotionally sympathetic to the fact that tail calls are space-efficient. And I&rsquo;m emotionally fond of stack-allocated iterators, since they are more efficient than heap-allocated coroutines too. And <code>alloca()</code> is a great primitive to have in a language when done safely. Yet we&rsquo;re shying away from these efficiency-motivated things because they complicate the language, surprise users, and we have existing, more general (and more expensive) ways of expressing the same things. 
+</p>
+
+<p>
+Between coroutines and first class functions, I believe we already have a rich menu of control-abstraction building blocks. Can you think of many tail-call-requiring patterns which <em>can&rsquo;t</em> be done readily with generators and first class functions? I might just not have a broad enough imagination.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x67%3B%26%23x72%3B%26%23x61%3B%26%23x79%3B%26%23x64%3B%26%23x6f%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x67;&#x72;&#x61;&#x79;&#x64;&#x6f;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">graydon</a> 2006/03/15 22:12</em> 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+<code>alloca()</code> and proper tail calls do not mesh at all, in fact stack-allocated variables are not possible in the general case in the presence of proper tail calls.  I don&rsquo;t think that necessarily prevents an implementation from stack-allocating iterators for a &lsquo;for&rsquo; statement, for example, but an implementation must be conservative.
+</p>
+
+<p>
+The main use cases for proper tail calls are interpreters and state machines, I think.
+</p>
+<ul>
+<li class="level1"><div class="li"> State machines you model as a set of mutually tail-recursive functions, a call is a goto that passes parameters.  This leads to rather pretty code that is also modular.</div>
+</li>
+<li class="level1"><div class="li"> Interpreters are just fancy state machines.  If you&rsquo;re writing an interpreter for a little language you can compile it to a tree of closures that evaluates the program when invoked.  This is modular, fast, and also rather pretty, and it works with both direct style and CPS.  Proper tail calls allow you to reason about the space use of your interpreter: it accumulates stack space only when the program in the little language does.  (For CPS this is crucial, for direct style a significant convenience.)</div>
+</li>
+</ul>
+
+<p>
+ &ldquo;Users have learned to rely on the stack context existing&rdquo;: if by &ldquo;users&rdquo; you mean ECMAScript programmers then I&rsquo;m not so sure, since there&rsquo;s no standard way to inspect the stack.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/03/16 05:24</em>
+</p>
+
+<p>
+Sorry, I wasn&rsquo;t arguing that we add <code>alloca()</code>, just arguing by analogy that there are a lot of &ldquo;nice efficient things&rdquo; which I like but which I&rsquo;m not pushing for in this language. Efficiency isn&rsquo;t top priority (for me).
+</p>
+
+<p>
+Your examples are good, and I&rsquo;ll try to keep them in mind while discussing this. 
+</p>
+
+<p>
+I&rsquo;m not certain that they can&rsquo;t be modeled by returning thunks to an outer function which repeatedly calls the returned value (<code>function main() { var f = init(); while (f) { f = f(); } }</code>) but I&rsquo;ll readily admit that&rsquo;s not the most efficient pattern.
+</p>
+
+<p>
+Wrt. users expecting there to be a stack context: I mean &ldquo;contemporary programmers&rdquo;, in any language with a bit more introspection than C. Java, C#, <acronym title="Practical Extraction and Report Language">Perl</acronym>, Python, Ruby, <acronym title="Visual Basic">VB</acronym>, the whole menagerie. I believe it comes as a horrifying shock to these programmers when they realize how hard it is to debug Javascript, say: the standard idiom is missing! It&rsquo;s like the lack of decent diagnostic logging: debugging via <code>alert()</code> is still sadly common.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x67%3B%26%23x72%3B%26%23x61%3B%26%23x79%3B%26%23x64%3B%26%23x6f%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x67;&#x72;&#x61;&#x79;&#x64;&#x6f;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">graydon</a> 2006/03/16 10:37</em>
+</p>
+
+<p>
+Sad but true about <code>alert</code> (<a href="http://www.mochikit.org/" class="urlextern" target="_blank" title="http://www.mochikit.org/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">MochiKit</a> has a nice logging system).
+</p>
+
+<p>
+It looks like Python is finally getting some kind of <a href="http://lambda-the-ultimate.org/node/1331" class="urlextern" target="_blank" title="http://lambda-the-ultimate.org/node/1331" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">tail call &quot;optimization&quot;</a>.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/03/16 10:51</em>
+</p>
+
+<p>
+Haha no. Or ... I hope you don&rsquo;t take that hack seriously! If that counts as a tail call optimization &ndash; consing an exception, packing your self-args into it, throwing it, catching it, unpacking and recalling &ndash; then maybe we can do the same using one of our magic <code>[attributes]</code> preceeding declarations. <a href="http://w3future.com/weblog/2006/02/#tailCallEliminationInJavascript" class="urlextern" target="_blank" title="http://w3future.com/weblog/2006/02/#tailCallEliminationInJavascript" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Here's a version in Javascript</a>. But I doubt this sort of thing will make anyone on this page happy:  
+</p>
+<ul>
+<li class="level1"><div class="li"> it allocates an exception on the heap (so is no more efficient than returning thunks)</div>
+</li>
+<li class="level1"><div class="li"> it <em>uses</em> the stack-walking facility I&rsquo;m arguing for here</div>
+</li>
+<li class="level1"><div class="li"> it doesn&rsquo;t work for mutually-recursive sets of functions, only direct tail recursion (<code>f</code> calling <code>f</code>)</div>
+</li>
+</ul>
+
+<p>
+ There <em>is</em> some interesting discussion on the LtU page, though. For example, the note that <acronym title="Massachusetts Institute of Technology">MIT</acronym> scheme uses a fixed-size FIFO of tail-call frames, or that you might be able to satisfy users&rsquo; diagnostic requirements by merely pushing a fixed-size counter of the number of elided tail-call frames (or those which fell of the end of the FIFO) any time you make such calls. 
+</p>
+
+<p>
+From a diagnostic perspective, such devices might be enough: they don&rsquo;t actually <em>lie</em> to the user, they just tell the user where context vanishes due to optimization. Presumably a knob could even be put in to control the size of the FIFO or such. Debuggers will need to be modified to understand what such elided-frame markers mean, but could still peek into the &ldquo;last N callers&rdquo;.
+</p>
+
+<p>
+From a security perspective, I&rsquo;m not sure this will be sufficient for stack-inspection-based security mechanisms. I&rsquo;m not sure I <em>like</em> stack-inspection-based security, but it&rsquo;s been discussed. Perhaps if the security check is based on <em>finding</em> a magic token, then an elided frame holding a security token makes a security check fail, so can only represent a false-negative permission, never a false-positive, and maybe we consider that good enough. Or perhaps we can have a fixed table at the end of a frame FIFO which collects specially marked locals as frames expire, overwriting in place, as in the marking scheme. I&rsquo;m open to some sort of compromise.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x67%3B%26%23x72%3B%26%23x61%3B%26%23x79%3B%26%23x64%3B%26%23x6f%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x67;&#x72;&#x61;&#x79;&#x64;&#x6f;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">graydon</a> 2006/03/16 11:11</em> 
+</p>
+
+</div>
+<!-- SECTION [2068-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/9/9c5f3a85a7b8b5a5adfc52429eae4106.xhtml used -->
+</body>
+</html>

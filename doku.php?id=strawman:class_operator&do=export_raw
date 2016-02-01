@@ -1,0 +1,278 @@
+====== The class operator: A Bridge between object and function exemplers ======
+===== Introduction =====
+
+
+For ES.next we all want to provide better ways for ES programers to define named abstractions over objects.  One way to do this that we have discussed is "[[Object exemplars]]" ([[http://www.mail-archive.com/es-discuss@mozilla.org/msg10365.html]] )
+
+Object exemplars essentially implement the self language style of object abstraction where prototype objects are given names and used as the named abstraction that represents a family of related objects.  Object exemplars typically are instantiated by applying the new operator to a specific named instance of the abstraction.  Object exemplars also typically define an initialization method that is called when a new instance is created.  For the ES implementation of object exemplars, this initialization method is named "constructor".  For example:
+
+<code javascript>
+let Point = {
+     x:0,
+     y:0,
+     constructor(x,y} {
+         this.x=x;
+         this.y=y;
+     }
+};
+
+let p = new Point(1,2);
+</code>
+
+Using object exemplars, the named abstraction is itself an instance of the abstraction. Some people seem to be perfect happy to only have and use this form of object abstraction.  However, others prefer to think in a more "classical" style where the named object representing an abstraction is a distinct kind of object that is not itself an instance of the abstraction. In practice, these two views of object abstraction are very closely related. For example, a very simple addition to the above definition essentially turns Point into a "function exemplar".  Function exemplars can also be thought of as "class exemplars":
+
+<code javascript>
+let Point = {
+     x:0,
+     y:0,
+     constructor(x,y} {
+         this.x=x;
+         this.y=y;
+     }
+}.constructor;   //<----------- note added property reference
+
+let p = new Point(1,2);  //new operator applied to a constructible function 
+</code>
+
+However, people that prefer the "classical" style will reasonably point out that it is both easy to forget the trailing property accessor in this definition and that even if it is there a reader is likely to not notice it.
+
+This proposal provides a solution to these  and other related issues that allow object exemplars and class/function exemplars to have equivalent status and to be  built upon the same underlying syntax and semantic mechanisms.
+
+
+===== The class Operator =====
+
+
+The class operator is used in a new variant of UnaryExpresson:
+
+//UnaryExpression// : \\
+ **class** //UnaryExpression// \\
+ ...
+
+
+Its basic semantics are:
+  - if //UnaryExpression// is **undefined** or **null**, return the value of //UnaryExpression//.
+  - Let //obj// be ToObject(//UnaryExpression//)
+  - Return the result of calling the %%[[%%Get]] internal method of //obj// with argument 'constructor'
+
+However, as explained below, we actually will need to use a elaboration of these semantics.
+
+===== Using the class Operator =====
+
+Prefixing an object exemplar with the class operator turns it into a class exemplar:
+
+<code javascript>
+let Point = class {
+     x:0,
+     y:0,
+     constructor(x,y} {
+         this.x=x;
+         this.y=y;
+     }
+};
+</code>
+
+The precedence of the class operator and the semantics of <| means that it also works as expected with object exemplars that specify an inheritance relationship:
+
+<code javascript>
+let Point = class AbstractPoint <| {
+     x:0,
+     y:0,
+     constructor(x,y} {
+         this.x=x;
+         this.y=y;
+     }
+};
+</code>
+
+In the above example  Point inherits from AbstractPoint.  If AbstractPoint is a function then this means that the %%[[%%Prototype]] of Point is AbstractPoint and that the %%[[%%Prototype]] of Point.prototype is AbstractPoint.prototype. If AbstractionPoint is an object exemplar it means that the %%[[%%Prototype]] of Point is AbstractPoint.constructor and that the %%[[%%Prototype]] of Point.prototype is AbstractPoint.
+
+
+The class operator  can prefix any UnaryExpression, not just object literals.  That means that the class operator can be used to classify objects:
+
+<code javascript>
+if (class p === Point) ...
+</code>
+
+Note that many object-oriented abstraction designers consider this form of class testing to be an anti-pattern. 
+
+It also works with instances of the standard ES built-in constructors:
+
+<code javascript>
+if (class new Array(1,2,3,4) === Array) ... //this will be true
+</code>
+
+so are these:
+
+<code javascript>
+if (class [1,2,3,4] === Array) ...
+if (class [].pop === Function) ...
+</code>
+
+It also works with primitive value types:
+
+<code javascript>
+if (class 1234 === Number && class false === Boolean && class "Hi" === String) ... //all true
+</code>
+
+and note that
+
+<code javascript>
+if (class null === Object) ... 
+</code>
+
+is **false**.
+
+You can use the class operator to determine if two objects are instances of the same exemplar:
+
+<code javascript>
+if (class p === class q) ...
+</code>
+
+Note that this works for instances of both class and object exemplars.  However, if you want to test if an object is an instance of a specific named object exemplar then you need to remember that  such exemplars are prototype instances rather than constructor functions.  Of course, if you prefer object exemplars you are probably used to thinking in that prototypal style. You would express this as:
+
+<code javascript>
+if (class p === class Point) ...  //for this example, assume the very first definition of Point
+</code>
+
+Finally, you might use class to create a new instance of the same exemplar as some other known object:
+
+<code javascript>
+let mine = new class theirs;
+</code>
+
+This works the same regardless of whether the value of "theirs" is an object or class exemplar.
+
+=====  A Binding Declaration Form  =====
+The  declarations:
+<code javascript>
+let AbstractPoint = class {
+   constructor(x,y} {
+      throw Error("Tried to instantiate an abstract class";
+   }
+};
+
+let PolarPoint = class AbstractClass <|{
+   rho: 0,
+   theta: 0,
+   constructor(x,y) {
+      this.rho = Math.sqrt(x*x+y*y);
+      this.theta = Math.atan2(y,x);
+   }
+}
+</code>
+
+define two class exemplars and binds their values to the identifiers ''AbstractPoint'' and ''PolarPoint''.  However some programmers may prefer to use a dedicated  binding form for creating class exemplars.  This is similar to the situation for functions definitions that have both expression and binding forms.  To support this usage preference the following desugaring is defined:
+
+
+//ClassDeclaration// : \\
+ **class** //Identifier// //UnaryExpression// **;**\\
+
+is processed as if it was:
+
+**let** //Identifier// **= class** //UnaryExpression// **;**\\
+
+This allows the above example to be restated as:
+
+<code javascript>
+class AbstractPoint  {
+   constructor(x,y} {
+      throw Error("Tried to instantiate an abstract class";
+   }
+}      //<-----note automatic semicolon insertion
+
+class PolarPoint  AbstractPoint <|{
+   rho: 0,
+   theta: 0,
+   constructor(x,y) {
+      this.rho = Math.sqrt(x*x+y*y);
+      this.theta = Math.atan2(y,x);
+   }
+};
+</code>
+
+Because this is a pure desugaring any //UnaryExpression// is allowed after the //Identifier//.  For example:
+
+<code javascript>
+//a frozen class
+class AbstractPoint  Object.freeze({
+   constructor(x,y} {
+      throw Error("Tried to instantiate an abstract class";
+   }
+});     
+
+//using a class extension framework
+class PolarPoint  Mixin(AbstractPoint,debugFlag?DebugMethods:null)  <| {
+   rho: 0,
+   theta: 0,
+   constructor(x,y) {
+      this.rho = Math.sqrt(x*x+y*y);
+      this.theta = Math.atan2(y,x);
+   }
+};
+</code>
+
+
+
+=====  Missing Constructors  =====
+
+
+==== The Problem ====
+
+There is one major problem with the class operator, as explained up to this point.  In some cases unexpected results will occur when the class operator is applied to an object that doesn't has a "constructor" own property. Consider the following example:
+
+<code javascript>
+let Point = class {
+     x:0,
+     y:0
+};
+
+let p = new Point(1,2);   
+</code>
+
+After evaluating this code, what would be the value of ''p''?  Surprisingly, it is a ''Number'' wrapper object that wraps the number 1.  The reason is that the above definition of ''Point'', as defined so far, is exactly equivalent to:
+
+<code javascript>
+let Point = {
+     x:0,
+     y:0
+     }
+}.constructor;   //<----------- note constructor property reference
+</code>
+
+However, the object literal used to define the prototypical point doesn't explicitly define a  ''constructor'' property.  The reference to ''constructor'' that is used to obtain the value of ''Point'' is going to access an inherited  property.  By default, the object literal inherits from ''Object.prototype'' which does have a ''constructor'' property.  Its normal value is the ''Object'' constructor.  So the value of ''Point'' is going to be the same as ''Object''.  The expresson ''new Point(1,2)'' will produce the exact same results as ''new Object(1,2)''.  The specification of the ''Object'' constructor says that this result will be ''new Number(1)''.  Hence the value of ''p'' is a ''Number'' object rather than a new instance of the ''Point'' class as the programmer intended. Unfortunately, it is not useful for new object abstractions to inherit the ''Object'' constructor.  
+
+==== The Solution ====
+Given the normal usage patterns for the **class** operator, a programmer who writes:
+<code javascript>
+let Point = class {x:0, y:0);
+</code>
+clearly intends the value of ''Point'' to be a new constructor function that produces instances that inherit from the object that is the value of the object literal. 
+The programmer just forgot to explicitly code the necessary constructor function definition in the object literal. This might easily occur as the constructor function really doesn't do anything, so a programmer doesn't have any real reason to think about it.
+
+An obvious solution to this problem would be to automatically create a default constructor property when one does not explicitly occur in an object literal. However, this would create a backwards compatibility problem.  While explicit access to the ''constructor'' property is fairly rare, it does exit is existing code. Automatically creating an own ''constructor'' property for every object literal would undoubtedly break some of that code. So to maintain backs compatibility we must use a subtler approach.
+
+We start by specifying that every object created using an object literal  that does not define an own property named ''constructor'' has a new internal property named ''%%[[%%ctor]]''.  The value of this internal property is a new function object defined as if by ''function(){}''.  The function has a ''prototype'' property whose value is the object created by the object literal.
+
+**Optimization Opportunity**: The ''%%[[%%ctor]]'' function value could be lazily created and hence need not actually exist for object literals that are not used with the **class** operator.
+
+We then need to redefine the semantics of the class operator to take the existence of ''%%[[%%ctor]]'' into account:
+  - if //UnaryExpression// is **undefined** or **null**, return the value of //UnaryExpression//.
+  - Let //obj// be ToObject(//UnaryExpression//)
+  - If //obj// has an own property named ''constructor'', return the result of calling the %%[[Get]]%% internal method of //obj// with ''"constructor"'' as the argument.
+  - If //obj// has an %%[[%%ctor]] internal property, return the value of that internal property.
+  - Let //proto// be the value of the %%[[%%Prototype]] internal property of //obj//.
+  - Return the result of evaluating this algorithm using the value of //proto// as the value of //UnaryExpression//
+
+This fixes the "Missing Constructor Problem".
+
+===== Relationship between the class and instanceof operators =====
+
+
+There isn't one. They are different operators. ''class'' is simply a shorthand for accessing an object's constructor property. ''instanceof'' tests a specific inheritance relationship. 
+
+===== Discussion =====
+
+For now, lots on [[https://mail.mozilla.org/pipermail/es-discuss/2011-November/018393.html|es-discuss]]...
+
+
+

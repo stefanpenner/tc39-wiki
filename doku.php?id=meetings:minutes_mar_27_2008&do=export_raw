@@ -1,0 +1,241 @@
+====== TC39 Mountain View Meeting, 27-28 March 2008 ======
+
+
+===== Logistics =====
+
+  * March 27, 1100-1700 PDT, with dinner at 1830, [[http://www.mantrapaloalto.com/|Mantra]] ([[mailto:brendan@mozilla.org|regrets only]])
+  * March 28, 1000-1600 PDT
+  * Mozilla building "S"
+    * 2121 Landings Drive, Mountain View, CA 94043 ([[http://maps.google.com/maps?q=37.4206N+122.0894W+(Mozilla+Office,+Building+S)&ie=UTF8&z=17&ll=37.4206,-122.089401&spn=0.005172,0.009141&t=h&om=1&iwloc=addr|map link]])
+    * ''<script>'' conference room
+
+
+===== Attendees =====
+
+  * Jeff Dyer, Adobe
+  * Lars T Hansen, Adobe
+  * John Shapiro, Adobe
+  * John Neumann, Ecma President
+  * Waldemar Horwat, Google
+  * Erik Arvidsson, Google
+  * Mark Miller, Google
+  * Brendan Eich, Mozilla
+  * Cormac Flanagan, UCSC
+  * Douglas Crockford, Yahoo!
+  * Allen Wirfs-Brock, Microsoft
+  * Pratap Lakshman, Microsoft
+  * Wayne Vicknair, IBM
+  * Dave Herman, Northeastern University
+  * Collin Jackson, Stanford University
+  * Istvan Sebestyen, Ecma International
+
+
+===== Agenda =====
+
+  * Opening
+    * Introductions
+    * Host facilities
+    * Dinner arrangements
+    * Lunch
+  * Adoption of the agenda
+  * Approval of the [[meetings:minutes_jan_24_2008|January 24th minutes]]
+  * Selection of TC39 Chair
+  * ES4 editor's report
+    * Discussion of notation for the language spec
+  * ES3.1 progress report
+  * Discussion of conflicts between ES4 and ES3.1
+  * Progress report on Secure Dialect
+
+
+===== Technical notes =====
+
+  * ES3.1 and ES4 remove joined function objects (#145, resolved a long time ago)
+  * ES4 does not have a list of future reserved words (and the new reserved words in ES4 are an extended subset of the set of future reserved words in ES3)
+  * new reserved words in ES4 are only contextually reserved
+  * ES3.1 and ES4 will both allow 'function' inside control flow statements, and it will be hoisted to the top of the block and initialized on block entry (to be compatible with how functions behave in ES3)
+  * For ES4, 'const' is also scoped to the block, it is not hoisted, there is a read barrier, and it's assign-once
+  * For ES4, 'let' behaves like 'const' except that it's not assign-once
+
+===== Technical notes, ES4-WG Day Two =====
+
+===== Agenda =====
+
+  * Language scope
+    * Array/tuple types
+    * Packages
+    * Strict mode
+    * Units, loading
+    * Nullability
+    * Like as an operator
+  * Type resolution
+    * when?
+    * effects of ''eval'' and ''with''?
+
+===== Discussion =====
+
+
+==== Array/Tuple types ====
+
+
+  * ''[...T]''   n >= 0
+  * ''[T, U]''   n = 2 and fixed
+  * ''[T, U, ...V ]'' n >= 2 type for n > 2 is V
+
+''[...a]'' splat must be in last position
+
+
+
+
+
+
+
+==== Like as an operator ====
+
+  * Old proposal:
+
+<code javascript>
+  function f(x : like T) ...
+
+  class C { 
+    var v: like T
+  }
+</code>
+
+  * New proposal: ''like'' is a binary type operator  
+<code javascript>
+  function f(x : *) : * {
+    assert (x like T)
+    ...
+    return x like T
+  }
+</code>
+
+which can be short handed as
+
+<code javascript>
+  function f(x like T) like T {
+    ...
+    return x
+  }
+</code>
+
+Additionally it's possible to put the 'like T' annotation in the return position, which means that the run time value is asserted to be like T.
+
+Agreement: we *like* the new proposal and this kills 'wrap' for Google.
+
+ ----
+
+Possible complaints about the shorthand for ''like'' in the function signature include:
+
+  * It is a new use of syntax: an assertion in a binding form
+  * They do not seem to scale well to parameters with patterns (''like'' is harder to scan than '':'' in complicated bindings): ''function f ({name, height, student} like {string, int, boolean}) like {string, int}''
+  * It might obscure future paths: what would a more general assertion mechanism (a la contracts) look like?
+
+But consider this illustration of how a type refinement might be expressed in ES5:
+
+<code javascript>
+  function f (x: * @ function (x) x like T) : * @ function (r) r like T { ... }
+</code>
+
+It's doesn't take too much imagination to see that you can reduce this by deleting everything from the '':'' (inclusive) and ''like'' to get
+
+<code javascript>
+  function f (x like T) like T { ... }
+</code>
+
+So I guess I'm satisfied that it is a shorthand for a more general mechanism that might be introduced in the future, and therefore better than a local hack to the language syntax.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2008/03/28 21:07//
+
+==== Strict mode ====
+
+
+  * Waldemar wants the type system to be monotonic. This means that all narrowing coercions should be errors, even from '*'.
+  * But the point of ''*'' is to aid in migration and convenience in mixing typed and untyped code.
+  * Anyway, the spec is not blocking on strict mode, we propose, and if it can be formulated in an agreeable way it could make it back into the language.
+  * None-the-less we think 'use strict' is out (see below)
+
+
+
+==== "good taste mode" (the new strict mode) ====
+
+
+  * [rt] write to r/o properties
+  * [rt] delete DD
+  * [rt] no such prop
+  * [ct] ref before def (let, const, function)
+  * [rt] arity checking
+  * [rt] reference to arguments object
+  * [rt] dynamic global creation
+  * [rt] duplicate property names and field names
+
+Maybe use 'use strict' pragma for turning on, and 'use nonstrict' or some such for turning it off
+
+Further possibilities:
+
+  * [rt] this propagation
+  * [rt] limitations on function.arguments, or making arguments and the properties it shadows R/O
+  * [rt] useless expressions
+  * [rt] with, eval
+
+As Waldemar pointed out, strict mode needs to be about catching stupid mistakes, not about style.  So an idea like making all the arguments const just because we're in strict mode is probably somewhat silly.
+
+==== Nullability ====
+
+Uses:
+
+<code javascript>
+  function f (x: !T) : !T
+  var x: !T
+  class C! { }
+</code>
+
+If you read any uninitialized non-nullable property you get an error. This applies even to holes in arrays.
+
+Syntax: ! and ? before type name (in class definitions too?)
+
+<code javascript>
+  var x : [...?T]
+  var x : !T = o
+</code>
+
+We discussed the possible addition of a c# like ''??'' but rejected it as not paying for itself.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2008/03/28 21:32//
+
+It's kinda weird, but for symmetry we should probably put the ! before the class name in a class definition. Fewer rules for the user to remember.
+
+==== Packages ====
+
+Okay if we can solve the technical details.
+
+Need write-up of package desugaring
+
+What are the usage criteria:
+
+  * isolation
+  * evolution
+
+What are the defaults?
+
+We suspect that 'external' in packages, and 'public' in classes and at the top-level are the correct defaults.
+
+==== Version Opt-in ====
+
+Latest proposal:
+
+  * ES3.1 is application/ecmascript;version=3.1
+  * ES4 is application/ecmascript;version=4
+  * Server version specification overrides content version specification
+  * <meta http-equiv="Content-Script-Type"> can be used to select default version, but does not restrict what versions can run
+  * text/javascript, application/ecmascript, etc. doesn't specify a version, only a language
+  * Changing object bindings in ES3 script causes further ES4 scripts not to execute
+  * Changing object bindings in ES3 script after running ES4 scripts fails silently
+
+Other ideas:
+
+  * Allowed-Content-Script-Type: prevents script from running if it's not the specified type. Would be nice to be able to add this later for secure ECMAScript.
+
+See [[proposals:versioning|versioning proposal]], [[discussion:versioning|versioning discussion]].
+
+ --- //[[ecmascript@collinjackson|Collin Jackson]] 2008/03/28 22:12//

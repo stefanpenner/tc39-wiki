@@ -1,0 +1,68 @@
+===== More derived traps =====
+
+David Bruant noted that the ''getPropertyDescriptor'' and ''getPropertyNames'' [[harmony::proxies#api|traps]] can become derived. They are currently specced as fundamental traps.
+
+Since fundamental traps are required and derived traps are optional, and since derived traps add no new complexity beyond the fundamental traps, there is an incentive to keep the number of fundamental traps as small as possible.
+
+The ''getPropertyDescriptor'' and ''getPropertyNames'' traps can be defined in terms of ''getOwnPropertyDescriptor'' and ''getOwnPropertyNames'' respectively, and by walking the proxy's prototype chain:
+
+<code javascript>
+getPropertyDescriptor: function(proxy, name) {
+  var pd = Object.getOwnPropertyDescriptor(proxy, name); // calls getOwnPropertyDescriptor trap
+  var proto = Object.getPrototypeOf(proxy);
+  while (pd === undefined && proto !== null) {
+    pd = Object.getOwnPropertyDescriptor(proto, name);
+    proto = Object.getPrototypeOf(proto);
+  }
+  return pd;
+}
+
+getPropertyNames: function(proxy, name) {
+  var props = Object.getOwnPropertyNames(proxy); // calls getOwnPropertyNames trap
+  var proto = Object.getPrototypeOf(proxy);
+  while (proto !== null) {
+    props = props.concat(Object.getOwnPropertyNames(proto));
+    proto = Object.getPrototypeOf(proto);
+  }
+  // remove duplicate property names from props (not shown)
+  return props;
+}
+</code>
+
+Note that the above definitions assume that ''getPropertyDescriptor'' and ''getPropertyNames'' get passed the ''proxy'' for which they are intercepting, which is proposed in a separate [[strawman:handler_access_to_proxy|strawman]].
+
+Currently, handlers don't have a way of accessing the proxy they're currently intercepting, so they cannot get at a proxy's prototype. The Proxy implementation does have access to these parts and can perform the correct default behavior, it's just that this default behavior cannot be expressed fully in Javascript code, which is a big difference compared to all existing derived traps.
+
+MarkM suggests refining our notion of derived traps by distinguishing ("optional" vs "mandatory") versus ("fundamental" vs "derived") traps. Optional vs. mandatory indicates whether or not the trap must be present for the proxy to work, while fundamental vs. derived indicates whether or not the default behavior for a missing trap can be defined in Javascript itself in terms of other traps.
+
+^             ^ Optional       ^ Mandatory   ^
+| **Fundamental** | ''getPropertyDescriptor'' and ''getPropertyNames'' | all existing "fundamental" traps |
+| **Derived**     | all other existing "derived" traps   | none |
+
+For developers, really the only distinction that matters is optional vs. mandatory. The fundamental vs. derived distinction is there primarily to help us, spec. writers, distinguish the traps. Again, if ''proxy'' would become a parameter to the above two derived traps, this discussion is moot and the table again collapses into our current simple distinction of fundamental vs derived traps, without the need to special-case ''getPropertyDescriptor'' and ''getPropertyNames''.
+
+--- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2011/02/28 06:09//
+
+===== References =====
+  * [[https://mail.mozilla.org/pipermail/es-discuss/2011-January/012603.html|Discussion thread]] on es-discuss.
+
+===== Feedback =====
+
+Discussed at the March 2011 TC39 meeting. General consensus that less fundamental traps is better.
+--- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2011/03/30 13:00//
+
+As [[https://mail.mozilla.org/pipermail/es-discuss/2011-March/013522.html|noted by David Bruant]], a recursive default implementation would follow the ES5 spec semantics more closely:
+
+<code javascript>
+getPropertyDescriptor: function(name, proxy) {
+  var pd = Object.getOwnPropertyDescriptor(proxy, name);
+  var proto = Object.getPrototypeOf(proxy);
+  if (proto === null || pd !== undefined)
+    return pd;
+  return Object.getPropertyDescriptor(proto, name);
+}
+</code>
+
+The difference is significant in that in the iterative version, lookup is forced to proceed up to the root (for missing properties), while in the recursive version, a proxy on the prototype-chain can stop the prototype-walk early.
+
+--- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2011/04/05 03:20//

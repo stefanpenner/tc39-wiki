@@ -1,0 +1,112 @@
+====== Type parameters ======
+
+(Also see the [[discussion:type_parameters|discussion page]] for this proposal)
+
+This proposal introduces basic named type parameters into type definitions, and extends type expressions with an argument position. In other words, a mechanism for constructing some families of generic types. The proposed type parameters are opaque beyond equality, carry no bounds, and have no variance annotations.
+
+The aim of this proposal is to introduce the minimum machinery necessary to provide typesafe collections. It is a hypothesis of the proposal that many of the mechanisms that might rely on type bounds and variance annotations are either uncommon cases, or can be simulated with user-provided first class functions. This hypothesis may be explored in some detail below.
+
+===== Type parameter lists =====
+
+  * A type //parameter list// is a comma-separated list of identifiers enclosed in angle-brackets, with a leading dot. For example, the parameter list with three parameters ''A'', ''B'', and ''C'' is denoted ''.<A,B,C>''
+  * Type parameter lists are valid in the following contexts:
+    * Following the name of a nominal type. The type parameters in this context can be used in the scope of the nominal type declaration. The following examples illustrate:
+      * ''class List.<Elt> { var head:Elt; ... }''
+      * ''interface Map.<Key,Value> { function get(Key):Value; ... }''
+    * Following the name of a function at the site of a named function definition. The type parameters in this context can be used in the function parameter list and function body. The following example illustrates:
+      * ''function sort.<T>(a: List.<T>) { var tmp:T; ...}''
+    * Following the name of a //named// structural type. The type parameters in this context can be used in the right-hand-side of a structural type definition. The following examples illustrate:
+      * ''type pair.<T> = [T,T];''
+      * ''type coord3d.<N> = {x:N, y:N, z:N};''
+      * ''type either.<A,B> = (A,B);''
+      * ''type hashfn.<T> = function(T):uint;''
+    * Following the optional name of a function in a function expression. The type parameters in this context can be used in the function parameter list and function body. The following examples illustrate:
+      * ''function sort.<T>(a: List.<T>) { var tmp:T; ...}''
+      * ''function.<T>(a: T):T { return a }''
+      * ''function.<T>(a: T):T a''
+
+===== Type argument lists =====
+
+  * A type //argument list// is a comma-separated list of type expressions enclosed in angle brackets, with a leading dot. 
+  * Type expressions provided in the type argument list are bound to the type parameters in the corresponding parametric type's type parameter list.
+  * Type expressions can contain any type names in scope, including parameter names in an enclosing type parameter scope.
+  * Type argument lists are syntactically valid in the following contexts:
+    * Following any type name in a type expression. This includes type expressions used as variable and function-parameter annotations, and type sub-expressions //within// such type expressions. The following examples illustrate: 
+      * ''var x : List.<int> = ...''
+      * ''var y : List.<Map.<pair.<int>, coord3d.<double> > > = ...''
+      * ''function histogram(x: List.<int>): List.<pair.<int> > { ... }''
+      * ''class Hashtable.<K,V> { var x : function(k:K):uint; { ... } ... }''
+    * Following any function name in function-call, or any class name in constructor-call context. The following examples illustrate:
+      * ''sort.<int>(x)''
+      * ''new Map.<string,int>()''
+
+
+
+
+
+
+==== Missing type arguments ====
+
+  * It is a semantic error for a type argument list to have a different length than its corresponding type parameter list
+
+===== Extended example =====
+
+Here is an example of some parametric types implementing hashtables, to give a flavour of the proposal:
+
+<code>
+
+type hashfn.<T> = function(T):uint;
+
+class Hashtable.<K,V>
+{
+  var hash_func : hashfn.<K>;
+  var store : [ [K,V] ];
+
+  function fetch(k:K) : V
+  {
+    var ix : uint = hash_func(k);
+    while (store[ix][0] != k)
+      ix = ... // some probe sequence
+    return store[ix][1];
+  }
+
+  function Hashtable(hf:hashfn.<K>) 
+  {
+    hash_func = hf;
+  }
+}
+
+function mk_identity.<T>():(function(T):T)
+{
+  return function(t:T):T { return t; };
+}
+
+var id : hashfn.<uint> = mk_identity.<uint>();
+var h : Hashtable.<uint,string> = new Hashtable.<uint,string>(id);
+
+</code>
+
+===== Variance roadmap =====
+
+Future versions of the language may wish to incorporate variance-annotations, such as those proposed [[http://www.daimi.au.dk/~plesner/variance/|here]], or better yet [[http://www.sato.kuis.kyoto-u.ac.jp/~igarashi/papers/variance.html|here]]. Annotations of this sort are present in several languages as an extension of their "generics" mechanism. If in the future we adopt such annotations, the un-annotated identifiers of this proposal shall implicitly be interpreted as carrying the "invariant" (''='') annotation. There should be no syntactic difficulty with adopting full variance annotations, if desired.
+
+However, we might not need to assume that variance annotations will ever be necessary in future ES editions. It seems that the need for them is somewhat mitigated by the presence of first class functions with a subtyping rule on functions. For example, we can expect that if [[proposals:iterators and generators]] is accepted, then we can imagine a container type like this:
+
+<code javascript>
+class Container.<T> 
+{
+  var contents : [T];
+  // ...
+  function items() : (function() : GeneratorType.<T>)
+  {
+    // return a generator yielding values in contents:
+    return function ()
+           {
+             for (let i : uint = 0; i < contents.length; i++)
+               yield contents[i];
+           };
+  } 
+}
+</code>
+
+This sort of iterator function is essentially a "''T'' reader" function, which ought to be usable in contexts where a "''U'' reader" is required, and ''T <: U''. This is permitted under the subtyping rules of functions, but is exactly the use case which variance-annotation exists to help with: you can give a Rectangle-reader to a function that specifies that it wants only a Shape-reader. The opposite direction works the same way: you can give a Shape-consumer first class function to a function that expects a Rectangle-consumer, because ''function(Shape) <: function(Rectangle)'', due to the contravariant argument-subtyping rule.

@@ -1,0 +1,46 @@
+====== String hashcodes ======
+
+===== Proposal =====
+
+The ''String'' class is extended with a static method ''hashcode'' which takes a ''String'' and returns a ''uint'':
+
+  public static function hashcode(s: String): uint;
+
+If ''x'' and ''y'' are strings containing the same sequence of characters as observed through repeated applications of the ''charAt'' method, then
+
+  String.hashcode(x) === String.hashcode(y)
+
+The method computes the hashcode by converting the argument ''s'' to ''intrinsic::string'' and then computing the hashcode of that string on the basis of its length and/or sequence of characters.
+
+===== Rationale =====
+
+There are several good reasons for exposing this functionality.
+
+  * String hashing is not the same thing as Object ID hashing but is a common operation (probably more common) 
+  * String hashing is required by the ''Dictionary'' class and might as well be exposed through ''String''
+  * Any good ES4 implementation will have efficient built-in support for string hashing anyway
+
+The hedging about access patterns allows the implementation freedom to optimize the computation of hashcode in various ways.
+
+====== Discussion ======
+
+Some points for thought:
+
+  * Is it reasonable to phrase the meaning of the method in terms of conversion to ''intrinsic::string''?  What I'm trying to do here is allow ''String'' to be subclassed in ways that are surprising (even providing the illusion of mutable strings), and still having the ''hashcode'' method perform sanely.  But this could be a performance trap.  An alternative formulation would make use of the immutability of ''String'' and state that subclasses that violate immutability behave unpredictably.
+  * If ''String'' hashing is a static method on ''String'', should ''Object'' hashing (as in the [[hashcodes]] proposal) be a static method on ''Object''?
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/05/27 01:47//
+
+I don't see why this proposal is needed. [[hashcodes]] says
+
+> Given two objects a and b with a===b, the implementation must maintain hashcode(a) === hashcode(b)
+
+and two strings containing the same characters, which may or may not be distinct objects, e.g. "foo" and "fo"+String.fromCharCode(111), must be ''==='' and therefore must have the same hashcodes.
+
+The [[hashcodes]] proposal is not about object identity defined by object allocation. It uses the ''==='' operator's equivalence relation to define identity.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/05/28 22:39//
+
+You're right.  I'll clean this up.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/05/29 01:43//

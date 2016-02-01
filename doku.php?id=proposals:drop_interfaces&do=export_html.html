@@ -1,0 +1,259 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:drop_interfaces&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:drop_interfaces&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:drop_interfaces&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="remove_interfaces"></a><h1>Remove interfaces</h1>
+<div class="level1">
+
+<p>
+ This is a simple proposal: remove interfaces from the spec. They make the language larger, and may not add as much expressive power as they cost. Some of the mechanisms provided by interfaces, such as <code>comparable</code>, can be provided more safely by <a href="doku.php%3Fid=proposals:type_parameters.html" class="wikilink1" title="proposals:type_parameters" onclick="return svchk()" onkeypress="return svchk()">type parameters</a> and the first class functions already present in the language.
+</p>
+
+<p>
+Dave Herman corresponded with Brendan and wrote in favor of interfaces, arguing that Java muddied the waters by allowing classes to be used as types too freely.  Classes should be implementations, and <acronym title="Application Programming Interface">API</acronym> client code should use interfaces mostly, not classes, to avoid binding to concrete implementations. Quoting Dave; 
+</p>
+<pre class="code">Interfaces are great for:
+- the type of function/method inputs and outputs
+- the type of `this' in methods that can by dynamically inserted into other objects
+- the type of the superclass for mixins</pre>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">brendan</a> 2006/02/02 18:00</em>
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+ Response:
+</p>
+
+<p>
+I agree with all Dave&rsquo;s points. 
+</p>
+
+<p>
+I do not agree that these points necessitate the presence of interfaces in the language.
+</p>
+
+<p>
+The language currently does not have mixins with typed dependencies (a la Scala traits). It has single-inheritence in the static mode, and dynamic delegation through prototypes.
+</p>
+
+<p>
+Nor does the language have a typed <code>this</code> on extracted methods. It has bound methods and methods with a completely dynamic <code>this</code> (for ES3 compatibility).
+</p>
+
+<p>
+In other words, I believe the only use of interfaces in this language is for function/method parameter types, and I argue that even in this regard &ndash; especially given the presence of bound methods &ndash; they are less important than type parameters. 
+</p>
+
+<p>
+Consider these two cases:
+</p>
+<pre class="code">
+// With interfaces
+
+interface Surface { function draw_point(x: int, y: int, c: Color):void; }
+class Screen implements Surface { ... }
+class Painter 
+{ 
+  function do_drawing(Surface s) 
+  { 
+    ...; 
+    s.draw_point(x, y, c); 
+  }
+}
+
+Screen s = new Screen;
+Painter p = new Painter;
+p.do_drawing(s);
+</pre>
+<pre class="code">
+// With bound methods
+
+class Screen { function draw_point(x: int, y: int, c: Color) { ... } }
+class Painter 
+{ 
+  function do_drawing (point_fn: function(int,int,Color):void) 
+  {
+    ...; 
+    point_fn(x,y,c); 
+  } 
+}
+
+Screen s = new Screen;
+Painter p = new Painter;
+p.do_drawing(s.draw_point); 
+</pre>
+
+<p>
+The latter is somewhat less direct in what it&rsquo;s saying, but it&rsquo;s also more flexible style, and doesn&rsquo;t require as much pre-existing agreement between the designers and users of the various classes in a program.
+</p>
+
+<p>
+I am certainly not universally opposed to interfaces. I just saw them as a feature which might cost more than they buy in this language.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x67%3B%26%23x72%3B%26%23x61%3B%26%23x79%3B%26%23x64%3B%26%23x6f%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x67;&#x72;&#x61;&#x79;&#x64;&#x6f;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">graydon</a> 2006/02/02 18:28</em>
+</p>
+
+<p>
+IIUC, your example gets away with the fact that you&rsquo;re only using one particular method of a given object, so you use a function type instead. But what happens when you want to pass as an argument an object that must support several methods?
+</p>
+<pre class="code">
+interface DOMNode {
+    function getChildren():Array[DOMNode];
+    function getTag():String;
+    function getAttribute(String):String;
+    ...
+}
+function dfs(DOMNode node, String tag):Array[DOMNode] {
+    ... dfs(node.getChildren()) ...
+    ... node.getTag() ...
+}
+</pre>
+
+<p>
+In practice, people already use informal interfaces to specify the behavior of their JavaScript <acronym title="Application Programming Interface">API</acronym>&lsquo;s. For example: <a href="http://developer.mozilla.org/en/docs/Gecko_DOM_Reference" class="urlextern" target="_blank" title="http://developer.mozilla.org/en/docs/Gecko_DOM_Reference" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Gecko DOM API</a>.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x64%3B%26%23x68%3B%26%23x65%3B%26%23x72%3B%26%23x6d%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x63%3B%26%23x63%3B%26%23x73%3B%26%23x2e%3B%26%23x6e%3B%26%23x65%3B%26%23x75%3B%26%23x2e%3B%26%23x65%3B%26%23x64%3B%26%23x75%3B" class="mail" title="&#x64;&#x68;&#x65;&#x72;&#x6d;&#x61;&#x6e;&#x40;&#x63;&#x63;&#x73;&#x2e;&#x6e;&#x65;&#x75;&#x2e;&#x65;&#x64;&#x75;">Dave Herman</a> 2006/02/03 13:25</em> 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+Sure. So if you want to use functions <code>A</code>, <code>B</code>, and <code>C</code>, you either: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Require parameters of function types <code>A</code>, <code>B</code>, and <code>C</code>, <em>or</em></div>
+</li>
+<li class="level1"><div class="li"> Make a &ldquo;glue class&rdquo; <code>D</code> which takes <code>A</code>, <code>B</code> and <code>C</code> as constructor arguments, and can be passed around as a unit. This is just &ldquo;simulating inheritence with delegation&rdquo;.</div>
+</li>
+</ul>
+
+<p>
+ I guess the general point I was making is that inheritence is a subset of the functionality of &ldquo;types + delegation&rdquo;, and we already have strong mechanisms for types and delegation in the spec. So fancier forms of inheritence seem a bit like window dressing. We can probably define interfaces <em>in terms of</em> classes and bound methods. 
+</p>
+
+<p>
+In any case, I don&rsquo;t mean to belabor the point. I&rsquo;m in no way wedded to this proposal: interfaces seemed to me like trimmable fat, but I have no specific goals which hinge on interfaces being removed. I&rsquo;m happy to retract the proposal if they&rsquo;re widely seen as useful.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x67%3B%26%23x72%3B%26%23x61%3B%26%23x79%3B%26%23x64%3B%26%23x6f%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x67;&#x72;&#x61;&#x79;&#x64;&#x6f;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">graydon</a> 2006/02/03 13:47</em> 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+Another reason we thought about dropping interfaces was that waldemar specified and then removed them from his draft (more below), then JScript.NET implemented one variant, and more recently AS3 implemented another variant.  We would have to reconcile differences, revisit and overcome waldemar&rsquo;s objection, and not sink too much time into this at the cost of something as valuable, or more important.
+</p>
+
+<p>
+Waldemar was generally concerned that type annotations could be erased from a large-scale, partly-migrated program and the program&rsquo;s meaning would not change. That meant no method overloading &ndash; no dispatching a method based on types. Interfaces make it too likely that names will collide. We could forbid name collisions, or require them to have the same signature (and when a class implements both interfaces, it has one method implementing that name), which <acronym title="If I remember correctly">IIRC</acronym> is what AS3 does. Or we could do what JScript.NET did and dispatch based on type (let&rsquo;s not).
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/02/03 16:10</em>
+</p>
+
+<p>
+I agree, let&rsquo;s put interfaces back on the table. Without them people try to do all kinds of unnatural things with classes to make them act like types. And without abstract classes or multiple inheritance they just get frustrated. Here&rsquo;s a primer on what we&rsquo;ve done and what we would like to have done: 
+</p>
+
+<p>
+In AS3, references through an interface typed slot cause that interface&rsquo;s methods (including its inherited methods) to be visible without qualification. So,
+</p>
+<pre class="code">
+interface T { function m() }
+var x : T = o
+o.m() // calls T::m
+</pre>
+
+<p>
+<code>o.m()</code> would find <code>T::m</code> in <code>o</code> regardless of what other m&rsquo;s might be in o. Erasing the type annotation means that the reference might become ambiguous, invisible or change binding to another implementation if o implements multiple interfaces with method m. (more on this below)
+</p>
+
+<p>
+In an early version of AS3, a class could have different implementations for different interface methods with the same identifier. E.g.
+</p>
+<pre class="code">
+interface T { function m() }
+interface U { function m() }
+
+class A implements T,U {
+  public function m() {}  // implements both
+}
+
+class B implements T,U {
+  T function m() {}  // implements T's
+  U function m() {}  // implements U's
+}
+
+class C implements T,U {
+  T function m() {}  // implements T's
+  public function m() {} // implements all others (U's in this case)
+}
+
+var a : A; a.m()   // cool, only one implementation and its visible (public)
+var b : B; b.m()   // no m found, interface methods are not public by default
+b.T::m(); b.U::m() // fine, explicit qual makes a certain m visible
+var c : C; c.m()   // call U::m, T::m not visible
+var t : T; t.m()   // no problem
+var u : U; u.m()   // ditto
+</pre>
+
+<p>
+I would like to propose the same for ES4.
+</p>
+
+<p>
+This design gives us: 
+</p>
+<ul>
+<li class="level1"><div class="li"> implementations of multiple methods with one public definition</div>
+</li>
+<li class="level1"><div class="li"> implementation of individual interface methods</div>
+</li>
+<li class="level1"><div class="li"> implicit qualification of references with interface typed base expressions</div>
+</li>
+<li class="level1"><div class="li"> explicit qualification to resolve ambiguities (interface extends case), or make visible</div>
+</li>
+</ul>
+
+<p>
+ Also means: 
+</p>
+<ul>
+<li class="level1"><div class="li"> erasing type annotations affects the meaning of the program</div>
+</li>
+<li class="level1"><div class="li"> is different from JScript.NET</div>
+</li>
+</ul>
+
+</div>
+
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/5/51eb332f7eb33edbeb79e0fd4f356d88.xhtml used -->
+</body>
+</html>

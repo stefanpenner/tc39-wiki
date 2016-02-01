@@ -1,0 +1,452 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:shorter_function_syntax&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:shorter_function_syntax&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:shorter_function_syntax&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:shorter_function_syntax&amp;do=export_html.html#goals" class="toc">Goals</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:shorter_function_syntax&amp;do=export_html.html#precedent" class="toc">Precedent</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:shorter_function_syntax&amp;do=export_html.html#proposal" class="toc">Proposal</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:shorter_function_syntax&amp;do=export_html.html#syntax" class="toc">Syntax</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:shorter_function_syntax&amp;do=export_html.html#semantic" class="toc">Semantic</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:shorter_function_syntax&amp;do=export_html.html#lexical_this" class="toc">Lexical this</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:shorter_function_syntax&amp;do=export_html.html#no_arguments_object" class="toc">No arguments object</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:shorter_function_syntax&amp;do=export_html.html#alternate_syntax_proposals" class="toc">Alternate Syntax Proposals</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:shorter_function_syntax&amp;do=export_html.html#discussion" class="toc">Discussion</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="goals"></a><h2>Goals</h2>
+<div class="level2">
+
+<p>
+ Some of these may be withdrawn: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Shorter syntax for function expressions</div>
+</li>
+<li class="level1"><div class="li"> Implicit <code>return</code> to make functions even shorter</div>
+</li>
+<li class="level1"><div class="li"> Lexical <code>this</code> to reduce common <code>this</code> binding errors with optional explicit dynamic <code>this</code> binding </div>
+</li>
+<li class="level1"><div class="li"> No <code>arguments</code> object in scope</div>
+</li>
+</ul>
+
+<p>
+   Non goals 
+</p>
+<ul>
+<li class="level1"><div class="li"> Changing the semantics of existing functions (using old syntax)</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1-383] -->
+<a name="precedent"></a><h2>Precedent</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> JS1.8+ (SpiderMonkey and Rhino) <a href="https://developer.mozilla.org/en/New_in_JavaScript_1.8#Expression_closures_%28Merge_into_own_page.2fsection%29" class="urlextern" target="_blank" title="https://developer.mozilla.org/en/New_in_JavaScript_1.8#Expression_closures_%28Merge_into_own_page.2fsection%29" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">expression closures</a>.</div>
+<ul>
+<li class="level2"><div class="li"> Expression closures:</div>
+<ul>
+<li class="level3"><div class="li"> can be declarations or expressions,</div>
+</li>
+<li class="level3"><div class="li"> may be anonymous or named if expressions,</div>
+</li>
+<li class="level3"><div class="li"> but cannot accomodate statements in their bodies without another extension such as <a href="doku.php%3Fid=strawman:let_expressions.html" class="wikilink1" title="strawman:let_expressions" onclick="return svchk()" onkeypress="return svchk()">let expressions</a>.</div>
+</li>
+</ul>
+</li>
+<li class="level2"><div class="li"> In any case expression closures save only <code>{</code>, <code>return</code>, <code>}</code>, and the space after return (or parentheses around the return value, or a prefix operator), but still start with <code>function</code> (the eight-letter word), so some find them not enough of a win.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [384-1076] -->
+<a name="proposal"></a><h2>Proposal</h2>
+<div class="level2">
+
+<p>
+ We propose introducing a shorthand for function expressions.
+</p>
+<pre class="code">
+[0, 1, 2, 3].map(#(x) {x * x})
+</pre>
+
+<p>
+You can think of it as the existing function expression where <code>function</code> is replaced by <code>#</code> as well as an implicit return of the completion value. The parameter list can be omitted in the cases where no parameters are needed.
+</p>
+<pre class="code">
+let randomArray = NonHoleyArray(10).map(#{Math.random()});
+</pre>
+
+</div>
+<!-- SECTION [1077-1513] -->
+<a name="syntax"></a><h2>Syntax</h2>
+<div class="level2">
+
+<p>
+ The <code>FunctionExpression</code> and <code>FunctionDeclaration</code> productions need to be updated accordingly.
+</p>
+<pre class="code">
+FunctionExpression ::= &quot;function&quot; Identifier? &quot;(&quot; FormalParameterList? &quot;)&quot; &quot;{&quot; FunctionBody &quot;}&quot;
+                    |  &quot;#&quot; Identifier? (&quot;(&quot; FormalParameterList? &quot;)&quot;)? &quot;{&quot; FunctionBody &quot;}&quot;
+
+FunctionDeclaration ::= &quot;function&quot; Identifier? &quot;(&quot; FormalParameterList? &quot;)&quot; &quot;{&quot; FunctionBody &quot;}&quot;
+                     |  &quot;#&quot; Identifier? (&quot;(&quot; FormalParameterList? &quot;)&quot;)? &quot;{&quot; FunctionBody &quot;}&quot;
+</pre>
+
+</div>
+<!-- SECTION [1514-2028] -->
+<a name="semantic"></a><h2>Semantic</h2>
+<div class="level2">
+
+<p>
+ This is just syntactic sugar and the desugaring can be done like this:
+</p>
+<pre class="code">
+#name (args) { body }
+</pre>
+
+<p>
+desugars to:
+</p>
+<pre class="code">
+function name(args) {
+  body
+  return [[CompletionValue]](body)
+}
+</pre>
+<pre class="code">
+#{ body }
+</pre>
+
+<p>
+desugars to:
+</p>
+<pre class="code">
+function() {
+  body
+  return [[CompletionValue]](body)
+}
+</pre>
+
+<p>
+This is a bit simplified because lexical <code>this</code> makes this slightly more complicated.
+</p>
+
+</div>
+<!-- SECTION [2029-2459] -->
+<a name="lexical_this"></a><h2>Lexical this</h2>
+<div class="level2">
+
+<p>
+ One of the most common errors in JavaScript is the unexpected <code>this</code> binding rule.
+</p>
+<pre class="code">
+var object = {
+  start: function() {
+    window.setTimeout(function() {
+      this.continue();
+    }, 500);
+  },
+  continue: function() {
+    ...
+  }
+};
+object.start();  // Error: No such function &quot;continue&quot;
+</pre>
+
+<p>
+In the above code snippet one would expect that <code>object.continue</code> would be called after half a second. This is not the case because <code>window.setTimeout</code> is responsible for calling the function and <code>this</code> is determined at the call site.
+</p>
+
+<p>
+To fix this we are proposing that <code>#</code>-functions use lexical scoped <code>this</code>.
+</p>
+<pre class="code">
+var object = {
+  start: function() {
+    window.setTimeout(#{
+      this.continue();
+    }, 500);
+  },
+  continue: function() {
+    ...
+  }
+};
+object.start();  // It's all good
+</pre>
+
+<p>
+But looking at the code above we notice that the remaining <code>function</code> keywords cannot be replaced with <code>#</code> because those functions do not want lexical <code>this</code>. Therefore we provide an explicit way to declare that you want dynamically bound <code>this</code> by using <code>this</code> as the first parameter.
+</p>
+<pre class="code">
+var object = {
+  start: #(this) {
+    window.setTimeout(#{
+      this.continue();
+    }, 500);
+  },
+  continue: #(this) {
+    ...
+  }
+};
+object.start();  // It's all good
+</pre>
+
+<p>
+If the first parameter name of a <code>#</code>-function is not the identifier <code>this</code> then the function is considered to have a lexically bound this. For <code>FunctionExpression</code> we can do something like this:
+</p>
+<pre class="code">
+var f = #(args) { body };
+</pre>
+
+<p>
+desugars to
+</p>
+<pre class="code">
+var f = function(args) {
+  body
+  return [[CompletionValue]](body)
+}.bind(this);
+</pre>
+
+<p>
+If we have an explicit dynamic <code>this</code> we don&rsquo;t need the do the binding because it behaves like normal functions:
+</p>
+<pre class="code">
+var f = #(this, args) { body };
+</pre>
+
+<p>
+desugars to
+</p>
+<pre class="code">
+var f = function(args) {
+  body
+  return [[CompletionValue]](body)
+}
+</pre>
+
+<p>
+For <code>FunctionDeclaration</code> we need to introduce a temporary variable in the scope where the function was declared and use alpha renaming.
+</p>
+<pre class="code">
+#name(args) { body }
+</pre>
+
+<p>
+desugars to something like
+</p>
+<pre class="code">
+const $this = this;  // Needs to be hoisted to top
+function name(args) {
+  [[AlphaRename]](this, $this, body)
+  return [[CompletionValue]]([[AlphaRename]](this, $this, body))
+}
+</pre>
+
+</div>
+<!-- SECTION [2460-4808] -->
+<a name="no_arguments_object"></a><h2>No arguments object</h2>
+<div class="level2">
+
+<p>
+ The reason for disallowing <code>arguments</code> is that we have <a href="doku.php%3Fid=harmony:rest_parameters.html" class="wikilink1" title="harmony:rest_parameters" onclick="return svchk()" onkeypress="return svchk()">rest_parameters</a> which is better in every way.
+</p>
+
+</div>
+<!-- SECTION [4809-4957] -->
+<a name="alternate_syntax_proposals"></a><h2>Alternate Syntax Proposals</h2>
+<div class="level2">
+
+<p>
+ A shorter keyword such as &ldquo;f&rdquo;, &ldquo;fn&rdquo;, or &ldquo;fun&rdquo;:
+</p>
+<pre class="code">
+[0, 1, 2, 3].map(fn(x) {x * x})
+let randomArray = Array(10).map(fn{Math.random()});
+</pre>
+
+<p>
+This has the disadvantage that it requires unbounded lookahead for an LL parser. It also looks funny in the case where arguments are omitted.
+</p>
+
+<p>
+A backslash, which vaguely resembles lambda and is used as such in other languages:
+</p>
+<pre class="code">
+[0, 1, 2, 3].map(\(x) {x * x})
+let randomArray = Array(10).map(\{Math.random()});
+</pre>
+
+<p>
+This has the disadvantage of creating an escaping hazard when <acronym title="JavaScript">JS</acronym> code is included in a quoted string.
+</p>
+
+<p>
+ Other characters that are currently disallowed in ECMAScript syntax:
+</p>
+<pre class="code">
+[0, 1, 2, 3].map(@(x) {x * x})
+let randomArray = Array(10).map(@{Math.random()});
+
+[0, 1, 2, 3].map(`(x) {x * x})
+let randomArray = Array(10).map(`{Math.random()});
+</pre>
+
+<p>
+These suggestions are not known to have any problems beyond what # might, and may be visually more pleasing.
+</p>
+
+<p>
+ @ is already used by Internet Explorer&rsquo;s JavaScript extensions for conditional compilation.  &mdash; <em><a href="mailto:%26%23x41%3B%26%23x6c%3B%26%23x6c%3B%26%23x65%3B%26%23x6e%3B%26%23x2e%3B%26%23x57%3B%26%23x69%3B%26%23x72%3B%26%23x66%3B%26%23x73%3B%26%23x2d%3B%26%23x42%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x40%3B%26%23x6d%3B%26%23x69%3B%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x73%3B%26%23x6f%3B%26%23x66%3B%26%23x74%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x41;&#x6c;&#x6c;&#x65;&#x6e;&#x2e;&#x57;&#x69;&#x72;&#x66;&#x73;&#x2d;&#x42;&#x72;&#x6f;&#x63;&#x6b;&#x40;&#x6d;&#x69;&#x63;&#x72;&#x6f;&#x73;&#x6f;&#x66;&#x74;&#x2e;&#x63;&#x6f;&#x6d;">Allen Wirfs-Brock</a> 2010/07/27 15:33</em> 
+</p>
+
+<p>
+Characters that are used as binary but not unary operators, assuming these do not create parsing ambiguities:
+</p>
+<pre class="code">
+[0, 1, 2, 3].map(^(x) {x * x})
+let randomArray = Array(10).map(^{Math.random()});
+
+[0, 1, 2, 3].map(*(x) {x * x})
+let randomArray = Array(10).map(*{Math.random()});
+
+[0, 1, 2, 3].map(%(x) {x * x})
+let randomArray = Array(10).map(%{Math.random()});
+</pre>
+
+<p>
+The caret (^) seems well-liked for its visual similarity to lambda. It also seems to fit nicely both with and without arguments.
+</p>
+
+<p>
+Ruby-like syntax:
+</p>
+<pre class="code">
+[0, 1, 2, 3].map({|x| x * x})
+</pre>
+
+<p>
+(Not sure how the zero-argument case would work.)
+</p>
+
+<p>
+Following Smalltalk&rsquo;s precedent it presumably would be:  
+</p>
+<pre class="code">
+var x=0;
+[0, 1, 2, 3].forEach({|| ++x})
+</pre>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x41%3B%26%23x6c%3B%26%23x6c%3B%26%23x65%3B%26%23x6e%3B%26%23x2e%3B%26%23x57%3B%26%23x69%3B%26%23x72%3B%26%23x66%3B%26%23x73%3B%26%23x2d%3B%26%23x42%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x40%3B%26%23x6d%3B%26%23x69%3B%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x73%3B%26%23x6f%3B%26%23x66%3B%26%23x74%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x41;&#x6c;&#x6c;&#x65;&#x6e;&#x2e;&#x57;&#x69;&#x72;&#x66;&#x73;&#x2d;&#x42;&#x72;&#x6f;&#x63;&#x6b;&#x40;&#x6d;&#x69;&#x63;&#x72;&#x6f;&#x73;&#x6f;&#x66;&#x74;&#x2e;&#x63;&#x6f;&#x6d;">Allen Wirfs-Brock</a> 2010/07/27 15:36</em>
+</p>
+
+</div>
+<!-- SECTION [4958-6927] -->
+<a name="discussion"></a><h2>Discussion</h2>
+<div class="level2">
+
+<p>
+ In case we allow <code>#</code> in all places where <code>function</code> is allowed it is tempting to make the parentheses optional for <code>function</code> as well. 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+Another alternative is to unbundle the shortening of &ldquo;function&rdquo; and of &ldquo;return&rdquo; into orthogonal bits of sugar that happen to compose well. Specifically, have &ldquo;<code>#</code>&rdquo; simply be sugar for &ldquo;<code>function</code>&rdquo; and &ldquo;( Expression )&rdquo; be sugar for &ldquo;{ return Expression; }&rdquo;. This allows all four combinations, including &ldquo;<code>#(x,y) (x+y)</code>&rdquo; for &ldquo;<code>function(x,y) { return x+y; }</code>&ldquo;.
+</p>
+<pre class="code">
+#namedFunctionDeclaration {
+  var x = 0;
+  var y = 1;
+  return x + y;
+}
+</pre>
+
+<p>
+as well as:
+</p>
+<pre class="code">
+#namedFunctionDeclaration(x, y) {
+  x + y;
+}
+</pre>
+
+<p>
+However, even here it is easy for a refactoring to accidentally expose the completion value. 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+Lexical <code>this</code> might introduce a lot of new bugs due to the way that jQuery uses <code>this</code> when chaining calls.
+</p>
+<pre class="code">
+$('.things').click(#{ this.style.width = '...'; });
+</pre>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x61%3B%26%23x72%3B%26%23x76%3B%26%23x40%3B%26%23x67%3B%26%23x6f%3B%26%23x6f%3B%26%23x67%3B%26%23x6c%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x61;&#x72;&#x76;&#x40;&#x67;&#x6f;&#x6f;&#x67;&#x6c;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Erik Arvidsson</a> 2011/02/25 22:05</em>
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+There is a syntax conflict with <a href="http://brendaneich.com/2011/01/harmony-of-my-dreams/" class="urlextern" target="_blank" title="http://brendaneich.com/2011/01/harmony-of-my-dreams/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Harmony of Brendan's Dreams</a> where he is proposing to use <code>#{ ... }</code> for frozen <code>Object</code>s.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x61%3B%26%23x72%3B%26%23x76%3B%26%23x40%3B%26%23x67%3B%26%23x6f%3B%26%23x6f%3B%26%23x67%3B%26%23x6c%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x61;&#x72;&#x76;&#x40;&#x67;&#x6f;&#x6f;&#x67;&#x6c;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Erik Arvidsson</a> 2011/02/25 22:09</em>
+</p>
+
+<p>
+I considered the idea of <code>#{...}</code> meaning a function taking zero arguments, but it conflicts to the <a href="doku.php%3Fid=strawman:records.html" class="wikilink1" title="strawman:records" onclick="return svchk()" onkeypress="return svchk()">records</a> proposal as Allen notes, and it seems to me harmful to remove <code>()</code> as a visual sign of a formal parameter list, indicating a function head.
+</p>
+
+<p>
+Lexical <code>this</code> may not be usable by JQuery, but declaring <code>this</code> as a parameter in a sharp-function still beats what JQuery has to do currently.
+</p>
+
+<p>
+In general it seems to me we do not want too many variant forms. With <a href="doku.php%3Fid=strawman:completion_reform.html" class="wikilink1" title="strawman:completion_reform" onclick="return svchk()" onkeypress="return svchk()">completion reform</a> I do not see a need for both <code>#()(</code><em>expr</em><code>)</code> and <code>#(){</code><em>...stmt</em><code>}</code> &ndash; just the latter is enough.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2011/02/28 21:48</em> 
+</p>
+
+</div>
+<!-- SECTION [6928-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/4/46386e9d2717627d0b296b4253eb28d7.xhtml used -->
+</body>
+</html>

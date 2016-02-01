@@ -1,0 +1,139 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:obj_initialiser_const&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:obj_initialiser_const&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:obj_initialiser_const&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="other_object_initialiser_property_modifiers"></a><h1>Other Object Initialiser Property Modifiers</h1>
+<div class="level1">
+
+<p>
+ <em>This is one of several related <a href="doku.php%3Fid=strawman:object_initialiser_extensions.html" class="wikilink1" title="strawman:object_initialiser_extensions" onclick="return svchk()" onkeypress="return svchk()">Object Initialiser Extensions</a>.</em><br/>
+ <em>This extension builds upon concepts introduced in <a href="doku.php%3Fid=strawman:obj_initialiser_meta.html" class="wikilink1" title="strawman:obj_initialiser_meta" onclick="return svchk()" onkeypress="return svchk()">Object Initialiser Meta Properties</a> and <a href="doku.php%3Fid=strawman:obj_initialiser_methods.html" class="wikilink1" title="strawman:obj_initialiser_methods" onclick="return svchk()" onkeypress="return svchk()">Method Properties</a>.</em>
+</p>
+
+<p>
+Given the proposed Meta properties and method properties  object literal extensions it is reasonable to imagine easily writing a factory function that creates, for example, fixed sized objects that have array-like behavior plus some additional methods. For example:  
+</p>
+<pre class="code javascript"><span class="kw2">function</span> tripleFactory<span class="br0">&#40;</span>a,b,c<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw1">return</span> <span class="br0">&#123;</span>
+	&lt;proto: Array.<span class="me1">prototype</span>, sealed&gt;,
+	<span class="nu0">0</span>: a,
+	<span class="nu0">1</span>: b,
+	<span class="nu0">2</span>: c,
+	length: <span class="nu0">3</span>,
+	method toString<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span>
+		<span class="kw1">return</span> <span class="st0">"triple("</span>+<span class="kw1">this</span><span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>+<span class="st0">","</span>+<span class="kw1">this</span><span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>+<span class="st0">","</span>+<span class="kw1">this</span><span class="br0">&#91;</span><span class="nu0">2</span><span class="br0">&#93;</span>+<span class="st0">")"</span><span class="br0">&#125;</span>,
+	method sum<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw1">this</span><span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>+<span class="kw1">this</span><span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>+<span class="kw1">this</span><span class="br0">&#91;</span><span class="nu0">2</span><span class="br0">&#93;</span><span class="br0">&#125;</span> 
+	<span class="br0">&#125;</span>
+  <span class="br0">&#125;</span></pre>
+<p>
+Using the <code><strong>method</strong></code> keyword ensures that the <code>toString</code> and <code>sum</code> methods are not enumerable; however, there are still at least two problems with the above definition. First such object should always have three numerically indexed properties and because the object is sealed it is indeed the case that none can be added or deleted. However, the value of the <code>length</code> property could still be externally modified to be some value other than 3. The other problem is that if a for-in statement is used to enumerate the properties of the object, the <code>length</code> property will show up in the enumeration. Without additional extensions, these problems can only be addressed by making explicit calls to Object reflection methods and that only works if sealed is not specified as a meta property.
+</p>
+
+<p>
+These problems can be resolved by usiing the <code><strong>var</strong></code> and <code><strong>const</strong></code> keyword when defining the <code>length</code> property. For example:
+</p>
+<pre class="code javascript"><span class="kw2">function</span> tripleFactory<span class="br0">&#40;</span>a,b,c<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw1">return</span> <span class="br0">&#123;</span>
+	&lt;proto: Array.<span class="me1">prototype</span>, sealed&gt;,
+	<span class="nu0">0</span>: a,
+	<span class="nu0">1</span>: b,
+	<span class="nu0">2</span>: c,
+	<span class="kw2">var</span> length <span class="kw2">const</span>: <span class="nu0">3</span>,
+	method toString<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span>
+		<span class="kw1">return</span> <span class="st0">"triple("</span>+<span class="kw1">this</span><span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>+<span class="st0">","</span>+<span class="kw1">this</span><span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>+<span class="st0">","</span>+<span class="kw1">this</span><span class="br0">&#91;</span><span class="nu0">2</span><span class="br0">&#93;</span>+<span class="st0">")"</span><span class="br0">&#125;</span>,
+	method sum<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw1">this</span><span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>+<span class="kw1">this</span><span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>+<span class="kw1">this</span><span class="br0">&#91;</span><span class="nu0">2</span><span class="br0">&#93;</span><span class="br0">&#125;</span> 
+	<span class="br0">&#125;</span>
+  <span class="br0">&#125;</span></pre>
+<p>
+When a property is preceded by the keyword <code><strong>var</strong></code>, the property is non-enumerable.  (Perhaps it may be useful to thing of &ldquo;var&rdquo; as meaning &ldquo;instance variable&rdquo; in this context.) <code><strong>var</strong></code> can also precede <code><strong>get</strong></code>/<code><strong>set</strong></code> property definitions to declare accessor properties that are non-enumerable.  <code><strong>var</strong></code> may not preceded <code><strong>method</strong></code> as <code><strong>method</strong></code> already implies non-enumerable.
+</p>
+
+<p>
+When the colon  of  a <em>PropertyAssignment</em> is preceded by the keyword <code><strong>const</strong></code>, the property is a non-writable data property  whose value is the value of the expression part of the a <em>PropertyAssignment</em>.
+</p>
+
+<p>
+In the above example, all of the properties are non-configurable because it used the <code><strong>sealed</strong></code> meta-property. In some situation it may be desirable to only make some of the properties defined in an object initialiser non-configurable.  This is accomplished by  prefixing individual <em>PropertyAssignments</em> with the <code><strong>sealed</strong></code> keyword.  For example:
+</p>
+<pre class="code javascript"><span class="kw2">function</span> tripleFactory<span class="br0">&#40;</span>a,b,c<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw1">return</span> <span class="br0">&#123;</span>
+	&lt;proto: Array.<span class="me1">prototype</span>&gt;,
+	<span class="nu0">0</span>: a,
+	<span class="nu0">1</span>: b,
+	<span class="nu0">2</span>: c,
+	sealed <span class="kw2">var</span> length: <span class="nu0">3</span>,
+	sealed method toString<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span>
+		<span class="kw1">return</span> <span class="st0">"triple("</span>+<span class="kw1">this</span><span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>+<span class="st0">","</span>+<span class="kw1">this</span><span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>+<span class="st0">","</span>+<span class="kw1">this</span><span class="br0">&#91;</span><span class="nu0">2</span><span class="br0">&#93;</span>+<span class="st0">")"</span><span class="br0">&#125;</span>,
+	sealed method sum<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw1">this</span><span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>+<span class="kw1">this</span><span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>+<span class="kw1">this</span><span class="br0">&#91;</span><span class="nu0">2</span><span class="br0">&#93;</span><span class="br0">&#125;</span> 
+	<span class="br0">&#125;</span>
+  <span class="br0">&#125;</span></pre>
+<p>
+Note that the declarations of <code>length</code>, <code>toString</code>, and <code>sum</code> are preceded by <code><strong>sealed</strong></code> and that <code><strong>sealed</strong></code> is not included as a meta-property. Thus only <code>length</code> will be non-configurable. 
+</p>
+
+<p>
+<code><strong>var</strong></code>, <code><strong>const</strong></code>, and <code><strong>sealed</strong></code> keywords in a <em>PropertyAssignment</em> correspond respective to the enumerable, writable, and configurable property attributes.  They can be combined orthogonally to produce all possible attribute combinations:
+</p>
+<pre class="code javascript">  <span class="kw1">return</span> <span class="br0">&#123;</span>
+	p7: <span class="nu0">7</span>,                 <span class="co1">//configurable: true,  enumerable: true,  writable: true</span>
+	p6 <span class="kw2">const</span>:  <span class="nu0">6</span>,           <span class="co1">//configurable: true,  enumerable: true,  writable: false</span>
+	<span class="kw2">var</span> p5: <span class="nu0">5</span>,             <span class="co1">//configurable: true,  enumerable: false, writable: true</span>
+	<span class="kw2">var</span> p4 <span class="kw2">const</span>: <span class="nu0">4</span>,       <span class="co1">//configurable: true,  enumerable: false, writable: false</span>
+	sealed p3: <span class="nu0">3</span>,          <span class="co1">//configurable: false, enumerable: true,  writable: true</span>
+	sealed p2 <span class="kw2">const</span>: <span class="nu0">2</span>,    <span class="co1">//configurable: false, enumerable: true,  writable: false</span>
+	sealed <span class="kw2">var</span> p1: <span class="nu0">1</span>,      <span class="co1">//configurable: false, enumerable: false, writable: true</span>
+	sealed <span class="kw2">var</span> p0 <span class="kw2">const</span>: <span class="nu0">0</span>,<span class="co1">//configurable: false, enumerable: false, writable: false</span>
+&nbsp;
+        method m4 <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>,       <span class="co1">//configurable: true,  enumerable: false, writable: false</span>
+        sealed method m0 <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>,<span class="co1">//configurable: false,  enumerable: false, writable: false</span>
+&nbsp;
+	set a3 <span class="br0">&#40;</span>v<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>,          <span class="co1">//configurable: true,  enumerable: true</span>
+	<span class="kw2">var</span> get a2 <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>,       <span class="co1">//configurable: true,  enumerable: false</span>
+	sealed put a1 <span class="br0">&#40;</span>v<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>,   <span class="co1">//configurable: false, enumerable: true	</span>
+	sealed <span class="kw2">var</span> get a2 <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span> <span class="co1">//configurable: false, enumerable: false</span>
+  <span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [1-4977] -->
+<a name="syntax"></a><h2>SYNTAX</h2>
+<div class="level2">
+
+<p>
+<em>PropertyAssignment</em> :<br/>
+ <strong>sealed</strong><sub>opt</sub> <em>PropertyName</em> <strong>const</strong><sub>opt</sub> <strong>:</strong> <em>AssignmentExpression</em><br/>
+ <strong>sealed</strong><sub>opt</sub> <strong>var</strong> <em>PropertyName</em> <strong>const</strong><sub>opt</sub> <strong>:</strong> <em>AssignmentExpression</em><br/>
+ <strong>sealed</strong><sub>opt</sub> <strong>get</strong> <em>PropertyName</em> <strong>( ) {</strong> <em>FunctionBody</em> <strong>}</strong><br/>
+ <strong>sealed</strong><sub>opt</sub> <strong>set</strong> <em>PropertyName</em> <strong>(</strong> <em>PropertySetParameterList</em> <strong>) {</strong> <em>FunctionBody</em> <strong>}</strong><br/>
+ <strong>sealed</strong><sub>opt</sub> <strong>method</strong> <em>PropertyName</em> <strong>(</strong> <em>FormalParameterListopt</em> <strong>) {</strong> <em>FunctionBody</em> <strong>}</strong> 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+  &mdash; <em><a href="doku.php%3Fid=strawman:allen_wirfs-brock.html" class="wikilink2" title="strawman:allen_wirfs-brock" onclick="return svchk()" onkeypress="return svchk()">Allen Wirfs-Brock</a> 2011/03/08 02:47</em> Update based upon feedback from Sept. 2010 TC39 meeting 
+</p>
+
+</div>
+<!-- SECTION [4978-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/b/b3e72257cdc4fe74b91181ff8e27a8df.xhtml used -->
+</body>
+</html>

@@ -1,0 +1,135 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:local_packages&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:local_packages&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:local_packages&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:local_packages&amp;do=export_html.html#program_fragment_local_packages" class="toc">Program fragment local packages</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:local_packages&amp;do=export_html.html#abstract" class="toc">Abstract</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:local_packages&amp;do=export_html.html#background_and_rationale" class="toc">Background and rationale</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:local_packages&amp;do=export_html.html#proposal" class="toc">Proposal</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:local_packages&amp;do=export_html.html#examples" class="toc">Examples</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="program_fragment_local_packages"></a><h1>Program fragment local packages</h1>
+<div class="level1">
+
+<p>
+ (Also see <a href="doku.php%3Fid=discussion:local_packages.html" class="wikilink1" title="discussion:local_packages" onclick="return svchk()" onkeypress="return svchk()">discussion:local packages</a>.)
+</p>
+
+</div>
+<!-- SECTION [1-116] -->
+<a name="abstract"></a><h2>Abstract</h2>
+<div class="level2">
+
+<p>
+ A mechanism is proposed that allows packages to be declared local to a program fragment (typically a single file).
+</p>
+
+</div>
+<!-- SECTION [117-254] -->
+<a name="background_and_rationale"></a><h2>Background and rationale</h2>
+<div class="level2">
+
+<p>
+ In dynamic environments (notably web browsers) multiple program fragments (files) from separate sources are often combined with no awareness of each other.  A typical use case is advertisements, which are injected into a page in the form of script fragments that load other scripts dynamically from ad servers; those scripts in turn inject <acronym title="HyperText Markup Language">HTML</acronym> into the page to show the ad.
+</p>
+
+<p>
+The present proposal provides a simple mechanism that allows such script injection to occur in a way that does not pollute the page&rsquo;s global namespace.  This prevents ads from interfering with each other and with other content on the page.
+</p>
+
+<p>
+See <a href="doku.php%3Fid=discussion:multiple_compilation_units.html" class="wikilink1" title="discussion:multiple_compilation_units" onclick="return svchk()" onkeypress="return svchk()">multiple compilation units</a> for a general discussion of multiple scripts on a page.
+</p>
+
+</div>
+<!-- SECTION [255-1012] -->
+<a name="proposal"></a><h2>Proposal</h2>
+<div class="level2">
+
+<p>
+ A package local to the program fragment is defined with the syntax <code>internal package</code>.  Such a package is local to the program fragment in which it&rsquo;s defined.  It can be referenced by name inside the fragment, but not elsewhere.  No other restrictions apply.
+</p>
+<pre class="code">
+    internal package &lt;name&gt; {
+        ...
+    }
+</pre>
+
+<p>
+The advantage of this mechanism over eg using functions or <code>let</code> blocks for scoping is that packages can contain class definitions.
+</p>
+
+</div>
+<!-- SECTION [1013-1495] -->
+<a name="examples"></a><h2>Examples</h2>
+<div class="level2">
+
+<p>
+ General sketches:
+</p>
+<pre class="code">
+    /* Define a fragment-local package */
+    internal package local {
+        var x = 10;
+        class C { ... }
+    }
+
+    /* Normal &quot;program-level&quot; code that uses the local package */
+    {   import local.*;
+        x = 20;    // local.x
+        new C();   // local.C
+    }
+
+    /* Function visible outside this fragment accessing the local package */
+    function g() {
+        import local.*;
+        return x;
+    }
+</pre>
+
+<p>
+Typical advertisement code would have very little global-level code:
+</p>
+<pre class="code">
+    internal package doubleclick {
+        function doMyAd() { ... }
+        var isIE3 = ...;
+        var isIE4 = ...;
+    }
+    {   import doubleclick.doMyAd; doubleclick.doMyAd();  }
+</pre>
+
+</div>
+<!-- SECTION [1496-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/d/d571b1c24bf8191fae758026567cccc1.xhtml used -->
+</body>
+</html>

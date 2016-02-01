@@ -1,0 +1,539 @@
+This is the discussion page for [[proposals::nullability]].
+
+====== Dave's proposal ======
+
+===== Notation =====
+
+All (pre-defined) types are written capitalized, including:
+
+  * ''Object''
+  * ''String''
+  * ''Number''
+  * ''Int''
+  * ''Double''
+  * ''Boolean''
+
+**Justification:** lowercase type names introduce confusing associations with the panoply of meanings for them in various other languages. This way there's no potential misconception that they might act like unboxed values as in ES3 or Java.
+
+===== Defaults =====
+
+  * almost all types are nullable by default
+  * the following types are not nullable by default:
+    * ''Number'' and all subclasses, including user-defined subclasses if the ''Number'' classes are non-''final''
+    * ''Boolean''
+
+**Justification:**
+
+  * choosing nullability as the default
+    * I'm not terribly happy about this
+    * but it seems to be "the way of the world"
+    * it might be too draconian for this community if types were non-nullable by default?
+  * almost completely consistent
+    * except for numbers and booleans, everything is nullable
+    * this means there are very few special cases to remember
+  * numbers and booleans are non-nullable
+    * AS users expect this
+    * long tradition going back to C et al
+    * down-sides, though:
+      * it's an exception to the rule
+      * it might lead people to think these are somehow "not normal objects"
+    * might be able to mitigate the effects of this confusion by making these classes immutable
+      * can't tell the difference between "value" and "reference" types if they're immutable
+
+----
+
+TG1 members agreed over several generations, including our current group late last year, to make the Edition 3 "primitive types" be ''Object'' subtypes whose instances are immutable.  So we are mitigating for sure!
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/02/28 23:18//
+
+===== (Non-)Nullability type constructors =====
+
+  * to express a non-nullable type, write ''T!''
+  * to express a nullable type, write ''T?''
+
+----
+
+Alternative syntax proposal to avoid ambiguity with the ''?:'' operator:
+
+  * to express a non-nullable type, write ''T!'' (same as above)
+  * to express a nullable type, write ''?T''
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/03/16 16:49//
+
+===== Redundant annotations =====
+
+We allow redundant annotations such as ''Number!'' or ''String?''.
+
+**Justification:**
+
+  * hey, option types are useful
+  * next step up--''enum'' or ''switch class''--is syntactically much heavier
+  * introduces redundancies such as ''Number!'' and ''String?'' but hey, it's good documentation
+
+===== Subtyping =====
+
+I will probably get this wrong given that a) it's 11:30 and b) I always get this wrong anyway. That's what soundness proofs are for. :)
+
+  * ''T! <: ?T''
+  * ''(?T -> U!) <: (T! -> ?U)''
+
+For example:
+
+<code javascript>class C {
+    function foo(x : Thing!) : Widget {
+        ...
+    }
+}
+
+class D extends C {
+    function foo(x : Thing) : Widget! {
+        ...
+    }
+}</code>
+
+----
+
+Your sub type relations agree with Cardelli et al. I made a small fix to your parameter declarations. You still appear to have remnants of C syntax in your universal grammar :) Don't worry though, it won't take long before the transformation is complete!
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/03/01 12:54//
+
+When I was playing around with the type system I observed that it made more sense (to my non-type-theoretic self) to model nullability as sum types rather than as subtypes.  That is, the type !Object is some primitive type #OBJECT, whereas Object? is the type (sum #NULL #OBJECT).
+
+See my notes in [[clarification:type system]].
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/07 05:24//
+
+===== Initial values =====
+
+In ES3, uninitialized variables are originally bound to the ''undefined'' value. This doesn't fit with the type system, since the ''void'' type is the only type that contains the ''undefined'' value.
+
+=== Initial values for nullable types ===
+
+Variables and fields with nullable types have the initial value ''null''.
+
+=== Initial values for special non-nullable types ===
+
+Non-nullable types do not include either of the values ''null'' or ''undefined'', so variables and fields with non-nullable types must behave appropriately before being explicitly initialized.
+
+Local variables and object properties with certain built-in types, when non-nullable, are given default values. The following table lists those types and their default values:
+
+^Built-in type   ^Default value |
+| ''Boolean''    | ''false''    |
+| ''Number''     | ''0''        |
+| ...            | ???          |
+
+=== Initial values for other non-nullable types ===
+
+Local variables and object properties with other non-nullable types do not have pre-defined values before being explicitly initialized. An exception of type ??? is thrown if a program attempts to read from an uninitialized object property of such a type.
+
+**Note:** we could enforce that local variable declarations must have explicit initializers, but the initializers for ''var'' declarations may still refer to the variables before they are assigned to, and hoisting means that such variables may also be referred to before their initializer.
+
+----
+We might make a new ''UninitializedError'' subtype of ''Error'', but we could do worse than just throw a ''TypeError'' instance if a program attempts to read from an uninitialized slot of non-nullable type.  Or we might want to promote the notion of ''static default value'' for all classes, so that users could count on non-nullable subtypes of those classes working.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/04/21 13:43//
+
+
+
+===== Counter-proposal on initial values =====
+
+The problem with the above proposal is that it requires //all// references to non-nullable fields to include a dynamic check to see that the field has been initialized, which is an expensive price to pay. This happens because method calls may always be kicked off due to implicit ''super'' calls, and these methods may be dynamically overridden:
+
+<code javascript>
+class A {
+    function A() { m() }
+    function m() { }
+}
+
+class B extends A {
+    // looks safe, right?
+    var x : Object!;
+    function B() {
+        this.x = 10
+    }
+}
+
+class C extends B {
+    function m() {
+        // ouch! called before x is initialized!
+        print(this.x)
+    }
+}
+</code>
+
+An alternative is to restrict constructors not to be able to call member methods of the object, nor to pass ''this'' as a parameter to any ''static'' methods or functions. There are a few more subtle restrictions as well, such as disallowing ''eval''.
+
+What about aliasing ''this''? E.g.:
+<code javascript>
+function C() {
+    var x = this
+    this.foo(x)
+}</code>
+Do we need to restrict ''this'' only to being on the LHS of assignments for property intialization?)
+
+This way, no code is ever able to refer to ''this'' except for the constructor body itself, and definite assignment analysis is simple. Now the compiler can easily reject any code that may accesses uninitialized properties.
+
+
+
+===== Providing default values =====
+
+Non-nullable types are pretty strange.
+
+I think it's a bit of a cop-out to introduce non-nullable types as a guarantee against null-pointer errors, and then re-introduce crypto-null-pointer errors in the form of ''UninitializedError'', especially given that these can occur anywhere in the entire program if unrestricted calls are allowed.  I think something like Dave's counterproposal needs to be adopted.
+
+Thus, if a class contains non-nullable fields then many additional constraints apply.  
+
+Those constraints will become painful for some applications.  We may be able to ease their pain by providing a reasonable "static default" mechanism that can be invoked explicitly.  For example, consider a class C:
+
+    class C {
+        var x : OtherClass!;
+    }
+
+We want to enable ''C'' to provide and use a reasonable default value for ''x''.
+
+It is almost certainly the case that ''OtherClass'' should //not// be directly involved in providing that default.  If it were, then there would be a global default value for fields of type ''OtherClass''.  This sounds dangerous: if anyone anywhere modifies that value, then other users of the same value will be surprised.
+
+Thus ''C'', or the application of which ''C'' is a part, should provide the value itself.
+
+Here is something that works but is a little clumsy:
+
+<code javascript>
+    const default_otherClass : OtherClass! = new OtherClass(...);
+
+    class C {
+        var x : OtherClass! = default_otherClass;
+    }
+</code>
+
+The default can be local to a scope:
+
+<code javascript>
+    class C {
+        private static const default_otherClass : OtherClass! = new OtherClass(...);
+
+        var x : OtherClass! = default_otherClass;
+    }
+</code>
+
+This is statically safe, and unproblematic: we can allow constructor calls from the static initializer, with some provision about the call not referencing variables not yet initialized.
+
+This extends easily to use by locals defined in functions and methods, so that non-nullable locals can use this initial value.
+
+One can argue that it may not be possible to call a constructor in ''OtherClass'' that early, because it's not set up for that.  I can't do anything about that.
+
+I can however try to make it more convenient to use this mechanism when it //is// possible to create a default value.
+
+**Proposal sketch**:  The model is this:
+
+<code javascript>
+    class C {
+        private static const default : OtherClass = new OtherClass(...);
+
+        var x : OtherClass!;
+        function f() {
+            var y : OtherClass!;
+        }
+    }
+</code>
+
+Here ''x'' and ''y'' both get the default value for ''OtherClass'' from their class.  (No reason this has to be for non-nullable types only, but I think it's cleaner that way.  Maybe.)
+
+**Generalized proposal sketch**:
+
+The following phrase:
+
+   const default : OtherClass! = new OtherClass(...)
+
+defines a default value for non-nullable slots of type OtherClass in program, package, class, and function top-level scope.  (In block scope you //must// use ''let const''.)  The default object is constructed on entry to the block, before any local variables are bound (including function parameters) and independent of any other bindings in the block.  Bindings in the surrounding block are visible.  In classes it may be ''static''.  Only constructor calls are allowed.  The constructor call may not pass ''this'' or ''super'' if the context of the call is a constructor function.
+
+Whenever a variable of type ''OtherClass!'' is defined, the default value for the type that is in scope is used.  If there is no such value, then draconian restrictions apply to initialization order etc; to be specified.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/26 08:28//
+
+===== A new proposal for non-nullable fields =====
+
+Here's a new proposal for object initialization, requiring only a small change to the semantics of object initialization, but which provides a sound type system that admits non-nullable fields. It requires a small change to the semantics of field initializers, but otherwise addresses all the desiderata.
+
+==== Desiderata ====
+
+We **want** the ability to:
+
+  * declare non-nullable fields
+  * access non-nullable fields without any additional runtime check
+  * use ''this'' in an unrestricted fashion within constructor bodies
+    * call methods and access fields
+    * use important initialization patterns like <code javascript>observer.register(this)</code>
+
+We **don't want** to:
+
+  * access uninitialized, non-nullable fields (ever, ideally)
+  * get runtime ''UninitializedError''s (which are indeed somewhat of a ''NullPointerException'' in disguise)
+  * require complicated static analyses to prevent such errors
+  * require complicated static analyses to optimize away such runtime checks
+
+==== Example ====
+
+As an example, consider the following class:
+
+<code javascript>
+class Foo extends Bar {
+    var thing : Widget! = x;
+    function Foo(x : Widget!, y : String) {
+        super(y);
+        observer.register(this);
+    }
+}
+</code>
+
+Note that the constructor has access to ''this'', which it uses to register the object with some external observer.
+
+Note that the field initializer for ''thing'' accesses the constructor argument ''x''. If this seems too weird, imagine that the syntax might alternatively be something more like:
+<code javascript>
+class Foo(x : Widget!, y : String) extends Bar {
+    var thing : Widget! = x;
+    function Foo {
+        super(y);
+        observer.register(this);
+    }
+}
+</code>
+(This alternative syntax might look more familiar to those who've used [[http://caml.inria.fr/pub/docs/manual-ocaml/manual005.html|O'Caml's object system]].) The field initializer, by contrast, does //not// have access to ''this''.
+
+The correctness of these examples relies on the precise order of object initialization.
+
+==== Proposal ====
+
+The change to the semantics involves the scope of field initializers and the order of initialization.
+
+=== Scope of field initializers ===
+
+  * The arguments to the constructor function are //in scope in field initializer expressions//
+  * The keyword ''this'' is //not in scope in field initializer expressions//
+    * member fields are inaccessible to field initializers
+    * member methods are inaccessible to field initializers
+
+=== Order of initialization ===
+
+Object construction can be thought of as a tree traversal, where for any class, the "left node" is the object fields, the parent is the parent class's construction (i.e., ''super''), and the "right node" is the constructor function body. Object construction proceeds as an in-order traversal of this conceptual tree:
+
+To invoke the construction for the ''Foo'' class:
+  - initialize all fields declared in ''Foo''
+  - recursively invoke the construction of its superclass (i.e., call ''super'', implicitly or explicitly)
+  - execute the ''Foo'' constructor body
+
+Note that because of the recursion, all fields all the way up the inheritance chain will be initialized before any constructor bodies are executed, but none of those field initializations have access to ''this'', so no code is able to access fields before they are initialized. Then all superclasses' constructor bodies are invoked before subclasses, just like normal.
+
+
+==== Alternatives ====
+
+We could enforce the ''this'' restriction only on non-nullable fields, but then those field initializers would have to be executed conceptually as part of the constructor body, i.e., after the non-nullable fields had all been initialized. This would make both the scope and the order of evaluation inconsistent between different fields, which might be confusing. But it's also less restrictive.
+
+We also should decide on the scope of ''let'' at class top level.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2006/04/27 10:12//
+
+Latest thinking from [[block expressions]] under **Notes** is that ''let'' in a class body binds a lexically scoped variable in an implicit block, so you can write class initialization code without having to write an explicit block.  This implicit block and ''var'' vs. ''let'' distinction parallels what we require for global program code (for ''eval''), and in our latest thinking also for function body code (for symmetry and more important, to avoid aliasing via ''arguments'').
+
+I like this proposal.  Restricting non-nullable and nullable alike seems best to me.  Nice work, Dave!
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/04/27 12:00//
+
+==== Some minor objections ====
+
+It's clearly better than what I suggested.  I have a couple of fairly minor objections:
+  * it is pretty bizarre for the formals of the constructor to be available in a lexically disjoint area, and this has negative consequences
+  * the spec allows the super() statement to be anywhere in the constructor, not just in the first position
+
+=== Syntactic matters ===
+
+Since the constructor defines names that are referenced outside the constructor, yet we are in a dynamic-language setting, apparently local changes in the constructor has non-local effects:
+  * an initialization that previously referenced a constructor argument now references something in an outer scope
+  * an initialization that previously referenced a global, say, now references a constructor argument because of the name clash.
+
+I think this needs to be fixed.   Recall what C++ does here:
+
+<code c++>
+    class C {
+      C( int x, Object o )
+        : mx(x)
+        , mo(o)
+      {
+        // constructor body
+      }
+      int mx;
+      Object mo;
+    }
+</code>
+
+We should IMO do something similar, probably using identical syntax:
+
+<code javascript>
+    class C {
+        function C( x : int, o : Object! ) 
+          : mx(x)
+          , mo(o)
+        {
+        }
+        var mo : Object!;
+        var mx : int;
+    }
+</code>
+
+(which happens not to be very ambiguous syntactically because constructors always return void, but I would be happy to find a keyword or other punctuation here to avoid confusion, eg ''initialize'' to replace '':'').  Anyway the rule would be that all non-nullable fields in this instance must be initialized at the time the initializer block completes (ie before any constructor is called).  Everything would otherwise be as Dave proposes.
+
+This restricts the initializers somewhat, since there is no possibility to use ''let'' for local variables to share among initializer expressions.  I doubt this will be a hardship.
+
+=== Super can be called anywhere in the constructur ===
+
+At the March meeting we talked about restricting ''super'' to the first statement in the constructor, which would solve this problem.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/02 00:46//
+
+==== A note on the nullability snowball effect ====
+
+A friend pointed out to me today that non-nullable types could have the same "[[http://www.parashift.com/c++-faq-lite/const-correctness.html#faq-18.3|snowball effect]]" as C++ ''const'' annotations: changing a nullable annotation to a non-nullable one will likely require changing subsequent type annotations, and so on and so on, making it hard to refactor nullable types into non-nullable types except early on in the development process.
+
+The "true" solution (though an unacceptable one for ES) would be to make types non-nullable by default and require them to be annotated as nullable.
+
+The workaround is probably just a dynamic cast:
+
+<code javascript>
+function foo() : Widget { ... }
+function bar(str : !Widget) : Blah { ... }
+
+bar(foo() to !Widget)
+</code>
+If the call to ''foo'' returns ''null'', then the conversion results in a runtime error (''NPE'', alas). It's not ideal, but at least it's localized to exactly the point where you tried to use it in a non-nullable context and caught immediately. This is still better than what would happen without non-nullable types, leaking the ''null'' further down the program, possibly not to surface until some completely unrelated point.
+
+This is probably a reasonable compromise: you can incrementally refactor a nullable type annotation into a non-nullable one by putting casts around other expressions that suddenly don't type-check, and you can choose whether to refactor those other expressions later.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2006/04/29 13:21//
+
+I agree that "const" is a royal pain in the neck, it is a wart on both C and C++ as far as I'm concerned.  (And then to work around the problems with "const" you get things like "mutable".)  We should worry about that trap.
+
+Dave, wouldn't that cast be inserted automatically even in the strict language?
+
+(Anyhow the type is written ''Widget!'' (but ''?Widget''), obviously this is going to trip people up.  Perhaps it's time, now that we've tried to factor type expression syntax from normal expression syntax, to clean that up.)
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/01 23:59//
+
+In the strict mode assignments from T to T! should get an implicit down cast. This diminishes the strength of the static type checker but clearly makes programming easier and probably safer in many cases because programmers will feel free to say what they mean with regard to nullability without having to cast until it compiles.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/05/02 08:18//
+
+Assignment from ''?T'' to ''T!'' may want an implicit cast, but what about argument passing?  I wouldn't want that.
+
+Const-ipation was a hardship, but how bad is it now that standard libraries have been migrated?  It seems worthwhile to me. No comment on ''mutable'' and C++.
+
+In any case, non-nullability is not const-ipation ;-)  My ''Complex'' class should not take null operands for its static operators, and I ought to be able to say so with type annotations.  The ''new'' operator cannot return ''null'', so users who construct ''Complex'' instances can't inadvertently pass ''null''.  If some other object keeps an optional instance on hand using ''maybeComplex : ?Complex'', uses of this slot that flow into ''Complex!''-annotated arguments will have be ''null''-checked -- and such conditioning should eliminate any unwanted static type error for such data flow.
+
+We might want to allow ''class C! { ... }'' to declare ''C'' non-nullable by default: you would need to write ''?C'' to type a nullable reference to ''C''.  (I still like the ''?'' prefix vs. the ''!'' postfix unary type operators, but I may be just strange that way. :-P)
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/05/02 22:49//
+
+On the subject of "Complex" as an example:
+
+You can't have ''Number <: Complex'' because ''Number'' is pre-defined and ''Complex'' is something you put together.
+
+You can't have ''Complex <: Number'' because an automatic up-cast from ''Complex'' to ''Number'' causes information to be lost and anyway this is not a natural view (''Number'' in ECMAScript being an alias for "inexact rational", in Scheme lingo -- ie a limited-precision real number, not a general "number" type).
+
+However, given a value ''c'' that's an instance of ''Complex'', you want to be able to say ''c * 37''.  So what should the signature of the ''*'' operator on ''Complex'' be?  Certainly the arguments can't be of type ''Complex!'' or ''?Complex'', because the type checks will fail unless both arguments are complexes.
+
+I suspect the best you can hope for is
+
+    static public function +(x: Object!, y: Object!) : Object!;
+
+which isn't very good.
+
+On the subject of ''class C!'': 
+
+One definitely wants to be able to introduce names in the type environment that denote non-nullable types by default.  The way one would do that in the system as it stands is by saying
+
+<code>
+    class C { ... }
+    type T = C!;
+</code>
+
+and then use T everywhere except in ''new'' expressions; this is clumsy and error-prone.  I like your suggestion, I think, and it fits in neatly with the notion of Number and Boolean being non-nullable while removing the "magic" of how that's done.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/02 23:57//
+
+I was supposing that ''function to Complex(a:Object!)'' in ''class Complex! {...}'' would do the ''Number'' => ''Complex'' conversion.  Conversions are independent of the subtype relation.  They need to be defined carefully, but if you close your eyes and make a wish, does this hold up as a sketch for how a non-nullable complex number type that allows operators to mix numbers and complex instances might work?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/05/05 18:46//
+
+I keep forgetting the conversions.  So, a full example might be more like this:
+
+<code javascript>
+class Complex! 
+{
+    // Non-nullable class types must have default values
+    public static const default : Complex = new Complex(0,0);
+
+    public function Complex(real : Number, imag : Number) {
+        this.real = real;
+        this.imag = imag;
+    }
+
+    public function to Complex(a : Object!) : Complex {
+        if (a is Complex)
+           return a;
+        if (a is Number || a is int || a is uint || a is Decimal) // subtype relationship??
+           return new Complex(a,0);
+        return new Complex(Number(a), 0);
+    }
+
+    public static function +(a : Complex, b : ?Complex) : Complex {
+        if (b == null) // unary +
+            return a;
+        return new Complex(a.real + b.real, a.imag + b.imag);
+    }
+
+    private var real : Number;
+    private var imag : Number;
+}
+</code>
+
+(Note comments on default values for value types and some iffyness related to testing whether something is a "number".  We probably need to fix the type hierarchy for number s.t. there is a "Number" class with subtypes "float", "int", "uint", and "decimal".  Though there may be other ways of doing it, in particular, "int" and "uint" are subsets of the "float", which in turn is a subset of the "decimal" set, if Graydon's spec is agreed to.  The conditional in the code above does not seem ideal in any case.)
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/05 20:28//
+
+Just ''a is Number'' should suffice for all but ''Decimal'', since 32-bit ''int'' and ''uint'' are subtypes of IEEE double.  ''Decimal'' doesn't fit, but then decimal real and imaginary parts have to be converted with loss of precision and rounding errors anyway.
+
+If we need an explicit name for IEEE double, it must be ''double'' not ''float'', given the heavy hand of C, Java, etc.
+
+Don't forget to handle the unary ''+'' case!  Oops, the [[operators]] spec says that ''null'' is passed as the second actual parameter to indicate application of the unary operator, which requires ''b : ?Complex'' to avoid a type error -- as you noted over there for the class ''C'' example with ''?Number''.  [//[[lth@opera.com|Lars T Hansen]] 2006/05/06 01:54// --- Fixed now.]
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/05/05 23:49//
+
+I know we brought this up at a phone meeting, and I'm not sure what the conclusion was.  Neither ''int'' nor ''uint'' is a subtype of ''Number'' in the draft spec; instead these types are all interconvertible.  I would be surprised if the existence of a conversion operator carries over to ''is''; I doubt that's what you meant to imply.  
+
+It is possible that ''int'' and ''uint'' can't really be subtypes of ''Number'' since the purpose of the narrower types is to be able to represent and manipulate them efficiently.  A subtype relationship may be problematic for parameterized classes and if Number is a dynamic class.  I'm not completely sure it's a problem yet, and I can't construct an example right now, but I'm a little worried.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/06 01:54//
+
+Certainly ''is'' should be ''<:'' and have nothing to do with conversions.
+
+My premise, or vague hope at any rate, was that ''int <: Number'' and ''uint <: Number'' (where ''Number '' is ''double'' by default).  If an implementation optimizes the representation of ''int'' and ''uint'' to use untagged 32-bit words, then upcasting will require some magic.
+
+One way out: the magic is that the same representation can be treated as an ''int'' or a ''Number'' instance.  The implementation would need a few bits somewhere to tag dynamic type.  Every expression that evaluates to type ''Number'' would have to cope.
+
+The integral evaluation cases could be faster, but arithmetic evaluation uses ''Number'', so one can't optimize all operators to integer-domain instructions naively.  The integral types thus become more valuable for storage minimization and common native representation goals.
+
+Another implementation strategy would use the same wider representation (IEEE double) for all of these types, and just enforce constraints on the integral types.  Given arithmetic evaluation's use of ''Number'', this isn't necessarily that bad.
+
+If neither of these approaches is workable, then we should harden the current spec language about ''int'' and ''uint'' being unrelated types to ''Number''.  In this event, you are right that numeric type testing is too verbose and unsightly.  We would want a ''numberp''.
+
+/be
+
+I have argued (weakly) in [[clarification:type hierarchy for numbers]] that it is probably the right thing for the type hierarchy to be flat, as in the draft spec.  You can however do things like this to make life less painful:
+
+<code>
+    type C = (int, uint, Number, Decimal, Complex)
+
+    if (n is C) { ... } // "is" should say yes if its argument is one of the members of a union
+
+    function f(x : C) { ... }  // constraint on x
+</code>
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/23 05:58//

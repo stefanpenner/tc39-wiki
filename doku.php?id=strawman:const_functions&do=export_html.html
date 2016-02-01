@@ -1,0 +1,304 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:const_functions&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:const_functions&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:const_functions&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:const_functions&amp;do=export_html.html#const_functions" class="toc">Const Functions</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:const_functions&amp;do=export_html.html#expressionstatement" class="toc">ExpressionStatement</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:const_functions&amp;do=export_html.html#functiondeclaration" class="toc">FunctionDeclaration</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:const_functions&amp;do=export_html.html#functionexpression" class="toc">FunctionExpression</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:const_functions&amp;do=export_html.html#joining" class="toc">Joining</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:const_functions&amp;do=export_html.html#degenerate_case_may_be_common" class="toc">Degenerate Case May Be Common</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:const_functions&amp;do=export_html.html#examples" class="toc">Examples</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:const_functions&amp;do=export_html.html#high_integrity_factories" class="toc">High Integrity Factories</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="const_functions"></a><h1>Const Functions</h1>
+<div class="level1">
+
+<p>
+ This page proposes to allow the <code>const</code> keyword to appear wherever the <code>function</code> keyword is allowed, with the following consequences:
+</p>
+<ul>
+<li class="level1"><div class="li"> The defined function is born frozen.</div>
+</li>
+<li class="level1"><div class="li"> The defined function&rsquo;s <code>prototype</code> property is born frozen.</div>
+</li>
+<li class="level1"><div class="li"> If the form defines a named variable, then the variable is unassignable, as if defined as a <code>const</code> variable.</div>
+</li>
+<li class="level1"><div class="li"> If the form is a named function declaration, then, like the normal named function declaration, the named variable is initialized at the beginning of its block, rather than where the declaration appears.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1-601] -->
+<a name="expressionstatement"></a><h2>ExpressionStatement</h2>
+<div class="level2">
+<pre class="code">
+  ExpressionStatement : 
+      [lookahead not-in { &quot;{&quot;, &quot;function&quot;, &quot;const&quot;, &quot;class&quot; }] Expression &quot;;&quot;
+</pre>
+
+<p>
+Just as an ExpressionStatement cannot begin with <code>function</code>, it would also not be able to begin with <code>const</code> or <code>class</code>.
+</p>
+
+</div>
+<!-- SECTION [602-882] -->
+<a name="functiondeclaration"></a><h2>FunctionDeclaration</h2>
+<div class="level2">
+<pre class="code">
+  FunctionDeclaration : 
+      &quot;function&quot; Identifier &quot;(&quot; FormalParameterList? &quot;)&quot; &quot;{&quot; FunctionBody &quot;}&quot;
+      &quot;const&quot; Identifier &quot;(&quot; FormalParameterList? &quot;)&quot; &quot;{&quot; FunctionBody &quot;}&quot;
+</pre>
+
+<p>
+For example, the semantics of the FunctionDeclaration <code>const foo(a) {return a(foo);}</code> is equivalent to
+</p>
+<pre class="code javascript">  <span class="kw2">const</span> foo = <span class="kw2">function</span><span class="br0">&#40;</span>a<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> a<span class="br0">&#40;</span>foo<span class="br0">&#41;</span>;<span class="br0">&#125;</span>;
+  Object.<span class="me1">freeze</span><span class="br0">&#40;</span>foo<span class="br0">&#41;</span>;
+  Object.<span class="me1">freeze</span><span class="br0">&#40;</span>foo.<span class="me1">prototype</span><span class="br0">&#41;</span>;</pre>
+<p>
+where those three lines are hoisted to the top of the block containing this function definition, so that
+</p>
+<ul>
+<li class="level1"><div class="li"> the variable <code>foo</code> cannot be observed in a non-initialized state (and so no read barrier is needed).</div>
+</li>
+<li class="level1"><div class="li"> the function cannot be observed in a non-frozen state.</div>
+</li>
+<li class="level1"><div class="li"> the value of the function&rsquo;s <code>prototype</code> property cannot be observed in a non-frozen state.</div>
+</li>
+</ul>
+
+<p>
+ In all the expansions shown on this page, when we use <code>Object.freeze</code>, we actually mean the original binding of <code>Object.freeze</code>, not the current binding. In this sense, these expansions are as-if hygienic, and so are not simply naive syntactic sugar.
+</p>
+
+</div>
+<!-- SECTION [883-1966] -->
+<a name="functionexpression"></a><h2>FunctionExpression</h2>
+<div class="level2">
+<pre class="code">
+  FunctionExpression : 
+      &quot;function&quot; Identifier? &quot;(&quot; FormalParameterList? &quot;)&quot; &quot;{&quot; FunctionBody &quot;}&quot;
+      &quot;const&quot; Identifier? &quot;(&quot; FormalParameterList? &quot;)&quot; &quot;{&quot; FunctionBody &quot;}&quot;
+</pre>
+
+<p>
+The semantics of the FunctionExpression <code>const foo(a) {return a(foo);}</code> is equivalent to the expression
+</p>
+<pre class="code javascript">  <span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span>
+    <span class="kw2">const</span> foo = <span class="kw2">function</span><span class="br0">&#40;</span>a<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> a<span class="br0">&#40;</span>foo<span class="br0">&#41;</span>;<span class="br0">&#125;</span>;
+    Object.<span class="me1">freeze</span><span class="br0">&#40;</span>foo<span class="br0">&#41;</span>;
+    Object.<span class="me1">freeze</span><span class="br0">&#40;</span>foo.<span class="me1">prototype</span><span class="br0">&#41;</span>;
+    <span class="kw1">return</span> foo;
+  <span class="br0">&#125;</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="br0">&#41;</span></pre>
+<p>
+The expansion here is a bit trickier. However, since two function boundaries do not violate TCP (tennent correspondence principle) any more than one, this works.
+</p>
+
+<p>
+The semantics of the FunctionExpression <code>const(a) {return a;}</code> is equivalent to the expression
+</p>
+<pre class="code javascript">  <span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span>func<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    Object.<span class="me1">freeze</span><span class="br0">&#40;</span>func<span class="br0">&#41;</span>;
+    Object.<span class="me1">freeze</span><span class="br0">&#40;</span>func.<span class="me1">prototype</span><span class="br0">&#41;</span>;
+    <span class="kw1">return</span> func;
+  <span class="br0">&#125;</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span>a<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> a;<span class="br0">&#125;</span><span class="br0">&#41;</span></pre>
+<p>
+This expansion carefully avoids any conflict with other possible uses of the parameter name <code>func</code>. (Obviously, a hygienic expansion system can avoid such name conflicts without resort to such games.)
+</p>
+
+</div>
+<!-- SECTION [1967-3088] -->
+<a name="joining"></a><h1>Joining</h1>
+<div class="level1">
+
+<p>
+ Often, convenient coding patterns will express more function evaluations than are really needed. For example:
+</p>
+<pre class="code javascript">  <span class="kw2">function</span> divisible<span class="br0">&#40;</span>m<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> <span class="kw2">function</span><span class="br0">&#40;</span>list<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">return</span> list.<span class="me1">filter</span><span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span>n<span class="br0">&#41;</span> <span class="br0">&#123;</span> 
+        <span class="kw1">return</span> n%m === <span class="nu0">0</span>; 
+      <span class="br0">&#125;</span><span class="br0">&#41;</span>; 
+    <span class="br0">&#125;</span>;
+  <span class="br0">&#125;</span>
+  <span class="kw2">const</span> even = divisible<span class="br0">&#40;</span><span class="nu0">2</span><span class="br0">&#41;</span>;</pre>
+<p>
+The anonymous function passed to <code>filter</code> does not capture any variables defined by its immediately enclosing block, so it seems wasteful to evaluate it to a fresh closure with a fresh identity each time the expression is evaluated. The text of the EcmaScript 3 (ES3) spec sought to allow an optimization equivalent to the following rewrite (where variable names ending with triple underbar are assumed not to conflict with any other identifiers):
+</p>
+<pre class="code javascript">  <span class="co1">// BAD NON-TRANSPARENT JOINING OPTIMIZATION</span>
+  <span class="kw2">function</span> divisible<span class="br0">&#40;</span>m<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">function</span> t1___<span class="br0">&#40;</span>n<span class="br0">&#41;</span> <span class="br0">&#123;</span> 
+      <span class="kw1">return</span> n%m === <span class="nu0">0</span>; 
+    <span class="br0">&#125;</span>
+    <span class="kw1">return</span> <span class="kw2">function</span><span class="br0">&#40;</span>list<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">return</span> list.<span class="me1">filter</span><span class="br0">&#40;</span>t1___<span class="br0">&#41;</span>; 
+    <span class="br0">&#125;</span>;
+  <span class="br0">&#125;</span>
+  <span class="kw2">const</span> even = divisible<span class="br0">&#40;</span><span class="nu0">2</span><span class="br0">&#41;</span>;</pre>
+<p>
+However, when these are full functions, that &ldquo;optimization&rdquo; is hardly transparent, since each of the original&rsquo;s generated functions is separately mutable and has a <code>.prototype</code> object which is also separately mutable. All major implementations of ES3 (and all implementations of which I&rsquo;m aware) wisely avoided this &ldquo;optimization&rdquo; because of this problem; and the ES5 spec no longer allows this optimization. However, using const functions instead:
+</p>
+<pre class="code javascript">  <span class="kw2">const</span> divisible<span class="br0">&#40;</span>m<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> <span class="kw2">const</span><span class="br0">&#40;</span>list<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">return</span> list.<span class="me1">filter</span><span class="br0">&#40;</span><span class="kw2">const</span><span class="br0">&#40;</span>n<span class="br0">&#41;</span> <span class="br0">&#123;</span> 
+        <span class="kw1">return</span> n%m === <span class="nu0">0</span>; 
+      <span class="br0">&#125;</span><span class="br0">&#41;</span>; 
+    <span class="br0">&#125;</span>;
+  <span class="br0">&#125;</span>
+  <span class="kw2">const</span> even = divisible<span class="br0">&#40;</span><span class="nu0">2</span><span class="br0">&#41;</span>;</pre>
+<p>
+the corresponding joining optimization
+</p>
+<pre class="code javascript">  <span class="kw2">const</span> divisible<span class="br0">&#40;</span>m<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">const</span> t1___<span class="br0">&#40;</span>n<span class="br0">&#41;</span> <span class="br0">&#123;</span> 
+      <span class="kw1">return</span> n%m === <span class="nu0">0</span>; 
+    <span class="br0">&#125;</span>
+    <span class="kw1">return</span> <span class="kw2">const</span><span class="br0">&#40;</span>list<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">return</span> list.<span class="me1">filter</span><span class="br0">&#40;</span>t1___<span class="br0">&#41;</span>; 
+    <span class="br0">&#125;</span>;
+  <span class="br0">&#125;</span>
+  <span class="kw2">const</span> even = divisible<span class="br0">&#40;</span><span class="nu0">2</span><span class="br0">&#41;</span>;</pre>
+<p>
+clearly preserves the intent of the original but for the separate identities of the function and its prototype object. Thus, it makes sense to require this optimization. We propose the following fixpoint rule:
+</p>
+
+<p>
+Loop
+</p>
+<ul>
+<li class="level1"><div class="li"> For each <code>const</code> FunctionDeclaration or FunctionExpression <em>f</em>,</div>
+<ul>
+<li class="level2"><div class="li"> Let <em>s</em> be the outermost lexical scope (strict block, function, or program) enclosing <em>f</em>.</div>
+</li>
+<li class="level2"><div class="li"> for each variable <em>v</em> used freely in <em>f</em>,</div>
+<ul>
+<li class="level3"><div class="li"> If <em>v</em> is defined by a declaration (<code>let</code>, <code>const</code>, <code>var</code>, or <code>function</code>) in an enclosing lexical scope <em>s1</em>,</div>
+<ul>
+<li class="level4"><div class="li"> Let <em>s</em> be the nearest of <em>s</em> and <em>s1</em>.</div>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="level2"><div class="li"> <em>s</em> is now the outermost scope at which <em>f</em> could have been declared.</div>
+</li>
+<li class="level2"><div class="li"> Allocate <em>f</em> once per entry of <em>s</em>, as if it had become a declaration in <em>s</em> of an unmentioned variable.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> If no const functions were promoted by the above steps, exit.</div>
+</li>
+</ul>
+
+<p>
+ This is a simple deterministic rule that is easy to implement and provides virtually all the benefit that a more unpredictable &ldquo;implementation defined&rdquo; exemption would allow. By this rule, the expansion shown above is a fixpoint, since the free <code>m</code> prevents <code>t1___</code> from being promoted further, and thus the free <code>t1___</code> in the remaining anonymous function prevents it from being promoted further.
+</p>
+
+</div>
+<!-- SECTION [3089-6317] -->
+<a name="degenerate_case_may_be_common"></a><h2>Degenerate Case May Be Common</h2>
+<div class="level2">
+
+<p>
+ The example above limits hoisting in order to better explain the proposed mechanics. However, with the availability of array generics, the common case may be the degenerate case where a const function can be promoted all the way to top level, giving maximal benefit. Using this same example, it is now concise enough to extract the even members of a list where needed that one-off uses will often just open code it in place:
+</p>
+<pre class="code javascript">  <span class="co1">//...</span>
+    <span class="co1">//...arbitrarily nested...</span>
+    <span class="kw2">var</span> evenList = list.<span class="me1">filter</span><span class="br0">&#40;</span><span class="kw2">const</span><span class="br0">&#40;</span>n<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> n%<span class="nu0">2</span> === <span class="nu0">0</span>; <span class="br0">&#125;</span><span class="br0">&#41;</span>; 
+    <span class="co1">//..</span>
+  <span class="co1">//...</span></pre>
+<p>
+Since the const function above is closed (has no free variables), it would get promoted all the way. 
+</p>
+<pre class="code javascript">  <span class="kw2">const</span> t1___<span class="br0">&#40;</span>n<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> n%<span class="nu0">2</span> === <span class="nu0">0</span>; <span class="br0">&#125;</span>
+  <span class="co1">//...</span>
+    <span class="co1">//...arbitrarily nested...</span>
+    <span class="kw2">var</span> evenList = list.<span class="me1">filter</span><span class="br0">&#40;</span>t1___<span class="br0">&#41;</span>; 
+    <span class="co1">//..</span>
+  <span class="co1">//...</span></pre>
+<p>
+By adopting this promotion rule, the program notation avoids the distraction cost of this non-local code organization while still painlessly obtaining all the benefits.
+</p>
+
+</div>
+<!-- SECTION [6318-7369] -->
+<a name="examples"></a><h1>Examples</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [7370-7393] -->
+<a name="high_integrity_factories"></a><h2>High Integrity Factories</h2>
+<div class="level2">
+
+<p>
+ Const functions combined with ES5&rsquo;s <code>Object.freeze</code> provide a more convenient syntax for high integrity factories than anything that can be expressed in ES5 by itself.
+</p>
+<pre class="code javascript">  <span class="kw2">const</span> Point<span class="br0">&#40;</span>x, y<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span>
+      getX: <span class="kw2">const</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> x; <span class="br0">&#125;</span>,
+      getY: <span class="kw2">const</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> y; <span class="br0">&#125;</span>,
+      add: <span class="kw2">const</span><span class="br0">&#40;</span>otherPt<span class="br0">&#41;</span> <span class="br0">&#123;</span> 
+        <span class="kw1">return</span> Point<span class="br0">&#40;</span>x + otherPt.<span class="me1">getX</span><span class="br0">&#40;</span><span class="br0">&#41;</span>,
+                     y + otherPt.<span class="me1">getY</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+      <span class="br0">&#125;</span>,
+      toString: <span class="kw2">const</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="st0">'&lt;'</span> + x + <span class="st0">','</span> + y + <span class="st0">'&gt;'</span>; <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span></pre>
+<p>
+or, if we wish the factory to have the <code>instanceof</code> behavior associated with constructors, we can also make use of ES5&rsquo;s <code>Object.create</code>.
+</p>
+<pre class="code javascript">  <span class="kw2">const</span> Point<span class="br0">&#40;</span>x, y<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> Object.<span class="me1">freeze</span><span class="br0">&#40;</span>Object.<span class="me1">create</span><span class="br0">&#40;</span>Point.<span class="me1">prototype</span>, <span class="br0">&#123;</span>
+      getX: <span class="br0">&#123;</span>value: <span class="kw2">const</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> x; <span class="br0">&#125;</span><span class="br0">&#125;</span>,
+      getY: <span class="br0">&#123;</span>value: <span class="kw2">const</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> y; <span class="br0">&#125;</span><span class="br0">&#125;</span>,
+      add: <span class="br0">&#123;</span>value: <span class="kw2">const</span><span class="br0">&#40;</span>otherPt<span class="br0">&#41;</span> <span class="br0">&#123;</span> 
+        <span class="kw1">return</span> Point<span class="br0">&#40;</span>x + otherPt.<span class="me1">getX</span><span class="br0">&#40;</span><span class="br0">&#41;</span>,
+                     y + otherPt.<span class="me1">getY</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+      <span class="br0">&#125;</span><span class="br0">&#125;</span>,
+      toString: <span class="br0">&#123;</span>value: <span class="kw2">const</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="st0">'&lt;'</span> + x + <span class="st0">','</span> + y + <span class="st0">'&gt;'</span>; <span class="br0">&#125;</span><span class="br0">&#125;</span>
+    <span class="br0">&#125;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span></pre>
+<p>
+Of course, sweeter sugar such as <a href="doku.php%3Fid=strawman:classes_as_sugar.html" class="wikilink1" title="strawman:classes_as_sugar" onclick="return svchk()" onkeypress="return svchk()">Classes as Sugar</a> would make high integrity factories even easier. 
+</p>
+
+</div>
+<!-- SECTION [7394-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/a/a9fa081910380d387559dfff9f501553.xhtml used -->
+</body>
+</html>

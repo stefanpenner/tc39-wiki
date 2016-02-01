@@ -1,0 +1,62 @@
+(Also see the [[discussion:resurrected eval|discussion page]] for this proposal.)
+
+====== Resurrected eval ======
+
+===== Motivation =====
+
+The situation with ''eval'' is that 3rd Edition allows the implementation to prohibit it in genuinely useful and unproblematic situations.  We want to fix that.
+
+===== Proposal =====
+
+As in the 3rd edition, ''eval'' is defined as a method on the global object.  Each global object has a distinguished ''eval'' function that is tied to that global object.
+
+
+==== eval as a function ====
+
+If a variable reference ''eval'' references the ''eval'' property on the global object that's the base object for the reference, and the ''eval'' property has its original value, and the variable reference is used as the MemberExpression on a CallExpression, as in
+<code>
+    eval(s)
+</code>
+then the result shall be that the argument s is evaluated in the normal way (ES3 15.1.2.1).
+
+
+==== eval as a method on the global object ====
+
+If a property reference ''o.eval'' references the ''eval'' property on a global object ''o'', and the ''eval'' property has its original value, and the property reference is used as the MemberExpression on a MethodCallExpression, as in
+<code>
+    o.eval(s)
+</code>
+then the result shall be that the argument s is evaluated in the normal way in the context of that global object only.
+
+----
+
+Testing IE7 shows that it does not substitute ''o'' for the dynamic scope. Copy ''javascript:x="global";(function(x,s){return window.eval(s)})("param","x")'' into the address toolbar and you'll see "param" as the text of the generated document, not "global". Removing the ''window.'' does not change this behavior. So IE JScript is not prepending ''window'' to the ''eval'' caller's scope chain to get a scope chain for the ''eval''ed program.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/05/30 16:50//
+
+Further testing with two HTML files, one loaded in an ''iframe'' in the other, reveals that IE does use the indirecting object to find a dynamic scope, which if nothing is active on that global object will be the object itself. Thus ''window.eval(s)'' in a function scoped by ''window'' is equivalent to ''eval(s)''. ''otherWindow.eval(s)'' uses ''otherWindow'' as scope, but if this call is from a function scoped by ''otherWindow'', that function's dynamic scope is used, as in the single-window case (that dynamic scope chain ends in ''otherWindow'').
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/05/30 17:33//
+
+==== Restrictions on eval ====
+
+Every other use of the original value of the ''eval'' property apart from just passing it around is an error, and the implementation shall throw an EvalError if the ''eval'' function is called in any other context than the ones that are specified above.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/09/21 09:56//
+
+We more recently agreed to make ''use strict'' change ''eval'' such that it cannot create bindings in its dynamic scope that shadow outer bindings, subverting type checking. So a program such as
+
+<code>
+    use strict;
+    eval("var x = 42");
+</code>
+
+results in a run-time error, and so would ''const'' or a ''function'' -- only ''let'' bindings may be used in such a restricted ''eval''.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/05/30 16:28//
+
+===== Notes =====
+
+The committee has approved this proposal but admits that a few issues remain, notably the scoping issues around ''window.eval''.  These will be worked out in the spec, not here.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/09/11 20:02//

@@ -1,0 +1,95 @@
+====== Fixed Properties for Proxies ======
+
+Goal: allow proxies to emulate non-configurable properties, without breaking the invariants implied by ''configurable:false''.
+
+In what follows, a __fixed property__ is a non-configurable property that is observed as the return value from the ''get{Own}PropertyDescriptor'' traps, or as an input argument to a successful ''defineProperty'' trap invocation. In other words, fixed properties are exposed non-configurable properties of Proxy objects.
+
+This strawman proposes to allow proxies to expose non-configurable properties, provided that the following invariants are upheld:
+
+  * get{Own}PropertyDescriptor cannot report fixed properties as non-existent
+  * get{Own}PropertyDescriptor cannot report incompatible changes to a fixed property (e.g. reporting a non-configurable property as configurable, or reporting a non-configurable, non-writable property as writable)
+  * defineProperty cannot complete successfully when incompatible changes are made to the attributes of fixed properties
+  * when a proxy is fixed, no incompatible changes to fixed properties can be made (i.e. properties returned by the fix() trap are combined with fixed properties before fixing the proxy)
+  * delete cannot report a successful deletion of a fixed property
+  * hasOwn cannot report a fixed property as non-existent
+  * has cannot report a fixed property as non-existent
+  * get cannot report inconsistent values for non-writable fixed data properties
+  * set cannot report a successful assignment for non-writable fixed data properties
+
+These invariants are derived from the [[es3.1:attribute_states|allowable state transitions]] of ES5 property descriptors, and from ES5 Section 8.6.2, "Object Internal Properties and Methods".
+
+==== Enforcing the invariants ====
+
+Two approaches were identified:
+  - **Trap-and-enforce**: The proxy stores a copy of all fixed properties. Traps whose name corresponds to a fixed property are still triggered, but the result of the trap is checked for conformance against the copy. ''defineProperty'' updates the copy if the trap completes successfully. A failed check causes a ''TypeError'' to be thrown.
+  - **Short-circuiting**: The proxy stores a copy of all fixed properties. Traps whose name corresponds to a fixed property are no longer triggered, the proxy instead applies the default behavior on its copy of the property.
+
+This strawman proposes the trap-and-enforce model. An earlier version proposed the short-circuiting approach, but was retracted because of the following:
+  * Operating on the copy of a property without trapping could cause the copy to diverge from the "virtual" property. The strawman could be patched up to the point where e.g. Array's non-configurable ''length'' could be emulated, but it was ad hoc.
+  * The short-circuiting approach required changes to the Proxy API and had implications on the default forwarding handler. The trap-and-enforce approach requires no such changes.
+  * Inherited fixed properties exposed through ''getPropertyDescriptor'' would be wrongfully exposed as own properties.
+  * Short-circuited proxies caused a surprising information leak when used as membrane wrappers: a revoked membrane wrapper would continue to expose fixed properties.
+
+==== Required checks ====
+
+To check whether a descriptor for ''name'' is "compatible", is equivalent to testing whether the built-in %%[[DefineOwnProperty]]%% method on a regular ''Object'' that contains an own ''name'' property completes successfully.
+
+  * ''get{Own}PropertyDescriptor(name)'': check whether ''name'' was fixed. If so, check whether the returned descriptor is compatible. If the returned descriptor is non-configurable, mark it as fixed.
+  * ''defineProperty(name,desc)'': check whether ''name'' was fixed. If so, and if ''defineProperty'' completes successfully, check whether the changes made are compatible, and record the changes. If ''desc'' is non-configurable, mark it as fixed.
+  * ''fix()'': for each fixed property returned by the trap, check whether its descriptor is compatible.
+  * ''delete(name)'': check whether ''name'' is fixed. If so, check whether the trap returns ''false''.
+  * ''hasOwn(name)'': check whether ''name'' is fixed. If so, check whether the trap returns ''true''.
+  * ''has(name)'': check whether ''name'' is fixed. If so, check whether the trap returns ''true''.
+  * ''get(name)'': check whether ''name'' is fixed. If so, and if it is a non-writable data property, check whether the returned value is consistent (using ''SameValue'').
+  * ''set(name,val)'': check whether ''name'' is fixed. If so, and if it is a non-writable data property, check whether the trap returns ''false''.
+
+The following traps require no checks. In principle, these traps could check whether all fixed properties are included, but that check is costly (cost of the check proportional to number of fixed properties):
+  * ''get{Own}PropertyNames()''
+  * ''keys()''
+  * ''enumerate()''
+
+==== Specification ====
+
+The built-in %%[[DefineOwnProperty]]%% and %%[[GetOwnProperty]]%% methods of proxies in the trap-and-enforce approach could be defined as follows:
+
+**%%[[DefineOwnProperty]]%% (P, Desc, Throw)**
+
+When %%[[DefineOwnProperty]]%% is called on a trapping proxy ''O'', the following steps are taken:
+
+  - Let handler be the value of the %%[[Handler]]%% internal property of O.
+  - Let defineProperty be the result of calling the %%[[Get]]%% internal method of handler with argument “defineProperty”.
+  - If defineProperty is undefined, throw a TypeError exception.
+  - If IsCallable(defineProperty) is false, throw a TypeError exception.
+  - Call the %%[[Call]]%% internal method of defineProperty providing handler as the this value, P as the first argument and Desc as the second argument.
+  - Let fixedProperty be the result of calling Object.%%[[GetOwnProperty]]%% ( P ) on O.
+  - If fixedProperty is not undefined, or Desc.%%[[Configurable]]%% is false
+    * a. Return the result of calling Object.%%[[DefineOwnProperty]]%%(P, Desc, Throw) on O.
+  - Return true.
+
+Here, Object.%%[[GetOwnProperty]]%% and Object.%%[[DefineOwnProperty]]%% refer to the algorithms for Object values from ES5 sections 8.12.1 and 8.12.9 respectively, but applied to a trapping proxy instead.
+
+**%%[[GetOwnProperty]]%% (P)**
+
+When %%[[GetOwnProperty]]%% is called on a trapping proxy ''O'', the following steps are taken:
+
+  - Let handler be the value of the %%[[Handler]]%% internal property of O.
+  - Let getOwnProperty be the result of calling the %%[[Get]]%% internal method of handler with argument “getOwnPropertyDescriptor”.
+  - If getOwnProperty is undefined, throw a TypeError exception.
+  - If IsCallable(getOwnProperty) is false, throw a TypeError exception.
+  - Let trapResult be the result of calling the %%[[Call]]%% internal method of getOwnProperty providing handler as the this value and P as the first argument.
+  - Let fixedProperty be the result of calling Object.%%[[GetOwnProperty]]%%( P ) on O
+  - If trapResult is undefined
+    * a. If fixedProperty is undefined, return undefined
+    * b. Otherwise, fixedProperty is defined, so throw a TypeError
+  - Let desc be ToCompletePropertyDescriptor(trapResult)
+  - If fixedProperty is not undefined, or desc.%%[[Configurable]]%% is false
+    * a. call Object.%%[[DefineOwnProperty]]%%(P, desc, true) on O
+  - Return desc
+
+==== Open issues ====
+  * A straightforward implementation of the trap-and-enforce model requires the proxy to store copies of fixed properties. This cost is proportional to the number of fixed properties. This may be an issue for virtual objects exposing a large or infinite number of non-configurable properties. One way out is to model such abstractions only in terms of configurable properties. Even if a proxy exposes a property as being configurable, it can still choose to ignore any changes requested via ''defineProperty''.
+  * Even if the handler no longer retains a reference to the value of a fixed property, the proxy must retain a live reference to its exposed value, to check whether the value returned from ''get'' is unchanged. Only when the proxy becomes fixed can these references be cleared.
+
+==== References ====
+
+  - A [[http://code.google.com/p/es-lab/source/browse/trunk/src/proxies/FixedHandler.js|prototype implementation]] of this strawman as a wrapper around regular Proxy handlers.

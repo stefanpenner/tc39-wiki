@@ -1,0 +1,30 @@
+====== Avoid Strictness Contagion ======
+
+In ES5, one can either opt-in to strict mode 
+  * on a per-program basis, by putting the ''"use strict"'' directive at the top of a Program production, 
+  * or a per-function basis, by putting the ''"use strict"'' directive at the top of a function body. 
+Web testing of the Firefox 4 beta reveals an unexpected hazard of the first choice: Some build systems apparently concatenate separate files (written to be separate Programs) together into the text of a single Program script. Say the first of these files was written to be compatible with ES5/strict, but the rest are not. If that first file opts in by placing a ''"use strict"'' directive at the top of the file's text, on ES5 conformant browsers, this concatenation strategy causes all the remaining files to be interpreted as strict, potentially breaking them. Alternatively, if the strict file opts is using the per function strategy as follows:
+
+<code javascript>
+  (function(){
+    "use strict";
+    //... file's original contents ...
+  }).call(this);
+</code>
+
+then the strictness does not bleed past its intended scope. Of course, this refactoring isn't quite as straightforward as a simple lexical nesting. If there were top level variable declarations in the original, these variables could be declared first outside the function and then assigned rather than declared within the function.
+
+<code javascript>
+  var someGlobal;
+  (function(){
+    "use strict";
+    //...
+    someGlobal = ...; // used to be "var someGlobal = ...;
+    //...
+  }).call(this);
+</code>
+
+
+====== See ======
+
+[[https://mail.mozilla.org/pipermail/es-discuss/2010-September/011769.html|"use strict"; prepended blindly to scripts in the wild]] -- where this anti-pattern was first reported on es-discuss.

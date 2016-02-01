@@ -1,0 +1,112 @@
+====== Motivation ======
+
+It is not uncommon for JavaScript programs to contain strings within strings. JavaScript currently provides support for up to two levels. This is sometimes inadequate.
+
+
+====== Proposal ======
+
+It is proposed that JavaScript's string literal syntax be extended to permit triple-quoted strings. Triple quoted strings are allowed to span multiple lines, the line break characters becoming part of the string. Single quote characters or pairs of quote characters within the string do not need to be escaped.
+
+A triple quoted string literal is bounded by either
+
+<code>
+"""
+...
+
+"""
+</code>
+or
+<code>
+'''
+...
+'''
+</code>
+Within the string, the same pattern of three quote characters is not permitted unless it is preceded by a backslash. Line breaking characters are allowed and become part of the string.
+
+''""""!""""'' produces the same result as ''"!"''.
+
+''""""""""'' produces the same result as ''""''.
+
+''"""\""""""'' produces the same result as ''"\"\"\""''.
+
+<code>
+'''
+'''
+</code> could produce ''"\n"'' or ''"\r"'' or ''"\r\n"'', depending upon the line-ending convention of the source text.
+
+The backslash escape notation for triple quoted string literals is the same as for single quoted string literals.
+
+----
+The last statement seems to conflict with the rule for backslash-escaping ''"""'', trivially.  In ES3, ''"\""'' shows an escaped double quote, but in a triple-(double-)quoted string the backslash would escape the next three characters, all of which would be required to be ''"'' -- right?
+
+Obviously, it's no problem to write ''"'' in a triple-quoted string instead of ''\"'' (it's part of the solution!), but a more precise specification for how backslash-escaping works when the character after the backslash is the (single) quote character used to triple-quote the enclosing string would be helpful.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/08/24 14:31//
+
+---- 
+
+I want to be able to put any single quote string in triple quotes and not break anything. So ''""""""""'' produces ''"\"\""''.
+A string ends when ''"""'' or ''""""'' or ''"""""'' is seen. Only non-escaped quotes are considered in terminating the string.
+
+----
+
+Ok, that's clear but it seems to contradict:
+
+''"""\""""""'' produces the same result as ''"\"\"\""''.
+
+(I've restored the wiki inline code font quoting using two apostrophes in a row on both sides of the quoted text.  I think I've got it right.  If not, we should use plain text email to sort out what we mean. :-P)
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/08/31 00:31//
+
+----
+
+Yeah, the wiki is really getting in the way of expressing this. Let me try it this way:
+
+When the tokenizer sees a " or ', it counts the number of similar characters in sequence. What it does next depends upon the count.
+
+1 Begin scanning an ordinary string. Accumulate characters until a matching unescaped quote character is seen.
+
+2 Make an empty string token.
+
+3 Begin scanning a triple quote string.
+
+4 Begin scanning a triple quote string that begins with a quote character.
+
+5 Begin scanning a triple quote string that begins with two quote characters.
+
+6 Make an empty string token.
+
+7 Make a string containing one quote character.
+
+8 Make a string containing two quote characters.
+
+9+ Syntax error.
+
+While scanning a triple quote string, if an unescaped matching quote character is seen, count the number of similar characters in sequence.
+
+1 Accumulate a quote character.
+
+2 Accumulate two quote characters.
+
+3 Finish the triple quote string.
+
+4 Accumulate a quote character and finish the triple quote string.
+
+5 Accumulate two quote characters and finish the triple quote string.
+
+6+ Syntax error.
+
+----
+Thanks, that helps.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/09/02 22:07//
+
+----
+
+At the Oslo meeting (May 2007), we decided that triple-quoted strings would be greedy when looking for the closing triple-quotes.  This is nearly the same as the above proposal, except that 16 quote characters now scans as a string of 10 quote characters (rather than being an error).
+
+ --- //[[chrispi@opera.com|Chris Pine]] 2007/05/23 06:10//
+
+See also [[line terminator normalization]] for an issue raised by triple quotes.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/05/24 02:37//

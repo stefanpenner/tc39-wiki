@@ -1,0 +1,166 @@
+(Also see the [[discussion:strict and standard modes|discussion page]] for this proposal)
+
+====== Motivation ======
+
+===== Strict and Standard compilation modes =====
+
+Following ActionScript 3's lead, we propose two "modes" for ECMAScript, one which is necessarily statically typed and one which is not. The two modes' behaviors should be consistent, but the static mode should reject programs statically that it conservatively predicts may exhibit type-related errors. The standard mode should strive for compatibility with edition 3 and provide maximum flexibility without compromising runtime type safety.
+
+We would like to allow all ECMAScript programmers to express invariants and detect errors as early as possible, regardless of which compilation mode they choose. In the statically typed (strict) mode, some of these errors should be detectable before runtime, but in the dynamically typed (standard) mode, the errors should at least generate runtime errors as soon as possible. 
+
+In order to specify the two modes' runtime behavior consistently, we specify the dynamic semantics of ECMAScript in a single, unified, dynamically typed language. In other words, the choice of strict or standard mode does not affect the meaning of a legal program; it only affects the definition of "legality". Some programs that are legal in standard mode -- and might even make perfect sense -- cannot be proven safe in strict mode, so are rejected. In addition to static type checking, the strict mode also statically detects and rejects certain programming errors common in ECMAScript 3 programs (e.g. calling functions with the wrong number of arguments and assigning to nonexistent variables.)
+
+Optimizing compilers may prove some amount of the required dynamic checks redundant, and elide them. Some such optimizations may become easier or more pervasive on programs that are legal in strict mode. This specification does not describe any such optimizations, though it introduces opportunities for them. Strict mode is not intended as a way to alter or improve performance. On a purely dynamic implementation, strict mode may even run //slower// due to the extra static analysis phase. Strict mode is only meant as a way for programmers to indicate their desire for more extensive and conservative error analysis. All programs, regardless of mode, must execute as though they were performing all dynamic checks. 
+
+===== Clarification of phases =====
+
+Furthermore, we propose we clarify the phases of execution, i.e., what meta-operations (such as type checking) occur when and which expressions are evaluated when. We expect the formalization will help out here.
+
+===== Ease of dynamic compilation ======
+
+As one important application area for the standard mode is small systems, we would like the mode to address needs of those systems.  In particular:
+
+  * The standard mode should be compilable in a single forward pass without building syntax trees for statements (though not necessarily without using a little cleverness)
+  * In the standard mode it should ideally be possible to ignore **all** type annotations and apply type checking only in operators, just as in 3rd Edition.  Such a constraint requires that assignments be rewritten with ''to'' conversions inserted on the right side of the assignment when it cannot be proven that such conversion operations would have no effect.
+
+====== Phases of execution ======
+
+   * Parsing – translate source text into syntax trees
+   * Definition – compute necessarily constant values including class, interface, type, namespace initialisers and use namespace arguments
+   * Verification [optional] – check the program for potential semantic errors
+   * Evaluation – compute side effects and values
+
+===== Parsing =====
+
+Verify syntax of source text and hoist definitions, but not their initialisers (except functions), to the beginning of their scope defining blocks.
+Insert a ''to'' operator to convert the value of an assignment to the type of the destination slot. Since the destination slot is not always known at compile time, this transformation sometimes requires that the type be expressed in terms of a reference to the slot type, known here as a **type reference**.
+
+Thus,
+
+<code>
+x = y
+</code>
+
+Can be rewritten as,
+
+<code>
+x = y to TYPEREF(x)
+</code>
+
+where TYPEREF(x) is a meta notation that means "the value of the type annotation of slot x"
+
+
+Check that:
+
+  * the program is correct according to the context-free grammar (see [[proposals::normative grammar]])
+  * no use of the 'super' statement outside a constructor
+  * no use of the 'super' expression outside an instance method
+  * no use of the 'this' expression outside an instance method, function closure, or global code
+  * no duplicate labels in a statement nest
+  * an imported package has been parsed
+
+===== Definition phase =====
+
+Compute the values of constant definitions: namespace, class, interface, type and use namespace and import pragma arguments. These values might depend on const variables whose values are known during this phase (see "Computing known values" below). Evaluating constant definitions before their uses are computed in later phases allows for forward references during those later phases.
+
+A reference to a type definition is evaluated during the definition phase and the resulting type value replaces that reference.
+
+Check that:
+
+   * expressions used to initialise constant definitions have known values
+   * duplicate incompatible definitions (including in interfaces and class overrides) do not exist
+
+
+
+==== Computing known values ====
+
+During the defintion phase known values are computed using a subset of the normal runtime evaluation steps. Only the intiailisers of constant definitions are evaluated, and only references to constant definitions that dominate a use can contribute a known value. Known values are computed from other known values using the expression semantics of the Evaluation phase.
+
+=== The meaning of "dominate" ===
+
+//[from the Netscape proposal]//
+
+A statement A dominates statement B if any of the following conditions are met:
+
+    * A and B are the same statement.
+    * A and B are in the same block, with A before B and no case or default labels between them.
+    * Statement B is enclosed inside statement C and A dominates C.
+    * Statement A is enclosed inside a block C and C dominates B.
+
+Note that the above definition is conservative. If statement A dominates statement B, then it is guaranteed that, if B is executed then A must have been executed earlier; however, there may be some other statements A' that also are guaranteed to have been executed before B but which do not dominate B by the above definition.
+
+=== Syntactic context of class, interface, type and namespace definitions ===
+
+The following constraints simplify the computation of known values involving classes, interfaces, types and namespaces
+
+   * Class, interface and type definitions must dominate the end of the program. This means they shall appear at the top level in package or global code
+   * Namespace definitions must dominate the end of the program or the end of a class. A namespace definition inside of a class introduces a slot into the class object by default as though it was declared with the ''static'' attribute
+
+==== Issue: erasing const var values before evaluation ====
+
+The value of ''const'' slots need to be erased and recomputed at evaluation time to avoid the appearance that their values are computed before they should be. One could argue that ''const'' values may be computed ahead of time. The problem is that it is difficult to know when they are an when they aren't, so a forward reference may or may not have the value undefined.
+
+This complication tempts me to propose that the values of const vars are not computed during the definition phase and therefore cannot be used in computing the values of constant definitions.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/06/07 15:28//
+
+===== Verification phase [strict only] =====
+
+This phase is only implemented in the strict mode. Any errors that are reported in strict mode must be reported before any part of the program is evaluated. Implementations that choose not to support strict mode are not required to report strict errors even in the presence of the ''use strict'' pragma.
+
+Steps:
+
+  * Evaluate type annotations
+  * Evaluate default parameter values
+  * Replace type references (see above) with type values when possible
+  * Compute the static type of expressions
+  * (optionally) Erase type conversions and casts that are proven to have no effect
+  * (optionally) Erase type annotations that can be proven to be un-referenced by a type reference
+  * Check the program for possible semantic errors that are either type errors or common programming errors.
+    * Type errors – a static type error is reported if it is possible for an expression to produce a value that is incompatible with its use. Type compatibility is determined by:
+      *	input type of the ‘to’ operator
+      *	nominal type relationships
+      *	structural type compatibility
+    * Strict errors
+      *	function call signature matching
+      *	unresolved lexical references, except in the presence of unreformed ‘with’ and ‘eval’
+      *	unresolved object references through sealed (not dynamic) fixed objects
+      *	dynamic addition of properties on sealed objects
+      *	writing to const variables
+      *	deleting fixed properties
+      *	comparison expressions with incompatible types
+      *	unfound packages
+      * assignment to:
+        * String from type other than String other than *
+        * Number, int, uint and decimal from type other than Number and *
+
+Three kinds of strict type errors that are supressed:
+
+  * Assignment from an expression of type * 
+  * Assignment to a slot of type Boolean
+  * Assignment from an expression of type Number to a slot of type Number
+
+Note: unresolved type references have the static type *. Many, but not all, of these cases will result in strict unresolved reference errors.
+
+===== Evaluation =====
+
+Evaluate the program in the same way whether it was compiled in strict or standard mode. If compiled in standard mode it is possible for a program to have type annotations and default parameter values that are unknown or not constant. It is a runtime type error the first time an annotation with an unknown or not constant value is used by a type reference. It is a runtime error the first time a function with an unknown or not-constant default parameter value is called.
+
+====== Pragmas for switching modes ======
+
+The pragmas
+
+<code javascript>
+   use strict
+</code>
+
+and
+
+<code javascript>
+   use standard
+</code>
+
+declare, respectively, that the component should be compiled in strict mode or standard mode, regardless of compiler settings.  If no declaration is used then compiler settings apply. Implementations that don't support the strict mode may ignore the ''use strict'' pragma.
+
+
+

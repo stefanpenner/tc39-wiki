@@ -1,0 +1,219 @@
+====== Object Initializer super references ======
+
+In object-oriented programming languages, inheritance is used to perform behavioral composition. An object combines together the properties it inherits from its prototypes with new  and replacement properties define for the specific object. Occasionally in creating such compositions it necessary for the object to explicitly access prototype behavior that is over-ridden by the object.
+
+Traditionally this has been accomplished in object-oriented languages using the keyword ''super''.  ECMAScript has reserved this keyword but has never supported it. One of the reasons was that imperative object construction style that was typically used did not provide sufficient context for a function declaration to determine how to access over-ridden properties.
+
+Object Initialisers provide sufficient context and hence this proposal allows use of the keyword in functions defined within an Object Initialiser.
+
+
+
+===== Overview =====
+
+Sometimes a method on an object that over-rides a prototype method needs to invoke the over-ridden method. Consider for example:
+<code javascript>
+var sup = {
+   validate() { /* validate internal invariants */}
+}
+
+var sub = sup <| {
+   validate() {
+       /* validate invariants imposed by prototype */
+       /* validate instance specific invariants */
+   }
+}
+</code>
+
+How should the object ''sub'' actually code the call to its prototype's validate method?  The idiom that would most likely be used today  would be an expression of the form:
+<code javascript>
+      sup.validate.call(this);
+      /* validate subclass invariants */
+</code>
+This formulation does the job, but is idiomatic and its intent may not be obvious to readers.  Also, it requires explicitly referencing  the prototype object by name. If such references in multiple places is error prone, especially when a prototype hierarchy is being refactored.  These issues are addressed by adding a super call expression as an additional form of //PrimaryExpression//:
+
+**//PrimaryExpression// :** ...\\
+**''super''** \\
+
+The value of ''super'' is the same as the value of ''this'' but when ''super'' is used as the base of a property access the property lookup starts with the object that is the prototype of the object defined by the object literal that contains the reference to ''super''.
+
+Then above example could then be coded like:
+
+<code javascript>
+
+var sub = sup <| {
+   validate() {
+       super.validate();
+       /* validate instance specific invariants */
+   }
+}
+</code>
+
+In this example, the expression ''super.validate()'' means ''sup.validate.call(this)''. But note that ''sup'' does not have to be referenced by name with the body of validate.
+
+A //PrimaryExpression// containing ''super'' may only occur within code that is part of  a function body.  It is an early SyntaxError error for ''super'' to occur in global. 
+
+Use of ''super'' is not limited to //CallExpression//.  It can also be used to get or set the value of accessor properties and to get the value of data properties defined by the prototype, even if the property is over-ridden by the object:
+
+<code javascript>
+var f=0;
+var sup = {
+   k:= 1,
+   get foo() {return f},
+   set foo(v){f=v}
+}
+
+var sub = sup <| {
+   get foo() {
+      var supFoo = super.foo;
+      print("getting foo: "+supFoo);
+      return supFoo;
+   },
+   set foo(v){super.foo = v+super.k}
+}
+</code>
+
+But note that the use of ''super'' does not change the semantics of assigning to an inherited data property.  Such assignments create own properties even if ''super'' was used to access the property.
+
+<code javascript>
+var f=0;
+var sup = {k: 1};
+
+var sub = sup <| {
+   setK () {
+      print(super.k); // prints 1
+      print(this.k);  // prints 1 -- inherited from sup
+      super.k = 2;
+      print(super.k); // prints 1 -- assignment created own k
+      print(this.k);  // prints 2 -- own property created by assignment
+   }
+}
+</code>
+
+===== super in Accessor Property Definitions =====
+In object initialisers the **get** function and **set** function of an accessor property are defined independently of each other and only either one of them need to present to over-ride an inherited accessor property definition. If either the **get** or **set** function is not present then the default definition is used:
+
+<code javascript>
+var f = 1;
+var sup = {
+   get f() {return f}
+};
+
+var sub = sup <| {
+   set f(v) {f=v}
+};
+print(sup.f);  //1
+sub.f=2;
+print(sup.f);  //2
+print(sub.f);  //undefined
+</code>
+
+The reason ''sub.f'' prints ''undefined'' is because the definition of a ''set f'' accessor in sub implicitly cause the default ''get f'' accessor to also be created.  A default ''get'' accessor always returns the value undefined.
+
+This problem can be avoided by explicitly defining a ''get f'' accessor that uses ''super'' to invoke the over-ridden accessor:
+
+<code javascript>
+var f = 1;
+var sup = {
+   get f() {return f}
+};
+
+var sub = sup <| {
+   set f(v) {f=v},
+   get f() {return super.f}
+};
+print(sup.f);  //1
+sub.f=2;
+print(sup.f);  //2
+print(sub.f);  //2
+</code> 
+
+Needing to over-delegate to a prototype's ''get'' or ''set'' accessor function is common enough that a special definition form is provided for such definitions.  The syntax is:
+
+**//PropertyAssignment// :** ...\\
+**set super get** //PropertyName// **(** **)** **{** //FunctionBody//  **}**  \\
+**get super set**  //PropertyName// **(** //PropertySetParameterList// **)** **{** //FunctionBody//  **}**  \\
+
+These forms cause to ''set'' or ''get'' accessor function to be automatically set to a function that does a ''super'' ''set'' or ''get'' access for that property.
+
+Using this form of property definition, the above example object definition could be simplified to:
+<code javascript>
+var sub = sup <| {
+   get super set f(v) {f=v}
+};
+print(sup.f);  //1
+sub.f=2;
+print(sup.f);  //2
+print(sub.f);  //2
+</code>  
+
+
+
+
+===== Functions that reference super =====
+Any function that  references super has a %%[[%%Super]] internal property whose value is the object that is used as the base for super property lookups. Functions that //do not// reference **super** do not have %%[[%%Super]] internal property. When a function that references **super** is defined as part of an object literal its %%[[%%Super]] internal property is set to the same value as the %%[%%Prototype]] internal property of the object created by the object literal. Such functions include functions defined using method property definitions,  functions defined using **get** or **set** definitions,  and functions defined as a //MemberExpression// within the //AssignmentExpression// of a //PropertyAssignment//.
+
+<code javascript>
+var sub = sup <| {
+   //all the the following define functions whose [[Super]] internal property is set of the value of sup
+   a() {return super.foo()},     // a method
+   get b() {return super.bar},   // a get accessor
+   set b(v) {super.bar=v},       // a set accessor
+   c: function() {super.a()};    // a function in a property initializer
+};
+</code>  
+
+Functions defined outside of object literals (or class declarations) that reference **super** are created with their %%[[%%Super]] internal property set to **null**. Property accesses based off of **super** always perform  property lookups start with the object that is the the value of the containing function's %%[[%%Super]] internal property.  If %%[[%%Super]]  is **null**, the property lookup immediately fails and produces the value **undefined**.
+
+<code javascript>
+function returnUndefined() {
+   return super.foo;
+}
+print(returnUndefined());  //will print "undefined" because [[Super]] is null
+</code>  
+
+ --- //[[Allen@Wirfs-Brock.com|Allen Wirfs-Brock]] 2011/08/11 15:46//
+Unfortunately, also any function that uses direct eval may potentially reference ''super'' so all such functions need the %%[[%%Super]] internal property.  It may be best for all functions to be defined as including the %%[[%%Super]] internal property.  Implementations can optimize it away if the function doesn't do a direct eval.
+
+
+If such a function with a %%[[%%Super]] internal property is subsequently extracted from its original object and installed (for example, via property value assign or ''Object.defineProperty'') as a data property value in some other object, its %%[[%%Super]] internal property reference to the original object's %%[[%%Prototype%%]]%% is not modified. Essentially, when a function references ''super'' it is statically referencing a specific object that is identified when the function is defined and not the %%[[%%Prototype%%]]%% of the object from which the function was most recently retrieved.
+
+===== Imperatively binding [[Super]] =====
+An object literal is the easiest way to create methods that use super and ensure that the %%[[%%Super]] internal property of the function is correctly bounds. However, such bindings can also be made imperatively.
+
+''Object.defineMethod'' is  a new function that creates a method property of in an object:
+
+<code javascript>
+var obj = Object.create(proto);
+Object.defineMethod(obj,'foo', function() {return super.foo});
+</code>  
+
+''Object.defineMethod'' attempts to create (or modify) a non-enumerable data property whose value is the ''defineMethod'' call's third argument.  That argument must be a function.  If the function has a %%[[%%Super]] internal property, then a new function object is created and set as the value of the property.  The new function is identical in all ways to the argument function except that its %%[[%%Super]] internal property is set to the value of the %%[[%%Prototype]] internal property of the object upon which the property is being defined.
+
+''Object.defineProperty'' and ''Object.defineProperties'' are extended for situations where they are creating or modify the get or set function of an accessor property.  In those situations where the passed get or set function has a %%[[%%Super]] internal property it is replaced with a copy of the function with a new %%[[%%Super]] internal property in a similar manner to ''Object.defineMethod''.
+
+Note that ''Object.defineProperty'' and ''Object.defineProperties'' do not create new functions or rebind %%[[%%Super]] when modifying the value of data properties.  ''Object.defineMethod'' must be used for that purpose.
+
+===== Rationale =====
+
+A **super** property access is more complex then just skipping the **this** object when doing a property look up. That definition of **super**  would actually result in method loops.  Consider this example:
+
+<code javascript>
+var top = {identify() {return "top"}};
+var middle = top <| {identify()  {return "middle "+ super.identify()}};
+var bottom = middle <| {identify()  {return "bottom "+ super.identify()}};
+print(bottom.identify());
+</code>  
+
+If ''super.identify()'' is interpret as meaning look of the property ''identify'' starting with the object that is the %%[[%%Prototype]] of **this**, then the following would happen:
+  - ''bottom.identify()'' would call the ''identify'' method defined in the object literal for ''bottom'' with **this** set to ''bottom''.
+  - That method  would evaluate ''super.identify'' based upon the **this** value of ''bottom''.  Lookup would start with ''middle'' (the value of ''bottom'''s %%[[%%Prototype]]).  It would find and call the ''middle.identify'' method, but still pass ''bottom'' as the **this** value.
+  - The ''middle.identify'' would evaluate ''super.identify'' based upon the **this** value of ''bottom''. Lookup would start with ''middle'' (the value of ''bottom'''s %%[[%%Prototype]]) and again find and call ''middle.identify''passing ''bottom'' as the **this** value.
+  - execution continue to loop at step 3 with ''middle.identify'' calling itself.
+
+This shows that super can't be defined in relation to **this**.  It has to be defined in relation to the location of the currently executing method in the prototype hierarchy of the **this** value. In particular, a super lookup has to start above the point in the hierarchy where the currently executing method was found in order to avoid looping on that method. There are at least two plausible semantics for such a **super** lookup: dynamic **super** and static **super**. 
+
+For dynamic **super**, a **super** lookup would always begin with the %%[[%%Prototype]] of  the object where the currently executing method had been retrieved as an own property. This presents a reasonable (perhaps the best) usage semantics but presents a problem.  How does a super lookup site within a method know where the containing method was retrieved from.  The containing method was looked prior to its invocation so the retrieval object is only naturally known outside the invocation of the retrieved function. The retrieval object could be passed as an additional implicit argument in addition to the implicit this argument.  This would have to occur on every method invocation. A call site doesn't know whether or not the function it is calling actually needs to use **super** but any function might so it would always be necessary to pass the implicit retrieval object argument. Considering that the most common argument list sizes are zero and one and additional implicit argument on every call would be significant new overhead.
+
+For the static **super** approach,  the object to use as the starting point of a **super** lookup is statically associated with each function. This is normally, the %%[[%%Prototype]] value of  the object that contains the function as an own property (method) value. Because, the **super** lookup object is statically associated with a function it does not need to be passed as an implicit augment to every function. There is no additional per call overhead.  However, unlike dynamic **super**, additional mechanism is needed to establish the static **super** lookup association whenever a function that references **super** is installed as a method and this may limit a function to being used as a method of only one object.
+
+Most programming languages including dynamic languages use some form of static **super** in order to avoid the per call overhead of dynamic **super**.  This also appears to be the best approach for JavaScript. However, it is necessary to provide''Object.defineMethod" and the related semantics in order to perform the necessary static **super** binding for imperatively constructed objects.

@@ -1,0 +1,159 @@
+===== Motivation =====
+
+Class methods have "bound this", where ''this'' in the method body is always bound to the class instance from which the method was extracted, regardless of what ''this'' parameter is actually passed in to the method (the ''this'' parameter to the method is ignored).
+
+Conversely, functions in structural objects use "argument this", so the value of ''this'' in the function body is whatever object was the base of the reference by which the "structural method" was called.
+
+In the absence of [[self type|self types]], we have no good way to specify the type of the ''this'' parameter to a method in a structural object. That is, we cannot provide strong typing for "argument this".
+
+An alternative is to enable functions outside of classes to use "bound this".
+This introduces less complexity than self types, and is analogous to the use of "bound this" in classes.
+"bound this" seems most useful in structural objects, but conceivably it could be used elsewhere too, and would always capture the current binding for ''this''. 
+
+
+===== Syntax =====
+
+"Bound this" is achieved via the type-annotation-like syntax, where the first parameter binding in an parameter list is "this:bound".  
+The ''bound'' pseudo-type annotation could be used in function type definitions, global functions, function expressions within object initialisers, etc. I.e., anywhere outside of the nominal type system (class and interface methods) where it is implied by default and allowed if redundantly declared.
+
+===== Examples =====
+ 
+<code javascript>
+function g(this:bound, x:int) { this.x = x; }
+
+o = { f: function (this:bound,...) : ..., ... }
+
+class Counter {
+       var c : int;
+       function inc(this:bound) : int { c++; return c; }  // redundant annotation
+}
+
+var f : (function(this:bound) : int);
+f = (new Counter()).inc;
+</code>
+
+<code javascript>
+type IteratorType.<T> = {next: function (this: bound): T};
+
+function global_method(this: bound) ...
+
+let obj = {meth: function (this: bound, args) ...};
+</code>
+
+
+
+
+
+===== Semantics =====
+
+In value expressions, a bound-this function denoted via ''this:bound'' captures the current binding of the nearest enclosing initialiser's object (an ''Object'' or ''Array'') when the function closure is created, stores that binding in the closure, and uses that binding when the function is later called. If the function is not expressed as the value of a property in an initialiser, the ''this'' binding in its lexical environment is used.
+
+In type expressions, a bound-this function type captures the fact that function objects typed by the function type must bind this as if the objects were all defined or expressed with ''this:bound'' as their first formal parameter. Without use of ''wrap'' ([[clarification:runtime_types_and_conversions#solution_9write_barrier_with_deep_checking|solution 9 or 10]]), attempts to type function objects having unbound-this with a bound-this type result in errors. Note that ''like'' is not enough for unbound-this function objects to match bound-this types.
+
+The evaluation of the object "o" above therefore proceeds as follows: the object is allocated; a closure is created for the function "f" that binds "this" to the newly-allocated object; then the field "f" of the object is updated with that function closure.
+
+"this:bound" is also permitted for functions inside classes and interfaces, but is redundant. 
+
+----
+
+ES3:
+
+  var o = { x: this } 
+
+yields a value for o.x that is never o.  Your proposal, according to the wording above, seems to break this, so the wording is probably off.
+
+What I suspect we have is a system variable "this-for-binding-bound-this" that is set to the object being created when appropriate and which is otherwise the same as "this"; function creation that binds "this" picks this value up.  That variable can in turn be optimized away by the compiler, I think, but it may be good as a specification device.
+
+What about this?
+
+  var o = [ function (this:bound) { ... } ]
+
+Is o the bound value of "this" inside o[0]?  If not, why not?
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/09/27 15:23// 
+
+Yes, ''this:bound'' should bind to the enclosing array initialiser as well as object initialiser. Fix attempted above, thanks.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/09/27 16:56//
+
+In fact, ignoring type definitions for the moment, a related syntax would be something like this:
+
+  o = { x: function (this=o) { ... } }
+
+It's not compatible with ES3 either since o is updated as part of the assignment happening after object creation, so I'm not proposing this as such, but the fact is that what's being proposed is really equivalent to
+
+  tmp = {}
+  tmp.x = function (this=tmp) { ... }
+  o = tmp
+
+And it may be that by implementing this more general syntax one may enable more general behaviors.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/09/27 15:36//
+
+WRT the type definition, what does it mean, really?
+
+  type t = function (this:bound);
+
+Now what can I do with t?  Presumably it can be a constraint on a variable, say:
+
+  var v : t = ...;
+
+What does it constrain?  The type of the bound-this of the function being assigned?  The value of the bound-this?  The fact that the function must have a bound-this?
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/09/27 15:50//
+
+The fact that the function must have bound-this. That necessarily constrains the type and in a checkable way, as far as I can tell.
+
+Agreed that there may be a more general and straightforward syntax than ''this:bound''. We should try to find it. It probably does not involve assignment since that has no correspondence in type expressions, and it seems to me we do want to be able to type bound-this functions more strongly than as "self-this". I.e. we want the type system to help enforce this-binding for structural types as it does by default for nominal types.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/09/27 16:56//
+
+===== Typing =====
+
+A "bound this" function is assigned a type that reflects its "bound-this" nature. For example:
+<code javascript>
+    function (this:bound, x:int) : int { return this.y+x; }
+</code>
+has type
+<code javascript>
+    function (this:bound, int) : int
+</code>
+
+The only interesting subtyping rule is that the "bound-this" nature of a function can be hidden via subtyping, so that it looks like an "argument-this" function that accepts any kind of "this" argument.
+Thus, if we have
+<code javascript>
+    type T1 = function (this:bound, int) : int;
+    type T2 = function (this:*, int) : int;
+</code>
+then we have that ''T1'' is a subtype of ''T2''.
+Hence, ''T1'' is also consistent with ''T2''.
+
+An interesting question is whether ''T2'' is consistent with ''T1'', and more generally, if an untyped function should be considered ''like T1''.
+
+====== Deprecated: Alternative Syntactic Proposals ======
+
+Since strong typing for structural objects seems to require bound-this, the syntax ''this:bound,'' might be used on very many functions, so perhaps a lighter-weight syntax would be preferable. One backward-compatible alternative is:
+<code javascript>
+   o = { f: function (,...) : ..., ... }
+</code>
+Could we use the "method" keyword instead?
+
+Also, bound-this is really a property of the function's implementation rather than its interface, although it does imply that the function can accept any ''this'' argument (which is then ignored), so including ''this:bound'' in function types (eg see below) is strange but perhaps ok.
+
+ --- //[[cormac@soe.ucsc.edu|Cormac Flanagan]] 2007/09/14 21:07//
+
+An alternative syntactic proposal: ''method'' means bound this but ''function'' is still bound-this in a class context.
+
+<code javascript>
+class Foo {
+    function f(x) { ... }  // same thing
+    method f(x) { ... }    // same thing
+}
+
+var obj = { f: method(x) { ... } } // bound this
+var obj = { f: function(x) { ... } } // argument this
+</code>
+
+Reactions: ''method'' seems like a pretty heavyweight syntax/vocabulary change.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2007/09/18 17:56//

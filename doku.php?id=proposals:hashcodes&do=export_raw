@@ -1,0 +1,37 @@
+====== Hashcodes ======
+
+(Also see the [[discussion:hashcodes|discussion page]] for this proposal)
+
+===== Open tickets =====
+
+  * [[http://bugs.ecmascript-lang.org/ticket/52#preview|Ticket #52]]: What is the interaction of intrinsic::hashcode with the overloaded ''==='' operator?
+
+===== Proposal =====
+
+A global, non-deletable, non-alterable function ''intrinsic::hashcode(o:*):uint'' **shall** exist in every implementation. 
+
+The function **shall** be pure with respect to ''==='':
+  * Given two objects ''a'' and ''b'' with ''a===b'', the implementation must maintain ''hashcode(a) === hashcode(b)''
+
+The function **should** be //mostly-pure// with respect to ''!=='':
+  * Given two objects ''a'' and ''b'' with ''a !== b'', the implementation should aim to maintain ''hashcode(a) !== hashcode(b)''.
+  * //Mostly-pure// means that the implementation **should** aim for this condition to hold in a probabilistic majority of cases. The intention is that hashtables indexed by value can use ''hashcode'' to divide the set of live objects in a program into "very shallow" buckets. It is acceptable for such buckets to contain some collisions, but the number of collisions should be as close to zero as possible.
+  * An obvious exception: ''NaN !== NaN'' for all not-a-number values, but it's legal for ''intrinsic::hashcode'' to hash all ''NaN''s to ''0''.
+
+===== Rationale =====
+
+Hashing for the purpose of inserting an object into various kinds of fast-lookup data structures is a common operation.  The two most common subjects of hashing are strings (hashing their names) and objects (hashing their identities).
+
+String hashing can be implemented in the language, but typical ECMAScript implementations will contain faster internal string hashing mechanisms that might as well be exposed in a standard way.
+
+Object identity hashing cannot be implemented in the language without support from the garbage collector (weak references, weak tables, or a mechanism like "SRO") to make sure the map from objects to identity names is garbage collected.  Since there exist efficient behind-the-scenes mechanisms for maintaining such a map, it is probably better for the system to provide the object identity facility.
+
+
+===== A note regarding security =====
+
+//This text belongs in an informative annex//
+
+The function ''intrinsic::hashcode'' **should not** return pointer values cast to integers:
+  * Exposing memory locations of objects may make security vulnerabilities in the host environment significantly worse. Implementations -- in particular those which read network input -- should return numbers unrelated to memory addresses if possible, or at least use memory addresses subject to some cryptographically strong one-way transformation, or sequence numbers, cookies, etc.
+
+See [[https://github.com/justdionysus/gcwoah|Conservative GC for Memory Disclosure]] and [[https://esdiscuss.org/topic/memory-safety-and-weak-references| memory safety and weak references]].

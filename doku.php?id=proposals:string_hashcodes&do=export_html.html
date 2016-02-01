@@ -1,0 +1,118 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:string_hashcodes&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:string_hashcodes&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:string_hashcodes&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="string_hashcodes"></a><h1>String hashcodes</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [1-32] -->
+<a name="proposal"></a><h2>Proposal</h2>
+<div class="level2">
+
+<p>
+ The <code>String</code> class is extended with a static method <code>hashcode</code> which takes a <code>String</code> and returns a <code>uint</code>: 
+</p>
+<pre class="code">public static function hashcode(s: String): uint;</pre>
+
+<p>
+ If <code>x</code> and <code>y</code> are strings containing the same sequence of characters as observed through repeated applications of the <code>charAt</code> method, then 
+</p>
+<pre class="code">String.hashcode(x) === String.hashcode(y)</pre>
+
+<p>
+ The method computes the hashcode by converting the argument <code>s</code> to <code>intrinsic::string</code> and then computing the hashcode of that string on the basis of its length and/or sequence of characters.
+</p>
+
+</div>
+<!-- SECTION [33-614] -->
+<a name="rationale"></a><h2>Rationale</h2>
+<div class="level2">
+
+<p>
+ There are several good reasons for exposing this functionality. 
+</p>
+<ul>
+<li class="level1"><div class="li"> String hashing is not the same thing as Object ID hashing but is a common operation (probably more common) </div>
+</li>
+<li class="level1"><div class="li"> String hashing is required by the <code>Dictionary</code> class and might as well be exposed through <code>String</code></div>
+</li>
+<li class="level1"><div class="li"> Any good ES4 implementation will have efficient built-in support for string hashing anyway</div>
+</li>
+</ul>
+
+<p>
+ The hedging about access patterns allows the implementation freedom to optimize the computation of hashcode in various ways.
+</p>
+
+</div>
+<!-- SECTION [615-1143] -->
+<a name="discussion"></a><h1>Discussion</h1>
+<div class="level1">
+
+<p>
+ Some points for thought: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Is it reasonable to phrase the meaning of the method in terms of conversion to <code>intrinsic::string</code>?  What I&rsquo;m trying to do here is allow <code>String</code> to be subclassed in ways that are surprising (even providing the illusion of mutable strings), and still having the <code>hashcode</code> method perform sanely.  But this could be a performance trap.  An alternative formulation would make use of the immutability of <code>String</code> and state that subclasses that violate immutability behave unpredictably.</div>
+</li>
+<li class="level1"><div class="li"> If <code>String</code> hashing is a static method on <code>String</code>, should <code>Object</code> hashing (as in the <a href="doku.php%3Fid=proposals:hashcodes.html" class="wikilink1" title="proposals:hashcodes" onclick="return svchk()" onkeypress="return svchk()">hashcodes</a> proposal) be a static method on <code>Object</code>?</div>
+</li>
+</ul>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2007/05/27 01:47</em>
+</p>
+
+<p>
+I don&rsquo;t see why this proposal is needed. <a href="doku.php%3Fid=proposals:hashcodes.html" class="wikilink1" title="proposals:hashcodes" onclick="return svchk()" onkeypress="return svchk()">hashcodes</a> says 
+</p>
+<blockquote>
+ Given two objects a and b with a===b, the implementation must maintain hashcode(a) === hashcode(b)</blockquote>
+
+<p>
+ and two strings containing the same characters, which may or may not be distinct objects, e.g. &ldquo;foo&rdquo; and &ldquo;fo&rdquo;+String.fromCharCode(111), must be <code>===</code> and therefore must have the same hashcodes.
+</p>
+
+<p>
+The <a href="doku.php%3Fid=proposals:hashcodes.html" class="wikilink1" title="proposals:hashcodes" onclick="return svchk()" onkeypress="return svchk()">hashcodes</a> proposal is not about object identity defined by object allocation. It uses the <code>===</code> operator&rsquo;s equivalence relation to define identity.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2007/05/28 22:39</em>
+</p>
+
+<p>
+You&rsquo;re right.  I&rsquo;ll clean this up.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2007/05/29 01:43</em> 
+</p>
+
+</div>
+<!-- SECTION [1144-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/7/764ea72154ed95e3dde4d69db8905c53.xhtml used -->
+</body>
+</html>

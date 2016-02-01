@@ -1,0 +1,85 @@
+This is the discussion page for [[proposals:date_and_time]].
+
+
+====== Lack of Historical DST ======
+
+See [[https://bugzilla.mozilla.org/show_bug.cgi?id=365349|Mozilla bug 365349]]. Thanks to U.S. Representative Ed Markey, the U.S. is about to enter Daylight Savings Time  this weekend, three weeks early compared to last year. ES1-3 all say that DST computation depends on only four data:
+
+  * the time since the beginning of the year,
+  * whether t is in a leap year,
+  * the week day of the beginning of the year, and
+  * the geographic location.
+
+This design, from my memory, assumed a more sane and stable DST regime. So according to the spec, I should find that noon on March 12, 2006 was in DST, just because noon this coming Monday is in DST. This is crazy, and of course all the browser engines rely on the OS for DST information, which AFAIK will be historically accurate. We should do something in ES4 to conform to the //de facto// standard thereby created by OS-based browser Data implementations. Comments?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/03/11 00:58//
+
+Logged in the trac as ticket 129: http://bugs.ecmascript-lang.org/ticket/129
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/07/17 12:39//
+
+
+====== Discussion of new proposal ======
+
+  * Why is there a need for a separate parsing function?  Which corner cases can't Date.parse handle (presumably for compatibility reasons)?
+  * Why is the + sign required to write dates beyond 9999 CE?  Is this an ISO requirement?
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/09/27 07:40//
+
+  * Date.toISO still leaves open the possibility of generating a prefix ''+'', no doubt this is just a missing edit.
+  * I would prefer to see language that states that ISO dates have precedence in Date.parse in cases of ambiguity, since Date.parse in practice will try to interpret anything.  (In fact 12/92/2003 is a valid date in most browsers (though not in Opera)). [http://bugs.ecmascript-lang.org/ticket/134]
+  * The error thrown on an invalid second argument to Date.parse needs to be specified.  I might propose introducing a DateParseError to cover this and the syntax error thrown by Date.parse if the format is incorrect, but (a) this seems like a lot and (b) I'm not sure Date.parse //should// throw a SyntaxError, so perhaps just specify that Date.parse throws an ''Error'' if the second argument is invalid?
+  * It's incompatible with the rest of the language for Date.parse to throw an error if extraneous arguments are provided.  (No(?) other standard functions do this.)
+  * Date.parse can't return a ''Date'' object, since it does not do so in 3rd Edition.
+  * I think we're compatible with W3C time and date formats (http://www.w3.org/TR/NOTE-datetime) and webforms2 "time" input elements (http://whatwg.org/specs/web-forms/current-work/) but we should double-check that we are; no sense in being gratuitously incompatible for our major application area.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/09/28 00:27//
+
+====== Discussion of older proposals ======
+
+===== Background =====
+
+Read [[http://jroller.com/page/cpurdy?entry=the_seven_habits_of_highly|Cameron Purdy on java.util.Date and kin]].  Highlights:
+
+    * "First of all, java.util.Date is not a date! It is a data structure that contains both a date and a time! If you can't get the name right, it's a very bad omen."
+ 
+    * "All the properties have random offsets. Some are zero-based, such as month and hours. Some are one-based, such as day-of-the-month. Just to pay tribute to the century in which Java was born, the year has an offset of 1900. ('That's soooo twentieth century!')"
+
+    * "All the properties are settable. Whereas a String can be used as a value (i.e. it is immutable), a Date cannot be. That means that any property of type Date (or of type Date, Time or Timestamp) needs to be cloned when being returned from an accessor, etc. Now one might assume that Date has a reason to be mutable, but in the past 10 years, I have yet to 'set' anything on a Date object."
+
+    * "Date itself has a fixed precision: Milliseconds. In a few years, a millisecond will be as long (to a computer) as a second is today. The concept of clock granularity could have been completely (or at least mostly) hidden by the API."
+
+ECMA-262 Edition 1 just spackled over these flaws, fixing the domain (which was badly broken in extant JS1 implementations) to use an "extrapolated Gregorian" calendar.  The Y2K bugs were moved to an informative appendix, but alas web pages still use them, and browser implementations still do not agree on how they work in the new millennium!
+
+===== Proposal =====
+
+This will be brief:
+
+  * Support properties for the ''get/set'' method pairs.  A no-brainer, even if no one ever "sets". :-P
+  * Add [[http://en.wikipedia.org/wiki/ISO_8601|ISO 8601]] Date format support.  It's a well-known and much-used standard.  
+  * Add ''Date.now():double'' as a standard way to get the time in milliseconds since the epoch.
+  * Add a ''Date.nanoAge():double'' method that returns the number of nanoseconds since the method's object was constructed. This number has varying precision from one platform to another, and will slowly lose precision (after 104 days it can only possibly be precise to within 2 nanoseconds).
+  * After this, I move we declare victory through minimalism and let the ecosystem take care of business. ;-)
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/02/28 23:32//
+
+Here's CLI DateTime description [[http://msdn.microsoft.com/library/en-us/cpref/html/frlrfsystemdatetimeclasstopic.asp?frame=true|MSDN DateTime Topic]]
+
+ --- //[[rokyu@microsoft.com|Rok Yu]] 2006/03/17 16:04//
+
+
+===== References =====
+
+  * W3C dates: http://www.w3.org/TR/NOTE-datetime
+  * ISO dates: http://www.cl.cam.ac.uk/~mgk25/iso-time.html 
+  * http://www.imc.org/atom-syntax/mail-archive/msg13103.html
+  * http://www.faqs.org/rfcs/rfc3339.html
+
+===== To do / Issues =====
+
+  * There's no way to specify dates before year 1.  [[http://books.xmlschemata.org/relaxng/ch19-77049.html|xsd:dateTime]] allows a leading ''-'' to specify this.  Need to check what ISO8601/RFC3339 say.
+    * ISO8601 permits years before year 0 by providing a leading -. It also permits years after 9999 using a leading +.
+    * RFC3339 is a subset (profile) of ISO8601, and does not permit years before year 0, nor after 9999.
+    * We need to support extended dates if we want to comply with the range of dates representable by ECMA-262-3, using ''double'' values of milliseconds. 
+  * There are open issues on default values for missing fields, as outlined above.
+    * A flexible approach that permits local default //or// fixed defaults is to be provided.

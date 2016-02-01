@@ -1,0 +1,137 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=meetings:minutes_nov_13_2008&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=meetings" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=meetings:minutes_nov_13_2008&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=meetings:minutes_nov_13_2008&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=meetings:minutes_nov_13_2008&amp;do=export_html.html#es3.1-wg_phone_conference_13_nov_2008" class="toc">ES3.1-WG Phone Conference, 13 Nov 2008</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=meetings:minutes_nov_13_2008&amp;do=export_html.html#dial-in" class="toc">Dial-in</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=meetings:minutes_nov_13_2008&amp;do=export_html.html#attendees" class="toc">Attendees</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=meetings:minutes_nov_13_2008&amp;do=export_html.html#agenda" class="toc">Agenda</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=meetings:minutes_nov_13_2008&amp;do=export_html.html#minutes" class="toc">Minutes</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="es3.1-wg_phone_conference_13_nov_2008"></a><h1>ES3.1-WG Phone Conference, 13 Nov 2008</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [1-53] -->
+<a name="dial-in"></a><h2>Dial-in</h2>
+<div class="level2">
+
+<p>
+Time: 8:00 - 9:00 (PST):
+</p>
+
+<p>
+Tel: 866 500 6738 (US); 203 480 8000 (int’l)
+</p>
+
+<p>
+Passcode: 885535
+</p>
+
+</div>
+<!-- SECTION [54-165] -->
+<a name="attendees"></a><h2>Attendees</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Allen Wirfs-Brock (Microsoft)</div>
+</li>
+<li class="level1"><div class="li"> Pratap Lakshman (Microsoft)</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [166-254] -->
+<a name="agenda"></a><h2>Agenda</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Not circulated ahead of time.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [255-308] -->
+<a name="minutes"></a><h2>Minutes</h2>
+<div class="level2">
+
+<p>
+<strong>open technical issues</strong>
+</p>
+
+<p>
+Need to get organized about how we track issues and drive them to closure - the goal of the Kona meeting is to raise and resolve all outstanding technical issues - all issues are currently part of the spec drafts as comments - prepare and send me a list of list of the issues.
+</p>
+
+<p>
+<strong>trac database</strong>
+</p>
+
+<p>
+we should use the trac database to record the issues and their resolutions - after the meeting file tickets for each issue - make sure all relevant folks have access to the database.
+</p>
+
+<p>
+<strong>SameValue algorithm</strong>
+</p>
+
+<p>
+What is the difference between the SameValue algorithm and the Strict Equality comparison algorithm? - SameValue can handle NaN comparisons; it will return true if handed two NaNs - we are using it primarily in the Array &ldquo;extras&rdquo;; we want to be able to look up the index within an Array where the value NaN is stored; the use of the strict equality comparison operator would not work for this case - specifically, we are using it in indexOf and lastIndexOf - in ES3 how do you check if something is a NaN? We can use isNan available from the global object.
+</p>
+
+<p>
+Rather than duplicating SameValue, define it in terms of the strict equality comparison operator with an additional predicate to handle the NaN distinction
+</p>
+
+<p>
+Also, as defined currently it breaks [[DefineOwnProperty]] - SameValue does not test for the exact same value; its use in [[DefineOwnProperty]] would, for e.g., let a readOnly +0 be replaced with a -0, or replace a NaN in one implementation dependent encoding with a NaN in another encoding - in the context of [[DefineOwnProperty]] we are looking for exactly the same identical value.
+</p>
+
+<p>
+The SameValue name is misleading as it is really just a stricter equality test and not a identical value test - this name confusion is probably what caused it to be edited into [[DefineOwnProperty]] - consider renaming it - Ok, lets raise this on the discuss lists.
+</p>
+
+<p>
+<strong>create wiki page for the kona meeting</strong>
+</p>
+
+<p>
+not sure if John would be creating the page - lets create a wiki page for the Kona meeting, then.
+</p>
+
+<p>
+Meeting adjourned. 
+</p>
+
+</div>
+<!-- SECTION [309-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/8/8837943aa2ff8958d2d1e2f4a7bd2b13.xhtml used -->
+</body>
+</html>

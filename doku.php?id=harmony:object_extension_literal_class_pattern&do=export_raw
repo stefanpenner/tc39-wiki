@@ -1,0 +1,189 @@
+====== Class Definition Pattern Using Object Extension Literals ======
+
+Using [[harmony:object_literals#object_extension_literal|Object Extension Literals ]] and the [[harmony:proto operator|Set Literal Prototype Operator]] there is a straight forward code pattern that can be used to define class-like abstractions that have all of the characteristics of the built-in abstractions in Chapter 15 of the ECMAScript specification.  The basic pattern is:
+
+<code javascript>
+const className = superClass <| function(/*constructor parameters */) {
+  //constructor body
+  super.constructor(/*arguments to super constructor */);
+  this.{
+   //per instance property definitions
+  };
+}.prototype.{
+  //instance properties defined on prototype
+}.constructor.{
+  //class (ie, constructor) properties
+};
+</code>
+
+Some important points about this pattern
+  * Using an extension literal to augment **this** in the constructor provides a place to "declaratively" define and initialize instance statet and behavior.
+  * The ''**<|**'' provides for parallel instance and constructor inheritance chains. 
+  * The whole expression evaluates to the constructor object, the ordering of the ''.prototype.{ }'' and ''.constructor.{ }'' parts are important to achieving this.
+  * If you have ''.prototype.{ }'' but no ''.constructor.{ }'' properties you need at least ''.constructor'' at the end.
+  * This pattern would make a nice single key insertion template within an IDE.
+===== Discussion Points =====
+
+==== Is a class declaration really needed? ====
+This pattern seems to capture pretty much everything that the [[harmony:classes]] proposal accomplish without introducing a new hardwired syntactic forms.  With this pattern available do we really need class declarations (at least for now).  Rather than rushing syntactic class declarations into ES.next perhaps we should first get experience with this pattern and later, based upon that experience reconsider whether we need syntactic class declarations.
+
+==== Fragile Ordering Issues ====
+
+Some people consider the ordering requirement a hazard.  However, it is a easily learned pattern and as mentioned above can be template within tools. A work around would be to define a function like:
+<code javascript>
+function Class(obj) {
+   try {if (obj.constructor === obj.constructor.prototype) return obj.constructor} catch(e) {};
+   return obj
+}</code>
+
+Then the pattern could be code as:
+
+<code javascript>
+const className = Class(superClass <| function(/*constructor parameters */) {
+  //constructor body
+  super.constructor(/*arguments to super constructor */);
+  this.{
+   //per instance property definitions
+  };
+}.prototype.{
+  //instance properties defined on prototype
+}.constructor.{
+  //class (ie, constructor) properties
+});
+</code>
+or
+<code javascript>
+const className = Class(superClass <| function(/*constructor parameters */) {
+  //constructor body
+  super.constructor(/*arguments to super constructor */);
+  this.{
+   //per instance property definitions
+  };
+}.{
+  //class (ie, constructor) properties
+}.prototype.{
+  //instance properties defined on prototype
+});
+</code>
+or
+<code javascript>
+const className = Class(superClass <| function(/*constructor parameters */) {
+  //constructor body
+  super.constructor(/*arguments to super constructor */);
+  this.{
+   //per instance property definitions
+  };
+}.prototype.{
+  //instance properties defined on prototype
+});
+</code>
+
+===== Extended Example =====
+The following is an extended example of using this pattern to define a fairly complex "class".  It uses most proposed ES.next Object Literal extensions. This is only part of a much larger example that defines a complex class hierarchy using this pattern.  For the complete example see [[https://github.com/allenwb/ESnext-experiments/blob/master/ST80collections-exp1-nocomma.js]]
+<code javascript>
+//private names for internal state properties
+const firstIndex=Name.create(),
+      lastIndex=Name.create();
+
+const OrderedCollection = BasicStorageCollection <| function(space=10) {
+  super.constructor(space);
+  const firstIndx = Math.max(Math.floor(space / 2),1);
+  this.{
+    [firstIndex]: firstIndx,
+    [lastIndex]: Math.max(firstIndx-1,0)
+  }
+}.prototype.{
+  //accessing protocol
+  get size() {return this[lastIndex]-this[firstIndex] + 1}
+  at(anInteger) {
+    const index = Math.floor(anInteger);
+    if (index < 1 || anInteger+this[firstIndex]-1 > this[lastIndex])
+      return this.errorNoSuchElement();
+    return super.at(index+this[firstIndex]-1);
+  }
+  atPut(anInteger,anObject) {
+    const index = Math.floor(anInteger);
+    if (anInteger < 1 || anInteger+this[firstIndex]-1 > this[lastIndex])
+      return this.errorNoSuchElement();
+    return super.atPut(anInteger+this[firstIndex]-1, anObject);
+    }
+  get first() {return this.at(1)}
+  get last() {return this.at(this.size)}
+  //adding protocol
+  add(newObject) {return this.addLast(newObject)}
+  addFirst(newObject) {
+    if (this[firstIndex] == 1) this.makeRoomAtFirst();
+    this.basicAtPut(--this[firstIndex], newObject);
+    return newObject;
+  }
+  addLast(newObject) {
+    if (this[lastIndex] ==this.basicSize) this.makeRoomAtLast();
+    this.basicAtPut(++this[lastIndex], newObject);
+    return newObject;
+  }
+  addAll(aCollection) {
+    aCollection.do(function(element) {this.addLast(element)});
+    return aCollection;
+  }
+  //removing protocol
+  removeFirst() {
+    this.emptyCheck();
+    const firstObj = this.first();
+    this.basicAtPut(this[firstIndex]++,undefined);
+    return firstObj;
+  }
+  removeLast() {
+    this.emptyCheck();
+    const lastObj = this.last();
+    this.basicAtPut(this[lastIndex]++,undefined);
+    return lastObj;
+  }
+  removeIfAbsent(oldObject, absentBlock) {
+    let index = this[firstIndex];
+    while (index <= this[lastIndex]) {
+      if (oldObject == this.basicAt(index)) {
+        this.removeIndex(index);
+        return oldObject;
+      } else --index;
+    }
+    return absentBlock();
+  }
+  //enumerating protocol
+  do(func) {
+    let index = this[firstIndex];
+    while (index <= this[lastIndex])
+      func(this.basicAt(index++));
+     return this;
+  }
+  collect(func) {
+    const newCollection = new this.species(this.basicSize);
+    this.do(function(each) {newCollection.add(func(each))});
+    return newCollection;
+  }
+  select(pred) {
+    const newCollection = new this.species(this.basicSize);
+    this.do(function(each) {if (pred(each)) newCollection.add(each)});
+    return newCollection;
+  }
+  //private
+  errorNoSuchElement() {
+    this.error('attempt to index non-existent element in an ordered collection');
+  }
+  emptyCheck() {/*TODO*/ }
+  makeRoomAtLast() {this[storage].length += 1}
+  makeRoomAtFirst() {
+    const addedSpace = Math.max(Math.floor(this.basicSize*this.growthFactor),1);
+    this[storage]=(new Array(addedSpace)).concat(this[storage]);
+    this[firstIndex] += addedSpace;
+    this[lastIndex] += addedSpace;
+  }
+  get growthFactor() {return 0.20}
+}.constructor.{
+  newFrom(aCollection) {
+    const newCollection = new this(aCollection.size);
+    newCollection.addAdd(aCollection);
+    return newCollection;
+  }
+  className: "OrderedCollection"
+};
+</code>

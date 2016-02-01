@@ -1,0 +1,183 @@
+====== THIS PAGE IS NO LONGER CURRENT ======
+
+{{harmony:warning.png?100}} **WARNING:** This page is **out of date**. Please see the ES6 [[specification drafts]] for up-to-date information. This page is here only as an archive.
+
+
+
+===== Modules: Examples =====
+
+==== A simple module ====
+
+<code javascript>
+module 'math' {
+    export function sum(x, y) {
+        return x + y;
+    }
+    export var pi = 3.141593;
+}
+</code>
+
+==== A simple client ====
+
+<code javascript>
+// we can import in script code, not just inside a module
+import {sum, pi} from 'math';
+
+alert("2π = " + sum(pi, pi));
+</code>
+
+==== Reflecting module instances as first-class objects ====
+
+<code javascript>
+// a static module reference
+module Math from 'math';
+
+// reify M as an immutable "module instance object"
+alert("2π = " + Math.sum(Math.pi, Math.pi));
+</code>
+
+==== Local renaming ====
+
+<code javascript>
+import { draw as drawShape } from 'shape';
+import { draw as drawGun } from 'cowboy';
+...
+</code>
+
+==== Module name hierarchies ====
+
+The common idiom for organizing modules in a package or library is by hierarchies separated by '/'. The browser loader treats this as the standard structure.
+
+<code javascript>
+module 'widgets' { ... }
+module 'widgets/button' { ... }
+module 'widgets/alert' { ... }
+module 'widgets/textarea' { ... }
+
+import { messageBox, confirmDialog } from 'widgets/alert';
+...
+</code>
+
+==== Remote modules on the web (1) ====
+
+<code javascript>
+// loading from a URL
+module JSON from 'http://json.org/modules/json2.js';
+
+alert(JSON.stringify({'hi': 'world'}));
+</code>
+
+==== Remote modules on the web (2) ====
+
+<code javascript>
+// loading from a URL providing sub-modules
+module YUI from 'http://developer.yahoo.com/modules/yui3.js';
+
+alert(YUI.dom.Color.toHex(“blue”));
+</code>
+
+==== Cyclic dependencies ====
+
+<code javascript>
+// easy!
+module 'Even' {
+    import odd from 'Odd';
+    export default function even(n) {
+        return n == 0 || odd(n - 1);
+    }
+}
+
+// woo-hoo!
+module 'Odd' {
+    import even from 'Even';
+    export default function odd(n) {
+        return n != 0 && even(n - 1);
+    }
+}
+</code>
+
+==== Dynamic module loading ====
+
+<code javascript>
+System.load('http://json.org/modules/json2.js',
+    function(JSON) {
+        alert(JSON.stringify([0, {a: true}]));
+    });
+</code>
+
+==== Parameterization ====
+
+<code javascript>
+module 'DOMMunger' {
+    // parameterized by a DOM implementation
+    export function make(domAPI) {
+        return {
+            munge: function(doc) {
+                ...
+                domAPI.alert('hi!');
+                ...
+            }
+        };
+    }
+}
+</code>
+
+<code javascript>
+module 'SafeDOM' {
+    import { alert } from 'DOM';
+
+    export let document = {
+        write: function(txt) {
+            alert('I\'m sorry, Dave, I\'m afraid I can\'t do that...')
+        },
+        ...
+    };
+}
+</code>
+
+<code javascript>
+module DOMMunger from 'DOMMunger';
+module SafeDOM from 'SafeDOM';
+var instance = DOMMunger.make(SafeDOM);
+
+instance.munge(...);
+</code>
+
+==== Shared state ====
+
+<code javascript>
+module 'counter' {
+    var n = 0;
+    export function increment() { return n++ }
+    export function current() { return n }
+}
+</code>
+
+==== CommonJS-style modules on the server ====
+
+In a server-side JS environment's default ''System'' loader, module names might map to filesystem paths.
+
+<code javascript>
+// io/File.js
+export function open(path) { ... };
+export function close(hnd) { ... };
+...
+</code>
+
+<code javascript>
+// compiler/Lexer.js
+
+import { open, close } from 'io/File';
+export function scan(in) {
+    try {
+        var h = open(in) ...
+    } finally { close(h) }
+}
+</code>
+
+<code javascript>
+module lexer from 'compiler/Lexer';
+module shell from 'shell';
+
+... lexer.scan(shell.cmdline[0]) ...
+</code>

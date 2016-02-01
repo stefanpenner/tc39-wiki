@@ -1,0 +1,300 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:error_stack&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:error_stack&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:error_stack&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:error_stack&amp;do=export_html.html#overview" class="toc">Overview</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:error_stack&amp;do=export_html.html#examples" class="toc">Examples</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:error_stack&amp;do=export_html.html#background" class="toc">Background</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:error_stack&amp;do=export_html.html#formatting_of_stack" class="toc">Formatting of stack</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:error_stack&amp;do=export_html.html#ie_chrome" class="toc">IE &amp; Chrome</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:error_stack&amp;do=export_html.html#firefox_safari" class="toc">Firefox &amp; Safari</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:error_stack&amp;do=export_html.html#opera" class="toc">Opera</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:error_stack&amp;do=export_html.html#property" class="toc">Property</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:error_stack&amp;do=export_html.html#suggested_formatting" class="toc">Suggested formatting</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:error_stack&amp;do=export_html.html#error.stacktracelimit" class="toc">Error.stackTraceLimit</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:error_stack&amp;do=export_html.html#discussion" class="toc">Discussion</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="overview"></a><h1>Overview</h1>
+<div class="level1">
+
+<p>
+ All major  browsers (if beta versions are included) now support accessing stack traces from scripts. However, no single browser agree on the details of how stack traces are accessible.
+</p>
+
+</div>
+<!-- SECTION [1-210] -->
+<a name="examples"></a><h1>Examples</h1>
+<div class="level1">
+<pre class="code javascript"><span class="kw2">function</span> f<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw1">try</span> <span class="br0">&#123;</span>
+    doSomething<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span> <span class="kw1">catch</span> <span class="br0">&#40;</span>err<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw3">alert</span><span class="br0">&#40;</span>err.<span class="me1">stack</span><span class="br0">&#41;</span>
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+ 
+f<span class="br0">&#40;</span><span class="br0">&#41;</span>;</pre>
+<p>
+Should alert something like:
+</p>
+<pre class="code">
+ReferenceError: doSomething is not defined
+    at f (http://www.example.com/temp.html:5:5)
+    at http://www.example.com/temp.html:11:1
+</pre>
+
+</div>
+<!-- SECTION [211-538] -->
+<a name="background"></a><h1>Background</h1>
+<div class="level1">
+
+<p>
+ Firefox was the first browser to expose a <code>stack</code> property on the <code>Error</code> object. A new-line separated string was used for this purpose. Each line of the string contained the function name (if any) followed by @, <acronym title="Uniform Resource Locator">URL</acronym> and line number.
+</p>
+
+<p>
+The next browser to add support for <code>stack</code> was Chrome. It changed the format slightly to include the column number and it also limited the number of stack traces to 10 by default but allows the script to change this by setting <code>Error.stackTraceLimit</code>.
+</p>
+
+<p>
+Both Safari and <acronym title="Internet Explorer">IE</acronym> have added support for <code>stack</code> in their current beta versions. 
+</p>
+<table class="inline">
+	<tr>
+		<td class="rightalign">                                                       </td><th> Internet Explorer </th><th> Chrome </th><th> Firefox </th><th> Safari </th><th> Opera </th>
+	</tr>
+	<tr>
+		<th> The property is added when an Error object is created </th><td class="rightalign">                   </td><td class="centeralign">    X   </td><td class="centeralign">    X    </td><td class="rightalign">        </td><td class="centeralign">   X   </td>
+	</tr>
+	<tr>
+		<th> The property is added when the object/error is thrown </th><td class="centeralign">        X*         </td><td class="rightalign">        </td><td class="rightalign">         </td><td class="centeralign">    X   </td><td class="rightalign">       </td>
+	</tr>
+	<tr>
+		<th class="leftalign"> get                                                   </th><td class="centeralign">        X          </td><td class="centeralign">    X   </td><td class="rightalign">         </td><td class="rightalign">        </td><td class="rightalign">       </td>
+	</tr>
+	<tr>
+		<th class="leftalign"> set                                                   </th><td class="centeralign">        X          </td><td class="centeralign">    X   </td><td class="rightalign">         </td><td class="rightalign">        </td><td class="rightalign">       </td>
+	</tr>
+	<tr>
+		<th class="leftalign"> value                                                 </th><td class="rightalign">                   </td><td class="rightalign">        </td><td class="centeralign">    X    </td><td class="centeralign">    X   </td><td class="centeralign">   X   </td>
+	</tr>
+	<tr>
+		<th class="leftalign"> writable                                              </th><td class="rightalign">                   </td><td class="rightalign">        </td><td class="centeralign">    X    </td><td class="rightalign">        </td><td class="centeralign">   X   </td>
+	</tr>
+	<tr>
+		<th class="leftalign"> configurable                                          </th><td class="rightalign">                   </td><td class="rightalign">        </td><td class="centeralign">    X    </td><td class="rightalign">        </td><td class="centeralign">   X   </td>
+	</tr>
+	<tr>
+		<th class="leftalign"> enumerable                                            </th><td class="centeralign">        X          </td><td class="centeralign">    X   </td><td class="centeralign">    X    </td><td class="centeralign">    X   </td><td class="rightalign">       </td>
+	</tr>
+	<tr>
+		<th class="leftalign"> Includes column numbers                               </th><td class="centeralign">        X          </td><td class="centeralign">    X   </td><td class="rightalign">         </td><td class="rightalign">        </td><td class="rightalign">       </td>
+	</tr>
+	<tr>
+		<th class="leftalign"> stackTraceLimit                                       </th><td class="centeralign">        X          </td><td class="centeralign">    X   </td><td class="rightalign">         </td><td class="rightalign">        </td><td class="rightalign">       </td>
+	</tr>
+</table>
+<br />
+
+<p>
+ <code>*</code> <acronym title="Internet Explorer">IE</acronym> only adds the stack property to objects that have Error.prototype on the prototype chain
+</p>
+
+<p>
+All browsers add the <code>stack</code> property as an instance property.
+</p>
+
+</div>
+<!-- SECTION [539-2566] -->
+<a name="formatting_of_stack"></a><h2>Formatting of stack</h2>
+<div class="level2">
+
+<p>
+All browsers return stack as a <code>&ldquo;\n&rdquo;</code> separated string.
+</p>
+
+</div>
+<!-- SECTION [2567-2659] -->
+<a name="ie_chrome"></a><h3>IE &amp; Chrome</h3>
+<div class="level3">
+<pre class="code">
+ReferenceError: d is not defined
+    at runScript (http://ie.microsoft.com/testdrive/browser/ExploreErrorStack/:356:30)
+</pre>
+
+</div>
+<!-- SECTION [2660-2818] -->
+<a name="firefox_safari"></a><h3>Firefox &amp; Safari</h3>
+<div class="level3">
+<pre class="code">
+runScript@http://ie.microsoft.com/testdrive/browser/ExploreErrorStack/:356
+</pre>
+
+</div>
+<!-- SECTION [2819-2937] -->
+<a name="opera"></a><h3>Opera</h3>
+<div class="level3">
+<pre class="code">
+runScript([arguments not available])@http://ie.microsoft.com/testdrive/browser/ExploreErrorStack/:356
+</pre>
+
+</div>
+<!-- SECTION [2938-3072] -->
+<a name="property"></a><h1>Property</h1>
+<div class="level1">
+
+<p>
+ The <code>stack</code> property should be a [[Configurable]], [[Writable]], [[Enumerable]] data property. The reason to make this writable is because old code out there add <code>stack</code> manually by walking the caller chain and they might depend on their own custom value of the <code>stack</code> property.
+</p>
+
+<p>
+The property should be added as an instance property when an object that inherits from <code>Error</code> is created. (See discussion)
+</p>
+
+</div>
+<!-- SECTION [3073-3524] -->
+<a name="suggested_formatting"></a><h1>Suggested formatting</h1>
+<div class="level1">
+<pre class="code">
+Stack ::= ErrorName &quot;: &quot; ErrorMessage (&quot;\n    at &quot; StackFrame)+
+
+StackFrame ::= (FunctionName &quot; &quot;)? &quot;(&quot; StackLocation &quot;)&quot;
+             | StackLocation
+
+StackLocation ::= &quot;eval at &quot; FunctionName &quot; (&quot; StackURLLocation &quot;)&quot;
+                | StackURLLocation
+
+StackURLLocation ::= URL &quot;:&quot; RowNumber &quot;:&quot; ColumnNumber
+</pre>
+
+<p>
+for example:
+</p>
+<pre class="code">
+ReferenceError: doSomething is not defined
+    at f (http://www.example.com/temp.html:5:5)
+    at g (eval at h (http://www.example.com/temp.html:6:5))
+    at http://www.example.com/temp.html:11:1
+</pre>
+
+<p>
+This is intended to match Internet Explorer and Chrome. It has some benefits over what the other browsers provide. 
+</p>
+<ul>
+<li class="level1"><div class="li"> Provides the column number. Requiring both row and column is essential because it is very common for large scale applications to minimize the source code and end up with multiple statements per line.</div>
+</li>
+<li class="level1"><div class="li"> Points out that the code was eval&rsquo;ed.</div>
+</li>
+</ul>
+
+<p>
+ The <code>FunctionName</code> part is intentionally left underspecified to allow implementations to provide information like &ldquo;new&rdquo;, arguments, method name etc.
+</p>
+
+<p>
+For more details about  the formatting of error stack in V8 please refer to: <a href="http://code.google.com/p/v8/wiki/JavaScriptStackTraceApi" class="urlextern" target="_blank" title="http://code.google.com/p/v8/wiki/JavaScriptStackTraceApi" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://code.google.com/p/v8/wiki/JavaScriptStackTraceApi</a>
+</p>
+
+<p>
+Providing ErrorName and ErrorMessage is a bit dubious since this information is already available on Error instance objects but it is convenient for tools that upload the stack trace to a server.
+</p>
+
+<p>
+The &quot;    at &quot; part adds no real value except that it makes the string a bit more readable.
+</p>
+
+</div>
+<!-- SECTION [3525-5058] -->
+<a name="error.stacktracelimit"></a><h1>Error.stackTraceLimit</h1>
+<div class="level1">
+
+<p>
+ In some script engines it is costly to keep the entire stack trace in memory and therefore an engine may limit the size of the stack trace. This is controlled by a [[Configurable]], [[Writable]], [[Enumerable]] data property called <code>stackTraceLimit</code> on the <code>Error</code> object. (The default in <acronym title="Internet Explorer">IE</acronym> and Chrome is 10 but we could make this implementation specific.) Setting this to <code>0</code> prevents any stack trace from being collected and setting this to <code>Infinity</code> should keep as much of the stack trace as possible.
+</p>
+
+</div>
+<!-- SECTION [5059-5625] -->
+<a name="discussion"></a><h1>Discussion</h1>
+<div class="level1">
+
+<p>
+ Having the stack be a string that has to be manually parsed is really silly. However, Safari tried to return an array of stuff and it turned out that it broke things. We could provide an alternative <acronym title="Application Programming Interface">API</acronym> to extract relevant details but at this point we should strive to make implementations compatible.
+</p>
+
+<p>
+Some browsers add the stack property only when an error is thrown. This might be a better solution but there is code out there that expects there to be a <code>stack</code> property on newly created <code>Error</code> objects. <a href="https://code.google.com/searchframe#epIciakqvFc/trunk/closure/goog/debug/error.js&amp;l=40" class="urlextern" target="_blank" title="https://code.google.com/searchframe#epIciakqvFc/trunk/closure/goog/debug/error.js&amp;l=40" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">https://code.google.com/searchframe#epIciakqvFc/trunk/closure/goog/debug/error.js&amp;l=40</a>
+</p>
+
+<p>
+The formatting of the string is a bit arbitrary. The goal here is to spec something and the V8 style formatting provides more details than the SpiderMonkey style formatting. 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+I generally like this idea. I don&rsquo;t know what kind of compat problems we&rsquo;d have in FF if we changed our format, but I can analyze our addons to find out how many do stack trace parsing, to get a feel for what kind of breakage might occur. It&rsquo;s harder for me to know what kinds of problems this might cause for web content. But we could start by looking at cross-engine compatibility libraries for stack traces like <a href="http://stacktracejs.com/" class="urlextern" target="_blank" title="http://stacktracejs.com/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://stacktracejs.com/</a>.
+</p>
+
+<p>
+We should be careful not to over-specify: we want to leave engines with the freedom to do optimizations like inlining. But we can strive for better compatibility in stack trace formats between engines.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x64%3B%26%23x68%3B%26%23x65%3B%26%23x72%3B%26%23x6d%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x63%3B%26%23x63%3B%26%23x73%3B%26%23x2e%3B%26%23x6e%3B%26%23x65%3B%26%23x75%3B%26%23x2e%3B%26%23x65%3B%26%23x64%3B%26%23x75%3B" class="mail" title="&#x64;&#x68;&#x65;&#x72;&#x6d;&#x61;&#x6e;&#x40;&#x63;&#x63;&#x73;&#x2e;&#x6e;&#x65;&#x75;&#x2e;&#x65;&#x64;&#x75;">Dave Herman</a> 2012/06/07 20:14</em>
+</p>
+
+<p>
+Mark Miller objects to any capability leak, which seems likely if we reflect <code>e.stackFrames</code>. Mark also is concerned about information leaks via a string.
+</p>
+
+<p>
+When I implement SpiderMonkey&rsquo;s <code>e.stack</code> back in the day (first!), I did not want to leak information such as argument values. I also wanted to make it easy to split the string and do whatever formatting seemed best, but I agree V8&rsquo;s format is not much harder to &ldquo;parse&rdquo; via <code>split</code>, and it is more readable.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2012/08/02 21:53</em>
+</p>
+
+<p>
+Another thought: for compat, you said that <code>err.stack</code> has to be a string. But maybe we could add another structured stack trace for easier programmatic access as well, e.g. <code>err.stackFrames</code> or <code>err.stackEntries</code> or something like that?
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x64%3B%26%23x68%3B%26%23x65%3B%26%23x72%3B%26%23x6d%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x63%3B%26%23x63%3B%26%23x73%3B%26%23x2e%3B%26%23x6e%3B%26%23x65%3B%26%23x75%3B%26%23x2e%3B%26%23x65%3B%26%23x64%3B%26%23x75%3B" class="mail" title="&#x64;&#x68;&#x65;&#x72;&#x6d;&#x61;&#x6e;&#x40;&#x63;&#x63;&#x73;&#x2e;&#x6e;&#x65;&#x75;&#x2e;&#x65;&#x64;&#x75;">Dave Herman</a> 2012/06/07 20:20</em> 
+</p>
+
+</div>
+<!-- SECTION [5626-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/c/c78f1d62c6700958f8123f55c25461b7.xhtml used -->
+</body>
+</html>

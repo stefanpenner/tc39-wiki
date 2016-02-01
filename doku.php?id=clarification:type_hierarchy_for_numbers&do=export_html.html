@@ -1,0 +1,244 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=clarification:type_hierarchy_for_numbers&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=clarification" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=clarification:type_hierarchy_for_numbers&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=clarification:type_hierarchy_for_numbers&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=clarification:type_hierarchy_for_numbers&amp;do=export_html.html#type_hierarchies_for_builtins" class="toc">Type hierarchies for builtins</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=clarification:type_hierarchy_for_numbers&amp;do=export_html.html#available_options_and_why_one_is_better" class="toc">Available options, and why one is better</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=clarification:type_hierarchy_for_numbers&amp;do=export_html.html#older_clarification_pertaining_to_numbers" class="toc">Older clarification pertaining to numbers</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=clarification:type_hierarchy_for_numbers&amp;do=export_html.html#flat_solution" class="toc">Flat solution</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=clarification:type_hierarchy_for_numbers&amp;do=export_html.html#hierarchical_solution" class="toc">Hierarchical solution</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=clarification:type_hierarchy_for_numbers&amp;do=export_html.html#parameterized_types" class="toc">Parameterized types</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=clarification:type_hierarchy_for_numbers&amp;do=export_html.html#conclusion" class="toc">Conclusion</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="type_hierarchies_for_builtins"></a><h1>Type hierarchies for builtins</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [1-45] -->
+<a name="available_options_and_why_one_is_better"></a><h2>Available options, and why one is better</h2>
+<div class="level2">
+
+<p>
+ One topic that I&rsquo;ve been pondering is the class hierarchy for ES4 where we have String/string, Boolean/boolean, Number/int/decimal/double/uint/...   
+</p>
+
+<p>
+Recall that the Capitalized ones are dynamic and nonfinal and nullable; the others are opposite.  The capitalized ones are the container classes from ES3, the others model the primitive ones (but avoid conversions to the containers on method calls among other things).
+</p>
+
+<p>
+There are two options for how the containers relate to the primitives.
+</p>
+
+<p>
+(1) Through subclassing: 
+</p>
+<pre class="code">boolean &lt;: Boolean
+string &lt;: String
+int &lt;: Number
+uint &lt;: Number
+double &lt;: Number
+decimal &lt;: Number</pre>
+
+<p>
+ There are two notable problems with subclassing.  One problem is that signatures in the base class overly constrain signatures in the subclass, eg, if String&rsquo;s intrinsic::indexOf takes a String, so must string&rsquo;s intrinsic::indexOf &ndash; it can&rsquo;t take a &ldquo;string&rdquo;.  This may or may not be a big deal; I don&rsquo;t much like it, though, it&rsquo;s not future-proof.  The other problem is that if we think of subtype as subset (&rdquo;more constrained&rdquo;) then it&rsquo;s nuts that decimal is a subset of Number, since the latter represents a double, and it would be even worse if we add &ldquo;complex&rdquo; and &ldquo;bignum&rdquo; later.  Again, not very future-proof even if we make it hang together now.
+</p>
+
+<p>
+The main benefits of subclassing are that &ldquo;Number&rdquo; becomes a catch-all type name for anything numeric; &ldquo;Boolean&rdquo; for anything boolean, and so on, and that Number.prototype is visible through eg int.prototype, so that mutating Number.prototype we introduce methods also for int.
+</p>
+
+<p>
+(2) Through union typing: 
+</p>
+<pre class="code">type Booleans = (boolean,Boolean!)
+type Strings = (string,String!)
+type Numbers = (int,uint,double,decimal,Number!)</pre>
+
+<p>
+ This solution fixes the two problems above but introduces new type names, ie, somebody who just wants basic type checking but wants to allow for container classes can&rsquo;t annotate with &ldquo;String&rdquo; any more, he has to use &ldquo;Strings&rdquo;, which is a little alien (but not wrong).  If you look in builtins/String.es, you&rsquo;ll see that the signature on intrinsic::indexOf uses &ldquo;Strings&rdquo;.
+</p>
+
+<p>
+The benefit of solution (2) apart from fixing the other problems is that it highlights that string and String are not related: the latter holds an instance of the former, but that&rsquo;s it.  &ldquo;String&rdquo; a mutable container class, no more.
+</p>
+
+<p>
+For solution (2) there are some added points: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Prototypes: we must have string.prototype === String.prototype, int.prototype === Number.prototype, and so on, and the prototype methods are ES3-compatible: no type annotations in the signature.  This sharing is not expressible in the language but is required for backwards compatibility with ES3, people who do Number.prototype.foo=... will want foo to show up on int.prototype too (so that (3).foo works).</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Conversions: the objects in a union type should normally be interconvertible, so if you pass a Number to something requiring eg int this will work (for better or worse).  This too is not expressible in the language, after we agreed to get rid of the &ldquo;meta convert&rdquo; method.  But we do want &ldquo;String&rdquo; to convert to &ldquo;string&rdquo;, for example.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Utility: Unsurprisingly, there are many uses for &ldquo;Numbers&rdquo; (previously called &ldquo;Numeric&rdquo;), eg in the Math class, but there are actual uses also for the types &ldquo;Strings&rdquo; and &ldquo;Booleans&rdquo;: they are used as &ldquo;this&rdquo; constraints on some prototype methods, eg in Boolean.prototype,</div>
+</li>
+</ul>
+<pre class="code">prototype function toString(this: Booleans) ...</pre>
+
+<p>
+ The magic here is that it needs to be &ldquo;Booleans&rdquo; not &ldquo;Boolean&rdquo; because the prototype is shared by the two classes and we don&rsquo;t want to code the constraint by hand.
+</p>
+
+<p>
+In the specs for the builtins I&rsquo;ve been assuming solution (2).
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2007/09/18 12:40</em>
+</p>
+
+</div>
+<!-- SECTION [46-3835] -->
+<a name="older_clarification_pertaining_to_numbers"></a><h2>Older clarification pertaining to numbers</h2>
+<div class="level2">
+
+<p>
+ The January 26 draft spec states that <code>Number</code>, <code>int</code>, and <code>uint</code> all are subtypes of <code>Object</code>.  This has come as a surprise to several, who expected there to be a subtype relationship. 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>Number</code> values are IEEE double precision values</div>
+</li>
+<li class="level1"><div class="li"> <code>int</code> values are integers in the range -(2^31) .. (2^31)-1</div>
+</li>
+<li class="level1"><div class="li"> <code>uint</code> values are integers in the range 0 .. (2^32)-1</div>
+</li>
+</ul>
+
+<p>
+ We have also said that there should be conversions among these types.
+</p>
+
+<p>
+The spec does not say whether these types are subclassable.  I am guessing that <code>Number</code> can be subclassed but <code>int</code> and <code>uint</code> cannot.
+</p>
+
+<p>
+(The only justification for <code>int</code> and <code>uint</code> types is that they admit efficient processing and representation; ie, though they must fit into some general Object representation scheme (except in fully strict-mode implementations), they do not have to have the same representation as <code>Number</code>.)
+</p>
+
+<p>
+In addition we have discussed adding a new type <code>Decimal</code> for base-10 floating point numbers; the set of values for this type is a superset of the values for <code>Number</code>.  For this type too we have said that there should be convertibility to the other numeric types.
+</p>
+
+<p>
+On top of that we have added enough operator overloading machinery to the language that we can expect some users to wish to add new numeric data types (<code>Complex</code>).
+</p>
+
+<p>
+So what should the type hierarchy be for numeric types?
+</p>
+
+</div>
+<!-- SECTION [3836-5273] -->
+<a name="flat_solution"></a><h3>Flat solution</h3>
+<div class="level3">
+
+<p>
+ In the &ldquo;flat solution&rdquo; the world remains as it is today: every one of these types is a direct subtype of <code>Object</code>, and interconvertibility is handled with the equivalent of <code>to</code> operators on the types.  We need only define conversion rules from one type to the other.
+</p>
+
+<p>
+User-defined numeric types define operators and <code>to</code> operators to allow this to work more or less seamlessly.
+</p>
+
+</div>
+<!-- SECTION [5274-5684] -->
+<a name="hierarchical_solution"></a><h3>Hierarchical solution</h3>
+<div class="level3">
+
+<p>
+ In the &ldquo;hierarchical solution&rdquo; we place the number types in a hierarchy where more general types are closer to the top.
+</p>
+
+<p>
+It is natural that <code>Number</code> is a base type for <code>int</code> and <code>uint</code>, given both their value sets and their names.  
+</p>
+
+<p>
+However, neither <code>int</code> nor <code>uint</code> can be a base type of the other; they must(?) instead be interconvertible.  So both are sibling subtypes of <code>Number</code> and there must be special-case conversion rules among them.
+</p>
+
+<p>
+Nor can <code>Decimal</code> be a subtype of <code>Number</code>, since it contains a superset of values held by <code>Number</code>.  It&rsquo;s really the other way around: <code>Number</code> must be a subtype of <code>Decimal</code>.  Yet the name <code>Number</code> suggests a most general type for numbers, and it&rsquo;s pretty peculiar to suggest that the other number types are subtypes of &ldquo;decimal&rdquo; numbers.
+</p>
+
+<p>
+Some of the confusion comes from poor choices for the type names: <code>Number</code> when we mean <code>double</code>; <code>Decimal</code> when we mean <code>Base-10 floating point</code>.  Some choices can&rsquo;t be helped for historical reasons.  But it makes it hard to construct a reasonable hierarchy here.
+</p>
+
+<p>
+The subclass relationship would also introduce assumptions about eg preserving object identity and dynamic properties.  Suppose I have an <code>int</code> object that I store in a <code>Number</code> variable.  If <code>int</code> is represented as an efficient machine type then this really is a type of conversion.  This may be visible.  Consider:
+</p>
+<pre class="code">
+  var a:int=10; 
+  var b:Number=a, c:Number=a; 
+  a === b;
+</pre>
+
+<p>
+Here I would expect <code>true</code>, and since <code>Number</code> is a dynamic class I would expect that if I add properties to <code>b</code> then they would become visible through <code>c</code>.  I think this is reasonable; it follows from the general object model of the language.
+</p>
+
+</div>
+<!-- SECTION [5685-7455] -->
+<a name="parameterized_types"></a><h3>Parameterized types</h3>
+<div class="level3">
+
+<p>
+ Parameterized types do not figure into this.  <code>Array.&lt;int&gt;</code> is not a subtype of <code>Array.&lt;Number&gt;</code> even if <code>int</code> is a subtype of <code>Number</code>, and there is no way to use the parameterized type system to express operations that will take &ldquo;some numeric type&rdquo; as an argument by relying on a type hierarchy below <code>Number</code>.  It is possible to instantiate a class with a concrete type, of course, but that ability does not depend on one structure or the other for numbers.
+</p>
+
+</div>
+<!-- SECTION [7456-7958] -->
+<a name="conclusion"></a><h3>Conclusion</h3>
+<div class="level3">
+
+<p>
+ A flat model seems most natural for ECMAScript, with ad-hoc conversions among the types.  
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/05/23 05:06</em>
+</p>
+
+</div>
+<!-- SECTION [7959-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/5/56f3f640baa9ceeef99285090bf875f0.xhtml used -->
+</body>
+</html>

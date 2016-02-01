@@ -1,0 +1,205 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:default_operator&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:default_operator&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:default_operator&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:default_operator&amp;do=export_html.html#motivation" class="toc">Motivation</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:default_operator&amp;do=export_html.html#proposal" class="toc">Proposal</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:default_operator&amp;do=export_html.html#semantics" class="toc">Semantics</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:default_operator&amp;do=export_html.html#examples" class="toc">Examples</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:default_operator&amp;do=export_html.html#open_issues" class="toc">Open Issues</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="motivation"></a><h1>Motivation</h1>
+<div class="level1">
+
+<p>
+ The short-circuiting logical-or connective <code>||</code> is often used as a default operator. If an expression would produce a falsy value, then appending <code>||</code> and another expression will fill in a default value instead.
+</p>
+<pre class="code javascript">possible_value || default_value</pre>
+<p>
+This works well for things like text fields, where the value from an empty field is easily replaced with a default value.
+</p>
+
+<p>
+This is also used with parameters and object members, but there is a problem. With parameters and object members, the only falsy value of interest usually is <code>undefined</code>. Unfortunately, the number <code>0</code> is also a falsy value, which can lead to an unintended replacement with the default value.
+</p>
+
+</div>
+<!-- SECTION [1-722] -->
+<a name="proposal"></a><h1>Proposal</h1>
+<div class="level1">
+
+<p>
+ We propose that a default operator <code>??</code> be added. It is a short-circuiting operator. If the first operand evaluates to a value other than <code>undefined</code>, then the result is the first operand and the second operand is not evaluated. But if the result of evaluating the first operand is <code>undefined</code>, then the second operand is evaluated and used as the result.
+</p>
+<pre class="code javascript">possible_value ?? default_value</pre>
+<p>
+is a short form of
+</p>
+<pre class="code javascript">possible_value !== undefined ? possible_value : default_value</pre>
+<p>
+but with <code>possible_value</code> evaluated exactly once.
+</p>
+
+<p>
+For convenience, we propose adding an <code>??=</code> assignment operator:
+</p>
+<pre class="code javascript">variable ??= default_value;  <span class="co1">// variable = variable ?? default_value</span></pre>
+<p>
+As with the existing assignment operators, the <code>Reference</code> internal type instance evaluated from the left-hand side <code>variable</code> is evaluated once, and used via <code>GetValue</code> in the expansion on the right of <code>=</code>.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x40%3B%26%23x79%3B%26%23x61%3B%26%23x68%3B%26%23x6f%3B%26%23x6f%3B%26%23x2d%3B%26%23x69%3B%26%23x6e%3B%26%23x63%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x63;&#x72;&#x6f;&#x63;&#x6b;&#x40;&#x79;&#x61;&#x68;&#x6f;&#x6f;&#x2d;&#x69;&#x6e;&#x63;&#x2e;&#x63;&#x6f;&#x6d;">Douglas Crockford</a> 2011/02/13 00:48</em>  &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2012/06/17 18:52</em>
+</p>
+
+</div>
+<!-- SECTION [723-1843] -->
+<a name="semantics"></a><h1>Semantics</h1>
+<div class="level1">
+
+<p>
+ The production <em>ConditionalExpression</em> : <em>LogicalORExpression</em> <code>??</code> <em>AssignmentExpression</em> is evaluated as follows: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let lref be the result of evaluating <em>LogicalORExpression</em>.</div>
+</li>
+<li class="level1"><div class="li"> Let lval be GetValue(lref).</div>
+</li>
+<li class="level1"><div class="li"> If lval is not <strong>undefined</strong>, then return lval.</div>
+</li>
+<li class="level1"><div class="li"> Let rref be the result of evaluating <em>AssignmentExpression</em>.</div>
+</li>
+<li class="level1"><div class="li"> Return GetValue(rref).</div>
+</li>
+</ol>
+
+<p>
+ The production <em>AssignmentExpression</em> : <em>LeftHandSideExpression</em> <code>??=</code> <em>AssignmentExpression</em> is evaluated as follows: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let lref be the result of evaluating <em>LeftHandSideExpression</em>.</div>
+</li>
+<li class="level1"><div class="li"> Throw a SyntaxError exception if the following conditions are all true:</div>
+<ul>
+<li class="level2"><div class="li"> Type(lref) is Reference is true</div>
+</li>
+<li class="level2"><div class="li"> IsStrictReference(lref) is true</div>
+</li>
+<li class="level2"><div class="li"> Type(GetBase(lref)) is Environment Record</div>
+</li>
+<li class="level2"><div class="li"> GetReferencedName(lref) is either &ldquo;eval&rdquo; or &ldquo;arguments&rdquo;</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Let lval be GetValue(lref).</div>
+</li>
+<li class="level1"><div class="li"> If lval is not <strong>undefined</strong>, then return lval.</div>
+</li>
+<li class="level1"><div class="li"> Let rref be the result of evaluating <em>AssignmentExpression</em>.</div>
+</li>
+<li class="level1"><div class="li"> Let rval be GetValue(rref).</div>
+</li>
+<li class="level1"><div class="li"> Call PutValue(lref, rval).</div>
+</li>
+<li class="level1"><div class="li"> Return rval.</div>
+</li>
+</ol>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2012/06/17 18:52</em>
+</p>
+
+</div>
+<!-- SECTION [1844-2993] -->
+<a name="examples"></a><h1>Examples</h1>
+<div class="level1">
+
+<p>
+ Ryan Florence provided some good examples of pain points that exist today, that could be mitigated by the default operator:
+</p>
+
+<p>
+<a href="https://mail.mozilla.org/pipermail/es-discuss/2012-June/023356.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2012-June/023356.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">https://mail.mozilla.org/pipermail/es-discuss/2012-June/023356.html</a>
+</p>
+<pre class="code javascript"><span class="kw2">var</span> events = <span class="br0">&#123;</span>
+  _callbacks: <span class="br0">&#123;</span><span class="br0">&#125;</span>,
+&nbsp;
+  on: <span class="kw2">function</span> <span class="br0">&#40;</span>topic, callback<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="br0">&#40;</span><span class="kw1">this</span>._callbacks<span class="br0">&#91;</span>topic<span class="br0">&#93;</span> ??= <span class="br0">&#91;</span><span class="br0">&#93;</span><span class="br0">&#41;</span>.<span class="me1">push</span><span class="br0">&#40;</span>callback<span class="br0">&#41;</span>;
+    ...
+  <span class="br0">&#125;</span>,
+  ...
+<span class="br0">&#125;</span>;
+&nbsp;</pre><pre class="code javascript"><span class="kw2">function</span> ajaxWithError <span class="br0">&#40;</span>settings<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  settings.<span class="me1">method</span> ??= <span class="st0">'POST'</span>;
+&nbsp;
+  settings.<span class="me1">elementPosition</span> ??= <span class="kw1">this</span>._getElementPositions<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+&nbsp;
+  settings.<span class="me1">somethingWithInitialization</span> ??= <span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span>
+    <span class="kw2">var</span> thing = <span class="kw2">new</span> Thing<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+    thing.<span class="me1">foo</span> = settings.<span class="me1">foo</span>;
+    <span class="kw1">return</span> thing;
+  <span class="br0">&#125;</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+  ...
+<span class="br0">&#125;</span>;</pre>
+<p>
+ &mdash; <em><a href="mailto:%26%23x77%3B%26%23x61%3B%26%23x6c%3B%26%23x64%3B%26%23x72%3B%26%23x6f%3B%26%23x6e%3B%26%23x2e%3B%26%23x72%3B%26%23x69%3B%26%23x63%3B%26%23x6b%3B%26%23x40%3B%26%23x67%3B%26%23x6d%3B%26%23x61%3B%26%23x69%3B%26%23x6c%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x77;&#x61;&#x6c;&#x64;&#x72;&#x6f;&#x6e;&#x2e;&#x72;&#x69;&#x63;&#x6b;&#x40;&#x67;&#x6d;&#x61;&#x69;&#x6c;&#x2e;&#x63;&#x6f;&#x6d;">Rick Waldron</a> 2012/06/12 17:08</em>
+</p>
+
+</div>
+<!-- SECTION [2994-3762] -->
+<a name="open_issues"></a><h1>Open Issues</h1>
+<div class="level1">
+<ul>
+<li class="level1"><div class="li"> Does <code>||=</code> deserve another look, even though it would be a new (Ruby-like) idiom?</div>
+<ul>
+<li class="level2"><div class="li"> Pro: paves a cow-path.</div>
+</li>
+<li class="level2"><div class="li"> Pro: avoids adding a new operator.</div>
+</li>
+<li class="level2"><div class="li"> Con: leads cows down the wrong path (|| means falsy value gets overridden by default value).</div>
+</li>
+<li class="level2"><div class="li"> Con: does <strong>not</strong> mean <em>op</em><code>=</code> (assignment operator) semantics, rather avoids assigning <code>L = L</code> in truthy-<code>L</code> case.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Should <code>null</code> be equated to <code>undefined</code>? Need more source code surveys.</div>
+<ul>
+<li class="level2"><div class="li"> CoffeeScript equates <code>null</code> and <code>undefined</code> in its <code>?</code> and when triggering <a href="doku.php%3Fid=harmony:parameter_default_values.html" class="wikilink1" title="harmony:parameter_default_values" onclick="return svchk()" onkeypress="return svchk()">parameter default values</a>.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [3763-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/2/2ce8ba50a060972f1431851c366a5c60.xhtml used -->
+</body>
+</html>

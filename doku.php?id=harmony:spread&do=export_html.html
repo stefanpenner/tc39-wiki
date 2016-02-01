@@ -1,0 +1,301 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=harmony:spread&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="http://wiki.ecmascript.org/feed.php?mode=list&amp;ns=harmony" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=harmony:spread&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=harmony:spread&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:spread&amp;do=export_html.html#background" class="toc">Background</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:spread&amp;do=export_html.html#requirementsgoals" class="toc">Requirements/Goals</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:spread&amp;do=export_html.html#sketch" class="toc">Sketch</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:spread&amp;do=export_html.html#syntax" class="toc">Syntax</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:spread&amp;do=export_html.html#semantics" class="toc">Semantics</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:spread&amp;do=export_html.html#11.2.4_argument_lists" class="toc">11.2.4 Argument Lists</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:spread&amp;do=export_html.html#11.1.4_array_initialiser" class="toc">11.1.4 Array Initialiser</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:spread&amp;do=export_html.html#discussion" class="toc">Discussion</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<p>
+<strong>This proposal has progressed to the Draft ECMAScript 6 Specification, which is available for review here: <a href="doku.php%3Fid=harmony:specification_drafts.html" class="wikilink1" title="harmony:specification_drafts" onclick="return svchk()" onkeypress="return svchk()">specification_drafts</a>. Any new issues relating to them should be filed as bugs at <a href="http://bugs.ecmascript.org" class="urlextern" target="_blank" title="http://bugs.ecmascript.org" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://bugs.ecmascript.org</a>. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.</strong>
+</p>
+
+<a name="background"></a><h2>Background</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="doku.php%3Fid=harmony:rest_parameters.html" class="wikilink1" title="harmony:rest_parameters" onclick="return svchk()" onkeypress="return svchk()">rest parameters</a></div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [370-428] -->
+<a name="requirementsgoals"></a><h2>Requirements/Goals</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Replace an array or array-like actual parameter value with its elements as positional parameters</div>
+</li>
+<li class="level1"><div class="li"> Let <code>new</code> compose with a <code>this</code>-free form of <code>apply</code></div>
+</li>
+<li class="level1"><div class="li"> Remove (some day, and in similar future methods) automagic (and half-the-time wrong) array flattening, e.g. in <code>Array.prototype.concat</code></div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [429-768] -->
+<a name="sketch"></a><h2>Sketch</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Let <code>...</code> be special prefix syntax called <em>spread</em>.</div>
+</li>
+<li class="level1"><div class="li"> The <code>...</code> syntax is legal only as a prefix to these list elements:</div>
+<ul>
+<li class="level2"><div class="li"> an actual parameter <em>AssignmentExpression</em> within an <em>ArgumentList</em></div>
+</li>
+<li class="level2"><div class="li"> an element initialiser <em>AssignmentExpression</em> within an <em>ElementList</em> in an <em>ArrayLiteral</em></div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Evaluate <code>...</code> <em>arg</em> in such a list by evaluating <em>arg</em> and then replacing it with <em>arg</em><code>[0]</code> through <em>arg</em><code>[</code><em>arg</em><code>.length - 1]</code>.</div>
+</li>
+</ul>
+<pre class="code">
+// Expand an array as element-wise positional parameters
+function q(x, a, b, c) {
+    return a * x * x + b * x + c;
+}
+var a = read_triple();
+var x = read_value();
+print(q(x, ...a));
+
+// Compose new with this-free apply:
+var date_fields = read_date_fields(database);
+var d = new Date(...date_fields);
+</pre>
+
+</div>
+<!-- SECTION [769-1574] -->
+<a name="syntax"></a><h2>Syntax</h2>
+<div class="level2">
+<pre class="code">
+ArgumentList :
+  AssignmentOrSpreadExpression
+  ArgumentList , AssignmentOrSpreadExpression
+
+AssignmentOrSpreadExpression :
+  ... AssignmentExpression
+  AssignmentExpression  
+
+</pre>
+<pre class="code">
+ElementList :
+  Elisionopt AssignmentOrSpreadExpression
+  ElementList , Elisionopt AssignmentOrSpreadExpression
+</pre>
+
+</div>
+<!-- SECTION [1575-1915] -->
+<a name="semantics"></a><h2>Semantics</h2>
+<div class="level2">
+
+</div>
+<!-- SECTION [1916-1939] -->
+<a name="11.2.4_argument_lists"></a><h3>11.2.4 Argument Lists</h3>
+<div class="level3">
+
+<p>
+The evaluation of an argument list produces a List of values (see 8.8).
+</p>
+
+<p>
+The production ArgumentList : AssignmentOrSpreadExpression is evaluated as follows: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Return the result of evaluating AssignmentOrSpreadExpression</div>
+</li>
+</ol>
+
+<p>
+ The production AssignmentOrSpreadExpression : AssignmentExpression 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let ref be the result of evaluating AssignmentExpression.</div>
+</li>
+<li class="level1"><div class="li"> Let arg be GetValue(ref).</div>
+</li>
+<li class="level1"><div class="li"> Return a List whose sole item is arg.</div>
+</li>
+</ol>
+
+<p>
+ The production AssignmentOrSpreadExpression : ... AssignmentExpression 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let ref be the result of evaluating AssignmentExpression.</div>
+</li>
+<li class="level1"><div class="li"> Let argArray be GetValue(ref).</div>
+</li>
+<li class="level1"><div class="li"> If argArray is null or undefined, then</div>
+<ol>
+<li class="level2"><div class="li"> Return an empty list</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> If Type(argArray) is not Object, then throw a TypeError exception.</div>
+</li>
+<li class="level1"><div class="li"> Let len be the result of calling the [[Get]] internal method of argArray with argument &ldquo;length&rdquo;.</div>
+</li>
+<li class="level1"><div class="li"> Let n be ToUint32(len).</div>
+</li>
+<li class="level1"><div class="li"> Let argList be an empty List.</div>
+</li>
+<li class="level1"><div class="li"> Let index be 0.</div>
+</li>
+<li class="level1"><div class="li"> Repeat while index &lt; n</div>
+<ol>
+<li class="level2"><div class="li"> Let indexName be ToString(index).</div>
+</li>
+<li class="level2"><div class="li"> Let nextArg be the result of calling the [[Get]] internal method of argArray with indexName as the argument.</div>
+</li>
+<li class="level2"><div class="li"> Append nextArg as the last element of argList.</div>
+</li>
+<li class="level2"><div class="li"> Set index to index + 1.</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Return argList</div>
+</li>
+</ol>
+
+<p>
+ The production ArgumentList : ArgumentList , AssignmentOrSpreadExpression is evaluated as follows: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let precedingArgs be the result of evaluating ArgumentList.</div>
+</li>
+<li class="level1"><div class="li"> Let ref be the result of evaluating AssignmentOrSpreadExpression.</div>
+</li>
+<li class="level1"><div class="li"> Let arg be GetValue(ref).</div>
+</li>
+<li class="level1"><div class="li"> Return a List whose length is the length of precedingArgs plus the length of arg and whose items are the items of precedingArgs, in order, followed by the items of arg, in order.</div>
+</li>
+</ol>
+
+</div>
+<!-- SECTION [1940-3669] -->
+<a name="11.1.4_array_initialiser"></a><h3>11.1.4 Array Initialiser</h3>
+<div class="level3">
+
+<p>
+ ...
+</p>
+
+<p>
+The production ElementList : Elisionopt AssignmentOrSpreadExpression is evaluated as follows: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let array be the result of creating a new object as if by the expression new Array() where Array is the standard built-in constructor with that name.</div>
+</li>
+<li class="level1"><div class="li"> Let pad be the result of evaluating Elision; if not present, use the numeric value zero.</div>
+</li>
+<li class="level1"><div class="li"> Let initList be the result of evaluating AssignmentOrSpreadExpression.</div>
+</li>
+<li class="level1"><div class="li"> Let index be pad.</div>
+</li>
+<li class="level1"><div class="li"> Iterate over the values in initList.</div>
+<ol>
+<li class="level2"><div class="li"> Let indexName be ToString(index).</div>
+</li>
+<li class="level2"><div class="li"> Let value be the current value of initList.</div>
+</li>
+<li class="level2"><div class="li"> Call the [[DefineOwnProperty]] internal method of array with arguments indexName, the Property Descriptor { [[Value]]: value, [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: true}, and false.</div>
+</li>
+<li class="level2"><div class="li"> Set index to index + 1.</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Return array.</div>
+</li>
+</ol>
+
+<p>
+The production ElementList : ElementList , Elisionopt AssignmentOrSpreadExpression is evaluated as follows: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let array be the result of evaluating ElementList.</div>
+</li>
+<li class="level1"><div class="li"> Let pad be the result of evaluating Elision; if not present, use the numeric value zero.</div>
+</li>
+<li class="level1"><div class="li"> Let initList be the result of evaluating AssignmentOrSpreadExpression.</div>
+</li>
+<li class="level1"><div class="li"> Let len be the result of calling the [[Get]] internal method of array with argument &ldquo;length&rdquo;.</div>
+</li>
+<li class="level1"><div class="li"> Let index be pad + len.</div>
+</li>
+<li class="level1"><div class="li"> Iterate over the values in initList.</div>
+<ol>
+<li class="level2"><div class="li"> Let indexName be ToString(index).</div>
+</li>
+<li class="level2"><div class="li"> Let value be the current value of initList.</div>
+</li>
+<li class="level2"><div class="li"> Call the [[DefineOwnProperty]] internal method of array with arguments indexName, the Property Descriptor { [[Value]]: value, [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: true}, and false.</div>
+</li>
+<li class="level2"><div class="li"> Set index to index + 1.</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Return array.</div>
+</li>
+</ol>
+
+<p>
+ ...
+</p>
+
+</div>
+<!-- SECTION [3670-5583] -->
+<a name="discussion"></a><h2>Discussion</h2>
+<div class="level2">
+
+<p>
+ We should also support spread in <a href="doku.php%3Fid=harmony:destructuring.html" class="wikilink1" title="harmony:destructuring" onclick="return svchk()" onkeypress="return svchk()">destructuring</a>.
+</p>
+<pre class="code javascript">let a = <span class="br0">&#91;</span><span class="nu0">0</span>, <span class="nu0">1</span>, <span class="nu0">2</span><span class="br0">&#93;</span>;
+let <span class="br0">&#91;</span>x, ...<span class="me1">xs</span><span class="br0">&#93;</span> = a;
+<span class="co1">// x = 0</span>
+<span class="co1">// xs = [1, 2]</span></pre>
+<p>
+  &mdash; <em><a href="mailto:%26%23x61%3B%26%23x72%3B%26%23x76%3B%26%23x40%3B%26%23x67%3B%26%23x6f%3B%26%23x6f%3B%26%23x67%3B%26%23x6c%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x61;&#x72;&#x76;&#x40;&#x67;&#x6f;&#x6f;&#x67;&#x6c;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Erik Arvidsson</a> 2010/11/04 00:30</em>
+</p>
+
+</div>
+<!-- SECTION [5584-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/6/6fc158880ed9f962e4511f2c741fb9f2.xhtml used -->
+</body>
+</html>

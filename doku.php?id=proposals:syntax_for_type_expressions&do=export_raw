@@ -1,0 +1,93 @@
+====== Syntax for type expressions ======
+
+
+(Also see the [[discussion:syntax_for_type_expression|discussion page]] for this proposal)
+
+The following intends to clarify the syntax for TypeExpression, following introduction of parameterized types, structural types, a syntax for functions, and many other type things.
+
+Observe that with parameterized types and union types there is much less (probably no) need for the conditional type declaration syntax allowed by the spec whereby one can say ''var x : (constant_expr ? Type1 : Type2)'', so this proposal removes that possibility.
+
+This proposal supersedes the January 2006 draft spec as well as [[syntax for function types]].
+
+
+
+
+
+
+===== Syntax =====
+
+Types:
+
+<code ebnf>
+    type ::= name
+           | name ".<" CL[ type ] ">"
+           | "function" "(" CL[ ptype ] ")" (":" type)?
+           | "(" CL[ type ] ? ")"
+           | "{" CL[ ftype ] ? "}"
+           | "[" CLE[ type ] "]"
+           | name "?"
+           | name "!"
+           | "undefined"
+           | "null"
+
+     name ::= Ident
+            | Ident "." name
+            | Ident "::" type
+
+     ptype ::= ("this" ":")? type ("=")?
+             | "..." Ident?
+
+     ftype ::= (Ident | Integer | String) ":" type
+</code>
+
+Syntactic functions:
+
+<code ebnf>
+     CL[ x ] ::= x
+               | x "," CL[ x ]
+
+     CLE[ x ] ::= x?
+                | x? "," CLE[ x ]
+</code>
+
+
+
+=== Constraints and notes =====
+
+Some of the constraints can be encoded in the syntax but it makes the syntax needlessly obscure.
+
+  * Identifiers in parameter lists are not allowed (as of Feb-21-2007)
+  * The syntax provides for package-qualified types (a.b.T) and namespace-qualified types (a::b).  
+  * This proposal does not talk about where types might be defined (whether only in packages/programs like classes or inside any class or block as well) and therefore not about how they may be exported and referenced, but if they are allowed to be defined inside classes then the C.T notation can obviously be used to reference them.
+  * If "this" is present in a parameter type list, it must be the first in the list
+  * If a rest type is present in a parameter type list, it must come last in the list
+  * "=" following a parameter type means the corresponding parameter is optional. Optional parameters must be contiguous and at the end of the list
+  * The type of the rest parameter shall resolve to an array type during verification and evaluation
+
+===== Unary type operator =====
+
+
+As it stands, type expressions shall only occur in limited syntactic contexts (that is, in a type expression, in a type annotation, in a cast expression, in an inheritance clause, in a type definition). But since type values are first class, programmers will want to express them literally outside of those few contexts. We propose to introduce a unary type operator that creates a syntactic context for type expressions where ever a ordinary expression is expected.
+
+<code>
+UnaryExpression	
+	PostfixExpression
+	"delete"  PostfixExpression
+	"void"  UnaryExpression
+	"typeof"  UnaryExpression
+	"++"   PostfixExpression
+	"--"  PostfixExpression
+	"+"  UnaryExpression
+	"-"  UnaryExpression
+	"~"  UnaryExpression
+	"!"  UnaryExpression
+	"type"  TypeExpression
+</code>
+
+The expression following the ''type'' operator is parsed and evaluated as a type expression.
+
+<code>
+if( x is type (T,U,V) ) ...
+</code>
+
+In this example ''type (T,U,V)'' evaluates to a union type.

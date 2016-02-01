@@ -1,0 +1,130 @@
+====== Make the RegExp Specification Match What Browsers Actually Implement ======
+The regular expressions that web browsers interoperability implement is not what is defined in the current ES5 specification.   For Harmony, the spec. should be updated to match reality.
+
+
+//These changes will be in a new section that defines normatively defines optional features for browser based implementations.  This section will replace Annex B //
+
+
+
+
+
+Lasse Reichstein posted ti [[https://mail.mozilla.org/pipermail/es-discuss/2010-December/012289.html|esdiscuss]] the following summary of how browser reality differs the the current spec:
+
+On Wed, 08 Dec 2010 21:43:06 +0100, Gavin Barraclough  
+<barraclough at apple.com> wrote:
+
+> According to the ES5 spec a regular expression such as /[\w-_]/ should  
+> generate a syntax error.  Unfortunately there appears to be a  
+> significant quantity of existing code that will break if this behavior  
+> is implemented (I have been experimenting with bringing WebKit's RegExp  
+> implementation into closer conformance to the spec), and looking at  
+> other implementations it appears common for this error to be ignored.
+
+It's far from the only extension to RegExp syntax that is common to most
+implementations. In fact, the extensions are both extensive and consistent
+across browsers. A quick check through the possible syntax errors show
+the following:
+
+// Invalid ControlEscape/IdentityEscape character treated as literal.
+   /\z/;  // Invalid escape, same as /z/
+// Incomplete/Invalid ControlEscape treated as either "\\c" or "c"
+   /\c/;  // same as /c/ or /\\c/
+   /\c2/;  // same as /c2/ or /\\c2/
+// Incomplete HexEscapeSequence escape treated as either "\\x" or "x".
+   /\x/;  // incomplete x-escape
+   /\x1/;  // incomplete x-escape
+   /\x1z/;  // incomplete x-escape
+// Incomplete UnicodeEscapeSequence escape treated as either "\\u" or "u".
+   /\u/;  // incomplete u-escape
+   /\uz/;  // incomplete u-escape
+   /\u1/;  // incomplete u-escape
+   /\u1z/;  // incomplete u-escape
+   /\u12/;  // incomplete u-escape
+   /\u12z/;  // incomplete u-escape
+   /\u123/;  // incomplete u-escape
+   /\u123z/;  // incomplete u-escape
+// Bad quantifier range:
+   /x{z/;  // same as /x\{z/
+   /x{1z/;  // same as /x\{1z/
+   /x{1,z/;  // same as /x\{1,z/
+   /x{1,2z/;  // same as /x\{1,2z/
+   /x{10000,20000z/;  // same as /x\{10000,20000z/
+// Notice: It needs arbitrary lookahead to determine the invalidity,
+// except Mozilla that limits the numbers.
+
+// Zero-initialized Octal escapes.
+   /\012/;    // same as /\x0a/
+
+// Nonexisting back-references treated as octal escapes:
+   /\5/;  // same as /\x05/
+
+// Invalid PatternCharacter accepted unescaped
+   /]/;
+   /{/;
+   /}/;
+
+// Bad escapes also inside CharacterClass.
+   /[\z]/;
+   /[\c]/;
+   /[\c2]/;
+   /[\x]/;
+   /[\x1]/;
+   /[\x1z]/;
+   /[\u]/;
+   /[\uz]/;
+   /[\u1]/;
+   /[\u1z]/;
+   /[\u12]/;
+   /[\u12z]/;
+   /[\u123]/;
+   /[\u123z]/;
+   /[\012]/;
+   /[\5]/;
+// And in addition:
+   /[\B]/;
+   /()()[\2]/;  // Valid backreference should be invalid.
+
+None of these RegExps cause a syntax error in any of the current "top-5"  
+browsers,
+even though they are (AFAICS) invalid syntax.
+
+
+Most of the RegExps treat a malformed (start of a multi-character) escape  
+sequence
+as a simple identity escape or octal escape, and extends identity escapes  
+to all characters
+that doesn't already have another meaning (ControlEscape,  
+CharacterClassEscape or
+one of c, x, u, or b, and B outside a CharacterClass).
+
+To match the current behavior, IdentityEscape shouldn't exclude all of  
+IdentifierPart,
+but only the characters that already mean something else.
+
+Allowing /\c2/ to match "c2", but requiring /\CB/ to match "\x02" seems  
+like it would
+be better explained in prose than in the BNF.
+
+...
+
+> I'd like to propose a minimal change to hopefully allow implementations  
+> to come into line with the spec, without breaking the web.  I'd suggest  
+> changing the first step of CharacterRange to instead read:
+>
+> 	1. If A does not contain exactly one character or B does not contain  
+> exactly one character then create a CharSet AB containing the union of  
+> the CharSets A and B, and return the union of CharSet AB and the CharSet  
+> containing the one character -.
+
+I think this matches the current actual behavior of all the browsers, and  
+is
+short and understandable.
+
+/Lasse R.H. Nielsen
+
+----
+Also note that RegExp.prototype.compile is implemented by web browsers and is probably essential for browser interoperability.  For this reason, it probably should be added to the spec.
+
+ --- //[[Allen@Wirfs-Brock.com|Allen Wirfs-Brock]] 2011/02/01 19:54//
+
+Earlier this year I attempted to spec what IE9 implements, which in turn aims to be the ES5 + "web reality".  I've put that at [[strawman:match web reality spec]].   --- //[[lukeh@microsoft.com|Luke Hoban]] 2011/05/24 07:54//

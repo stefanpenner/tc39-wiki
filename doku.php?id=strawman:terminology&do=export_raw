@@ -1,0 +1,36 @@
+====== Revise Specification Terminology to Eliminate Host Object Confusion======
+
+In prior versions of the ECMAScript specification the term //host object// has been used both to designate  objects, not defined by the ECMAScript specification, that are provided by the environment that is hosting the ECMAScript implementation. Such objects were allowed (but not  required) to deviate in their low level semantic behavior from normal ECMAScript objects. Very few restrictions were placed upon the semantics of host objects. he ECMAScript specification also defined certain objects whose low level semantics varied from normal objects. Other terms that have been uses in previous ECMAScript specifications to classify objects include //built-in object//, //native object//, and //standard object//.  Some of these terms have been very loosely defined and even when they have clear definitions, informal usage has not necessarily conformed to the definitions. This has result is confusion about the meaning and capabilities for various categorizations of objects.
+
+For the next edition of ECMAScript, I propose that we do a terminology reset that eliminates corrupted terminology such as //host object// and replace them with a more carefully defined set of terms.
+
+The new proposed terminology is defined below. Each of the defined terms corresponds to a usage that occurs in the  ECMAScript 5.1 specification. If any of them prove to be unneeded in the next edition they can be dropped.
+
+===== Object Semantic Categorizations =====
+//object// - An runtime entity that has unique identity and exposes properties (via implementations of the required "internal methods"  specified in chapter 8)\\
+//mundane object// - An object that that uses only default behaviors for the required internal methods (as specified in chapter 8). \\
+//exotic object// - An object that provides non-default behavior for at least one of the required internal methods.
+
+Exotic objects encompasses Proxies and most of what are currently called "host objects".  It also includes some chapter 15 objects such as array instances that have non-default internal method behaviors.
+
+===== Provider-based Object Categorizations =====
+
+//standard object// - An object whose application level semantics are defined by the ECMAScript specification. \\
+//built-in object// - an object that is provided by the ECMAScript implementation. \\
+//platform object// - An object that is provided by the environment that hosts the ECMAScript implementation. \\
+
+Each of the above three categorizations can include both mundane and exotic objects. The distinction between built-in object and platform object is probably of minor importance.
+
+===== Function Terminology =====
+
+
+//function// - An object that exposes the %%[[%%Call]] internal method. \\
+//ECMAScript function// - A function whose invocation result and side-effects is proved by evaluating ECMAScript code. \\
+//alien function// - A function whose invocation result and side-effects  is provided in some manner other than by evaluating ECMAScript code. \\
+//standard function// - a function whose invocation result and side-effects are defined by the ECMAScript specification (mostly chapter 15) 
+
+An ECMAScript function might be either a mundane or an exotic object. An alien function is always an exotic object because the default %%[[%%Call]] internal method produces the invocation result and side-effects by evaluating ECMAScript code. A standard function can potentially be implemented either as an ECMAScript function or an alien function.
+
+===== Discussion =====
+
+The idea of eliminating  the terms "host" and "native" object has been discussed on es-discuss [[https://mail.mozilla.org/pipermail/es-discuss/2012-January/020133.html|Let's kill terms "native" and "host"]]

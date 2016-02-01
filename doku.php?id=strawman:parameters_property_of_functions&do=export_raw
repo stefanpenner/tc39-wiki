@@ -1,0 +1,35 @@
+====== Proposal ======
+
+This is a companion to [[strawman:name property of functions]].
+
+Function instances will have a non-writeable, non-configurable ''parameters'' property whose value is a frozen array of strings, the strings being the names of the function's parameters.
+
+This further improves reflection, which can benefit the reliability of some callback and registration patterns.
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2010/12/15 19:28//
+
+Could you expand on the use case of this.  Why does any code need to dynamically know the formal parameter names of functions.  Do we need to consider the impact of obfuscators or minimizers.  Will people write code that depends upon the parameter names in the original code?
+
+In general, I would prefer that we move to mirror-based approach to function reflection rather than adding additional properties to Function.prototype:
+<code javascript>
+var fm= new FunctionInspector(f);
+if (fm) {
+   ...fm.parameterNames...
+   ...fm.statements[n]...
+   ...fm.breakAt(n)...
+   ...fm.whatever...
+}
+</code>
+
+Of course, the mirror object could be provided in an implementation provided library or modules.
+
+ --- //[[Allen@Wirfs-Brock.com|Allen Wirfs-Brock]] 2011/01/14 19:15//
+
+There are callback patterns that could be made more robust by allowing for the checking of function signatures.
+I am not proposing adding anything to ''Function.prototype''. These can be added to the function instances.
+
+I don't want to give access to the guts of the functions. I just want to check their interfaces. So I don't need any of the other reflectivity.
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2011/01/19 17:23//
+
+

@@ -1,0 +1,685 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=discussion:object_literals_type_of&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=discussion" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=discussion:object_literals_type_of&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=discussion:object_literals_type_of&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:object_literals_type_of&amp;do=export_html.html#the_problem" class="toc">The problem</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:object_literals_type_of&amp;do=export_html.html#can_we_use_contracts" class="toc">Can we use contracts?</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:object_literals_type_of&amp;do=export_html.html#a_type_system_for_recordstype-inferred_record_construction" class="toc">A type system for records; type-inferred record construction</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:object_literals_type_of&amp;do=export_html.html#annotated_new_proposal" class="toc">&quot;Annotated new&quot; proposal</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:object_literals_type_of&amp;do=export_html.html#we_really_need_variables_declared_by_destructuring_to_be_typed" class="toc">We really need variables declared by destructuring to be typed</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:object_literals_type_of&amp;do=export_html.html#contextual_inferencing_of_record_types" class="toc">Contextual inferencing of record types</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:object_literals_type_of&amp;do=export_html.html#annotating_the_object_initializer" class="toc">Annotating the object initializer</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:object_literals_type_of&amp;do=export_html.html#inferencing_has_real_problems" class="toc">Inferencing has real problems</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:object_literals_type_of&amp;do=export_html.html#annotation_again_summary_and_a_new_proposal" class="toc">Annotation again (summary and a new proposal)</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:object_literals_type_of&amp;do=export_html.html#structural_types_and_typing_of_initializersagreement_at_last" class="toc">Structural types and typing of initializers: agreement at last</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:object_literals_type_of&amp;do=export_html.html#prefix_or_suffix_syntax_for_literal_types" class="toc">Prefix or suffix syntax for literal types?</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<p>
+(Moved here from <a href="doku.php%3Fid=clarification:type_system.html" class="wikilink1" title="clarification:type_system" onclick="return svchk()" onkeypress="return svchk()">type_system</a> (moved there from <a href="doku.php%3Fid=proposals:destructuring_assignment.html" class="wikilink1" title="proposals:destructuring_assignment" onclick="return svchk()" onkeypress="return svchk()">destructuring assignment</a>.))
+</p>
+
+<p>
+Conclusion:  ES4 will have <a href="doku.php%3Fid=discussion:structural_types.html" class="wikilink1" title="discussion:structural_types" onclick="return svchk()" onkeypress="return svchk()">non-recursive structural types</a> that can be declared and named: 
+</p>
+<pre class="code">  type Goose = {name: string, email: string, noisy: boolean};</pre>
+
+<p>
+ The name is just shorthand for the type; this is not a nominal type.
+</p>
+
+<p>
+Object literals may be annotated with the desired type: <code>{properties} : Type</code>.  This specifies both the static and runtime type of the literal: 
+</p>
+<pre class="code">  // create a Goose and pass it to f()
+  f({name: 'Ben', email: 'ben@quack.net', noisy: true} : Goose);</pre>
+
+<p>
+ An unannotated object literal has static and runtime type <code>{*}</code>, the maximally compatible object type.  Its properties are not typed. 
+</p>
+<pre class="code">  var white = {r: 0xff, g: 0xff, b: 0xff};  // the type is {*}, not {r:*, g:*, b:*, *} or anything like that.
+  white.r = &quot;foo&quot;;  // ok, just like ES3
+  delete white.r;  // ok, just like ES3
+  var g : Goose = white;  // ok statically: * is compatible with Goose
+                          // also ok at runtime: {*} is compatible with Goose too</pre>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x6a%3B%26%23x6f%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x6f%3B%26%23x72%3B%26%23x66%3B%26%23x66%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6a;&#x6f;&#x72;&#x65;&#x6e;&#x64;&#x6f;&#x72;&#x66;&#x66;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Jason Orendorff</a> 2007/07/03 05:37</em>
+</p>
+
+<a name="the_problem"></a><h2>The problem</h2>
+<div class="level2">
+
+<p>
+ Type checking for multiple return values is somewhat impaired as compared with the <a href="doku.php%3Fid=proposals:group_assignment.html" class="wikilink1" title="proposals:group_assignment" onclick="return svchk()" onkeypress="return svchk()">group assignment</a> proposal:  An Array&rsquo;s type does not include its length, so programs that use arrays to implement multiple return values won&rsquo;t be checked to see whether every function returns the number of values expected by the caller.
+</p>
+
+<p>
+The returned Array will in the general case be an <code>Array&lt;Object&gt;</code> type (eg if a function returns a Number and a Boolean).  In that case we would expect this to work:
+</p>
+<pre class="code javascript">   <span class="kw2">function</span> f<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="br0">&#91;</span> <span class="nu0">10</span>, <span class="kw2">true</span> <span class="br0">&#93;</span> <span class="br0">&#125;</span>
+   <span class="kw2">var</span> a : Number;
+   <span class="kw2">var</span> b : Boolean;
+   &amp;<span class="br0">&#91;</span> a, b <span class="br0">&#93;</span> = f<span class="br0">&#40;</span><span class="br0">&#41;</span></pre>
+<p>
+but will it?  Will explicit casts be required?  Should casts be inserted by the implementation?
+</p>
+
+<p>
+Type checking for object patterns should be more straightforward: the right-hand-side expression must have a structure that contains the fields referenced on the left-hand-side, recursively.
+</p>
+
+<p>
+(The variable declarations are not necessary &ndash; just there for illustration.)
+</p>
+
+</div>
+<!-- SECTION [1176-2197] -->
+<a name="can_we_use_contracts"></a><h2>Can we use contracts?</h2>
+<div class="level2">
+
+<p>
+ The general type should be <code>Array&lt;*&gt;</code>.
+</p>
+
+<p>
+This cries out for supported fixed-length arrays where the length is part of the type.  The <a href="doku.php%3Fid=proposals:contracts.html" class="wikilink1" title="proposals:contracts" onclick="return svchk()" onkeypress="return svchk()">contracts</a> proposal suggests <code>Array&lt;T&gt;#hasLength(N)</code>, but a special form would be better.  Thoughts?
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/04/03 18:57</em>
+</p>
+
+</div>
+<!-- SECTION [2198-2547] -->
+<a name="a_type_system_for_recordstype-inferred_record_construction"></a><h2>A type system for records; type-inferred record construction</h2>
+<div class="level2">
+
+<p>
+ <code>Array&lt;String, Number&gt;</code> is definitely a subtype of <code>Array&lt;*&gt;</code> (which btw should not be interpreted as Array of length 1 containing anything, but I guess that&rsquo;s just like <code>new Array(13)</code>).  It has known length 2 and fields of known types.  In a sense, it is really just a structure constructor.
+</p>
+
+<p>
+The problem is that we can&rsquo;t give <code>[ &ldquo;foo&rdquo;, 37 ]</code> that type, because that syntax is used to construct all sorts of arrays, many of which will be changed later.  The type of that constant is really <code>Array&lt;*&gt;</code>. 
+</p>
+
+<p>
+But this problem with the type of the object and array literals will bite us other places too, so perhaps we should fix it.  I have a modest proposal here. <img src="lib/images/smileys/icon_smile.gif" align="middle" alt=":-)" />
+</p>
+
+<p>
+Micro-proposal 1: The meaning of <code>Array&lt;T&gt;</code> is &ldquo;Array of length at least 1 whose element 0 has type T&rdquo; where T can be *.  Ditto for more fields, comma-separated.  The meaning of <code>Array&lt;T1,T2,T...&gt;</code> is &ldquo;Array of length at least 2 whose first element has type T1, whose second element has type T2, and whose remaining elements all have type T&rdquo;.
+</p>
+
+<p>
+Micro-proposal 2: The type of the expression <code>#[&rdquo;foo&rdquo;, 37]</code> is <code>Array&lt;String,Number&gt;</code>.
+</p>
+
+<p>
+Micro-proposal 3: The meaning of <code>Object&lt;id1:T1&gt;</code> is &ldquo;dynamic object whose field id1 holds a value of type T1&rdquo;. Ditto for multiple fields, comma-separated.
+</p>
+
+<p>
+Micro-proposal 4: The meaning of <code>#{ a: 10, b: &ldquo;foo&rdquo; }</code> is <code>Object&lt;a:int, b:String&gt;</code>.
+</p>
+
+<p>
+With this notation and type system it would be possible to write statically typable code that uses arrays or structures for multiple return values (and other things).
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/04/07 04:36</em>
+</p>
+
+</div>
+<!-- SECTION [2548-4215] -->
+<a name="annotated_new_proposal"></a><h2>&quot;Annotated new&quot; proposal</h2>
+<div class="level2">
+
+<p>
+ This reminded me of a proposal we had talked about last year, but which I forgot to write down till now:
+</p>
+<pre class="code javascript">  <span class="kw2">var</span> a = <span class="kw2">new</span> Array <span class="br0">&#123;</span><span class="nu0">0</span>: <span class="st0">"hi"</span>, <span class="nu0">1</span>: <span class="st0">"there"</span>, <span class="nu0">2</span>: <span class="st0">"bye"</span>, <span class="kw3">name</span>: <span class="st0">"message"</span>, id: generate_id<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#125;</span></pre>
+<p>
+would be short for:
+</p>
+<pre class="code javascript">  <span class="kw2">var</span> a = <span class="kw2">new</span> Array; a<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span> = <span class="st0">"hi"</span>; a<span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span> = <span class="st0">"there"</span>; a<span class="br0">&#91;</span><span class="nu0">2</span><span class="br0">&#93;</span> = <span class="st0">"bye"</span>; a.<span class="kw3">name</span> = <span class="st0">"message"</span>; a.<span class="me1">id</span> = generate_id<span class="br0">&#40;</span><span class="br0">&#41;</span></pre>
+<p>
+Any <em>NewExpression</em> could be used where <code>Array</code> occurs in the example above.  The syntactic extension consists of <code>{</code> following the <em>NewExpression</em> that follows <code>new</code>.  Properties are set as if by assignment.
+</p>
+
+<p>
+This is separate from what you propose, except of course we could try to harmonize syntax.  Type constraints on the properties being initialized would be up to the type being constructed.
+</p>
+
+<p>
+Data constructors that imply type from initial value are very convenient, and we want to typing for initialisers.  My only qualm is about syntax: with #{...} and &amp;{...} we are looking more <acronym title="Practical Extraction and Report Language">Perl</acronym>-like.  But I like this micro-proposal.  If it&rsquo;s not so micro, and it doesn&rsquo;t relate to destructuring, I vote for splitting it out.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/04/07 13:53</em>
+</p>
+
+</div>
+<!-- SECTION [4216-5426] -->
+<a name="we_really_need_variables_declared_by_destructuring_to_be_typed"></a><h2>We really need variables declared by destructuring to be typed</h2>
+<div class="level2">
+
+<p>
+ Even besides the notion of how you denote the type of the <em>composite</em> being returned and destructured, I worry about the ability to declare the types of the <em>variables</em> being declared with <code>var</code> and <code>let</code> destructuring forms. For example:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> &amp;<span class="br0">&#123;</span>a: x, b: y<span class="br0">&#125;</span> = foo<span class="br0">&#40;</span><span class="br0">&#41;</span>;</pre>
+<p>
+It seems to me that <code>x</code> and <code>y</code> get top-type in such an assignment, which sorta sucks. I can picture a couple resolutions. Overloading colon even more:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> &amp;<span class="br0">&#123;</span>a: <span class="br0">&#40;</span>x:int<span class="br0">&#41;</span>, b: <span class="br0">&#40;</span>y:int<span class="br0">&#41;</span> <span class="br0">&#125;</span> = foo<span class="br0">&#40;</span><span class="br0">&#41;</span>;</pre>
+<p>
+Or reverting to the use of equals:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> &amp;<span class="br0">&#123;</span>x:int=a, y:int=b<span class="br0">&#125;</span> = foo<span class="br0">&#40;</span><span class="br0">&#41;</span>;</pre>
+<p>
+They both look awful to me, but then, I&rsquo;m sort of terrified of the entire proposal, since it uses the <code>&amp;</code> character, which is plainly cursed.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x67%3B%26%23x72%3B%26%23x61%3B%26%23x79%3B%26%23x64%3B%26%23x6f%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x67;&#x72;&#x61;&#x79;&#x64;&#x6f;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">graydon</a> 2006/04/07 15:15</em>
+</p>
+
+<p>
+We can&rsquo;t push this proposal too far from its original form.  Its charm lies in reusing array and object initialiser syntax (with a prefix as needed for disambiguation).
+</p>
+
+<p>
+So the way to explicitly type <code>let</code> and <code>var</code> bound slots is to separate declaration from destructuring assignment:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> x: int, y: int
+&amp;<span class="br0">&#123;</span>a: x, b: y<span class="br0">&#125;</span> = foo<span class="br0">&#40;</span><span class="br0">&#41;</span></pre>
+<p>
+I&rsquo;m leery of cursed <code>&amp;</code> and <code>#</code> too, but right now the keyword-ier, &ldquo;right-er&rdquo; alternative is not coming to mind.  I will seek inspiration in beer and report back! <img src="lib/images/smileys/icon_wink.gif" align="middle" alt=";-)" />
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/04/07 16:56</em>
+</p>
+
+</div>
+<!-- SECTION [5427-6924] -->
+<a name="contextual_inferencing_of_record_types"></a><h2>Contextual inferencing of record types</h2>
+<div class="level2">
+
+<p>
+ I agree that the magic syntax pretty much stinks.  <code>&amp;</code> doesn&rsquo;t easily go away if we want to keep the current form of destructuring assignment but we should not add insult to injury with <code>#</code> if we can avoid it.
+</p>
+
+<p>
+On the one hand we would probably like to have nice types inferred for any object and array literal.  On the other hand it&rsquo;s for multiple return values that not having it will hurt the most.  So perhaps we should consider that use case more closely.  I have a function that returns multiple values: 
+</p>
+<pre class="code">  function f() : Array&lt;String,int&gt; {
+      ....
+      return [ &quot;foo&quot;, 37 ];
+  }</pre>
+
+<p>
+ Here the type of the value in the return statement is <code>Array&lt;*&gt;</code> which is more general than the type of the function.  However, since this is an array literal that is clearly compatible with the return type, then there is no need to split hairs: there is no ambiguity here.  The compiler can clearly observe that the type meets the specification, no new syntax is needed.
+</p>
+
+<p>
+So the rule might be that array and object literals can be returned from functions / assigned to variables / passed to parameters with a narrower declared type, provided that the type of the literal can be interpreted as being of the narrower type without any run-time checking or casts.
+</p>
+
+<p>
+This is nice because it is economical: we make the type system a little more expressive, solve the multiple return value typing problem, but add no new surface syntax and avoid falling deeper into the <acronym title="Practical Extraction and Report Language">Perl</acronym> sinkhole.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/04/18 04:39</em>
+</p>
+
+<p>
+(<acronym title="By the way">BTW</acronym>, this doesn&rsquo;t work.  See below.)
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/04/21 04:40</em>
+</p>
+
+</div>
+<!-- SECTION [6925-8618] -->
+<a name="annotating_the_object_initializer"></a><h2>Annotating the object initializer</h2>
+<div class="level2">
+
+<p>
+ Ideas for annotating types in object initialisers:
+</p>
+
+<p>
+1.  Type annotation with initialiser syntax. 
+</p>
+<pre class="code">let o = {p:int = 1, a:Array[[ double ]] = [3.14, 2.718]};</pre>
+<ul>
+<li class="level1"><div class="li"> Plus: matches var/let initialised annotated forms.</div>
+</li>
+<li class="level1"><div class="li"> Minuses: ambiguous / incompatible, both</div>
+<ul>
+<li class="level2"><div class="li"> because assignment is allowed in initialisers currently, and</div>
+</li>
+<li class="level2"><div class="li"> because type expressions are not syntactically distinct from other kinds of expressions.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ 2.  Chained colons. 
+</p>
+<pre class="code">let o = {p:int: 1, a:Array[[ double ]]: [3.14, 2.718]};</pre>
+<ul>
+<li class="level1"><div class="li"> Plus: syntactically unambiguous.</div>
+</li>
+<li class="level1"><div class="li"> Minus: syntax lacks clarity compared to annotated var/let with initialiser.</div>
+</li>
+</ul>
+
+<p>
+ 3.  Parenthesization. 
+</p>
+<pre class="code">let o = {(p:int): 1, (a:Array[[ double ]]): [3.14, 2.718]};</pre>
+<ul>
+<li class="level1"><div class="li"> Plus: unambiguous extensions to existing syntax.</div>
+</li>
+<li class="level1"><div class="li"> Minus: doesn&rsquo;t resemble any other annotated, initialised form.</div>
+</li>
+</ul>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/04/20 00:29</em>
+</p>
+
+<p>
+I like the first proposal quite a lot, it is clear and syntactically similar to normal variable initialization.  The rule would be that a field is initialized by either of 
+</p>
+<pre class="code">  name &quot;:&quot; nonAssignmentExpression
+  name &quot;:&quot; nonAssignmentExpression &quot;=&quot; AssignmentExpression</pre>
+
+<p>
+ It finds immediate application in the destructuring binding forms, solving our problems there.  (Though as a declaring form it will look a little weird, with field name preceding type preceding the name being bound.)
+</p>
+
+<p>
+No doubt there are at least 37 sites on the web that use <code>{ foo: bar = baz }</code> type initializers, and will break because of this.  This seems worth investigating.  Presumably we could crawl for occurences of problematic constructs?
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/04/20 09:55</em>
+</p>
+
+</div>
+<!-- SECTION [8619-10339] -->
+<a name="inferencing_has_real_problems"></a><h2>Inferencing has real problems</h2>
+<div class="level2">
+
+<p>
+ The following was written after I wrote the notes higher up on &ldquo;Record types&rdquo;, after the first day of the April meeting.  At the meeting, we thought that we could avoid typing the literals themselves because the receiving variables could provide the context.  This is not true.
+</p>
+
+<p>
+It is straightforward to infer useful types of Object and Array literals from their structure: The literal 
+</p>
+<pre class="code">  { x : 10, y : &quot;foo&quot; }</pre>
+
+<p>
+ can be seen as having the type 
+</p>
+<pre class="code">  Object[[ x : int, y : String ]]</pre>
+
+<p>
+ However, in practice this does not buy us much, because the resulting object structure has untyped fields and in practice we cannot rely on the literal retaining the interesting type.  Consider: 
+</p>
+<pre class="code">  var v : Object[[ x: int, y: String]] = { x: 10, y: &quot;foo&quot; };</pre>
+
+<p>
+ Now <code>v.x</code> is known to have type <code>int</code>, which is good.  But then: 
+</p>
+<pre class="code">  var w : Object = v;
+  w.x = &quot;hi there&quot;;</pre>
+
+<p>
+ This is legal even in the strict language, and the assignment to <code>w.x</code> gets a dynamic type check, but that check will pass because the type of the field in the structure is <code>*</code>.
+</p>
+
+<p>
+But now accesses to <code>v.x</code> will no longer yield an <code>int</code>, so the type system has been subverted.
+</p>
+
+<p>
+Thus it follows that standard ECMAScript 3 literals must have types <code>Object[[*]]</code> and <code>Array[[*]]</code> only, in all contexts.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/04/21 04:15</em>
+</p>
+
+</div>
+<!-- SECTION [10340-11721] -->
+<a name="annotation_again_summary_and_a_new_proposal"></a><h2>Annotation again (summary and a new proposal)</h2>
+<div class="level2">
+
+<p>
+ Thus some sort of annotation is necessary.  Here is a list of proposals:
+</p>
+<ul>
+<li class="level1"><div class="li"> Literal inferencing: This is my <code>#</code> prefix annotation, which means &ldquo;infer the types of the slots from the types of the expressions&rdquo;.  </div>
+<ul>
+<li class="level2"><div class="li"> Plus: Compatible </div>
+</li>
+<li class="level2"><div class="li"> Minus: Syntax-y</div>
+</li>
+<li class="level2"><div class="li"> Minus: may be hard to express certain things cleanly</div>
+</li>
+<li class="level2"><div class="li"> Minus: does not solve the destructuring-define problem</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Contextual inferencing: this uses the receiving context for the literal to give the slots a type and was mentioned above and then rejected as unsound.  To recover soundness we would give it greater powers: In the example above, the assignment of the literal to <code>v</code> would propagate types from the type of <code>v</code> into the literal, and the fields would have those types, not <code>*</code> like they normally do</div>
+<ul>
+<li class="level2"><div class="li"> Plus: Compatible (actually)</div>
+</li>
+<li class="level2"><div class="li"> Plus: No new syntax</div>
+</li>
+<li class="level2"><div class="li"> Minus: contextual inference not seen elsewhere in the language(?)</div>
+</li>
+<li class="level2"><div class="li"> Minus: does not solve the destructuring-define problem</div>
+</li>
+<li class="level2"><div class="li"> Minus: seems hard to control.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Explicit annotation: Brendan&rsquo;s proposals, based on Graydon&rsquo;s, which explicitly annotates every slot with its type.  </div>
+<ul>
+<li class="level2"><div class="li"> Plus: it works</div>
+</li>
+<li class="level2"><div class="li"> Plus: solves the destructuring-define problem (allows new variables to be typed)</div>
+</li>
+<li class="level2"><div class="li"> Minus: Mildly incompatible on the syntax level, </div>
+</li>
+<li class="level2"><div class="li"> Minus: a little wordy</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ Here is a new proposal that harks back to all three proposals, but opens up some new possiblities.
+</p>
+
+<p>
+First we allow record types to be named: 
+</p>
+<pre class="code">  record R = Object[[ x: int, y: String ]];</pre>
+
+<p>
+ Then we allow record type names to be used to annotate the object literal: 
+</p>
+<pre class="code">  { x: 10, y: &quot;foo&quot; } : R</pre>
+
+<p>
+ Allowing the type to be named is good for programming-in-the-large, and it allows idioms like this: 
+</p>
+<pre class="code">  record T = Array[[ int, String, * ]]
+  
+  function f() : T {
+      ...
+      return [ 10, 20 ] : T
+  }</pre>
+
+<p>
+ The types can also be used literally, they don&rsquo;t have to be named: 
+</p>
+<pre class="code">  { x: 10, y: &quot;foo&quot; } : Object[[ x: int, y: String ]]</pre>
+
+<p>
+ The types can be used in destructuring definitions: 
+</p>
+<pre class="code">  let &amp;{ x: a, y: b } : R = blah()</pre>
+
+<p>
+ So far this looks like Brendan&rsquo;s &ldquo;explicit annotation&rdquo; proposal, and it&rsquo;s probably good enough.  But we can make it more powerful and convenient by allowing certain keywords to be used instead of type expressions in the annotation position.
+</p>
+
+<p>
+The keyword <code>literally</code> means to infer the slot types from the field values, what&rsquo;s called &ldquo;literal inferencing&rdquo; above, so 
+</p>
+<pre class="code">  { x: 10, y: &quot;foo&quot; } : literally</pre>
+
+<p>
+ gives the literal the type R above.
+</p>
+
+<p>
+The keyword <code>contextually</code> means to infer the slot types from the receiver type, what&rsquo;s called &ldquo;context inferencing&rdquo; above, so 
+</p>
+<pre class="code">  var x : R = { x: f(), y: g() } : contextually</pre>
+
+<p>
+ gives the literal that same type (and places requirements on the types of f and g).  Without the annotation this would be a type error, because R is a narrower type than the type of the literal.
+</p>
+
+<p>
+Advantages of this proposal: 
+</p>
+<ul>
+<li class="level1"><div class="li"> intuitive notation: like a variable is declared <code>name : type</code>, a record is defined as <code>value : type</code></div>
+</li>
+<li class="level1"><div class="li"> we decouple type declaration from field initialization, this is separation of concerns</div>
+</li>
+<li class="level1"><div class="li"> solves the destructuring-define problem</div>
+</li>
+<li class="level1"><div class="li"> named types are Good</div>
+</li>
+</ul>
+
+<p>
+ Disadvantages of the proposal: 
+</p>
+<ul>
+<li class="level1"><div class="li"> minor incompatibility issue: consider <code>foo ? { x: 10 } : { x: 20 }</code> which is valid in ES3 but which would be a syntax error here because <code>{ x: 20 }</code> is not a type expression</div>
+</li>
+<li class="level1"><div class="li"> we decouple type declaration from field initialization, sometimes it would be nice to keep them together</div>
+</li>
+<li class="level1"><div class="li"> it&rsquo;s easy to leave off the type annotation in the destructuring definition, and then you get <code>*</code> for everything, probably not what you want</div>
+</li>
+</ul>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/04/21 04:40</em>
+</p>
+
+</div>
+<!-- SECTION [11722-15486] -->
+<a name="structural_types_and_typing_of_initializersagreement_at_last"></a><h2>Structural types and typing of initializers: agreement at last</h2>
+<div class="level2">
+
+<p>
+ After a great deal of discussion: we have <a href="doku.php%3Fid=discussion:structural_types.html" class="wikilink1" title="discussion:structural_types" onclick="return svchk()" onkeypress="return svchk()">nonrecursive(?) structural types</a>, introduced by &ldquo;type&rdquo;.  There are sum types (unions), Object types, and Array types.
+</p>
+<pre class="code">
+    type F = function (int,Object):int  // [[function (int,Object) int false *]]
+    type U = (A, B, C)                  // interface U = switch {A,B,C}
+    type R = { p: int, q: String }      // Object[[ p: int, q: String ]]
+    type S = [ int, , String!, * ]      // Array[[ int, *, String!, * ]]
+
+    type T = { f: int }
+    function f() : T {
+        return { f: 37 } : T;
+    }
+
+    let &amp;{ f: x } : T = f()             // binds x with type int (from T) with value from f()
+</pre>
+
+<p>
+F, U, R, S, T can be mentioned in expression contexts and yield type objects.
+</p>
+
+<p>
+The types don&rsquo;t have to be named by &ldquo;type&rdquo;, they can be used in type contexts (eg as the return type of a function).  The type contexts are at least the right-hand-side of &ldquo;:&rdquo; in parameter lists, variable declarations, type definitions, etc, and on the right-hand-side of the &ldquo;is&rdquo; operator (and maybe &ldquo;typeof&rdquo;?).
+</p>
+
+<p>
+Note the definitions of R and S, which say that objects of those types have at least the fields named, but may have more.
+</p>
+
+<p>
+It may be possible to <a href="doku.php%3Fid=discussion:classes_as_structural_types_with_branding.html" class="wikilink1" title="discussion:classes_as_structural_types_with_branding" onclick="return svchk()" onkeypress="return svchk()">define classes as branded records</a>, but it&rsquo;s not clear whether it&rsquo;s necessary.
+</p>
+
+<p>
+We can no longer write eg <code>Object[[ f: int ]]</code>, the syntax is as for R above.
+</p>
+
+<p>
+There will be a typecase statement:
+</p>
+<pre class="code">
+    switch type ( E : U ) {
+        case (a : A) { ... }
+        case (b : B) { ... }
+    }
+</pre>
+
+<p>
+where <code>: U</code> may be omitted and defaults to <code>: *</code>.  See the <a href="doku.php%3Fid=proposals:switch_class.html" class="wikilink1" title="proposals:switch_class" onclick="return svchk()" onkeypress="return svchk()">switch class</a> proposal for more.
+</p>
+
+<p>
+The names in a record type can be qualified by a namespace (statically resolvable).
+</p>
+
+<p>
+Function types are syntactically as noted elsewhere except as noted above (change in how named types are defined).
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/04/21 12:25</em>
+</p>
+
+<p>
+We could express the above switch statement as syntactic sugar for the following: 
+</p>
+<pre class="code javascript">    <span class="kw2">var</span> t:U = E;
+    <span class="kw1">if</span> <span class="br0">&#40;</span>t <span class="kw1">is</span> A<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw2">var</span> a:A = E <span class="kw1">as</span> A; 
+        ...
+    <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="kw1">if</span> <span class="br0">&#40;</span>t <span class="kw1">in</span> B<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw2">var</span> b:B = E <span class="kw1">as</span> B; 
+        ...
+    <span class="br0">&#125;</span></pre>
+<p>
+ &mdash; <em><a href="mailto:%26%23x63%3B%26%23x6f%3B%26%23x72%3B%26%23x6d%3B%26%23x61%3B%26%23x63%3B%26%23x40%3B%26%23x73%3B%26%23x6f%3B%26%23x65%3B%26%23x2e%3B%26%23x75%3B%26%23x63%3B%26%23x73%3B%26%23x63%3B%26%23x2e%3B%26%23x65%3B%26%23x64%3B%26%23x75%3B" class="mail" title="&#x63;&#x6f;&#x72;&#x6d;&#x61;&#x63;&#x40;&#x73;&#x6f;&#x65;&#x2e;&#x75;&#x63;&#x73;&#x63;&#x2e;&#x65;&#x64;&#x75;">Cormac Flanagan</a> 2006/05/01 12:13</em>
+</p>
+
+</div>
+<!-- SECTION [15487-17845] -->
+<a name="prefix_or_suffix_syntax_for_literal_types"></a><h2>Prefix or suffix syntax for literal types?</h2>
+<div class="level2">
+
+<p>
+ In light of Graydon&rsquo;s example (<em>below, in Modeling <a href="doku.php%3Fid=discussion:classes_as_structural_types_with_branding.html" class="wikilink1" title="discussion:classes_as_structural_types_with_branding" onclick="return svchk()" onkeypress="return svchk()">classes as structural types with brands</a></em>):
+</p>
+<pre class="code javascript">  type T = <span class="br0">&#123;</span>f:int<span class="br0">&#125;</span>;
+  <span class="kw2">var</span> x:Object = <span class="br0">&#123;</span>f:int<span class="br0">&#125;</span>;
+  <span class="kw2">var</span> y:T = x;             <span class="co1">// I believe we agreed to treat this as an error.</span>
+  <span class="kw2">var</span> z:T = <span class="kw2">new</span> T<span class="br0">&#40;</span>x<span class="br0">&#41;</span>;      <span class="co1">// Maybe we should permit this, which makes a copy.</span></pre>
+<p>
+(and yes, <code>var y:T = x</code> must be an error), the older idea of supporting
+</p>
+<pre class="code javascript">  <span class="kw2">var</span> z:T = <span class="kw2">new</span> T <span class="br0">&#123;</span>f: <span class="nu0">42</span><span class="br0">&#125;</span></pre>
+<p>
+can be seen in a new light.  It is bulkier by two characters and a mandatory space than <code>:T</code> at the end, but the advantage of putting the type at the beginning looks better as the initialiser grows &ndash; and I see many multiline initialisers being used today in &ldquo;duck-typing&rdquo; and JSON-like contexts.
+</p>
+
+<p>
+A lesser point: we chose to add a <code>to</code> operator instead of reusing <code>:</code> as an operator, to avoid confusion when a conversion comes between <code>?</code> and <code>:</code> in a conditional expression.  The same argument applies here, although parentheses can patch the symptom, and I admit that initialisers are less commonly expressed conditionally.
+</p>
+
+<p>
+The <code>new T {...}</code> syntax does not require parenthesization of the object initialiser, as the proposed &ldquo;copy constructor&rdquo; invocation would.  Besides conciseness and readability, the advantage of a <code>new</code> special form taking an initialiser as operand is that the right type of object can be created immediately &ndash; no copying needed.  On the other hand, it&rsquo;s trivial to optimize the <code>new T({...})</code> special case, and the copy constructor has the advantage that it works on pre-existing <code>Object</code> instances.
+</p>
+
+<p>
+Destructuring <code>var</code> and <code>let</code> initialization, on the same hand, really wants <code>: T</code> at the end of the &ldquo;initialiser&rdquo; lvalue.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/04/22 22:40</em>
+</p>
+
+<p>
+There are several reasons to keep <code>: T</code> instead of adding <code>new T</code> in front.  Will write more when I&rsquo;m back in Oslo.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/04/24 11:54</em>
+</p>
+
+<p>
+Lars: feel free to enumerate reasons, but don&rsquo;t worry &ndash; I&rsquo;m in favor of <code>: T</code>, especially in light of <code>type</code> definitions and destructuring.  Just wanted to review the alternative <code>new T {...}</code> construct.  I do think we will want <code>new T(o)</code> as Graydon suggests.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/04/24 15:57</em>
+</p>
+
+<p>
+Keeping in mind that we are only talking about surface syntax, here are some reasons (not all equally good) to keep the syntax of literals as a suffix <code>: T</code> rather than a prefix <code>new T</code>: 
+</p>
+<ul>
+<li class="level1"><div class="li"> <em>Symmetry/majority vote</em>: Every other annotation in the language is expressed using <code>: T</code> (though of course annotations have a slightly different meaning), and there are quite a few cases</div>
+</li>
+<li class="level1"><div class="li"> <em>Related needs</em>: <code>let [a,b,c] : T = E</code> really needs it to be a suffix annotation</div>
+</li>
+<li class="level1"><div class="li"> <em>Syntax</em>: <code>new T [37]</code> is syntactically ambiguous</div>
+</li>
+</ul>
+
+<p>
+ It&rsquo;s even possible to fix the backward compatibility problem with <code>c ? { a: 10 } : { b: 10 }</code> by decreeing that the <code>:</code> is interpreted as part of the conditional operator in this case, using the same mechanisms we use to handle <code>in</code> in for-loop headers.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/04/26 03:28</em>
+</p>
+
+</div>
+<!-- SECTION [17846-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/2/212fede1f66b164dd1b46a534944ec3d.xhtml used -->
+</body>
+</html>

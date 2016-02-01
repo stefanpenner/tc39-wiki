@@ -1,0 +1,124 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:obj_initialiser_constructors&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:obj_initialiser_constructors&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:obj_initialiser_constructors&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="constructor_declarations"></a><h1>Constructor Declarations</h1>
+<div class="level1">
+
+<p>
+ <em>This is one of several related <a href="doku.php%3Fid=strawman:object_initialiser_extensions.html" class="wikilink1" title="strawman:object_initialiser_extensions" onclick="return svchk()" onkeypress="return svchk()">Object Initialiser Extensions</a>.</em> 
+</p>
+
+<p>
+Enhance object initialisers  provide a self contained declarative construct for defining discrete objects. Such declarations define abstractions that usually need to be named. One way to name an object literal based abstraction is to wrap it in a factory function that is used to create instances of the abstraction. However, that pattern has the disadvantage it requires two distinct constructs to represent the named abstraction and the name is most closely associated with the factory function rather than the object abstraction. This problem can be solved by creating a new declaration form that builds upon object literal syntax: 
+</p>
+<pre class="code javascript">constructor Point<span class="br0">&#40;</span>x,y<span class="br0">&#41;</span> <span class="br0">&#123;</span> 
+	&lt;proto: AbstractPoint&gt;
+	<span class="kw2">private</span> method isPoint<span class="br0">&#40;</span>p<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> p <span class="kw1">instanceof</span> Point<span class="br0">&#125;</span><span class="br0">&#125;</span>
+	<span class="co1">//public properties</span>
+	<span class="kw2">const</span> x:x,
+	<span class="kw2">const</span> y:y,
+	method plus<span class="br0">&#40;</span>delta<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+		<span class="kw1">if</span> <span class="br0">&#40;</span><span class="kw1">this</span>.<span class="me1">isPoint</span><span class="br0">&#40;</span>delta<span class="br0">&#41;</span><span class="br0">&#41;</span>
+			<span class="kw1">return</span> <span class="kw2">new</span> Point<span class="br0">&#40;</span><span class="kw1">this</span>.<span class="me1">x</span>+delta.<span class="me1">x</span>,<span class="kw1">this</span>.<span class="me1">y</span>+delta.<span class="me1">y</span>
+		<span class="kw2">var</span> d = Number<span class="br0">&#40;</span>delta<span class="br0">&#41;</span>:
+		<span class="kw1">return</span> <span class="kw2">new</span> Point<span class="br0">&#40;</span><span class="kw1">this</span>.<span class="me1">x</span>+d,<span class="kw1">this</span>.<span class="me1">y</span>+d<span class="br0">&#41;</span>;
+		<span class="br0">&#125;</span>
+	<span class="br0">&#125;</span></pre>
+<p>
+Usage example: 
+</p>
+<pre class="code javascript"><span class="kw2">var</span> p1 = <span class="kw2">new</span> Point<span class="br0">&#40;</span><span class="nu0">0</span>,<span class="nu0">0</span><span class="br0">&#41;</span>;
+<span class="kw2">var</span> p2 = <span class="kw2">new</span> Point<span class="br0">&#40;</span>a,b<span class="br0">&#41;</span>; 
+<span class="kw2">var</span> p3 = p1.<span class="me1">plus</span><span class="br0">&#40;</span>p2<span class="br0">&#41;</span>.<span class="me1">plus</span><span class="br0">&#40;</span><span class="nu0">1</span><span class="br0">&#41;</span></pre>
+<p>
+ The “body” of a constructor declaration is an extended object literal rather than a function body. It creates a name binding in the current declaration environment whose value is an object that can be invoked as a constructor in a new expression. The object has a [[Construct]] internal property but it does not have a [[Call]] internal method so it cannot be invoked by a <em>CallExpression</em>. The formal parameters correspond to the arguments to the new expression and are in the lexical scope  of the extended object literal.
+</p>
+
+<p>
+When the constructor object is invoked by a <em>NewExpression</em> it returns a newly created object as specified by the extended object literal that is the constructor body. In addition to the properties defined by the object literal, the new object has an automatically generated <code>constructor</code> property whose value is the constructor object. (If the object literal explicitly defined a <code>constructor</code> property one is not automatically generated). The constructor object does not have a <code>prototype</code> property but instead also has a special [[HasInstance]] internal method that compares the subject object’s <code>constructor</code> property value to the identity of the actual constructor object.  
+</p>
+
+</div>
+<!-- SECTION [1-2490] -->
+<a name="syntax"></a><h2>SYNTAX</h2>
+<div class="level2">
+
+<p>
+<em>ConstructorDeclaration</em> :<br/>
+ <strong>constructor</strong> <em>Identifier</em> <strong>(</strong> <em>FormalParameterList<sub>opt</sub></em> <strong>)</strong> <em>ObjectLiteral</em>
+</p>
+
+</div>
+<!-- SECTION [2491-2640] -->
+<a name="desugaring"></a><h2>Desugaring</h2>
+<div class="level2">
+
+<p>
+The above syntax approximately (additional error check is probably needed) desugars into: 
+</p>
+<pre class="code javascript"><span class="kw2">var</span> Identifier =
+  <span class="br0">&#40;</span><span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span>
+	<span class="kw2">var</span> __ctor__ = <span class="kw2">function</span> <span class="br0">&#40;</span>FormalParameterListopt <span class="br0">&#41;</span> <span class="br0">&#123;</span>
+		<span class="kw2">var</span> __obj__ = ObjectLiteral;
+   		<span class="kw1">if</span> <span class="br0">&#40;</span>Object.<span class="me1">getOwnPropertyDescriptor</span><span class="br0">&#40;</span>__obj__,<span class="st0">'constructor'</span><span class="br0">&#41;</span>
+  			<span class="kw1">return</span> __obj__;
+  		Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>__obj__,<span class="st0">'constructor'</span>,
+			<span class="br0">&#123;</span>value: __ctor__, writable: <span class="kw2">true</span>, 
+    			enumerable: <span class="kw2">false</span>, configurable: <span class="kw2">true</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  		<span class="kw1">return</span> __obj__;
+   		<span class="br0">&#125;</span>;
+    	<span class="co1">// runtime.setSpecialConstructorHasInstance(__ctor__);</span>
+     	<span class="kw1">return</span> __ctor__;
+   	<span class="br0">&#125;</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;</pre>
+<p>
+ The [[HasInstance]] internally if implemented in ECMAScript would be: 
+</p>
+<pre class="code javascript"><span class="kw2">function</span> <span class="br0">&#91;</span><span class="br0">&#91;</span>HasInstance<span class="br0">&#93;</span><span class="br0">&#93;</span> <span class="br0">&#40;</span>v<span class="br0">&#41;</span><span class="br0">&#123;</span>
+	<span class="kw1">if</span> <span class="br0">&#40;</span><span class="kw1">typeof</span> v !== <span class="st0">'object'</span> || v===<span class="kw2">null</span><span class="br0">&#41;</span> <span class="kw1">return</span> <span class="kw2">false</span>;
+	<span class="kw1">if</span> <span class="br0">&#40;</span>v.<span class="me1">constructor</span>===<span class="kw1">this</span><span class="br0">&#41;</span> <span class="kw1">return</span> <span class="kw2">true</span>;
+	<span class="kw1">return</span> <span class="kw2">false</span>;
+	<span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [2641-3480] -->
+<a name="design_alternatives"></a><h2>Design Alternatives</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <code>class</code> could be used as the keyword for the declaration instead of <code>constructor</code>.</div>
+</li>
+<li class="level1"><div class="li"> The implicitly created constructor object could be more like a function declaration based constructor with a unique prototype property, etc.</div>
+</li>
+<li class="level1"><div class="li"> Similar to the <em>FunctionDeclarations</em>/<em>FunctionExpressions</em> there could also be a <em>ConstructorExpression</em> syntactic form where the identifier was optional.</div>
+</li>
+</ul>
+
+<p>
+ A revised proposal based upon discussions at the Sept. 2010 TC39 meeting is under development <a href="doku.php%3Fid=strawman:obj_initialiser_class_abstraction.html" class="wikilink1" title="strawman:obj_initialiser_class_abstraction" onclick="return svchk()" onkeypress="return svchk()">obj_initialiser_class_abstraction</a>  
+</p>
+
+</div>
+<!-- SECTION [3481-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/e/e39de79deaf8132390086125ff2ea108.xhtml used -->
+</body>
+</html>

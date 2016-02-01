@@ -1,0 +1,40 @@
+====== Proposal ======
+
+Add a ''pushAll'' generic method to ''Array.prototype'' for pushing all elements of an array-like object to the end of this array-like object.
+
+Currently, you can do this by calling ''a1.push.apply(a1, a2)'' but it can blow the stack on popular engines if ''a2'' is too large.
+
+<code javascript>
+(function () {
+    Object.defineProperty(Array.prototype, 'pushAll', {
+        value: function pushAll(other, start, end) {
+            other = ToObject(other);
+            if (typeof start === 'undefined')
+                start = 0;
+            start = ToUint32(start);
+            var otherLength = ToUint32(other.length);
+            if (typeof end === 'undefined')
+                end = otherLength;
+            end = ToUint32(end);
+            var self = ToObject(this);
+            var length = ToUint32(self.length);
+            for (var i = 0, j = length; i < end; i++, j++)
+                self[j] = other[i];
+            self.length = j;
+            return;
+        },
+        configurable: true,
+        enumerable: false,
+        writable: true
+    });
+})();
+</code>
+
+====== To do ======
+
+  * edge cases: start < 0, start > end, end > other.length
+  * use %%[[%%DefineOwnProperty%%]]%% etc instead of ''self[j] = ...''?
+
+====== References ======
+
+Originally proposed by Jeff Walden on [[https://mail.mozilla.org/pipermail/es-discuss/2011-July/016124.html|es-discuss]].

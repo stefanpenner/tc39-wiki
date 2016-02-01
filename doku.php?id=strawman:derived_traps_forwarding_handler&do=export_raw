@@ -1,0 +1,68 @@
+====== Derived Traps of Default Forwarding Handler ======
+
+The default Proxy [[harmony:proxy_defaulthandler|forwarding handler]] provides an implementation for all fundamental and all derived traps. For the derived traps, two possible default implementations are possible, and it is not entirely obvious which one is better.
+
+
+==== Context ====
+
+David Bruant, while experimenting with [[https://github.com/DavidBruant/HarmonyProxyLab/tree/master/ProxyArray|proxied Arrays]], came across the following situation: his proxied Array uses a default forwarding handler to forward all operations to a target Array instance, but overrides the ''defineProperty'' trap. However, assignments to the array of the form ''proxiedArray[i] = val'' did not trigger his overridden ''defineProperty'' trap, since the default forwarding handler provides a derived ''set'' trap that just forwards the operation to the wrapped array.
+
+To make this use case work, one has to either override ''set'' in conjunction with ''defineProperty'', or delete the default ''set'' trap of ''Proxy.Handler''. When the derived trap is deleted, the implementation correctly falls back on the (overridden) fundamental ''defineProperty'' trap.
+
+<code javascript>
+var target = {...};
+var h = new Proxy.Handler(target);
+h.defineProperty = function(name, pd) {...}; // override a fundamental trap
+var p = Proxy.create(h);
+
+p["foo"] = "bar"; // triggers default forwarding 'set' trap. Sets "foo" on target.
+// programmer may have expected this to trigger overridden fundamental trap instead
+
+delete Object.getPrototypeOf(h).set;
+p["foo"] = "bar"; // triggers overridden defineProperty trap
+</code>
+
+==== Analysis ====
+
+There are two possible default implementations for the derived traps of the [[harmony:proxy_defaulthandler|default forwarding handler]]:
+  * "forwarding" semantics: forward the derived operation to the ''target'' (that is how they are currently specified)
+  * "fallback" semantics: implement the "default" semantics in terms of the fundamental forwarding traps (or equivalently, state that the default forwarding handler does not define any derived traps)
+
+The issue with "forwarding semantics" is that overriding a fundamental trap requires developers to override all dependent derived traps in sync. The relationship between fundamental and dependent derived traps may not be immediately obvious to developers, so this could lead to surprising behavior in practice. OTOH, in many situations developers will want to override the derived traps anyway to allow for a more efficient implementation.
+
+The issue with "fallback semantics" is that if the ''target'' object to which the proxy forwards is itself a proxy ''p2'', then ''p2'''s derived traps will never be called. Instead, only ''p2'''s fundamental traps will be called. Things won't break, but it is suboptimal if ''p2'' has ad hoc (presumably more efficient) implementations for its derived traps. Presumably, even if "target" is a native object, "forwarding semantics" is more efficient than "fallback semantics".
+
+<code javascript>
+var p2 = Proxy.create(h2);
+var h = new Proxy.Handler(p2); // p forwards to p2
+var p = Proxy.create(h);
+
+p["foo"] = "bar"; // assuming "h.set" is undefined, this triggers h.defineProperty
+// which in turn calls Object.defineProperty(p2, "foo", {value: "bar"});
+// which in turn triggers h2's "defineProperty" trap, not its "set" trap
+</code>
+
+==== Proposal ====
+
+It is difficult to come up with a solution that provides support for both forwarding and fallback semantics.
+
+One proposal is to:
+  - Add a ''Proxy.BaseHandler'' that defines no derived traps, only fundamental traps (i.e. ''Proxy.BaseHandler'' supports fallback semantics).
+  - Modify ''Proxy.Handler'' so that it inherits its fundamental traps from ''BaseHandler'' and adds forwarding derived traps (i.e. ''Proxy.Handler'' then supports forwarding semantics).
+
+Depending on the required semantics, developers can make their custom handler inherit from either one. The question is whether the advantage of choice outweighs the complexity cost of this proposed API.
+
+Another option is to simply live with the dependency between fundamental and derived traps and to properly document the relationships between traps, and the hazards of not overriding the traps in sync.
+
+--- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2011/02/28 07:37//
+
+
+====== References ======
+  * [[https://mail.mozilla.org/pipermail/es-discuss/2011-January/012695.html|Discussion thread]] on es-discuss.
+  * [[http://code.google.com/p/es-lab/source/browse/trunk/src/proxies/Handler.js|Prototype implementation]] of the proposed object hierarchy, works in Firefox 4.
+
+====== Feedback ======
+
+Discussed at the March 2011 TC39 meeting. Dave, Brendan: like the proposed solution because it helps developers better understand the API. It's nice to be able to map the distinction between fundamental vs derived traps onto a familiar concept such as an inheritance hierarchy.
+
+--- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2011/03/30 13:05//

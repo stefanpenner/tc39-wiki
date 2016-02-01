@@ -1,0 +1,74 @@
+====== Safe Meta Programming ======
+
+How does one write a JavaScript meta-program that can operate reliably on other objects in its JavaScript context (in a browser -- within the same frame), despite the loading of arbitrary code later into that same frame? The problem is that the later code may arbitrarily modify, override, or remove methods on the primordial built-in objects. To make the problem tractable, we assume that the meta program consists of modules that are first evaluated before their frame has become corrupted.
+
+//By "meta program", all I mean here is a program that must operate correctly in the context of arbitrary other programs in the same context, and on arbitrary instances of those other programs. Sorry for the unnecessary jargon.//
+
+To take a simple problem, in ES5, the way to emulate the ES-next rest params is to slice the ''arguments'' object. Say we want to write a reliable equivalent of something as simple as a function that adds all its arguments. In ES-next we might say:
+
+<code javascript>
+  function addAll(...args) {
+    var result = 0;
+    for (var i = 0; i < args.length; i++) { result += args[i]; }
+    return result;
+  }
+</code>
+
+In ES5 we might think to say
+
+<code javascript>
+  // THIS CODE IS NOT YET SAFE
+  var slice = [].slice; // safe so far, since we assume no corruption yet.
+ 
+  function addAll(var_args) {
+    var args = slice.call(arguments, 0);
+    //.... as above
+  }
+</code>
+
+The problem with the above code is that slice's ''call'' property may no longer be the original ''Function.prototype.call''. We could try to save ''Function.prototype.call'' as well, but then how do we use it without naming call's ''call'', ''bind'', or ''apply'' methods after a ".", which would have the same problem? We can use the following short prelude to define an ''[[http://www.2ality.com/2011/11/uncurrying-this.html|uncurryThis]]'' function, which we can then use to make a ''sliceFn'' function which we can use safely. The ''sliceFn'' function is like the ''slice'' method, except that the implicit ''this'' parameter of the ''slice'' method is instead the new explicit first argument of the ''sliceFn'' function.
+
+Here, we show the full ES5 module pattern, to make explicit how there lexical variables are encapsulated in the module. Our solution here presumes that ''Function.prototype.bind'' is built into the language.
+
+<code javascript>
+  var addAll;
+  (function() {
+    "use strict";
+
+    var bind = Function.prototype.bind;
+    var uncurryThis = bind.bind(bind.call);
+
+    // not needed for this example, but often useful
+    var applyFn = uncurryThis(bind.apply);
+
+    var sliceFn = uncurryThis([].slice);
+
+
+    addAll = function(var_args) {
+      var args = sliceFn(arguments, 0);
+      //...as above
+    };
+  })();
+</code>
+
+Once you know what ''uncurryThis'' does, it is simple to understand how to use it correctly. But how does the above code implement this meaning? To understand this, we need to introduce a bit of notation. 
+
+In terms of the first example, our notation "''slice.call(arguments,0) ===>> arguments.slice(0)''" means: The first expression, which works, //is like// the meaning the second expression would have under the assumptions that
+  * The value of ''slice.call'' is the original ''call'' member of ''slice'', and
+  * The value of ''arguments.slice'' on the right is the value of ''slice'' on the left.
+Notice that the second assumption does not happen to be true for ''arguments'', but the equivalence would hold if both assumptions were true.
+
+
+Recall that our unsafe code used ''slice.call(..)'' in the same position that we're now using ''sliceFn(..)''. In ''slice.call(..)'', we're calling ''Function.prototype.call'' with call's this-binding being the ''slice'' method. So to turn this method call into a function call, we need to bind ''slice'' as the this-binding of ''call'', which we could do with ''function badUncurryThis(f) { return call.bind(f); }''. This works because 
+
+''call.bind(f)(thisBinding, ...args) ===>> f.call(thisBinding, ...args) ===>> thisBinding.f(...args)''.
+
+This ''badUncurryThis'' is safe so long as it is //only// used at initialization time, since ''call.bind'' may again be something else later. This would be ironic, since the functions that it makes are safe to use later. 
+
+Notice that the same observation applies here: ''call.bind(f)'' is calling the ''bind'' method, with its this-binding being the ''call'' method. To turn this method call into a function call, we need to bind ''call'' as the this-binding of ''bind'', i.e., ''bind.bind(Function.prototype.call)''. For brevity, we obtain the ''call'' method above simply as ''bind.call'', which is assumed safe because it happens //only// at initialization time. This works because
+
+''bind.bind(call)(f)(thisBinding, ...args) ===>> call.bind(f)(thisBinding, ...args)'', bringing us into the earlier almost-equivalences.
+
+Finally, ''applyFn(f, thisBinding, args) ===>> bind.bind(call)(apply)(f, thisBinding, args) ===>> thisBinding.f(...args)''. 
+
+For example, ''applyFn(slice, array, [1,2]) ===>> slice.apply(array, [1,2]) ===>> array.slice(1,2)''.

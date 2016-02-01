@@ -1,0 +1,59 @@
+====== Namespace Shadowing ======
+
+A namespace opened in an inner scope is preferred over a namespace opened in an outer scope when resolving ambiguous references.
+
+Here is a simple use case,
+
+<code javascript>
+namespace debug
+namespace release
+debug function trace(s) { /* print s */ }
+release function trace(s) { /* do nothing */ }
+
+use namespace release  // don't want too much trace output
+function f()
+{
+    trace("f")
+}
+
+function g()
+{
+    use namespace debug  // but want to see when this function is called
+    trace("g") 
+}
+
+f()
+g()
+
+</code>
+
+Explicitly opened namespaces are preferred over implicitly opened ones:
+
+<code javascript>
+
+// stage 1
+public class A {
+  public function foo() { print('orig') }
+}
+new A().foo()  // prints "orig"
+
+// stage 2
+public namespace improved
+public class A {
+  public function foo() { print('orig') }
+  improved function foo() { print('improved') }
+}
+new A().foo()  // prints "orig"
+
+// stage 3
+public namespace improved
+public class A {
+  public function foo() { print('orig') }
+  improved function foo() { print('improved') }
+}
+use namespace improved
+new A().foo()  // prints "improved"
+
+</code>
+
+Because ''namespace improved'' is explicitly opened and ''public'' is not, the reference to ''foo'' resolves to ''improved::foo''.

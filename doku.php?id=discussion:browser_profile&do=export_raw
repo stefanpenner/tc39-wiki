@@ -1,0 +1,124 @@
+DO NOT EXPORT
+
+Here are some datapoints (wearing the hats of an engine implementor, serviceProvider, and Frameworks provider)
+  - Our experience with JScript.NET shows that it ended up as a 'different' language than ES3 - it had language features and a compilation model different from what ES3 users were familiar with.
+  - Internally, we have some large JScript codebases, and these teams have written up their own libraries/infratructure etc. Their initial reaction is that ES4 is not something that they need or could use. There are a number of reasons for this. First of all they have to target the actual browsers that currently exist in the world. That means ES3 in its various incarnations. They aren’t even able to use the JavaScript 1.7 extensions because of its lack of ubiquity. For the most part, they can work with what is already there. They (as well as most other major web AJAX platform developers) have used the dynamic capabilities of ES3 to create their own abstractions for dynamically organizing, loading, and managing their code and objects. They get great leverage from these particular abstractions. Rather than new language features, they would like to see more standard browser APIs and environmental enhancements.
+
+If I look at the evolution of ES as follows:
+
+  * ES3 to JS1.7                    (evolution Part1)
+  * AS3 (JScript.NET, JS1.7) to ES4 (evolution Part2)
+
+ES4 seems like a big leap from ES3 (with the look and feel of a completely different language). Why would we want all browsers to support Part2 of the evolution? As a least common denominator on the web, Part2 seems heavy in terms of functionality.
+
+Perhaps we can say that browsers (on all form factors) need to support only upto Part1, and scope the standard accordingly? What about Part2 then - well, it could be a separate profile - we can figure it out.
+ --- //[[pratapl@microsoft.com|Pratap Lakshman]] 2007/02/21 09:24//
+
+----
+
+Profiled specs are evil. I speak from long experience with graphics standards (PHIGS, various X accretions, MNG), as well as Internet protocol experience (NFS and its competitors in the '80s). I said in private email to Pratap that I do not expect TG1 to favor subsetting or profiling, and I personally will oppose any profile strenuously. Profiling complicates the spec (how do the profiles interact?) and the installed base against which programmers must code (which version(s) are deployed? must I code to lowest common denominator, or write fallback code?).
+
+The argument from sunk costs is a [[http://en.wikipedia.org/wiki/Sunk_cost#Loss_aversion_and_the_sunk_cost_fallacy|fallacy]]. Because browsers stagnated due mainly to monopoly behavior by one vendor, many companies and individuals including (eventually, due to renewed competition) that vendor built up server-side machinery and JS libraries to compensate. These costs were sunk because the browsers stagnated. But browser evolution with compatible extension does not un-sink these costs, and it reduces other costs, namely:
+
+  * Cost of scaling JS code to programming-in-the-large without having to use a server-side code generator.
+  * Cost in space performance on today's browsers, especially IE, which is limiting Ajax effectiveness.
+  * Cost in time performance, to a lesser but growing extent, which also limits Ajax effectiveness.
+  * Browser programmer productivity, even with a good code generator, is limited when the abstraction leaks and the programmer has to debug and optimize "by hand".
+
+The ES4 draft specification including the approved proposals is meant to reduce costs born by browser programmers every day (e.g., the decimal type, type-checking instead of boilerplate code, structural types instead of "duck typing"). Arguing from one vendor's sunk costs, or from stagnated browser //status quo//, is not sufficient to address the incomparable costs listed above. Even if everyone could agree on a server-side framework, code generator, and set of libraries, the browsers would still not scale in time and space performance, or in programmability and debugability when the server-side abstractions leak.
+
+The browser is evolving, and ES4/JS2 is part of that evolution. Every talk I've given about the new language has been greeted with positive reactions ranging from murmurs of assent to outright cheers. JS users, real programmers, need to be represented here, against vendors who may prefer to sit on sunk costs and freeze the web again. Sorry to be blunt, but that's the way I see it.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/02/21 09:44//
+----
+Actually, my argument was more from a "keep it simple" perspective. Perhaps we can call 'Part2' a different language? Just like one can choose JavaScript, vbscript etc. on the webpage, users can be given the option to choose this new language. That will give us an opportunity to not worry about backwards compat with ES3 (since we have a component of our complexity budget coming from the need to retain backwards compatibility with ES3).
+
+Cormac, Dave, and Jeff already made their opinion clear to me :-); but all the same I want to bring this up so that the working group may keep a vigilant eye for complexity and stay focussed on hitting the sweet spot in terms of introducing language enhancements and solving problems of JS users.
+ --- //[[pratapl@microsoft.com|Pratap Lakshman]] 2007/02/23 22:42//
+
+----
+
+Thanks, I may have overreacted ;-). Keeping things as simple as they should be is the trick in any design. JS started out very simple, and it is now simplistic in the face of its workloads, which creates lots of complexity for the growing audience of JS programmers.
+
+Even if one prefers Scheme to Common Lisp (I do), the fact remains that backward compatibility + typical human tool-user problem-solving applied to the language's weak spots imply a fairly large language standard. Losing backward compatibility both hurts migration and bloats browsers with two engines. Losing features means everyone has to juggle .js libraries and build up functional-programming idioms that are not cheap in time or space on current browsers.
+
+Graydon remarked that he's actually used Scheme in industry, and had to deal with "my first object-oriented framework" bootstrapped on top of standard Scheme, and other such "my first" libraries. At JS's age (12 years), there is no good reason to be stingy when it comes to standard idioms/clichés, convenience features, and power tools.
+
+I note how Doug testified that Yahoo! would use C# if it were suddenly a web-browser scripting language, but I don't think he meant C# 3.0's functional subset. Yahoo! would love C#'s classes and interfaces, and I predict they will love ES4's type system.
+
+I used to be more of a minimalist, but I'm a realist now. Successful languages are chunky (not portly :-P). ES4 is far from bloated, and we have rationalized every addition, not just thrown in the kitchen sink to be popular or to compete with language X (C# vs. Java, **cough**).
+
+Some might argue that the nominal type system (classes and interfaces) is unnecessary, but ignoring the need for classes to implement ES1-3's standard library (section 15) and such APIs as the DOM, look at all the classical OOP single-inheritance fakery done using prototypes and functional programming in the popular Ajax libraries. Such idiomatic FP style is neither well-taught and understood, nor particularly fast and small on current implementations. But I'm repeating myself now.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/02/24 04:32//
+----
+I agree with Graydon's remarks, but want to add that I see this as a strength of ES3!
+ES3's malleability gives it an expressiveness similar to Scheme. This has allowed all kinds of frameworks to be bootstrapped over ES3 (just like in the case of Standard Scheme).
+This malleability, along with the availability of stable implementations has helped these multiple frameworks flourish.
+Of course, curly braces syntax makes it very approachable to the C-family programmers.
+ 
+When designing for the next 10 years, I would rather we take the minimalist approach (when I see the classical OOP features we are doing, and think that 'here we are doing OOP for the web' it makes me nervous).
+ES3 has seen a resurgence, and we must now protect that!
+  - Fix the standards document. I am OK with whatever form that might take - rigourous prose, reference implementation, etc. Note that our team owns the JScript and JScript.NET implemetations, and so as an implementor we would immediately benefit (as would all implementors).
+  - make targetted additions to Array/String/Function - on the wiki these are under [[https://intranet.mozilla.org/ECMA/wiki/doku.php?id=proposals:static_generics]]. Frameworks would benefit from such conveniences without too much additional complexity in engine implementations.
+  - fix specific features in ES3 ('with' statement, no semicolon insertion, no redeclaration of functions, make built-in objects readonly (especially since we would do (2) above), add richer reflection capability (especially on functions))
+  - Bug fixes as noted in the wiki.
+  - let bindings to give true block scoping
+
+I see several advantages to this approach:
+  - It will keep the language simple and malleable.
+  - A rigourous spec will enable implementations to conform
+  - It will allow implementations to come up to the same level, and be stable, in a shorter time frame
+  - In the near term this will be better for ES3 and the web.
+  - In the long term it will make ES3 more resilient as we would have chosen to be minimalist and malleable!
+ --- //[[pratapl@microsoft.com|Pratap Lakshman]] 2007/02/25 19:55//
+
+The sunk cost is from the perspective of the large installed base of earlier versions of various browsers.
+ --- //[[pratapl@microsoft.com|Pratap Lakshman]] 2007/03/08 20:04// 
+
+----
+
+The installed base will change. Five years ago, there was nothing beyond ES3, and quite a few bugs limiting use of it at scale. One example: the [[http://blogs.msdn.com/ericlippert/archive/2003/09/17/53038.aspx|quadratic growth in GC costs]] in IE's JScript implementation, fixed in IE7 thanks to renewed competition from Firefox. Bad sunk costs when investing don't justify throwing more money away on the same investment. One moves one's money to better investments.
+
+Indeed, browser programmers today are tempted to save costs and avoid throwing good money after bad by [[http://code.google.com/webtoolkit/|GWT]], [[http://www.nikhilk.net/ScriptSharpIntro.aspx|Script#]], and the like -- not to mention forsaking the open web for Flash or WPF/E. Without a better target language, including nominal types that can be efficiently compiled, these code generators won't scale (or perhaps Script# targeting WPF* will scale just fine, compared to Script# targeting browsers -- the jury is still out on this). And again, why should web content authors have to acquire and learn such server-side/offline tools in order to gain programming-in-the-large features? Why shouldn't the default browser programming language improve?
+
+In exactly this light, Microsoft and Adobe have both invested heavily in better languages than ES3 for the exact same problem domains ("web apps", "rich client platforms"). This, plus Doug's devil's-advocate position in favor of C#-for-the-web, including what I took to be sincere testimony that Yahoo! would use C# if it were the new web scripting language, belie the claim that ES3 or any cut-down-to-JS1.7-size ES4 is "good enough." If it were, there wouldn't be all this fuss over C#, Script#, AS3, GWT, etc. etc.
+
+What's good for the goose is good for the gander. The browser-gander should not be shortchanged just to enable proprietary browser-like Flash or WPF or Apollo geese to out-compete it at hosting the client side of "rich web apps" -- certainly not in ECMA.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/03/10 23:54//
+
+See the [[http://ajaxian.com/downloads/presentations/eich-ajax-experience-2006/|talk]] I gave last May for an example of how private instance variables using closures cost 3x as much as public ones (slides 12-13).
+
+Minimalism without a lot of complex, Self-ish runtime optimization that cannot be required by the standard means the browser won't scale, not compared to .NET-based browser-like runtimes, Tamarin-based runtimes, and whatever is in WPF/E.
+
+Again, I think it's fine to prefer Scheme to Common Lisp aesthetically, in a //realpolitik// and usability vacuum. In the current competitive environment, it's not fine to minimize the next version of the standardized web browser programming language when the competing proprietary languages, including from your employer, are explicitly "maximized" to support efficient scaling and programming in the large.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/03/11 00:27//
+
+----
+
+I've tried to explain my perspective in this proposal: {{discussion:es4minimalistproposaldraft.rtf}}
+ --- //[[pratapl@microsoft.com|Pratap Lakshman]] 2007/03/11 04:45//
+
+----
+
+Pratap, I see a lot of Doug Crockford in your write-up. Not sure if you should credit his writings, but that's not my point. My problem with the write-up is that you do not address any specific objections that I've raised here. Let's look at what is actually happening in the real world:
+
+  * Microsoft and Adobe are promulgating proprietary or quasi-proprietary web-browser-like runtimes (WPF, WPF/E, Flash, Apollo).
+  * Microsoft and Adobe have created languages for those runtimes with features similar to, or even related to, ES4 in full -- not ES3 or your minimalist ES4.
+  * Using ES3 or "minimalist ES4", private instance variables cost 3x as much as public ones; this is just one of many examples of performance problems with ES3 pushed into large-scale domains, none of which are addressed by your proposal.
+  * One interpretation of your efforts here, in all charity, is that your employer wishes to handicap the standardized Web. As I keep saying, this is not relevant to ECMA TG1's deliberations.
+
+Can you see how strange it is for us to be arguing at this late date to minimize ES4, when your employer is maximizing similar programming languages that it purveys in browser-like platforms that compete with the standardized Web?
+
+I think these points deserve a response of some kind, in addition to the points I raised on 2007/02/21 above:
+
+  * Cost of scaling JS code to programming-in-the-large without having to use a server-side code generator.
+  * Cost in space performance on today's browsers, especially IE, which is limiting Ajax effectiveness.
+  * Cost in time performance, to a lesser but growing extent, which also limits Ajax effectiveness.
+  * Browser programmer productivity, even with a good code generator, is limited when the abstraction leaks and the programmer has to debug and optimize "by hand".
+
+I don't see you addressing any of these points specifically. Saying "ES did great and it's experiencing a resurgance, let's minimize change" does not cut it.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/03/11 12:16//

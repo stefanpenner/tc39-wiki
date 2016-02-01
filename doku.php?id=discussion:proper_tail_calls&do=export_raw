@@ -1,0 +1,49 @@
+This is a discussion page for [[proposals:proper_tail_calls]].
+
+==== For-effect calls in tail position ====
+
+The spec requires that the call to ''f()'' below is a tail call:
+
+<code javascript>
+    function f() { return 37; }
+    function g() { f(); }
+</code>
+
+In Edition 3, ''f'' returns a value to its continuation that is ignored by ''g'', which instead returns an undefined value to its continuation.  For backwards compatibility we wish to carry this meaning forward into Edition 4.  Yet if the call to ''f'' is a tail call, ''g'' is in no position to receive the result, discard it, and return no value to its caller in turn.
+
+This can be fixed by using a slightly more expensive return protocol, for example.  Before ''g'' calls ''f'', it marks its continuation (the one that will become also the continuation of the call to ''f'') with a mark that says that the return value is to be ignored.  This mark must be obeyed either by every return statement (which must return undefined rather than a computed value when the mark is seen) or by every non-tail call (which must ignore the returned value after the call when the mark is set). 
+
+This seems completely doable and not expensive (in the context of the language seen as a whole).  It is desirable to specify tail calls as they have been here, as it would be unfortunate if only calls in the expression position of ''return'' are treated as tail calls:
+  * It would require adding to the language the notion of returning "nothing", ie the void type, so that ''return g()'' would work in the case above.
+  * It would require some notion of converting a value to the void type in the process as when ''g'' calls ''f'' in the example above -- all the while maintaining proper tail calling.  That just brings us back to the original problem of having to insert some action at the time of the return.
+  * Much existing code would not benefit from proper tail calls without being rewritten
+
+The current attribute grammar above reflects this choice by assigning ''E.tail = true'' to all expressions that occur in statement expressions ''S = E;'' in tail position.
+
+====== Notes ======
+
+===== Implementation strategies =====
+
+Unless you heap-allocate all your variable objects -- in which case the garbage collector takes care of the problem for you as long as you keep your dynamic links straight -- then there are two main strategies: replacing the current frame with the new frame when making a tail call, or only creating frames for non-tail calls.  The former is most natural if your implementation uses the stack for passing arguments and returning values; the latter is a natural fit for a register machine.
+
+The Twobit compiler for Scheme uses the register strategy.  Arguments and locals are kept in registers (with several strategies for handling overflow of the register file).  A non-tail call executes a SAVE instruction to push a frame and save live registers, then instructions to set up actual parameters in the registers, before the call is made.  Upon return it executes a RESTORE/POP pair to restore saved values and drop the frame.  Various optimizations are possible to allow frames to be reused for multiple calls.
+
+A tail call simply sets up actual parameters in registers and jumps to the callee.
+
+===== References =====
+
+Definition of tail recursion in the Revised<sup>5</sup> Report on Scheme:
+
+http://www.schemers.org/Documents/Standards/R5RS/HTML/r5rs-Z-H-6.html#%_idx_78
+
+===== Issues =====
+
+It is likely that ''function.arguments'' interacts very poorly with tail recursion.  If function ''g'' called from function ''f'' references f.arguments (a facility not in 3rd Edition, but a reality nonetheless) then f.arguments must have the value it had inside f, even if f made a tail call before reaching g.  Implementations (like Opera) that have stack discipline for ''function.arguments'' objects will no longer be able to have that, and implementations that make the arguments object point into the evaluation stack to prevent heap allocation won't be able to do that either.  Foo.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/13 09:11//
+
+In 3rd edition the only statements in tail position are some return statements: all other statements are followed either by another statement or by an implicit "return undefined".  
+
+A 3rd Edition return statement can reasonably be said to be in tail position if it is not inside a ''try'' block and not inside a ''catch'' block for which there is a ''finally'', though this is not obvious from the semantics (with its label sets).  Cleaning this up in 4th edition means reformulating the semantics.  The current draft gets it pretty much right, I think, by reformulating unstructured control flow using exceptions.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/14 01:03//

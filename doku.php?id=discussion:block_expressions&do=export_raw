@@ -1,0 +1,476 @@
+This is a discussion page for [[proposals:block_expressions]].
+
+====== "let ref" as a "reformed with" ======
+
+This is not a proposal, just some musings.  (As noted below, this feature probably does not pay for itself.  --- //[[lth@opera.com|Lars T Hansen]] 2006/05/09 23:37//)
+
+In Modula-3 the ''with'' statement is a ''let'' as in ECMAScript except that it can alias lvalues:
+
+<code modula-3>
+    WITH x = obj.f DO
+        x := 10         (* assigns to obj.f *)
+    END
+</code>
+
+We can introduce a similar form in ECMAScript in ''let'' statements and ''let'' expressions:
+
+<code javascript>
+    let (ref x : int = obj.f) {
+       x = 10;
+    }
+</code>
+
+<code javascript>
+    x = let (ref x : int = obj.f) x+10*x 
+</code>
+
+The purpose would be to make it more convenient to write code that does not use ''with'' but instead is entirely lexically scoped and can be typed statically.
+
+The syntactic keyword ''ref'' makes x an alias for the lvalue on the right-hand-side of "="; the type designator for x, if present, must match exactly the type of that lvalue.  (It can't be a supertype since assignments to x may then break the type constraint on obj.f; it also can't be a subtype, because obj.f may hold (or be given through direct assignment) a value that is not of that subtype.)
+
+----
+
+Right, since a ''ref'' is readable and writable, the type of the referent must be invariant.
+
+This leads, I'm sure you realize, directly to call by reference. :-P
+
+I say this is overkill.  It is not the reform of ''with'' that I had in mind, which might use new syntax, or at least new features such as type annotations and structural type definitions, to reuse most or all of the familiar ''with'' statement syntax, but avoid the dynamic scope pollution.
+
+As you noted in last week's meeting, if the object named in the ''with'' head has precise type, meaning (I think) a sealed class with a known set of member names, then the dynamic scope pollution is abated.  This is well and good, but will it match common use-cases, or will users demand that the dynamic type of the object cause other names to appear in scope in the body? If so, the answer is to use ''Object!'' or wider as the type of the object expression in the ''with'' head.
+
+But rather than require renaming that expression's value with a loosely typed variable, why not add syntax reminiscent of [[switch class]]:
+
+<code javascript>
+  with (obj : T) {
+    ...
+  }
+</code>
+
+where T could be any type expression, including a structural type, and limit the scope pollution to T's members?  This enables ''with'' to have a well-typed "view" of ''obj'', without dynamic scope bugaboos.
+
+Perhaps this is obvious and easily agreed to.  It's more what I had in mind in urging reform of ''with''.  It is not ''ref'' by a long shot.  I like ''ref'' (for parameters too) in a world where everything is free, but in the real world it seems not worth the costs.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/05/09 10:24//
+
+Interesting issue about call-by-reference; I had imagined that a reference would not be first-class, its value would be taken if it were used in an lvalue context (a la references in C++).
+
+But I generally agree with you, I don't think this feature is cost effective, and I think a "view" like you suggest is probably better.  Though the object must probably match the type exactly in the fields that the type contains, like for "let ref", not the usual subtyping rule.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/09 12:50//
+
+I'll write up a [[reformed with]] proposal, noting the precise type requirement.  Feel free to move all my comments here down, or out ;-).
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/05/09 16:38//
+
+====== Notes ======
+
+I've implemented the various forms of ''let'' in my test compiler.  One slightly absurd/amusing consequence of the rules about ''let'' not creating properties like ''var'' does is that the following program is legal and evaluates to 30.
+
+<code javascript>
+   function f() { return 20; }
+   let function f() { return 10; }
+   f() + this.f();
+</code>
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/11 04:48//
+
+This probably just demonstrates my ignorance about the variable object, but why isn't a ''let'' at the top level of a function declaration the same as a ''var''? That is, Jeff says below that a ''var'' introduces a name in the innermost enclosing variable object, and a ''let'' introduces a name in the innermost block. If the innermost block //is// the nearest enclosing function body, why isn't that name a part of the variable object?
+
+On a separated but not unrelated note, what is the behavior of the following?
+
+<code javascript>
+{
+    eval("let x = 1")
+    print(x)
+}
+</code>
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2006/04/24 08:12//
+
+In response to your first question: ''let'' at the top of a function definition //is// the same thing as a ''var''.  Note carefully that the example uses the code word ''program''.  The example wouldn't work on the top level of a function, where ''var'', ''let'', and ''function'' all operate on the same variable object.
+
+The behavior of your second example is that the value of ''x'' bound outside that block, if any, is printed.  The reason for this is that ''eval'' works on programs and that ''let'' in a program defines properties on a temporary variable object created for the program, not on the program's surrounding variable object.
+
+"Jeff's rule" is neat.  Initially I thought it complicated things, and in a way it does.  But it allows initializer code to be written more easily and emasculates eval a little bit, too.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/26 04:30//
+
+Another way to say it is that ''eval'''s variable object is dynamically scoped -- it's the same as its caller's variable object -- while ''let'' never affects dynamically scoped variable object.  ''let'' always addresses a slot in the nearest enclosing block; or in the implicit block around a ''for'' loop, if the ''let'' is in the head of the loop; or in the implicit block around a program, if at top level outside of any function body.
+
+A function body is not a program, and as Lars notes there is no way to distinguish ''var'' and ''let'' at top level in a function.  The variable object is the activation object, which cannot be accessed (unlike a program's variable object, which has ''this'' and probably other names).  Edition 3's semantics attach to productions for the non-terminals //Program// and //FunctionBody//; we can use the same distinction.
+
+But, is there an advantage to not making this distinction, rather to have an implicit block around function bodies?  Just because the activation object is inaccessible does necessarily mean programmers should have to model ''var'' vs. ''let'' at "top level" (in program vs. in function body) differently.  Will programmers be confused by the ability to have
+
+<code javascript>
+  var x = 42; let x = "moo"
+  print(x)      // "moo"
+  print(this.x) // 42
+</code>
+
+but have ''"moo"'' printed twice if this same global code is wrapped in a function and called?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/04/26 09:03//
+
+During today's [[meetings:minutes_apr_26_2006|meeting]], we agreed to unify program and function body handling, so that both get an implicit block.  Lars pointed out the problem for function body without this implicit block: ''var'' and ''let'' can't be the same thing for this example:
+
+<code javascript>
+  function f(x) {
+    let x = 42
+    arguments[0] = 44
+    print(x)
+  }
+</code>
+
+or we have a nasty aliasing problem via ''arguments'' (this follows because ''var x'' in a function that has a formal parameter named ''x'' does not shadow the formal, rather it refers to the formal, in ECMA-262 Editions 1-3).
+
+Therefore top-level ''let'' in a function body must shadow any formal parameter of the same name.  So we want that implicit block.  The list of cases that get an implicit block is:
+
+  * global code
+  * package code
+  * class initialization code
+  * function body
+  * ''for'' loop containing ''let'' in loop head
+
+Anything else?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/04/26 23:58//
+
+====== Older Comments/Clarifications, all addressed by the proposal ======
+
+  * There are places where a ''var'' causes an object property to be created, as in global code and in class definitions. Rather than replace the use of ''var'' in those cases (not sure that was being proposed), does it make sense to distinguish the meaning of ''let'' from ''var'' to include that a ''let'' declaration introduces a name to the innermost enclosing block frame, whereas ''var'' introduces one to the innermost enclosing variable object  as in E3.
+  * The difference, then, between ''let'' and ''var'' in global code is then that ''let'' decls don't result in slots being created on the variable object. So ''let'' declarations that are in scope and not shadowed are visible to lexical references, but not through global ''this'' or an alias to global ''this''. Likewise, the use of ''let'' inside of a class body would result in a local name in the class initializer, not in an instance variable.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/03/24 16:28//
+
+I generally agree with this.  It introduces the notion that code at the global level is running inside an implicit block but I could live with that.  The other alternative is simply to say that ''let'' as a "better ''var''" is not allowed on the global level.  (This does not seem to be much of an issue in the class initializer since there is probably no surprise that there is some sort of implicit block there, but as far as I'm concerned we could do the same there.  After all, the let-block statement can be used both places to introduce local bindings.)
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/31 03:50//
+
+===== Possible extensions and alternatives =====
+
+We could use ''let function'' to define a local function and ''let const'' to define a local constant:
+
+<code>
+   let function fib(n) {
+     return n < 2 ? n : return fib(n-1) + fib(n-2);
+   }
+   let const k = 20;
+</code>
+
+We could also state that ''var'' used inside a ''let'' block is implicitly interpreted as ''let''.  I did not do this because it introduces a new context-dependent meaning for ''var''; apart from ''function'' being illegal in non-top-level contexts, such meaning-change is unprecedented in the language (as far as I can tell).
+
+==== Comments ====
+
+  * I agree, context-dependent meanings make code hard to read. We've been tempted to allow ''private'' as an attribute outside of class definitions, but decided against it because it makes the meaning of ''private'' context sensitive.
+  * We need something like ''let const'', but then I could live without ''let function'' since we would have ''let const f = function ...''
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/03/24 16:54//
+
+  * ''let const f = function ...'' includes ''const'', ''='', and ''function'' where only ''function'' is strictly necessary.  If ''let function ...'' is a special form that makes a lexical binding to a function (and only to that function), there is no need for the semblance of assignment, or for redundant const-ness denotation.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/24 17:31//
+
+  * Fair enough. I won't resist too strongly, but since in E3 function declarations are only allowed at the top level of function and global code, do we want to (need to) introduce them as a special form of general statement in E4?
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/03/24 17:50//
+
+  * Necessity is hard to argue given trade-offs among contingent proposals (only ''let'' or something equivalent is "necessary" if we want block scope), but if we support ''let const'', I want to support ''let function''.  But as I've said elsewhere, I think syntactic convenience should trump minimalism if there is no cost beyond another production to parse.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/24 18:52//
+
+  * Why do we need ''let const'' since there is no compatibility issue with ''const'' and edition 3? Let's consider making ''const'' scope like ''let''.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/03/28 18:13// 
+
+  * You're right, we could have ''const'' be scoped like ''let'', except that JS 1.5 and JScript.NET already have ''const'' with function/global scope and that probably creates precedent here.  Personally I think that one good reason to have ''let const'' is to allow the obvious symmetry to be extended to ''let function'', ie, I think locally scoped functions, constants, and variables are Good, and there should be symmetric syntax for declaring them.  (Although that argument probably calls for ''let var'' rather than just plain ''let''.)
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/31 04:00//
+
+  * The ''const'' horse is out of the barn as Lars noted.  Reforming the language by adding ''let'' is great, and suggests symmetry: ''let const'', ''let function'', and ''let var''.  But the last is needlessly verbose and overloads ''var'' contextually (but with the preceding token as the only context, so not terribly).  Adding ''let'' instead of ''let var'' is both shorter and less overload-y.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/31 15:37//
+
+  * Agreed. If ''let'' means limit the scope of the thing that comes after to the innermost enclosing block, then it is not hard to read ''let x = 10'' to mean what ''let var x = 10'' would mean. No matter which one we accept, I'd like to make the other a syntax error to avoid confusion.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/03/31 16:27//
+
+  * Since we wish to promote best practices, we should not require ''let var''.  Therefore ''let'' wins and ''let var'' is //verboten//.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/31 22:59//
+
+====== Old Proposal & Discussion ======
+
+==== Proposal ====
+
+The body of a ''let''-expression is considered a target of hoisting, like function bodies and program top-level, and the expression is itself not hoisted.
+
+The surface syntax for ''let'' expressions might look like this:
+
+<code>LetExpression ::= "let" ( "(" VarInit ("," VarInit)* ")" )? Block
+VarInit ::= ID (":" Type)? ("=" Expression)?</code>
+
+The optional preamble contains a list of variables and initializer expressions. The variables are bound to the result of the initializers (or **undefined** for omitted initializers). The preamble variables are not hoisted and are bound only within the body of the expression (in particular, they are //not// bound in their initialization expressions). That is, they are added to the scope chain of the expression body, but not to the scope chains of the initializers.
+
+Note that this allows for (mutually) recursive bindings within the body of a ''let'' expression, e.g.:
+
+<code javascript>let {
+    var fs = { even: function(n) { return (x == 0) || fs.odd(n - 1); },
+               odd: function(n) { return (x > 0) && fs.even(n - 1); } };
+    ...
+}</code>
+
+But does not allow recursive bindings within the preamble:
+
+<code javascript>var x = 3;
+let (x = 4, y = x) {
+    print(y); // prints 3
+}</code>
+
+After hoisting, the syntax of a ''let'' expression looks like:
+
+<code>LetExpression ::= "let" ( "(" VarInit* ")" )? HoistedBlock
+HoistedBlock ::= "{"
+                     ( "var" ID (":" Type)? ("," "var" ID (":" Type)?)* ";"? )?
+                     Statement*
+                 "}"</code>
+
+The block expression form is not a statement but an expression. Upon normal completion of the expression body, the value of the expression is the completion value, or **undefined** if there is no completion value.
+
+==== Comparison to Standard Idiom ====
+
+There is an idiom used by EcmaScript programmers to achieve something akin to this proposal using anonymous inner functions. Programmers appear to use
+
+<code javascript>(function() { /* body */ })()</code>
+
+to achieve the same basic effect (see for example [[http://dean.edwards.name/my/cssQuery/src/?cssQuery.js]]). Notice that the above code contains several subtle and surprising differences between the body of the inner function and the body of a ''let'' expression. First, the meaning of ''return'' is changed -- it returns a value for the application expression, but not for the surrounding function. There does not appear to be any way to simulate such a ''return''.
+
+Note also that the meaning of ''arguments'' is different: to maintain the same meaning, it would be necessary to change the idiom to:
+
+<code javascript>(function () { /* body */ }).apply(this, arguments)</code>
+
+Now we guarantee that both ''this'' and ''arguments'' are unchanged within the body of the function. But if we want to achieve the same behavior as the ''let'' expression preamble, where initializers can refer to variables being shadowed, we might try:
+
+<code javascript>(function (x1, ..., xn) { /* body */ }).call(this, e1, ..., en)</code>
+
+But then notice that we have once again modified the meaning of ''arguments''.
+
+Next we might try several levels of nested functions, but at this point, the idiom has become convoluted enough to defeat its simplicity and convenience. And we have still not achieved the same meaning for ''return''.
+
+This proposal attempts to abstract away the details of this implementation in a convenient and well-behaved special form that solves the problem once and for all.
+
+==== Rationale ====
+
+The primary motivation for this form is the ability to introduce lexically scoped blocks that are not hoisted to the top level of function bodies.
+
+In practice, EcmaScript programmers appear to use the syntactic idiom of immediately applying anonymous function expressions, so it's useful to abstract this out into a special syntactic form in the language. This saves typing and clarifies the code, and prevents several subtle potential bugs that can arise in the idiom.
+
+Three possible bugs in the idiom are:
+  * incorrect use of ''this''
+  * incorrect use of the ''arguments'' array
+  * incorrect use of ''return''
+
+The first case may not be a big deal since the meaning of ''this'' stays the same when you call a function without a receiver object. In the second case, the meaning of ''arguments'' is different from the code surrounding the expression unless the programmer carefully uses the ''apply'' method of the anonymous function object. In the third case, there is no way to make ''return'' behave the same as it does outside of the inner expression.
+
+Another motivation for this form is the ability to bind variables whose scope does //not// include their intializer expressions. This allows referring to the previous binding of shadowed variables.
+
+Yet another motivation for this form is to future-proof the language for macros: it's important to be able to introduce local bindings in non-trivial macros, and to do this without altering the meaning of the client code at the invocation site of the macro. The ''let'' expression is carefully designed so that the body has exactly the same meaning as it does outside of the ''let'' expression except for the new bindings.
+
+Making ''let'' an expression form, rather than a statement form, is useful for programmers who want to write in a functional style by composing expressions, and again would be important for macros as a way of introducing bindings in expression macros.
+
+Brendan pointed out in the 2/16 meeting that it would be good to be able to refer to a variable's previous binding within an initializer (i.e., ''let'' and not ''letrec'' semantics), hence the introduction of the preamble.
+
+However, it's still useful to be able to introduce aribtrary statements and declarations within the substatement and not have them hoisted to the top of the enclosing function. This proposal combines both capabilities. When the preamble facility isn't needed it can be omitted entirely:
+
+<code javascript>
+let {
+    var x = ...
+}
+</code>
+
+and when declarations within the block aren't needed, they too can be omitted:
+
+<code javascript>
+let (x = 3) {
+    x
+}
+</code>
+
+==== Rejected Alternatives ====
+
+  * Without the preamble, it's possible to allow any arbitrary statement for the body, but this introduces an ambiguity between the preamble and expression statements.
+  * The preamble could begin with the redundant keyword ''var'' to indicate that the variables are bound, but this would be pointless typing, and both ''catch'' and ''function'' are existing binding forms that don't use ''var'' to indicate binding, so it's not inconsistent with the language.
+  * The preamble could optionally begin with the ''var'' keyword, only binding the variables if the keyword is present, and otherwise assigning to existing variables, but this runs contrary to the whole //point// of ''let'', which is to introduce bindings. The exact same effect can be achieved (with fewer characters!) by a preamble-less ''let'' with assignment statements at the beginning of the body.
+  * Could use the keyword ''block'' instead of ''let'', but
+    * the fewer characters the better
+    * this can serve as a bridge to functional languages
+    * might be confused with Ruby and Smalltalk blocks
+
+----
+
+Some comments:
+
+  * I'm not sure you mean "block expression" here, rather than "block binding" or such. This doesn't seem like an expression type: it contains statements, and doesn't (seem to) evaluate to a value. Am I misreading?
+  * I wonder if you could clarify the rationale further, perhaps provide an example. It seems to me that you can get similar affects by making an inner anonymous function and calling it.
+  * you use the word "binding" frequently; as far as I know (sadly) there is no such concept in the ecmascript language: all activity related to "variables" -- evaluating names, introducing new name-to-value mappings, shadowing old ones, etc. -- are modeled as imperative operations on scope objects and their slots. I think it might help clarify your proposal if you wrote it in these terms exclusively, and avoided referring to bindings (even if the goal is to simulate binding).
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/02/22 12:22//
+
+----
+
+Thanks for the feedback. Let me respond to each point in turn:
+
+== Point 1 ==
+
+I do in fact mean expression: ''let'' is an expression form that evaluates to a value; it contains a block statement as its body, but it evaluates to the completion value of that block -- see the last paragraph of the proposal.
+
+== Point 2 ==
+
+Great point, thanks. I've expanded the rationale section and added a section comparing this proposal to the standard idiom of applying an anonymous function.
+
+I wrote this proposal as a syntactic abstraction of that idiom; it's a convenient expression form for lexical scoping that saves the writer from having to use a somewhat obscure and verbose idiom, and protects against the pitfalls of the subtle changes it makes to the meaning of the body expression.
+
+With a macro system, you might try to define this form as a simple translation to the anonymous function application idiom. But you'd find that the meaning of ''return'' and possibly ''arguments'' is silently and surprisingly changed within the body of the ''let'' expression. This is why, even if we did have a macro system, I would still prefer to define this as a special language form.
+
+It may sound like splitting hairs to worry about ''arguments'' and ''return'', but imagine that ''let'' is specified by translation to the standard idiom, rather than as it is in this proposal. Now if you are an EcmaScript programmer and you have some code like:
+
+<code javascript>foo(f(x), f(x), arguments[0])</code>
+
+and then you want to abstract out the call to ''f'', and you try:
+
+<code javascript>let (z = f(x)) { foo(z, z, arguments[0]) }</code>
+
+the code will suddenly give ''foo'' the same value as ''z'' as its third argument -- which will change the behavior of the program, but might not even produce an immediate error. This will be a very hard bug to track down, since the error isn't localized to the part of the code that caused it, and it would be due to a strange corner-case in the specification of ''let'' expressions.
+
+== Point 3 ==
+
+The existing spec doesn't refer to binding, true. I think that's a flaw in the spec.
+
+Now, I am not sure about the current draft, but in edition 3, IIRC, there is no provision for scope objects (other than those dynamically added to the scope chain via ''with'') to be mutated by the user program. The upshot is that in these frames of the scope chain, slots are written to only once. So they may as well not be defined in imperative terms at all, and they're behaviorally equivalent to environment frames.
+
+The terminology of scope chains and "objects" in the scope chains reads to me like a confusion of specification from implementation. It may be perfectly reasonable for some EcmaScript implementations to use regular JavaScript objects that are not accessible to the programmer as frames in the environment, but it's also perfectly reasonable to use ordinary lexical scope in the implementation language. This is what I do in my JavaScript-to-Scheme compiler. It's complicated to some degree by ''with'', but I'd be glad to tell you about my implementation strategy.
+
+What's going on here really is the same thing as binding. The only complication is that some environment frames (i.e., those installed by ''with''), do have to be JavaScript objects. But not all of them should have to be, and those that aren't should be specified as binding mechanisms.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2006/02/22 19:44//
+
+----
+I agree that the lack of conventional binding specification in ECMA-262 is a bug, reflecting my bugged design of JS1 from 1995.  I hope we can fix this bug.  Beware, however, that slots in scope objects can be added and deleted as follows:
+
+  * The global object may be extended with properties not declared using function or var.
+  * Variables created by an ''eval'' are not given the ''DontDelete'' attribute, so may be removed from the variable object via ''delete''.  This applies at top-level and within a function activation.
+  * Fortunately, functions and variables bound outside of eval create ''DontDelete'' properties (note that ''var'' never re-creates a pre-existing binding).  But these properties are not ''ReadOnly'', so a binding can be changed by assignment as well as by redeclaration.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/02/22 23:41//
+
+Interesting. I'm certain that'll cause problems for type soundness. Let's talk about this more.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2006/02/23 07:50//
+
+With [[clarification:drop_traits|TypeConstraint]], type annotations change the rules incompatibly and may restore soundness.  Type-annotated ''var'' and ''function'' declarations are ''DontDelete'' unconditionally, and assignment cannot rebind if the type of the new value violates the constraint.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/02/23 12:04//
+
+<code>
+for ( i=0 ; i < 2 ; i++ )
+  let (x = 10) {
+    fn[i] = (function () { return x })
+    x = i
+  }
+</code>
+
+What then is the meaning of
+
+  fn[0]()
+  fn[1]()
+
+Probably you want 0, 1, but if x is hoisted then you get 1,1 (classical problem with Common Lisp "do" loops).
+
+ --- //[[lth@opera.com|Lars Hansen]] 2006/02/24 //
+
+We definitely want 0, 1, since Edition 3 closures have the classical (CL "do") problem ;-).  The lack of any workaround for the classical problem in ES3 is one strong indicator in favor of this proposal.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/02/24 14:22//
+
+==== Counterproposal ====
+
+I want to suggest the following as an alternative (the word "counterproposal" is a little strong).  I do like the idea of having a ''let''-type expression.  I do not particularly like the current proposal, because it inserts statements into expressions and because it uses the "completion value&quot;, which so far has been ignored except at the top level of the program.
+
+I propose that ''let'' can be used everywhere ''var'' can be used in Edition 3, but that unlike ''var'' it introduces a variable that is scoped in a block or statement, not in the function or program:
+
+  * If used as a statement (''let x=10;'') it introduces a variable scoped within the enclosing block
+  * If used in a ''for'' loop it introduces a variable scoped within that statement
+
+For example:
+
+<code javascript>
+   function f(x)
+   {
+     var i = 0;
+     if (x > 5)
+     {
+       let i = 3;
+       print(i);
+     }
+     print(i);
+   }
+</code>
+
+prints ''3'', then ''0''.  Or:
+
+<code javascript>
+   var i = 0;
+   for ( let i=0 ; i < 10 ; i++ )
+     ...;
+   print(i);
+</code>
+
+prints ''0'' also.
+
+The main disadvantage of the proposal is that we lose the expression form.  This is remedied by introducing a separate expression form, as in the original proposal:
+
+<code javascript>
+   x = 10 + let (a=5, x=x+5) x
+</code>
+
+Though the two separate syntaxen for ''let'' may seem like adding too much machinery when one form is enough, we do have exactly this situation for ''function'', where we have both binding forms and expression forms.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/23 01:42//
+
+I am strongly in favor of both proposals.  I don't view Lars' proposal as an alternative so much as a generous and fitting completion, optimizing for common cases' conciseness, of Dave's proposal.
+
+The ''let'' block-expression form provides missing expression syntax, as well as a way to re-use a name in an inner scope but initialize it (or another variable within the same optional ''let'' preamble) to the outer name's value, without ''var''-hoisting causing the initializer to assign undefined (the present value of the inner name).  Dave shows an example above.
+
+Allowing ''let'' instead of ''var'' for enclosing-block or for-loop scope is too convenient to resist, familiar from other C-descended languages, and low-cost in implementations and spec terms.
+
+Again, it seems to me that convenience can trump minimalism -- not always, but in several cases near the surface of the language.  Minimizing the language so that there is only one way to say something goes against the grain of scripting languages (Perl overdoes this, but its heart is in the right place).  Over-minimizing the surface may optimize language size at the expense of real-world usability.
+
+I took the liberty of adding optional type annotations to the BNF at the top of this page.  I believe we want all such ''VarList'' non-terminals (graydon's latest [[switch class]] proposal has such a production) to allow types.
+
+Questions:
+  * Do we want to require a block after the ''let'' and any optional preamble?  Lars' example does not, but Dave rejected this because it makes the preamble mandatory syntax.
+  * Should we allow ''with'' and ''eval'' in such blocks?  I think so, but they require more work, analogous to the work required in functions to reify an activation object.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/23 22:58//
+
+My take on the questions:
+  * My proposal does not require a block after the ''let'' because it does not allow it, it is exclusively an expression form (does not admit use of the statement language).
+  * You can't not allow ''with'' and ''eval'' in these blocks; that would be an arbitrary restriction that would be completely maddening.  Anyway you already have to handle ''with'' and ''eval'' (and function closures) inside ''catch'' clauses, which have local binding, and presumably you also want to handle them inside enum cases, so unless you're prepared to prohibit them everywhere ... :-)
+
+Apart from that I have some comments:
+
+  * With the heavy emphasis on static checking and programming-in-the-large in ECMAScript 4 it is increasingly difficult to see it as a scripting language, so I'm not sure that we should continue to increase the number of "scripting" features or use that as a justification for design choices.  There are no implementation problems per se (that I'm aware of now) with the block-statement form of the ''let'' proposal, it's just an aesthetic thing with me, and in addition it resurrects the "completion value" mechanism that really had been left better for dead.
+  * The ''var'' form of destructuring assignments does not allow for type annotations, and won't, if we're going to stick to using construction syntax for destructuring
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/24 01:58//
+
+Agreed on avoiding arbitrary nesting restrictions -- I had to ask, because extension purity vs. compatibility and composition of old and new features are at war, at least in some of our heads.  You touch on that too, in raising the question of whether Edition 4 is still a "scripting language".  My answer is that it certainly is, in these senses:
+
+  * Dynamic type and minimal boilerplate, for quick code-snippet-based prototyping.
+  * Admits small implementation without too much effort.
+  * Scales over large audience of would-be programmers, as well as professionals.
+
+Since we can't throw out the old and make a clean, new and incompatible language, and since we hope to migrate much of the existing code toward the new edition over the next many years, we should avoid viewing the new Edition as a "new language" and rejecting "scripting features".
+
+To justify design choices, we should fill gaps and fix bugs compatible.  I think ''let'' (both proposals) does that.  It's true that we could defer the ''let'' block-expressions, and still fill the "lack of block scope" gap.  We should reserve syntax if we can.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/24 08:21//

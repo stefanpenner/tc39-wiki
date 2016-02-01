@@ -1,0 +1,139 @@
+==== Match Web Reality Spec ====
+=== Examples ===
+The spec below aims to capture the following cases which are syntax errors according to ES5, but are broadly supported and relied upon on the web.  
+
+<code>
+exec(/\12/, "\n");
+exec(/[\12]/, "\n");
+exec(/\xg/, "xg");
+exec(/[\xg]+/, "xg");
+exec(/\ug/, "ug");
+exec(/[\ug]+/, "ug");
+exec(/\a/, "a");
+exec(/[\a]/, "a");
+exec(/\8/, "8");  
+exec(/[\8]/, "8");
+exec(/(?=a)+/, "");
+exec(/(?!a)+/, "");
+exec(/{/, "{");
+exec(/}/, "}");
+exec(/\c1/, "c1");
+exec(/[\c1]+/, "c1");
+</code>
+
+=== Spec ===
+
+** 15.10.1 Patterns **
+
+The pattern grammar in this section is instead context sensitive for the productions listed below, and ambiguities are introduced that are broken by ordering and contextual information.  The following grammar is used, with each alternative considered only if previous production alternatives do not match.  Additions __underlined__:
+
+<code>
+Term ::
+  Assertion
+  AtomNoBrace Quantifier
+  Atom
+  QuantifiableAssertion Quantifier
+AtomNoBrace ::
+  PatternCharacterNoBrace
+  .
+  \ AtomEscape
+  CharacterClass
+  ( Disjunction )
+  ( ? : Disjunction )
+Atom ::
+  PatternCharacter
+  .
+  \ AtomEscape
+  CharacterClass
+  ( Disjunction )
+  ( ? : Disjunction )
+PatternCharacterNoBrace ::
+  SourceCharacter but not one of
+    ^ $ \ . * + ? ( ) [ ] { } |
+PatternCharacter ::
+  SourceCharacter but not one of
+    ^ $ \ . * + ? ( ) [ ] |
+QuantifiableAssertion ::
+  ( ? = Disjunction ) 
+  ( ? ! Disjunction )
+Assertion ::
+  ^
+  $
+  \ b 
+  \ B 
+  QuantifiableAssertion
+AtomEscape ::
+  DecimalEscape but only if the integer value of DecimalEscape is <= NCapturingParens
+  CharacterClassEscape
+  CharacterEscape
+CharacterEscape ::
+  ControlEscape
+  c ControlLetter
+  HexEscapeSequence
+  UnicodeEscapeSequence
+  OctalEscapeSequence
+  IdentityEscape
+IdentityEscape ::
+  SourceCharacter but not c
+  <ZWJ>
+  <ZWNJ>
+NonemptyClassRanges ::
+  ClassAtom
+  ClassAtom NonemptyClassRangesNoDash
+  ClassAtomInRange - ClassAtomInRange ClassRanges
+NonemptyClassRangesNoDash ::
+  ClassAtom
+  ClassAtomNoDash NonemptyClassRangesNoDash
+  ClassAtomNoDashInRange - ClassAtomInRange ClassRanges
+ClassAtom ::
+  -
+  ClassAtomNoDash
+ClassAtomNoDash ::
+  SourceCharacter but not one of \ or ] or -
+  \ ClassEscape
+ClassAtomInRange ::
+  -
+  ClassAtomNoDashInRange
+ClassAtomNoDashInRange ::
+  SourceCharacter but not one of \ or ] or -
+  \ ClassEscape but only if ClassEscape evaluates to a CharSet with exactly one character
+  \ IdentityEscape
+ClassEscape ::
+  DecimalEscape but only if the integer value of DecimalEscape is <= NCapturingParens
+  b
+  CharacterClassEscape
+  CharacterEscape
+</code>
+
+**15.10.2.5 Term**
+
+In addition to the existing productions for Term, include this:
+
+The production Term :: QuantifiableAssertion Quantifier evaluates as follows:
+  - Return the result of evaluating the term ( ? : QuantifiableAssertion ) Quantifier 
+
+**15.10.2.8 Atom**
+
+In addition to the existing productions for Atom, include identical productions for AtomNoBrace, except replacing Atom :: PatternCharacter with:
+
+The production AtomNoBrace :: PatternCharacterNoBrace evaluates as follows:
+  - Let ch be the character represented by PatternCharacterNoBrace.
+  - Let A be a one-element CharSet containing the character ch.
+  - Call CharacterSetMatcher(A, false) and return its Matcher result.
+
+**15.10.2.10 CharacterEscape**
+
+In addition to the existing productions for CharacterEscape, include this:
+
+The production CharacterEscape :: OctalEscapeSequence evaluates by evaluating the CV of the OctalEscapeSequence (see B.1.2) and returning its character result.
+
+**15.10.2.17 ClassAtom**
+
+Add the following:
+
+The production ClassAtomInRange :: - evaluates by returning the CharSet containing the one character -.
+
+The production ClassAtomInRange :: ClassAtomNoDashInRange evaluates by evaluating ClassAtomNoDashInRange to obtain a CharSet and returning that CharSet.
+
+
+

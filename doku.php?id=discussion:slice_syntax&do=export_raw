@@ -1,0 +1,180 @@
+Separated from [[proposals:slice syntax]].
+
+----
+
+====== Discussion ======
+
+Minor and barely related point: Are you proposing to actually expose ''intrinsic::charAt'' at the language level or is this just handy shorthand for what the implementation would be doing?
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/09/27 07:34//
+
+At one point, I think when discussing [[proposals:builtin classes]], we agreed to allow early binding optimizations by opening the ''intrinsic'' namespace before using the standard prototype methods.  Many standard classes would thus declare ''intrinsic function charAt(uint):String; prototype function charAt(*):String;'' or something like that.  The idea was to have two names for all of the mutable standard prototype properties, and the intrinsic ones would be immutable.
+
+If this isn't captured anywhere, I will write it up.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/09/27 09:58//
+
+====== Older discussion ======
+
+Minor point: I think that if you want to allow ''s[3:5] = "p!"'' then you should also introduce plain string "assignment", ie, ''s[3] = "f"'' returns a new string with the fourth element replaced.
+
+Major point: I think that your argument about the asymmetry of this kind of assignment and the "normal" kind is fairly important.  I would probably want the following to work, for symmetry: ''s[3:5] = t[7:9] = "foo"'', but of course it won't.  Thus I think it is probably wrong to use the destructive update operator to denote functional update, and we should not allow string slices as lvalues.
+
+We could introduce a functional update operator for the purpose (eg ''s[3:5] := "foo"'') but it doesn't seem worth the bother, probably, and it doesn't extend readily beyond strings and arrays.
+
+The slice syntax can extend to other things, though.  If you allow it to be used on the integer types then you can say things like 
+
+<code>
+   for each ( let i in int[0:99] )
+     print(i)
+</code>
+
+Perhaps it's a reasonable basis for an iterator syntax?  That is, for any object the expression ''obj[n:m]'' is the sequence of values ''obj[n]'', ''obj[n+1]'', and so on.
+
+(This works as lvalues too: obj[0:99] = int[100:199] does what you think.)
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/31 04:42//
+
+Alas, ''int[0:99]'' would be the ''int'' values from ''0'' up to but not including ''99'', which is neither what you meant, nor what the closed interval notation ''[0, 99]'' means (considering integers only on the real number line).  The '':'' distinguishes notations, but only by a hair.  The off-by-one bug hazard here seems severe.
+
+I've pined for better ''range'' syntax mirroring closed interval notation.  The obvious Perl-ish form, ''0..99'', is impossible to reconcile with E4X's descendant operator ([[http://www.mozilla.org/js/language/ECMA-357.pdf|ECMA-357 11.2.3]]).
+
+I agree on making string splice illegal -- strings should appear to be immutable if reference types, and assignment expression evaluation should result in the RHS.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/31 15:23//
+
+You're right, by analogy with ''slice'' and ''substring'' my interval notation does not work.  Too bad.  Perhaps the slice syntax is not really slice syntax, but property interval syntax?  :-)  That is, s[3:5] means s[3] through s[5].  (Perhaps that's introducing one too many new concepts into the language.)
+
+As for the ''int[0::99]'' thing, I really meant this as an analogy: I would like to think of ''int'' not just as a type name but as the name of some (constant) binding whose value is an object s.t. int[n] = n, for all n.  That way there is no special case, and there is no (?) confusion about open and closed intervals, for example.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/04 00:46//
+
+Half-open intervals work well in analysis because they can tile the real number line.  Same for natural number based slices.  My favorite Python example is [[http://biotech.embl-ebi.ac.uk:8400/sw/common/share/python/examples/dstruct/classics/permcomb.py|permcomb.py]].  So a slice should be denoted by [start:end] where end is one greater than the last index in the slice.  This fits ''Array.prototype.slice'' and ''String.prototype.slice'' (but alas not ''Array.prototype.splice'', which is Perl-inspired and uses a count instead of an ''end'' fencepost -- I will propose a way around this minor compatibility issue).
+
+I like your idea for closed interval subrange types, but they need a distinct syntax.  ''int[first..last]'', or just ''first..last'', would be fine and familiar, if only E4X hadn't preempted ''..'' for the descendant operator, which implicitly quotes its right operand.  [[http://haxe.org/|HaXe]] uses ''...'' instead, for its interval notation, probably to avoid ambiguity with the decimal point in numeric literals followed by the dot property access operator.  Perhaps the best option is to preempt '','' in the [[proposals:syntax for type expressions|type expression grammar]], and make ''int[first, last]'' denote the integers from ''first'' up to and including ''last''.
+
+Closed intervals and half-open slices are both useful.  More than a few scripting languages have syntax and fairly "surface" semantics for both.  I see no reason in principle why Edition 4 should not have both.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/04/04 10:33//
+
+Again, not quite what I was aiming for; I was looking for an expression syntax, not a type expression syntax.  Like ''Object'', ''int'' is an object.  But of course it would be nice to type the resulting expression.
+
+Anyhow, I think that if I want an interval expression then I should split it out as a separate proposal, the slice syntax should not be obscured by this matter.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/12 04:43// 
+
+===== Clarification =====
+
+What should the syntax of the expression before and after the ":" token be? Python allows an the equivalent of the //LogicalOrExpression // in ES3, but ES3 already allows the more general //Expression// syntax inside of square brackets. So for simplicity the syntax should be ''"[" //Expression// ":" //Expression// "]"''. Sound right?
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/05/11 12:00//
+
+----
+
+Either expression may be omitted, so BNF postfix ''?'' is needed.  But //Expression// starts with comma expressions, then assignment, then conditional.  Conditional contains '':'', so seems ambiguous.  I believe that's why Python uses //LogicalOrExpression//, so I think we want //LogicalOrExpression?//.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/05/11 16:30//
+
+====== Example ======
+
+Here is the classic Python permcomb.py:
+
+<code python>
+def permute(list):
+    if not list:                                        # shuffle any sequence
+        return [list]                                   # empty sequence
+    else:
+        res = []
+        for i in range(len(list)):
+            rest = list[:i] + list[i+1:]                # delete current node
+            for x in permute(rest):                     # permute the others
+                res.append(list[i:i+1] + x)             # add node at front
+        return res
+
+
+def subset(list, size):
+    if size == 0 or not list:                            # order matters here
+        return [list[:0]]                                # an empty sequence
+    else:
+        result = []
+        for i in range(len(list)):
+            pick = list[i:i+1]                           # sequence slice
+            rest = list[:i] + list[i+1:]                 # keep [:i] part
+            for x in subset(rest, size-1):
+                result.append(pick + x)
+        return result
+
+
+def combo(list, size):
+    if size == 0 or not list:                            # order doesn't matter
+        return [list[:0]]                                # xyz == yzx
+    else:
+        result = []
+        for i in range(0, (len(list) - size) + 1):       # iff enough left
+            pick = list[i:i+1] 
+            rest = list[i+1:]                            # drop [:i] part
+            for x in combo(rest, size - 1):
+                result.append(pick + x)
+        return result
+</code>
+
+And here is the equivalent JS (I believe it's all pure ES3, but I haven't tested) version:
+
+<code javascript>
+// Translated from permcomb.py, found at
+// http://biotech.embl-ebi.ac.uk:8400/sw/common/share/python/examples/dstruct/classics/permcomb.py
+// by searching for "permcomb.py".
+//
+// This shows bugs, gaps, and verbosities in JS compared to Python:
+// 1. Lack of range([start, ] end[, step]).
+// 2. ![] => false, indeed !<any-object> => false.
+// 3. Missing append or push for strings (if append, then we'd want append for
+//    arrays too).
+// 4. Missing slice operator syntax s[i:j].
+// 5. Lack of + for array concatenation.
+
+String.prototype.push = function (str) { return this + str; };
+
+function permute(list) {
+    if (!list.length)                                   // shuffle any sequence
+        return [list];                                  // empty sequence
+    var res = [];
+    for (var i = 0, n = list.length; i < n; i++) {      // delete current node
+        var rest = list.slice(0, i).concat(list.slice(i+1));
+        for each (var x in permute(rest))               // permute the others
+            res.push(list.slice(i, i+1).concat(x));     // add node at front
+    }
+    return res;
+}
+
+function subset(list, size) {
+    if (size == 0 || !list.length)                      // order matters here
+        return [list.slice(0, 0)];                      // an empty sequence
+    var result = [];
+    for (var i = 0, n = list.length; i < n; i++) {
+        var pick = list.slice(i, i+1);                  // sequence slice
+        var rest = list.slice(0, i).concat(list.slice(i+1)); // keep [:i] part
+        for each (var x in subset(rest, size-1))
+            result.push(pick.concat(x));
+    }
+    return result;
+}
+
+function combo(list, size) {
+    if (size == 0 || !list.length)                      // order doesn't matter
+        return [list.slice(0, 0)];                      // xyz == yzx
+    var result = [];
+    for (var i = 0, n = (list.length - size) + 1; i < n; i++) {
+                                                        // iff enough left
+        var pick = list.slice(i, i+1);
+        var rest = list.slice(i+1);                     // drop [:i] part
+        for each (var x in combo(rest, size - 1))
+            result.push(pick.concat(x));
+    }
+    return result;
+}
+</code>
+
+The comment lists problems I would like to address in this proposal (after moving the current contents to [[discussion:slice_syntax]]).  More in a bit.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/08/30 10:07//

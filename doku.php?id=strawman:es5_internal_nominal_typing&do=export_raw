@@ -1,0 +1,18 @@
+====== Cleanup/Generalize ES5 Internal Nominal Object Typing ======
+
+See [[https://docs.google.com/document/d/1sSUtri6joyOOh23nVDfMbs1wDS7iDMDUFVVeHeRdSIw/edit?hl=en&authkey=CI-FopgC | Nominal Object Typing in ES5 Specification]]
+
+Specific things to do to cleanup/generalize spec. level use of nominal typing 
+
+  - Parameterized Objct.prototype.toString via actual object properties.
+  - Cleanup %%[[Class]]%% tests in JSON.stringify.  Perhaps revert to more toJSON usage
+  - Funtion.prototype.bind should simply look for the “length” property rather than first doing a %%[[Class]]%%==”Function” test
+  - Array.isArray should test for presence of special %%[[DefineOwnProperty]]%% rather than testing %%[[Class]%%
+  - Array.prototype.concat shouldn’t test its arguments for %%[[Class]]%%==”Array” to determine whether or not to “exploded” the argument into its individual elements.  Instead it should test a newly specified user settable property of the array to control the “explode” behavior.  There are backwards compatibility issues that will need to be considered.
+  - In JSON.parse eliminate %%[[Class]]%%==”Array” test in Walk. Replace it with more abstract language that relates back to the JSON grammar. 
+  - In JSON.stringify, make accept generic arrays (hence any object) as replacer value.  This only needs isCallable test can eliminate %%[[Class]]%% test.
+  - In JSON.stringify, use a isJSONArray property to control output in array literal syntax and eliminate corresponding %%[[Class]]%% check.no
+  - Make String.prototype.match use RegExp constructor instead of %%[[Class]]%% test.  Also call object’s exec method instead of directly using built-in exec.  Add necessary coercions to expected value types.
+  - Do the same thing as item 9 for String prototype replace, search, and slice.
+  - //More items to come//...
+

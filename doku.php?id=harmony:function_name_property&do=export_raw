@@ -1,0 +1,130 @@
+**This proposal has progressed to the Draft ECMAScript 6 Specification, which is available for review here: [[harmony:specification_drafts]]. Any new issues relating to them should be filed as bugs at [[http://bugs.ecmascript.org]]. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.**
+
+===== Justification =====
+
+The usefulness of the name of a function is not just for debugging. It is useful in the same ways that property names as strings are such as dispatching by name or assigning by name.
+
+
+===== Precedent =====
+
+  * ''(new Function).name === "anonymous"'' wanted by the Web, according to [[https://bugs.webkit.org/show_bug.cgi?id=7726|this webkit bug]]
+  * ''function f(){} assert(f.name === "f")'' is implemented by several browsers, with name not writable and not configurable
+  * Most browsers that implement ''name'' for functions use it in the result of ''toString'' as the function identifier ([[https://mail.mozilla.org/pipermail/es-discuss/2009-March/008916.html|detailed results of testing by Allen]])
+
+
+===== Goals =====
+
+  * Support //de facto// standards per above precedent (aside from writability)
+  * Automatically derive names for synthesized functions such as get, set, and bind functions
+  * Every function should have an own //name// property, and this property is always a string by default
+  * The name property is initialized with the value that makes sense from static semantics
+  * Allow function names to be altered arbitrarily
+
+===== Semantics =====
+
+All functions have a //name// property with the property attributes ''{ %%[[Configurable]]%%: false, %%[[Enumerable]]%%: false, %%[[Writable]]%%: true }''. The //name// property is initialized with a string value given the following static semantics; if no name can be statically determined, such as in the case of an unassigned anonymous function, then the empty string is used.
+
+The //name// property has no effect on the output of ''Function.prototype.toString'' (though it can and often does correspond to it).
+
+
+
+==== Named Functions ====
+
+Some functions may be named as part of their static semantics. This name is given the highest priority when determining the value of the //name// property. This applies to:
+
+  * **ClassDeclaration** (BindingIdentifier)
+  * **ClassExpression** (BindingIdentifier)
+  * **FunctionDeclaration** (BindingIdentifier)
+  * **FunctionExpression** (BindingIdentifier)
+  * **GeneratorDeclaration** (BindingIdentifier)
+  * **GeneratorExpression** (BindingIdentifier)
+  * **MethodDefinition** (PropertyName)
+  * **PropertyDefinition** (PropertyName) (accessors)
+
+
+
+
+
+
+==== Anonymous Functions ====
+
+Some functions are anonymous and have no name given as part of their static semantics. For these there is a slightly more complex process used to determine the //name// property. If the function is directly assigned to a LHS where a name is statically determinable then the LHS name is used. This applies in cases where the LHS is a:
+
+  * **VariableDeclaration** (BindingIdentifier)
+  * **MemberExpression** (IdentifierName)
+  * **PropertyDefinition** (PropertyName)
+  * **Identifier ** in an AssignmentExpression using the "=" operator (Identifier)
+
+and the RHS is a:
+
+  * **ArrowFunctionExpression**
+  * **ClassExpression** (no BindingIdentifier)
+  * **FunctionExpression** (no BindingIdentifier)
+  * **GeneratorExpression** (no BindingIdentifier)
+
+
+==== Special Cases ====
+
+  * ''Function.prototype.name'' is the empty string
+  * ''(new Function).name'' is "anonymous" for backward compatibility reasons
+
+==== Accessors ====
+
+Functions which correspond to an accessor **PropertyDefinition** or **MethodDefinition** have their name prefixed with either "get " or "set " depending on whether the property is a getter or a setter.
+
+==== Classes ====
+
+Because a class is represented by its constructor function, the constructor stands in for the class when assigning the //name// property.
+
+==== Symbols ====
+
+//tentative//
+
+In order to prevent accidentally leaking references to symbol objects, and to uphold the goal of the //name// property as being a string, functions should be named using ''symbol.%%[[Name]]%%'' in cases where the property or variable naming the function is a symbol, or the empty string if no ''%%[[Name]]%%'' is available.
+
+//Note: Symbols are only a concern if there is syntactic support for @names. Otherwise no circumstance will arise where a statically determinable **name** can be derived from a symbol. Also, ''symbol.%%[[Name]]%%'' is currently not specified.//
+
+
+
+
+
+
+
+===== Examples =====
+
+<code javascript>
+function funcDecl(){}               // "funcDecl"
+(function funcExpr(){});            // "funcExpr"
+(function(){});                     // ""
+class ClassDecl {}                  // constructor is "ClassDecl"
+(class ClassExpr {});               // constructor is "ClassExpr"
+var varDecl = () => {};             // "varDecl"
+assignment = function(){};          // "assignment"
+
+var VarDeclClass = class {
+    constructor(){}                 // "VarDeclClass"
+    static func(){}                 // "func"
+    method(){}                      // "method"
+    get getter(){}                  // "get getter"
+    set setter(v){}                 // "set setter"
+};
+
+var obj = {
+    prop: () => {},                 // "prop"
+    method(){},                     // "method"
+    noOverride: function named(){}, // "named"
+    get getter(){},                 // "get getter"
+    set setter(v){},                // "set setter"
+    "literal": () => {},            // "literal"
+    5: () => {}                     // "5"
+};
+
+obj.property = function(){};        // "property"
+</code>
+
+===== Discussion =====
+  * Should statics include "static " in their name? Statics were introduced after this proposal was written.  --- //[[brandon@brandonbenvie.com|Brandon Benvie]] 2013/04/03 23:28//
+
+===== See Also =====
+
+[[strawman:name property of functions]], earlier strawman and basis for this proposal

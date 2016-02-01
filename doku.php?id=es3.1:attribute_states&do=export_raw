@@ -1,0 +1,28 @@
+====== States and transitions of the attributes of an EcmaScript 5 property ======
+
+Section 8.12.9 %%[[DefineOwnProperty]]%% of the EcmaScript 5 spec describes the defining semantic constraint of the property descriptor system introduced by EcmaScript 5. The only changes which can occur to a property's state are those described by this algorithm. However, since it goes on for more than a page of dense pseudocode, it obscures what these constraints actually are. The following diagram attempts to express just these constraints, abstracted away from issues of input validation and default choices.
+
+{{es3.1:es5-attr-states.png?500|attributes statechart}}
+
+The above diagram is an informal adaptation the [[http://www.wisdom.weizmann.ac.il/~harel/papers/Statecharts.pdf|Statecharts]] notation. The rounded rectangles represent sets of states. Within a rounded rectangle, regions separated by a dashed line represent a cross product of sub-statecharts. Leaf sharp rectangles like ''configurable:'' represent single states. The colored arrows represent possible transitions.
+
+First, we read the diagram statically: An EcmaScript 5 property may be
+  * ''configurable:'' or non-''configurable:'',
+  * ''enumerable:'' or non-''enumerable:'',
+  * an //Accessor// property or a //Data// property.
+    * If it is an //Accessor// property, then
+      * Its ''get:'' attribute can be any function or undefined.
+      * Its ''set:'' attribute can be any function or undefined.
+    * It it is a //Data// property, then it may be ''writable:'' or non-''writable:''.
+      * If it is ''writable:'', its ''value:'' attribute can be any value.
+      * If it is non-''writable:'', its ''value:'' attribute can be any value.
+
+From the static perspective by itself, it seems that ''writable:'' vs ''value:'' could have been depicted as orthogonal. But the dynamic perspective treats these as non-orthogonal.
+
+Reading the dynamics,
+  * If the property is ''configurable:'', then, no matter what state its other attributes may be in, ''defineProperty'' may transition all the attributes to any other state.
+  * If the property is a ''writable:'' Data property, then, no matter what state its other attributes may be in, 
+    * ''defineProperty'' may transition it to being in another Data property state with a new setting for ''writable:'' and any ''value:'', but with the remaining attributes unchanged.
+    * Assignment (//put//) may change its ''value:'' to any other value, but with the remaining attributes including ''writable:'' unchanged.
+
+No transitions other than those diagrammed above may occur. A ''defineProperty'' or //put// operation that would be allowed by the above operation may instead fail on a host object, leaving the property unaffected.

@@ -1,0 +1,468 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=harmony:refutable_matching&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="http://wiki.ecmascript.org/feed.php?mode=list&amp;ns=harmony" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=harmony:refutable_matching&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=harmony:refutable_matching&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:refutable_matching&amp;do=export_html.html#refutable_patterns" class="toc">Refutable Patterns</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:refutable_matching&amp;do=export_html.html#patterns" class="toc">Patterns</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:refutable_matching&amp;do=export_html.html#syntax" class="toc">Syntax</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:refutable_matching&amp;do=export_html.html#runtime_semantics" class="toc">Runtime Semantics</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:refutable_matching&amp;do=export_html.html#open_issues" class="toc">Open Issues</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:refutable_matching&amp;do=export_html.html#destructuring" class="toc">Destructuring</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:refutable_matching&amp;do=export_html.html#syntax" class="toc">Syntax</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:refutable_matching&amp;do=export_html.html#runtime_semantics" class="toc">Runtime Semantics</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:refutable_matching&amp;do=export_html.html#examples" class="toc">Examples</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:refutable_matching&amp;do=export_html.html#pattern_matching_switch" class="toc">Pattern Matching Switch</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:refutable_matching&amp;do=export_html.html#syntax" class="toc">Syntax</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:refutable_matching&amp;do=export_html.html#static_semantics" class="toc">Static Semantics</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:refutable_matching&amp;do=export_html.html#runtime_semantics" class="toc">Runtime Semantics</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:refutable_matching&amp;do=export_html.html#extending_the_pattern_language" class="toc">Extending the Pattern Language</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:refutable_matching&amp;do=export_html.html#undefined" class="toc">Undefined</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="refutable_patterns"></a><h1>Refutable Patterns</h1>
+<div class="level1">
+
+<p>
+ This proposal fleshes out a <em>refutable</em> semantics for patterns, as discussed in the Jan 2013 meeting. Specific points of the design are: 
+</p>
+<ul>
+<li class="level1"><div class="li"> No implicit conversions.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Pattern mismatch causes an exception by default.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Irrefutable semantics can be requested by explicitly annotating a (sub)pattern with <code>?</code> (and unlike patterns in the previous <a href="doku.php%3Fid=harmony:destructuring.html" class="wikilink1" title="harmony:destructuring" onclick="return svchk()" onkeypress="return svchk()">destructuring</a> proposal, such patterns are <em>always</em> irrefutable).</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Compatibility with a potential future pattern matching switch.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1-538] -->
+<a name="patterns"></a><h1>Patterns</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [539-562] -->
+<a name="syntax"></a><h2>Syntax</h2>
+<div class="level2">
+
+<p>
+ The simplified grammar below takes the liberty to gloss over the issue of syntactic precedence of different Pattern forms.
+</p>
+<pre class="code">
+Pattern ::=
+   Identifier
+   &quot;{&quot; PropertyPatterns? &quot;}&quot;
+   &quot;[&quot; ElementPatterns? &quot;]&quot;
+   &quot;?&quot; Pattern
+   Pattern &quot;=&quot; AssignmentExpression
+   &quot;(&quot; Pattern &quot;)&quot;
+
+PropertyPatterns ::=
+   PropertyPattern (&quot;,&quot; PropertyPatterns)?
+
+PropertyPattern ::=
+   &quot;?&quot;? PropertyName &quot;:&quot; Pattern
+   &quot;?&quot;? &quot;[&quot; Expression &quot;]&quot; &quot;:&quot; Pattern
+   &quot;?&quot;? Identifier (&quot;=&quot; AssignmentExpression)?    // short for &quot;?&quot;? Identifier &quot;:&quot; Identifier (&quot;=&quot; AssignmentExpression)?
+
+ElementPatterns ::=
+   ElementPattern (&quot;,&quot; ElementPatterns)?
+   &quot;...&quot; Pattern
+
+ElementPattern ::=
+   &quot;?&quot;? Pattern
+</pre>
+
+<p>
+Note: There is a subtle difference between the patterns <code>{name: ?pat}</code> and <code>{?name: pat}</code> &ndash; both make <code>pat</code> irrefutable, but the former requires the <code>name</code> property to exist on the object (but its value may be <code>undefined</code>), while the latter also succeeds if the property does not exist. Question: Do we actually need that distinction? (The syntax is even ambiguous in the case of array patterns. A <code>?</code> there always ought to be taken as part of the <code>ElementPattern</code>, and the other semantics can only be selected by parenthesising, as in <code>[?a, (?b)]</code>.)
+</p>
+
+</div>
+<!-- SECTION [563-1843] -->
+<a name="runtime_semantics"></a><h2>Runtime Semantics</h2>
+<div class="level2">
+
+<p>
+ We define the semantics of patterns by a meta function <code>Match</code> that &ldquo;evaluates&rdquo; a pattern against a given value. The result is either <code>SUCCESS</code> or <code>FAILURE</code> (a simplification for the sake of clarity; the proper spec would need to return a Completion Record that incorporates <code>failure</code> as a new completion type). <code>Match</code> expects that all bound names of the pattern have been created in the current LexicalEnvironment beforehand and initialises them accordingly. Temporal dead zones apply as usual.
+</p>
+
+<p>
+To account for irrefutable patterns, matching is also parameterised by a <em>soft</em> flag which is set to true inside <code>?</code>-patterns.
+</p>
+<pre class="code">
+Match(Pattern, value, soft) =
+   case Pattern of
+      Identifier =&gt;
+         let env = runningExecutionContext.LexicalEnvironment
+         env.InitializeBinding(Identifier, value)
+         SUCCESS
+      &quot;{&quot; PropertyPatterns? &quot;}&quot; =&gt;
+         if IsObject(value) or soft then
+            if PropertyPattern present then
+               let value' = if IsObject(value) then value else {}
+               Match(PropertyPatterns, value', soft)
+            else
+               SUCCESS
+         else
+            FAILURE
+      &quot;[&quot; ElementPatterns? &quot;]&quot; =&gt;
+         if IsObject(value) or soft then
+            if ElementPatterns present then
+               let value' = if IsObject(value) then value else []
+               Match(ElementPatterns, value', 0, soft)
+            else
+               SUCCESS
+         else
+            FAILURE
+      &quot;?&quot; Pattern' =&gt;
+         Match(Pattern', value, true)
+      Pattern' &quot;=&quot; AssignmentExpression =&gt;
+         let value' = if value === undefined then Eval(AssignmentExpression) else value
+         Match(Pattern', value', soft)
+      &quot;(&quot; Pattern' &quot;)&quot; =&gt;
+         Match(Pattern', value, soft)
+
+Match(PropertyPatterns, value, soft) =
+   case PropertyPatterns of
+      PropertyPattern =&gt;
+         Match(PropertyPattern, value, soft)
+      PropertyPattern &quot;,&quot; PropertyPatterns =&gt;
+         if Match(PropertyPattern, value, soft) = SUCCESS then
+            Match(PropertyPatterns, value, soft)
+         else
+            FAILURE
+
+Match(PropertyPattern, value, soft) =
+   assert IsObject(value)
+   case PropertyPattern of
+      &quot;?&quot;? PropertyName &quot;:&quot; Pattern =&gt;
+         let soft' = soft or &quot;?&quot; present
+         if value.[[Has]](PropertyName) or soft' then
+            let value' = value.[[Get]](PropertyName)
+            Match(Pattern, value', soft')
+         else
+            FAILURE
+      &quot;?&quot;? &quot;[&quot; Expression &quot;]&quot; &quot;:&quot; Pattern =&gt;
+         let name = ToString(Eval(Expression))
+         let soft' = soft or &quot;?&quot; present
+         if value.[[Has]](name) or soft' then
+            let value' = value.[[Get]](name)
+            Match(Pattern, value', soft')
+         else
+            FAILURE
+
+Match(ElementPatterns, value, index, soft) =
+   assert IsObject(value)
+   case ElementPatterns of
+      ElementPattern =&gt;
+         Match(ElementPattern, value, index, soft)
+      ElementPattern &quot;,&quot; ElementPatterns =&gt;
+         if Match(ElementPattern, value, index, soft) = SUCCESS then
+            Match(ElementPatterns, value, index + 1, soft)
+         else
+            FAILURE
+      &quot;...&quot; Pattern =&gt;
+         if value.[[Has]](&quot;length&quot;) then
+            let length = ToUint32(value.[[Get]](&quot;length&quot;))
+            let value' = []
+            for i in {index..length-1} do
+               let name = ToString(i)
+               if value.[[Has]](name) then
+                  value'.[[Set]](ToString(i - index), value.[[Get]](name))
+            Match(Pattern, value', soft)
+         else if soft then
+            Match(Pattern, [], soft)
+         else
+            FAILURE
+
+Match(ElementPattern, value, index, soft) =
+   assert IsObject(value)
+   let name = ToString(Index)
+   case ElementPattern of
+      &quot;?&quot;? Pattern =&gt;
+         let soft' = soft or &quot;?&quot; present
+         if IsObject(value) value.[[Has]](name) then
+            let value' = value.[[Get]](name)
+            Match(Pattern, value', soft')
+         else if soft' then
+            Match(Pattern, undefined, soft')
+         else
+            FAILURE
+</pre>
+
+</div>
+<!-- SECTION [1844-5940] -->
+<a name="open_issues"></a><h2>Open Issues</h2>
+<div class="level2">
+
+<p>
+ The prefix <code>?</code> syntax for soft patterns is tentative. Both prefix and postfix <code>?</code> syntax cause parsing problems (e.g. in combination with semicolon insertion). It is not clear yet which one is the better choice and how those issues can be resolved.
+</p>
+
+</div>
+<!-- SECTION [5941-6220] -->
+<a name="destructuring"></a><h1>Destructuring</h1>
+<div class="level1">
+
+<p>
+ Pattern matching as defined above implements destructuring declarations.
+</p>
+
+</div>
+<!-- SECTION [6221-6323] -->
+<a name="syntax"></a><h2>Syntax</h2>
+<div class="level2">
+<pre class="code">
+Declaration ::=
+   ...
+   &quot;let&quot; Binding+
+   &quot;const&quot; Binding+
+
+Binding ::=
+   Pattern &quot;=&quot; AssignmentExpression
+   Pattern   // short for Pattern &quot;=&quot; &quot;undefined&quot;
+</pre>
+
+</div>
+<!-- SECTION [6324-6520] -->
+<a name="runtime_semantics"></a><h2>Runtime Semantics</h2>
+<div class="level2">
+<pre class="code">
+Eval(LetDeclaration) =
+   case LetDeclaration of
+      &quot;let&quot; Binding+, &quot;const&quot; Binding+ =&gt;
+         for each Binding in Binding+ do
+             Eval(Binding)
+
+Eval(Binding) =
+   case Binding of
+      Pattern &quot;=&quot; AssignmentExpression =&gt;
+         let value = Eval(AssignmentExpression)
+         if Match(Pattern, value, false) = FAILURE then
+            throw MatchError
+</pre>
+
+</div>
+<!-- SECTION [6521-6938] -->
+<a name="examples"></a><h2>Examples</h2>
+<div class="level2">
+<pre class="code">
+let {a: x} = {}              // throw
+let ?{a: x} = {}             // x = undefined
+let ?{a: x} = 0              // x = undefined
+let {?a: x} = {}             // x = undefined
+let {?a: x} = 0              // throw
+
+let ?{a: x = 1} = undefined  // x = 1
+let {?a: x = 1} = undefined  // throw
+let {?a: x = 1} = {}         // x = 1
+
+let {a: x, b: {c: y}, d: z} = {a: 1, b: {}, d: 2}    // throw
+let {a: x, b: ?{c: y}, d: z} = {a: 1, b: 0, d: 2}    // x = 1, y = undefined, z = 2
+let ?{a: x, b: {c: y}, d: z} = {b: {}, d: 2}         // x = undefined, y = undefined, z = 2
+
+let [] = {}                           // success
+let [x] = [2, 3]                      // x = 2
+let [x] = {'0': 4}                    // x = 4
+let [x, y, z] = [1, 2]                // throw
+let ?[x, y, z] = [1, 2]               // x = 1, y = 2, z = undefined
+let [x, y, ?z] = [1, 2]               // x = 1, y = 2, z = undefined
+let [x, y, z] = [, 2, 3]              // throw
+let ?[x, y, z] = [, 2, 3]             // x = undefined, y = 2, z = 3
+let [?x, y, z] = [, 2, 3]             // x = undefined, y = 2, z = 3
+
+let [x, ...y] = [1]                   // x = 1, y = []
+let [x, ...y] = [1, 2]                // x = 1, y = [2]
+let [x, y, ...z] = [1]                // throw
+let ?[x, y, ...z] = [1]               // x = 1, y = undefined, z = []
+let [x, ?y, ...z] = [1]               // x = 1, y = undefined, z = []
+let [x, ...y] = [1, , 2, , 3]         // x = 1, y = [,2,,3]
+let [x, ...y] = {'0': 1}              // throw
+let [x, ...y] = {'0': 1, length: 3}   // x = 1, y = [,,]
+</pre>
+
+<p>
+Note how in the last examples, <code>d</code> is still destructured after matching earlier parts of the pattern has failed.
+</p>
+
+</div>
+<!-- SECTION [6939-8637] -->
+<a name="pattern_matching_switch"></a><h1>Pattern Matching Switch</h1>
+<div class="level1">
+
+<p>
+ Given the defined matching semantics, a general pattern matching construct would be straightforward to define in a unified manner.
+</p>
+
+<p>
+Note: This section is just for clarification of future-proofness, it should not be understood as part of the proposal proper. The syntax is based on the <a href="doku.php%3Fid=strawman:pattern_matching.html" class="wikilink1" title="strawman:pattern_matching" onclick="return svchk()" onkeypress="return svchk()">pattern matching</a> strawman.
+</p>
+
+</div>
+<!-- SECTION [8638-9002] -->
+<a name="syntax"></a><h2>Syntax</h2>
+<div class="level2">
+<pre class="code">
+MatchStatement ::=
+   &quot;switch&quot; &quot;(&quot; Expression &quot;)&quot; &quot;{&quot; MatchCases &quot;}&quot;
+
+MatchCases ::=
+   &quot;match&quot; Pattern &quot;:&quot; Statement MatchCases?
+   &quot;match&quot; Pattern &quot;,&quot; Pattern (&quot;,&quot; Pattern)* &quot;:&quot; Statement MatchCases?    // short for &quot;match&quot; Pattern &quot;:&quot; Statement &quot;match&quot; Pattern (&quot;,&quot; Pattern)* &quot;:&quot; Statement MatchCases?
+</pre>
+
+<p>
+Note: A generalisation of a <code>match</code> with multiple patterns (here simply treated as syntactic sugar) could be supporting <em>alternative patterns</em> of the form <code>Pattern1 | Pattern2</code>.
+</p>
+
+</div>
+<!-- SECTION [9003-9529] -->
+<a name="static_semantics"></a><h2>Static Semantics</h2>
+<div class="level2">
+
+<p>
+ All <code>Pattern</code>s in a single <code>match</code> must have the same set of bound names.
+</p>
+
+</div>
+<!-- SECTION [9530-9639] -->
+<a name="runtime_semantics"></a><h2>Runtime Semantics</h2>
+<div class="level2">
+<pre class="code">
+Eval(MatchStatement) =
+   case MatchStatement of
+      &quot;switch&quot; &quot;(&quot; Expression &quot;)&quot; &quot;{&quot; MatchCases &quot;}&quot; =&gt;
+         let value = eval(Expression)
+         Eval(MatchCases, value)
+
+Eval(MatchCases, value) =
+   case MatchCases of
+      &quot;match&quot; Pattern &quot;:&quot; Statement MatchCases'? =&gt;
+         let oldEnv = runningExecutionContext.LexicalEnvironment
+         let env = NewDeclarativeEnvironment(oldEnv)
+         for name in BoundNames(Pattern) do
+            env.CreateImmutableBinding(name)
+         runningExecutionContext.PushLexicalEnvironment(env)
+         if Match(Pattern, value, false) = SUCCESS then
+            let result = Eval(Statement)
+            runningExecutionContext.PopLexicalEnvironment()
+            result
+         else
+            runningExecutionContext.PopLexicalEnvironment()
+            if MatchCases' present
+                Eval(MatchCases', value)
+            else
+                throw MatchError
+</pre>
+
+</div>
+<!-- SECTION [9640-10608] -->
+<a name="extending_the_pattern_language"></a><h2>Extending the Pattern Language</h2>
+<div class="level2">
+
+<p>
+ Pattern matching becomes far more useful with a slightly richer pattern language. To that end, it makes sense to add wildcards, literal patterns and pattern guards.
+</p>
+<pre class="code">
+Pattern ::=
+   // ...
+   &quot;*&quot;
+   Literal
+   Pattern &quot;if&quot; AssignmentExpression
+</pre>
+
+<p>
+The runtime semantics of these new forms is straightforward:
+</p>
+<pre class="code">
+Match(Pattern, value, soft) =
+   case Pattern of
+      // ...
+      &quot;*&quot; =&gt;
+         SUCCESS
+      Literal =&gt;
+         let literal = Eval(Literal)
+         if SameValue(value, literal) or soft then
+            SUCCESS
+         else
+            FAILURE
+      Pattern' &quot;if&quot; AssignmentExpression =&gt;
+         if Match(Pattern', value, soft) = SUCCESS and
+            ToBoolean(Eval(AssignmentExpression)) = true or soft
+         then
+            SUCCESS
+         else
+            FAILURE
+</pre>
+
+</div>
+<!-- SECTION [10609-11473] -->
+<a name="undefined"></a><h2>Undefined</h2>
+<div class="level2">
+
+<p>
+ Moving to refutable pattern matching, and extending the language with literal patterns, opens the door for reforming <code>undefined</code>. In particular, there is a chance that we can get away with making <code>undefined</code> a proper keyword. In a pattern, it would simply act as a literal that is only matched by itself.
+</p>
+
+<p>
+That change would still allow existing defensive programming patterns like
+</p>
+<pre class="code">
+var undefined = void 0
+</pre>
+
+<p>
+or even
+</p>
+<pre class="code">
+var undefined
+</pre>
+
+<p>
+to continue working. 
+</p>
+
+</div>
+<!-- SECTION [11474-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/3/3411aba91cbbfd073f3904da56334fa1.xhtml used -->
+</body>
+</html>

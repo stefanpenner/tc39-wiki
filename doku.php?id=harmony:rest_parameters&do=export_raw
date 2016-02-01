@@ -1,0 +1,129 @@
+**This proposal has progressed to the Draft ECMAScript 6 Specification, which is available for review here: [[harmony:specification_drafts]]. Any new issues relating to them should be filed as bugs at [[http://bugs.ecmascript.org]]. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.**
+
+
+
+
+===== Background =====
+
+  * Waldemar's [[http://www.mozilla.org/js/language/js20-2002-04/core/functions.html#rest|original JS2 rest parameters]]
+  * ES4 rest parameters, gleaned from the [[proposals:normative grammar]] and the [[http://hg.ecmascript.org/es4|reference implementation]]
+
+===== Goals =====
+
+  * Provide a better ''arguments'' so we can deprecate, obsolete, and some years hence burn with fire / salt the earth anything to do with ''arguments'', ''foo.arguments'', etc.
+  * Capture trailing arguments after one or more fixed formal parameters
+
+===== Sketch =====
+
+  * Allow ''...'' as an optional prefix before the last formal parameter in a function declaration
+  * Presence of ''...'' in ''function foo(...rest) {''//...//''}'' creates a rest parameter, ''rest'', denoting a new ''Array'' created when ''foo'' is called, whose elements from ''0'' to ''foo.length'' are supplied by the actual arguments passed to ''foo'' (if any)
+  * Similarly for ''function bar(baz, bletch, ...rest) {''//...//''}'', with elements of ''rest'' being supplied by the third through last actual parameters
+
+<code>
+// Trivial this-free wrapper around Function.prototype.apply:
+function simpleApply(func, ...args) {
+    "use strict";
+    return func.apply(undefined, args);
+}
+
+// Simple printf-style string formatter, write and convert left as exercises:
+function printf(format, ...args) {
+    var n = 0;
+    var i = 0, j;
+
+    while ((j = format.indexOf('%', i)) >= 0) {
+        if (n >= args.length)
+            throw "printf: too few args for given format " + format;
+        write(format.slice(i, j));
+
+        // convert takes exactly one format-specifier char, to keep things simple.
+        write(convert(s[j + 1], args[n++]));
+        i = j + 2;
+    }
+    write(format.slice(i));
+}
+</code>
+
+
+===== Syntax =====
+
+The //FormalParameterList// clause needs to be updated as follows:
+
+<code>
+FormalParameterList :
+  ... Identifier
+  FormalParameterListNoRest
+  FormalParameterListNoRest , ... Identifier
+     
+FormalParameterListNoRest :
+  Identifier
+  FormalParameterListNoRest , Identifier
+</code>
+
+===== Semantics =====
+
+We let all Function objects have a boolean internal property indicating if it has rest parameters.
+
+==== Table 9 - Internal Properties Only Defined for Some Objects ====
+
+^ Internal Property                      ^ Value Type Domain ^ Description ^
+| <nowiki>[[HasRestParameter]]</nowiki> | Boolean           | Whether the function was declared with a rest parameter. The last parameter in the <nowiki>[[FormalParameters]]</nowiki> List is used for the rest parameter. Of the standard built-in ECMAScript objects, only Function objects implement <nowiki>[[HasRestParameters]]</nowiki>. |
+
+
+
+==== 10.5 Declaration Binding Instantiation ====
+
+  - Let //env// be the environment record component of the running execution context’s VariableEnvironment.
+  - If //code// is eval code, then let //configurableBindings// be **true** else let //configurableBindings// be **false**.
+  - If //code// is strict mode code, then let //strict// be **true** else let //strict// be **false**.
+  - If //code// is function code, then
+    - Let //func// be the function whose <nowiki>[[Call]]</nowiki> internal method initiated execution of //code//. Let //names// be the value of //func//’s <nowiki>[[FormalParameters]]</nowiki> internal property.
+    - Let //hasRest// be the value of //func//’s <nowiki>[[HasRestParameters]]</nowiki> internal property.
+    - Let //namesCount// be the number of elements in //names//.
+    - Let //argCount// be the number of elements in //args//.
+    - Let //n// be the number 0.
+    - For each String //argName// in //names//, in list order do
+      - Let //n// be the current value of //n// plus 1.
+      - If //hasRest// is **true** and //n// is equal to //namesCount//
+        - Let //v// be the result of creating a new object as if by the expression **new Array()** where **Array** is the standard built-in constructor with that name.
+        - Let //index// be 0.
+        - Repeat while //n// less than or equal to //argCount//
+          - Let //value// be the value of the //n//th element of //args//.
+          - Let //indexName// be ToString(//index//).
+          - Call the <nowiki>[[DefineOwnProperty]]</nowiki> internal method of //v// with arguments //indexName//, the Property Descriptor { <nowiki>[[Value]]</nowiki>: //value//, <nowiki>[[Writable]]</nowiki>: **true**, <nowiki>[[Enumerable]]</nowiki>: **true**, <nowiki>[[Configurable]]</nowiki>: **true**}, and **false**.
+          - Let //index// be the current value of //index// plus 1.
+          - Let //n// be the current value of //n// plus 1.
+      - Else
+        - If //n// is greater than //argCount//, let //v// be **undefined** otherwise let //v// be the value of the //n//th element of //args//.
+      - Let //argAlreadyDeclared// be the result of calling //env//’s HasBinding concrete method passing //argName// as the argument.
+      - If //argAlreadyDeclared// is **false**, call //env//’s CreateMutableBinding concrete method passing //argName// as the argument.
+      - Call //env//’s SetMutableBinding concrete method passing //argName//, //v//, and //strict// as the arguments.
+  - ...
+
+
+==== 13.2 Creating Function Objects ====
+
+The callers of 13.2 should pass in //hasRest// which indicates that the function has a rest parameter.
+
+  * Set the <nowiki>[[HasRestParameters]]</nowiki> to //hasRest//.
+
+
+
+===== Issues =====
+
+  * Is there any benefit to allowing ''...'' with no formal parameter identifier after it? Not without types or arity checks.
+  * Should rest parameters be frozen? There is no aliasing hazard, so freezing is premature and limits utility, IMHO.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2009/05/04 22:52//
+
+The length property of a function should be updated to not include rest parameters.
+
+ --- //[[arv@google.com|Erik Arvidsson]] 2010/11/05 22:42//
+
+The semantics is not yet complete. It needs to get whether //FormalParameterList// contains rest parameters and forward that to 13.2.
+
+ --- //[[arv@google.com|Erik Arvidsson]] 2010/11/09 20:47//
+
+Functions that define a rest parameter should not also have an arguments object.  In other words, using ... in the parameter lists should prevent the creation of the arguments object and the local binding of "arguments".  Should the strict mode restrictions on the use of the identifier "arguments" be relax in that case?
+
+ --- //[[Allen.Wirfs-Brock@microsoft.com|Allen Wirfs-Brock]] 2010/11/10 00:17//

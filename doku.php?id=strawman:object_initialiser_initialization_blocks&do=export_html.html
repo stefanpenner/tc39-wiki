@@ -1,0 +1,83 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:object_initialiser_initialization_blocks&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:object_initialiser_initialization_blocks&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:object_initialiser_initialization_blocks&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="initialization_blocks_in_object_initialisers"></a><h1>Initialization Blocks in Object Initialisers</h1>
+<div class="level1">
+
+<p>
+<em>This is one of several related <a href="doku.php%3Fid=strawman:object_initialiser_extensions.html" class="wikilink1" title="strawman:object_initialiser_extensions" onclick="return svchk()" onkeypress="return svchk()">Object Initialiser Extensions</a>.</em> 
+</p>
+
+<p>
+Occasionally when instantiating an object it is necessary to perform imperative initialization actions other than simply initializing property values.  For example: 
+</p>
+<pre class="code javascript"><span class="kw2">function</span> monitoredObject<span class="br0">&#40;</span>a,b<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+   <span class="kw2">var</span> obj = <span class="br0">&#123;</span>
+        a: a,
+        b: b
+   <span class="br0">&#125;</span>;
+   ObjectMonitor.<span class="me1">newObjectToMonitor</span><span class="br0">&#40;</span>obj<span class="br0">&#41;</span>;
+   <span class="kw1">return</span> obj;
+<span class="br0">&#125;</span></pre>
+<p>
+ Ideally, such initialization code should be encapsulated with the rest of the code that creates the object. However, in the past there has been no way to write that such that the object that is being created may be referenced by the initialization code. Initaliser Initialization Blocks provide such a capability.  A Initialization Block is simply a code <em>Block</em> that appears as the last element of <em>ObjectLiteral</em>. The Initialization Block is evaluated as part of the <em>ObjectLiteral</em> after all of the <em>PropertyAssignment</em> productions have been evaluated. Within the scope of an Initialization Block the identifier <code><strong>this</strong></code> is bound to the object that is created being created. Using an Initialization Block, the above example could be coded as: 
+</p>
+<pre class="code javascript"><span class="kw2">function</span> monitoredObject<span class="br0">&#40;</span>a,b<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+   <span class="kw1">return</span>  <span class="br0">&#123;</span>
+     a: a,
+     b: b,
+     <span class="br0">&#123;</span>ObjectMonitor.<span class="me1">newObjectToMonitor</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>;<span class="br0">&#125;</span>
+   <span class="br0">&#125;</span>;
+<span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [1-1406] -->
+<a name="syntax"></a><h2>Syntax</h2>
+<div class="level2">
+
+<p>
+The following provides the syntax for this spicific  extensions:
+</p>
+
+<p>
+<em>ObjectLiteral</em> : <br/>
+ <strong>{</strong> <em>Block</em><sub>opt</sub> <strong>}</strong><br/>
+ <strong>{</strong> <em>PropertyNameAndValueList</em> <strong>,</strong> <em>Block</em><sub>opt</sub> <strong>}</strong>
+</p>
+
+</div>
+<!-- SECTION [1407-1625] -->
+<a name="discussion"></a><h2>Discussion</h2>
+<div class="level2">
+
+<p>
+This is a minor extension but is more significant when used as part of a <a href="doku.php%3Fid=strawman:obj_initialiser_class_abstraction.html" class="wikilink1" title="strawman:obj_initialiser_class_abstraction" onclick="return svchk()" onkeypress="return svchk()">Class Initialisers</a> <br/>
+  &mdash; <em><a href="mailto:%26%23x41%3B%26%23x6c%3B%26%23x6c%3B%26%23x65%3B%26%23x6e%3B%26%23x40%3B%26%23x57%3B%26%23x69%3B%26%23x72%3B%26%23x66%3B%26%23x73%3B%26%23x2d%3B%26%23x42%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x41;&#x6c;&#x6c;&#x65;&#x6e;&#x40;&#x57;&#x69;&#x72;&#x66;&#x73;&#x2d;&#x42;&#x72;&#x6f;&#x63;&#x6b;&#x2e;&#x63;&#x6f;&#x6d;">Allen Wirfs-Brock</a> 2011/03/19 19:40</em>
+</p>
+
+</div>
+<!-- SECTION [1626-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/1/1bcd6eed77ba8cca0e0f3671609dd132.xhtml used -->
+</body>
+</html>

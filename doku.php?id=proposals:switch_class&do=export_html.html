@@ -1,0 +1,155 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:switch_class&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:switch_class&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:switch_class&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="structural_union_types"></a><h1>Structural union types</h1>
+<div class="level1">
+
+<p>
+(Also see the <a href="doku.php%3Fid=discussion:switch_class.html" class="wikilink1" title="discussion:switch_class" onclick="return svchk()" onkeypress="return svchk()">discussion page</a> for this proposal)
+</p>
+
+<p>
+(Formerly &ldquo;switch interfaces&rdquo;, which were formerly &ldquo;enums&rdquo;, which were formerly &ldquo;switch classes&rdquo;)
+</p>
+
+<p>
+The language shall support structural types which are the transitive union of other named types. 
+</p>
+
+</div>
+<!-- SECTION [1-313] -->
+<a name="union_types"></a><h2>Union types</h2>
+<div class="level2">
+
+<p>
+ A union type <code>U</code> is declared as follows:
+</p>
+<pre class="code">
+type U = (P,Q,R)
+</pre>
+
+<p>
+Such a declaration asserts the following facts:
+</p>
+<ul>
+<li class="level1"><div class="li"> A type <code>U</code> exists.</div>
+</li>
+<li class="level1"><div class="li"> A value is of type <code>U</code> if and only if it is a member of type <code>P</code>, or <code>Q</code>, or <code>R</code>.</div>
+</li>
+</ul>
+
+<p>
+The types <code>P</code>, <code>Q</code>, <code>R</code> do not need to be disjoint. If they overlap, there is potential ambiguity in switching on the union&rsquo;s members: you should always test types in most-specific to least-specific order in any non-disjoint type switch, otherwise a dead code warning may result. See below.
+</p>
+
+</div>
+<!-- SECTION [314-883] -->
+<a name="type_switches"></a><h2>Type switches</h2>
+<div class="level2">
+
+<p>
+ A type switch is stated as follows:
+</p>
+<pre class="code">
+switch type (e:T) {
+  case (p : P) { ... }
+  case (q : Q) { ... }
+  case (r : R) { ... }
+  default (t : T) { ... }
+}  
+</pre>
+
+<p>
+Where <code>T</code>, <code>P</code>, <code>Q</code>, <code>R</code> are <em>any types</em> (nominal or structural), not just union types. 
+</p>
+
+<p>
+Such a statement is syntactic sugar for the following:
+</p>
+<pre class="code">
+let (x:T = e) {
+  if (x is P) {
+    let (p:P = cast P(x)) {
+      // p:P switch arm here, can see p:P
+    }
+  } else if (x is Q) {
+    let (q:Q = cast Q(x)) {
+      // q:Q switch arm here, can see q:Q
+    }
+  }
+  ...
+    else {
+    let (t:T = x) {
+      // default case here, can only see t:T
+    }
+  }
+}
+</pre>
+
+<p>
+Further notes:
+</p>
+<ul>
+<li class="level1"><div class="li"> The <code>x</code> variable in the above translation is a compiler-generated temporary, for illustration purposes; it should  be considered a unique variable name, not free in any of the arms of the switch.</div>
+</li>
+<li class="level1"><div class="li"> The user may omit the variable binding in the <code>default</code> arm.</div>
+</li>
+</ul>
+
+<p>
+ The <code>switch type</code> form carries important enhancements over writing out the above translation by hand:
+</p>
+<ul>
+<li class="level1"><div class="li"> The downcast <em>may</em> (in a static environment) use a more efficient type of downcast if it can prove it safe.</div>
+</li>
+<li class="level1"><div class="li"> The typechecker can tell you when you&rsquo;ve missed a case:</div>
+<ul>
+<li class="level2"><div class="li"> If you are switching on a union type, you must cover all cases or provide a <code>default</code>.</div>
+</li>
+<li class="level2"><div class="li"> A dead-code warning can be issued if you test non-disjoint types in an order in which <em>more specific</em> types are tested <em>later</em>.</div>
+<ul>
+<li class="level3"><div class="li"> This can happen if a union type contains non-disjoint members.</div>
+</li>
+<li class="level3"><div class="li"> This can also happen if you switch on a non-union type, such as a class or interface.</div>
+</li>
+</ul>
+</li>
+<li class="level2"><div class="li"> The <code>default</code> arm is legal if:</div>
+<ul>
+<li class="level3"><div class="li"> <code>T</code> is not a union type, <em>or</em></div>
+</li>
+<li class="level3"><div class="li"> <code>T</code> is a union type, and one or more of the members of the union type are not explicitly handled in other arms of the type switch</div>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [884-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/0/0321bb00daf0ecc935a04490476a4911.xhtml used -->
+</body>
+</html>

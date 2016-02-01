@@ -1,0 +1,175 @@
+===== Proposal for types in Harmony =====
+
+Harmony is intended to support optional type annotations on properties (e.g., on variables and fields). These type annotations are enforced dynamically; there is no separate static type checking phase.
+
+Types are first-class values and can be stored in variables, passed to functions, etc, just like other values. In particular, there is no need for a separate notion of type variables.
+
+Every value has an allocated type. The allocated type is the type given to a value when it is created and which defines its fixed structure. The allocated type of a value never changes.
+
+Every property (e.g., variable or field) has a storage type. The storage type of a property constrains the set of values that can be stored in the property. The storage type of a property is also called the property's type constraint.
+
+The declarations of properties can carry type annotations, which define the storage type of the property. Annotation is denoted by following the annotated property name with a colon and a type expression. Annotations are not required: any property lacking an annotation is implicitly given the storage type ANY, meaning that the property can hold a value of any allocated type.
+
+
+==== Syntax of the Annotation Language ====
+
+A top-level design choice is the syntax of the type language.
+For the purposes of this discussion, we assume the type language 
+includes the ANY type, nominal types, record types, and function types.
+(The semantics of these types are sketched in the mini-proposals below.)
+
+It appears we have three major options on type language syntax:
+
+
+
+=== Option 1: Use a separate language (grammar non-terminal) for types ===
+
+This choice provides a fairly natural, unconstrained syntax for various kinds of types:
+<code javascript>
+* // for ANY
+C // for the type C 
+{x:C, y:string} // for records
+function(number,*):string
+</code>
+
+It would be straightforward to switch into the type language transparently, at appropriate places, eg following the ":" on a formal parameter declaration:
+<code javascript>
+function( arg : {x:C, y:string} ) : void { ... }
+</code>
+
+However, we need some way to escape from one language to the other.  Referring to computed expressions 
+from within a type is straightforward:
+<code javascript>
+let computedType = ... arbitrary expression ... ;
+
+function( arg : computedType ) : void { ... }
+</code>
+(This mixing of types and dynamically computed expressions would be problematic in a statically typed language, but straightforward in Harmony since types are enforced dynamically.)
+
+We could also use the syntax "type(...)" to "escape" to the type language from within the expression language (for example, to bind a variable to a type):
+<code javascript>
+let pairType = type( {x:C, y:C} );
+</code>
+
+Overall, the "type(...)" part is a little clunky, but otherwise this option seems quite clean, extensible, and intuitive.
+
+
+
+
+
+
+
+
+
+
+
+=== Option 2: Use a combined type and expression language, with new syntax for types ===
+
+We could try to introduce additional syntax into the expression language to express types. For example:
+<code javascript>
+* // for the ANY type, don't think there are parsing ambiguities here
+C   // for the type C
+function(number,*):string // similar to function expressions, but hopefully not ambiguous
+</code>
+
+This looks ok-ish, but not very future proof. It might be difficult to later add additional kinds of types due to a fairly crowded and possibly ambiguous grammar. 
+
+In particular, what syntax  should we use for record types that would make them distinct from record literals? Doubling the braces is one (not particularly good) option:
+
+<code javascript>
+{{x:C, y:string}}  // use double braces for a record type, 
+                   // since the "{...}" syntax is already taken for record literals
+</code>
+
+
+
+=== Option 3: Use a combined type and expression language, reusing existing values as types ===
+
+Consider the following record expression, which creates an object with "x" and "y" fields:
+<code javascript>
+{ x:C, y:string }
+</code>
+In appropriate contexts, we could re-interpret this object as a type
+that describes objects with at least two fields: an "x" field containing a "C" object, and a "y" field containing a string.
+Essentially, this is a pun, where we reuse certain objects as types describing other objects.
+
+Regarding mutation, it appears that once such a type annotation is evaluated to a mutable object, we need to either (1) freeze that object, or (2) make an immutable copy of that object.
+
+Although this syntax appears ok for record types, it is problematic for other types. Some specific problem types are discussed below; this approach would likely constrain our ability to later introduce additional types into the language.
+
+
+== Option 3 for functions ==
+
+For functions, we could re-use a function value as a type that describes all similarly-typed functions.
+For example, here "fnType" describes double-to-double functions.
+<code javascript>
+let fnType = function(x:double):double { return x; };
+
+function applyTwice(f : fnType) : fnType {
+    return function(x:double) { return f(f(x)); }
+}
+</code>
+
+Of course, if "fnType" is both a function and a type describing similarly-typed functions, then by analogy
+<code javascript>
+{ x:1, y:"abc" }
+</code>
+should be both an object and a type describing similarly-typed objects. Similarly, "1" should be both a value and a type describing doubles, and this approach seems to collapse under its own inconsistencies.
+
+
+
+
+== Option 3 for arrays ==
+
+One option for expressing arrays is to use the [[harmony:spread]] operator, so an array of doubles is denoted as:
+<code javascript>
+let x : [...double] = some expression;
+</code>
+However, the spread operator normally applies only to arrays, so its behavior needs to be extended here,
+and its not clear what exact value (an array of some kind?) is produced as the result of the expression
+<code javascript>
+[...double]
+</code>
+ 
+Alternatively, an array could serve as a type describing similarly-typed arrays, but that raises similar problems to those discussed with functions above. 
+
+Finally, we could imagine an array of length 1 that contains a type T serving as a type of arrays of type T.
+<code javascript>
+let x : [double] = [1,2,3]
+</code>
+This works, after a fashion, but is subject to the same mutation concerns as with records above.
+It may be hard to extend this to fixed-length arrays (aka tuples).
+We could have 
+<code javascript>
+[double,double,double]
+</code>
+be a type describing arrays with exactly three doubles.
+
+
+Overall, although re-using values as types seems initially simpler, it turns out to be rather ugly, limiting, and not future-proof.
+
+
+==== Semantics of the Annotation Language ====
+
+The following collection of mini-proposals describes the semantics of a dynamic type system for ES-Harmony. Each mini-proposal (mostly) depends only on the earlier proposals, and they are best read in order. They mostly assume "option 1" above,
+but the issues of syntax and semantics are mostly orthogonal.
+
+Comments are welcome, either via email or by adding to this page. The individual proposals cannot be edited, because they were derived from earlier content that may not be worth translating into DokuWiki syntax.
+
+
+ --- //[[cormac@soe.ucsc.edu|Cormac Flanagan]] 2008/08/26 18:58//
+
+  * {{http://slang.soe.ucsc.edu/cormac/harmony/proposal-types-core.html|proposal-types-core.html}}
+  * {{http://slang.soe.ucsc.edu/cormac/harmony/proposal-types-record.html|proposal-types-record.html}}
+  * {{http://slang.soe.ucsc.edu/cormac/harmony/proposal-types-function.html|proposal-types-function.html}}
+
+----
+
+Pending type proposals:
+  * Union, null, and undefined types
+  * Array types
+  * Non-null types (and semantics of initialization)
+
+----
+
+

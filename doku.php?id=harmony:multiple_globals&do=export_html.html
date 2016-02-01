@@ -1,0 +1,138 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=harmony:multiple_globals&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="http://wiki.ecmascript.org/feed.php?mode=list&amp;ns=harmony" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=harmony:multiple_globals&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=harmony:multiple_globals&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:multiple_globals&amp;do=export_html.html#multiple_globals" class="toc">Multiple globals</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:multiple_globals&amp;do=export_html.html#existence_of_multiple_globals" class="toc">Existence of multiple globals</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:multiple_globals&amp;do=export_html.html#global_objects_and_non-method_calls" class="toc">Global objects and non-method calls</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:multiple_globals&amp;do=export_html.html#global_objects_and_eval" class="toc">Global objects and eval</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:multiple_globals&amp;do=export_html.html#global_objects_and_navigation" class="toc">Global objects and navigation</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:multiple_globals&amp;do=export_html.html#terminology_question" class="toc">Terminology question</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="multiple_globals"></a><h2>Multiple globals</h2>
+<div class="level2">
+
+<p>
+ The ECMAScript spec has never said anything about the presence of multiple global objects interacting with one another, but this has long been the reality on the web. Browsers have not always been interoperable in this area, so it deserves standardization. Some amount of backwards incompatibility may be acceptable, since some of the cases may be fairly rare in practice.
+</p>
+
+</div>
+<!-- SECTION [1-404] -->
+<a name="existence_of_multiple_globals"></a><h2>Existence of multiple globals</h2>
+<div class="level2">
+
+<p>
+ Where historically the spec refers to &ldquo;the global object,&rdquo; this needs to be made more precise by specifying <em>which</em> global object.
+</p>
+
+<p>
+In past versions of the standard, every closure contains a scope chain that ends with the (a) global object. In SpiderMonkey terminology, this is the closure&rsquo;s &ldquo;parent.&rdquo; We will use the term &ldquo;global context.&rdquo;
+</p>
+
+<p>
+Since Harmony may not include the global object in the scope chain, this concept needs to be generalized to encompass either the global object (for legacy mode) or the <a href="doku.php%3Fid=strawman:module_loaders.html" class="wikilink1" title="strawman:module_loaders" onclick="return svchk()" onkeypress="return svchk()">module loader</a> context associated with the scope chain.
+</p>
+
+</div>
+<!-- SECTION [405-1043] -->
+<a name="global_objects_and_non-method_calls"></a><h2>Global objects and non-method calls</h2>
+<div class="level2">
+
+<p>
+ When a function is called as a non-method, the spec is unclear as to which global object ends up bound to <code>this</code>. While ES5 strict passes <code>undefined</code>, legacy mode should still specify which global object is bound to <code>this</code>.
+</p>
+
+<p>
+Firefox created precedent for a reasonably consistent and legalistic interpretation of ES3. At top-level, a non-method call ends up with the global object associated with the <strong>caller</strong>, because the callee evaluates to an object reference with the call site&rsquo;s global object as the base of the reference. When nested within a function body, though, a non-method call ends up with the global object associated with the <strong>callee</strong>, because the callee evaluates to an object reference with an activation object as the base of the reference, which is then censored to <strong>null</strong> (ES3) or <strong>undefined</strong> (ES5), and it&rsquo;s in the callee&rsquo;s body that this is replaced with the global object&mdash;so SpiderMonkey interprets this as the callee&rsquo;s global object.
+</p>
+
+<p>
+This is all consistent with the way the language has been specified, but that doesn&rsquo;t mean we couldn&rsquo;t change it. The fact that function calls behave differently depending on whether they are at top-level or nested is <em>extremely</em> subtle.
+</p>
+
+</div>
+<!-- SECTION [1044-2307] -->
+<a name="global_objects_and_eval"></a><h2>Global objects and eval</h2>
+<div class="level2">
+
+<p>
+ Jeff Walden raised this <a href="https://mail.mozilla.org/pipermail/es-discuss/2011-March/012915.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2011-March/012915.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">question about direct and indirect eval</a>: what happens when one context reassigns <code>eval</code> to the <code>eval</code> function of another context?
+</p>
+<pre class="code javascript"><span class="kw2">var</span> indirect = otherGlobal.<span class="kw1">eval</span>;
+<span class="kw1">eval</span> = indirect;
+<span class="kw1">eval</span><span class="br0">&#40;</span><span class="st0">"this"</span><span class="br0">&#41;</span>     <span class="co1">// which global?</span>
+indirect<span class="br0">&#40;</span><span class="st0">"this"</span><span class="br0">&#41;</span> <span class="co1">// which global?</span></pre>
+</div>
+<!-- SECTION [2308-2722] -->
+<a name="global_objects_and_navigation"></a><h2>Global objects and navigation</h2>
+<div class="level2">
+
+<p>
+ On the web, a global object maintains its object identity even following a programmatic navigation to a new location. This swaps out the contents of the global object with a fresh state (recently, Firefox has implemented this with the same part of the engine that implements proxies), and navigating back can recover the previous contents of the global object. Closures that are created on one page are hard-wired to the contents of that page&rsquo;s global object internals, even if navigation moves away from that page. And yet throughout this navigation, that global object maintains one single object identity.
+</p>
+
+<p>
+Most of this is web-specific detail that shouldn&rsquo;t be specified in the language standard. But the fact that closures are not actually looking up the contents of the live object, but rather an internal frame that the object delegated to at one point, seems to violate the existing spec. 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+<strong>Update:</strong> This may actually be spec-compliant. A global object can implement whatever behavior it wants for the internal methods; so in principle, it could always respond differently to [[Get]] based on the source of the variable lookup. In the spec, there&rsquo;s nothing that identifies the source of the lookup, but that doesn&rsquo;t mean a particular engine can&rsquo;t make that information available. This maybe seems a little fishy, but I&rsquo;m happy if we can avoid specifying any of the mechanics of navigation in Ecma-262.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x64%3B%26%23x68%3B%26%23x65%3B%26%23x72%3B%26%23x6d%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x63%3B%26%23x63%3B%26%23x73%3B%26%23x2e%3B%26%23x6e%3B%26%23x65%3B%26%23x75%3B%26%23x2e%3B%26%23x65%3B%26%23x64%3B%26%23x75%3B" class="mail" title="&#x64;&#x68;&#x65;&#x72;&#x6d;&#x61;&#x6e;&#x40;&#x63;&#x63;&#x73;&#x2e;&#x6e;&#x65;&#x75;&#x2e;&#x65;&#x64;&#x75;">Dave Herman</a> 2011/03/04 19:40</em>
+</p>
+
+</div>
+<!-- SECTION [2723-4254] -->
+<a name="terminology_question"></a><h2>Terminology question</h2>
+<div class="level2">
+
+<p>
+ We need good terminology for this concept of &ldquo;global context&rdquo; in a way that doesn&rsquo;t confuse with &ldquo;execution context&rdquo; as it&rsquo;s traditionally been used in the ECMAScript specs. Our terminology needs to account for: 
+</p>
+<ul>
+<li class="level1"><div class="li"> multiple global objects</div>
+</li>
+<li class="level1"><div class="li"> multiple <a href="doku.php%3Fid=strawman:module_loaders.html" class="wikilink1" title="strawman:module_loaders" onclick="return svchk()" onkeypress="return svchk()">module loaders</a></div>
+</li>
+<li class="level1"><div class="li"> multiple modes (legacy, legacy strict, Harmony)</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [4255-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/e/eb098537f184216565ec18341348b7e2.xhtml used -->
+</body>
+</html>

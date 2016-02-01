@@ -1,0 +1,453 @@
+====== Classes ======
+
+**This proposal has been superseded by the "Maximally Minimal Classes" proposal, here: [[strawman:maximally_minimal_classes]]**
+
+
+===== Motivation =====
+
+ECMAScript already has excellent features for defining abstractions for kinds of things. The trinity of constructor functions, prototypes, and instances are more than adequate for solving the problems that classes solve in other languages. The intent of this strawman is not to change those semantics. Instead, it’s to provide a //terse// and //declarative// surface for those semantics so that //programmer intent// is expressed instead of the //underlying imperative machinery//.
+
+For example, here is code from [[https://github.com/mrdoob/three.js/blob/master/src/objects/SkinnedMesh.js|three.js]] (simplified and modified slightly), with comments for the intent behind each line.
+
+<code javascript>
+// define a new type SkinnedMesh and a constructor for it
+function SkinnedMesh(geometry, materials) {
+  // call the superclass constructor
+  THREE.Mesh.call(this, geometry, materials);
+
+  // initialize instance properties
+  this.identityMatrix = new THREE.Matrix4();
+  this.bones = [];
+  this.boneMatrices = [];
+  ...
+};
+
+// inherit behavior from Mesh
+SkinnedMesh.prototype = Object.create(THREE.Mesh.prototype);
+SkinnedMesh.prototype.constructor = SkinnedMesh;
+
+// define an overridden update() method
+SkinnedMesh.prototype.update = function(camera) {
+  ...
+  // call base version of same method
+  THREE.Mesh.prototype.update.call(this);
+};
+</code>
+
+With class syntax, this becomes:
+
+<code javascript>
+class SkinnedMesh extends THREE.Mesh {
+  constructor(geometry, materials) {
+    super(geometry, materials);
+
+    public identityMatrix = new THREE.Matrix4();
+    public bones = [];
+    public boneMatrices = [];
+    ...
+  }
+
+  update(camera) {
+    ...
+    super.update();
+  }
+}
+</code>
+
+===== The Proposal in a Nutshell =====
+
+Before we lay out the detailed grammar and semantics, we'll show the core concepts by example. If there are places where this section disagrees with later parts of the proposal, those parts take precedence.
+
+
+
+
+==== Class Body ====
+
+A class defines four objects and their properties: a constructor function, a prototype, a new instance, and a private record bound to the new instance. The body of a class is a collection of member definitions. This example shows each of the kinds of members that can be defined:
+
+<code javascript>
+class Monster {
+  // The contextual keyword "constructor" followed by an argument
+  // list and a body defines the body of the class’s constructor
+  // function. public and private declarations in the constructor
+  // declare and initialize per-instance properties. Assignments
+  // such as "this.foo = bar;" also set public properties.
+  constructor(name, health) {
+    public name = name;
+    private health = health;
+  }
+
+  // An identifier followed by an argument list and body defines a
+  // method. A “method” here is simply a function property on some
+  // object.
+  attack(target) {
+    log('The monster attacks ' + target);
+  }
+
+  // The contextual keyword "get" followed by an identifier and
+  // a curly body defines a getter in the same way that "get"
+  // defines one in an object literal.
+  get isAlive() {
+    return private(this).health > 0;
+  }
+
+  // Likewise, "set" can be used to define setters.
+  set health(value) {
+    if (value < 0) {
+      throw new Error('Health must be non-negative.')
+    }
+    private(this).health = value
+  }
+
+  // After a "public" modifier,
+  // an identifier optionally followed by "=" and an expression
+  // declares a prototype property and initializes it to the value
+  // of that expression. 
+  public numAttacks = 0;
+
+  // After a "public" modifier,
+  // the keyword "const" followed by an identifier and an
+  // initializer declares a constant prototype property.
+  public const attackMessage = 'The monster hits you!';
+}
+</code>
+
+
+
+
+==== Member Modifiers ====
+
+Since a class body defines properties on //two// objects, syntax is needed to indicate on which object, constructor or prototype, the member becomes a property. Keyword prefixes are used:
+
+<code javascript>
+class Monster {
+  // "static" places the property on the constructor.
+  static allMonsters = [];
+
+  // "public" declares on the prototype.
+  public numAttacks = 0;
+
+  // Although "public" is not required for prototype methods, 
+  // "static" is required for constructor methods
+  static numMonsters() { return Monster.allMonsters.length; }
+}
+</code>
+
+===== The Proposal In Full =====
+
+
+
+
+
+==== Class Declarations and Expressions ====
+
+A class is both a blueprint for describing instances and a factory to create them. Like function definitions, a class definition can either be a //class declaration// or an //class expression//. Both define a constructor function to represent that class. We'll refer to that function as a "class". We'll use //class definition// to refer to either a class declaration or class expression when the distinction doesn't matter.
+
+Like a function declaration, a //class declaration// defines a variable with the class's name whose declaration is hoisted to the beginning of the surrounding scope. This supports mutual recursion among function and class declarations. Like a function expression, a //class expression// defines an anonymous class if the identifier is omitted, or, if present, binds the class name only in the scope seen by the class being defined.
+
+When a scope (//Block//, //FunctionBody//, //Program//, //ModuleBody//, etc.) is entered, the variables declared by all immediately contained function and class declarations are bound to their respective functions and classes. Then all class bodies are executed in textual order. A class body defines and initializes class-wide properties once when the class definition is evaluated. This includes properties on the constructor function (the "class" itself) and on its prototype property. These initializations happen in textual order.
+
+Like the non-constructor function of ES5.1 chapter 15, functions declared as methods (whether static, prototype, instance, or private) of a class have no %%[[Construct]]%% method, have a %%[[HasInstance]]%% method that always returns false, and have no initial "prototype" property.
+
+=== Grammar ===
+
+We extend the Declaration production from [[harmony:block scoped bindings]] to accept a //ClassDeclaration//. We extend MemberExpression to accept a //ClassExpression//.
+
+<code ebnf>
+Declaration :
+    ClassDeclaration
+    ...
+ClassDeclaration :
+    class Identifier { ClassBody }
+
+MemberExpression :
+    ClassExpression
+    ...
+ClassExpression :
+    class Identifier? { ClassBody }
+
+ExpressionStatement :
+    [lookahead ∉ { "{", "function", "class" }] Expression ;
+
+ClassBody :
+    ClassElement*
+
+// "..." means existing members defined elsewhere
+</code>
+
+==== Class Adjective ====
+
+A class definition may be prefixed with an adjective to clarify its role. Currently, the only adjective proposed is ''const'', but this set may expand.
+
+
+
+
+
+
+
+
+
+
+
+
+=== const ===
+
+A ''const'' class provides high integrity. Both the constructor function and prototype object are frozen and the variable the class is bound to is [[harmony:const]] (non-assignable). Instances of the class are (sealed or frozen -- still controversy). Functions declared as methods (whether static, prototype, instance, or private) of a const class are also frozen. Ideally, these constraints taken together mean that sharing a const class or its instances with two otherwise isolated clients, Alice and Bob, only enable Alice and Bob to thereby communicate according to the mutability explicitly expressed in the code of the const class. However, this sharing may still enable Alice and Bob to communicate by mutability present in ''Object.prototype'', ''Function.prototype'', their methods, or superclasses of the const class -- all of which can be made non-communicative by other means.
+
+During construction of an instance of a const class, the instance is extensible. Each ''public'' declaration adds a non-configurable, (possibly non-writable) data property to the instance. During [[harmony:classes#constructor chaining]], the %%[[Call]]%% method of the superclass constructor, even if const, does not make the instance non-extensible. Rather, the %%[[Construct]]%% method of a const class makes the instance non-extensible before returning. An instance of a non-const class which inherits from a const class is thereby born extensible unless the constructor makes it non-extensible by other means. Taken together, instantiating a const class must result either in a thrown exception, non-termination, or in an instance of that class with the public own properties declared within the constructor of that class.
+
+In other words, given this definition:
+
+<code javascript>
+const class Point { 
+  constructor(x, y) {
+    public getX() { return x; }
+    public getY() { return y; }
+  }
+  toString() { 
+    return '<' + this.getX() + ',' + this.getY() + '>';
+  }
+}
+</code>
+
+The variable ''Point'' is const, the constructor function it references is frozen, ''Point.prototype'' is frozen and has a frozen ''toString''. There is no ''Point.prototype.toString.prototype''. Calling ''new Point(3,5)'' returns a frozen object inheriting from the frozen ''Point.prototype'' containing two frozen methods, ''getX'' and ''getY'', neither of which have a prototype.
+
+//When approximating this class proposal on ES5 platforms by compilation, we cannot deny methods a "prototype" property nor a %%[[Construct]]%% behavior. In this case, the prototypes of methods of const classes should be empty, frozen, and inherit from null. Neither can an ES5 function reliably determine whether its %%[[Call]]%% or %%[[Construct]]%% method was called. To compile a class into ES5, the constructor function should instead test whether its ''this'' inherits **directly** from the class' "''prototype''".//
+
+=== Grammar ===
+
+We revise the previous grammar to allow adjectives before ''class''.
+
+<code ebnf>
+ClassDeclaration :
+    ClassAdjective* class Identifier { ClassBody }
+
+ClassExpression :
+    ClassAdjective* class Identifier? { ClassBody }
+
+ClassAdjective :
+    const
+
+ExpressionStatement :
+    [lookahead ∉ { "{", "function", "class", ...ClassAdjective }]  Expression ;
+</code>
+
+==== Class Members ====
+
+The body of a class definition is a collection of members each of which becomes a property on one of the objects associated with the class. By default, data properties define enumerable prototype properties while method members define non-enumerable prototype properties. Members of non-const classes default to writable and configurable. Member adjectives, if present, override the default attributes of the property being defined.
+
+A class body may contain one constructor, whose body is the code run to initialize instances of the class. This constructor code provides the behavior of the class's internal ''%%[[Call]]%%'' and ''%%[[Construct]]%%'' methods.
+
+
+
+
+
+=== Grammar ===
+
+<code ebnf>
+ClassElement :
+    Constructor
+    PrototypePropertyDefinition
+    ClassPropertyDefinition
+
+Constructor :
+    constructor ( FormalParameterList? ) { ConstructorBody }
+
+ConstructorBody :
+    ConstructorElement*
+
+ConstructorElement :
+    Statement                   // but not ReturnStatement
+    Declaration
+    InstancePropertyDefinition
+
+PrototypePropertyDefinition :
+    public ExportableDefinition
+    Identifier     ( FormalParameterList? ) { FunctionBody } // method
+    get Identifier ( )                      { FunctionBody } // getter
+    set Identifier ( FormalParameter )      { FunctionBody } // setter
+
+ClassPropertyDefinition :
+    static ExportableDefinition
+
+InstancePropertyDefinition :
+    public ExportableDefinition
+
+ExportableDefinition :
+    Declaration
+    VariableDeclarationList ;                                // data properties
+    Identifier     ( FormalParameterList? ) { FunctionBody } // method
+    get Identifier ( )                      { FunctionBody } // getter
+    set Identifier ( FormalParameter )      { FunctionBody } // setter
+    MemberAdjective ExportableDefinition
+
+MemberAdjective :
+    // attribute control
+</code>
+
+See [[http://es5.github.com/#x12.2|ES5 12.2 Variable Statement]] for the definition of VariableDeclarationList.
+
+===== Refinements =====
+
+We refine the above syntax with additional features until we reach a complete, usable class proposal.
+
+==== Inheritance ====
+
+We extend this class syntax to allow users to //declaratively// specify the prototypal inheritance they can already express //imperatively//. There are two forms: ''extends'' and ''prototype'', each followed by an expression. When this class's ''prototype'' object is created, either of those clauses will be used to determine which object it inherits from. The expression following ''extends'' or ''prototype'' is evaluated. Then, if ''extends'' is used, the ''prototype'' property of that object will be used. If ''prototype'' is used, the object itself will be. If neither clause is given, the class's ''prototype'' will inherit from ''Object.prototype''.
+
+By example:
+
+<code javascript>
+class Base {}
+class Derived extends Base {}
+</code>
+
+Here, ''Derived.prototype'' will inherit from ''Base.prototype''.
+
+<code javascript>
+let parent = {};
+class Derived prototype parent {}
+</code>
+
+Here, ''Derived.prototype'' will inherit directly from ''parent''.
+
+=== Grammar ===
+
+We revise the previous grammar to allow these inheritance clauses.
+
+<code>
+ClassDeclaration :
+    ClassAdjective* class Identifier Heritage? { ClassBody }
+
+ClassExpression :
+    ClassAdjective* class Identifier? Heritage? { ClassBody }
+
+Heritage :
+    extends MemberExpression
+    prototype MemberExpression
+</code>
+
+
+==== Constructor Chaining ====
+
+Building on inheritance, we provide a cleaner syntax for invoking the parent constructor in classes defined with an ''extends'' clause. Within the body of the constructor, an expression ''super(x, y)'' calls the superclass's ''%%[[Call]]%%'' method with ''thisArg'' bound to this constructor's ''this'' and the arguments ''x'' and ''y''. In other words, ''super(x, y)'' acts like ''Superclass.call(this, x, y)'', as if using the original binding of ''Function.prototype.call''. A call like this may appear anywhere within the constructor body, excluding nested functions and classes.
+
+These semantics for constructor chaining preclude defining classes that inherit from various distinguished built-in constructors, such as Date, Array, RegExp, Function, Error, etc, whose ''%%[[Construct]]%%'' ignores the normal object passed in as the this-binding and instead creates a fresh specialized object. Similar problems occur for DOM constructors such as HTMLElement. This strawman can be extended to handle such cases, but probably at the cost of making classes something more than syntactic sugar for functions. We leave that to [[harmony:object_literals#set_literal_prototype_operator|other strawmen]] to explore.
+
+
+=== Grammar ===
+
+To enable this, we add a production to CallExpression.
+
+<code>
+CallExpression :
+    ...
+    super Arguments
+</code>
+
+with a post-parsing early error if this production occurs outside a ConstructorBody.
+
+==== Member Delegation ====
+
+Similar to constructor chaining, we extend ''super'' to allow delegating to any inherited member when called from within the body of a class. Within the class ''Derived'', the expression ''super.member'' evaluates to a Reference with //base// ''this'' and //referenced name// ''member'', but whose ''%%[[GetValue]]%%'' will look up ''%%Derived.prototype.[[Prototype]].member%%''. In other words, ''super.member(x, y)'' acts like ''%%Derived.prototype.[[Prototype]].member.call(this, x, y)%%'', as if using the original binding of ''Function.prototype.call''. The ''super.member'' expression may not be used as a LeftHandSideExpression.
+
+=== Grammar ===
+
+To enable this, we add a new production to MemberExpression.
+
+<code ebnf>
+MemberExpression :
+    super . IdentifierName
+    ...
+</code>
+
+with a post-parsing early error if this occurs outside a class.
+
+
+==== Private Instance Members ====
+
+A requirement of this proposal is the ability to define private per-object state that meets the following requirements:
+
+  * A usable syntax for defining and accessing private instance state from within methods of the class.
+  * Information hiding to encourage decoupling for software engineering concerns.
+  * Strong encapsulation in order to support defensiveness and security.
+  * An efficient implementation. The private state should be allocated with the instance as part of a single allocation, and with no undue burden on the garbage collector.
+  * The ability to have private mutable state on publicly frozen objects.
+
+Now that the [[strawman:private name objects]] has been accepted, a pattern composing private names with classes might satisfy the above requirements.
+
+
+=== Grammar ===
+
+//The following concrete syntax is a placeholder until we agree on something less awful.//
+
+To enable this, we add a new production to //CallExpression// as a special form to retrieve the private variable record:
+
+<code ebnf>
+CallExpression :
+    ...
+    private ( AssignmentExpression )
+
+ConstructorElement :
+    ...
+    PrivateVariableDefinition
+
+PrivateVariableDefinition :
+    private ExportableDefinition
+</code>
+
+
+=== Semantics ===
+
+The production //PrivateVariableDeclaration//'' : private ''//ExportableDefinition// is evaluated roughly as follows:
+
+  - If **this** object does not have a private variable record, create one.
+  - Let //privRec// = the private variable record of the **this** object.
+  - Let //env// = NewObjectEnvironment(//privRec//, ''**null**'').
+  - Evaluate //ExportableDefinition// using //env// to bind a property in the private variable record.
+
+More work is needed on this semantics, but a couple of intentional design points should be apparent:
+
+  * the private variable record cannot be accessed by the programmer, therefore it can be fused with the instance allocation.
+  * ''Object.freeze'' on the instance of the class does not freeze the private variable record.
+  * You cannot use the same name in the same class for a public instance property and private instance variable.
+
+===== Proposal History =====
+
+This is a fork of [[strawman:classes_with_trait_composition]] that revives the idea of declarative public property and private variable syntax within the constructor body.
+
+That strawman is a major revision of the [[http://wiki.ecmascript.org/doku.php?id=strawman:classes_with_trait_composition&rev=1299750065|earlier classes and traits strawman]] in order to reconcile [[strawman:object_initialiser_extensions]], especially [[strawman:obj_initialiser_class_abstraction]] and [[strawman:instance_variables]]. A prototype implementation of an earlier version of this reconciled strawman is described at [[http://code.google.com/p/traceur-compiler/wiki/LanguageFeatures#Classes|Traceur Classes and Traits]].
+
+The strawman as presented on this page no longer supports general trait composition, abstract classes, required members, or multiple inheritance, as we felt that was premature to propose at the May 2011 meeting, and therefore premature to propose for inclusion in the EcmaScript to follow ES5. Instead, we have extracted those elements into [[strawman:trait_composition_for_classes]], whose existence demonstrates that the single inheritance shown here does straightforwardly generalize to support these extensions.
+
+
+
+
+
+
+
+
+
+===== Open Issues =====
+ 
+  * Should ''private'' prototype properties based on [[private name objects]] be supported? [RESOLVED via ''private'' prefix]
+  * ''private(this)'', e.g., is
+    * unbearably verbose;
+    * leaks an implementation detail.
+  * Need concise attribute controls. [RESOLVED same as revised Allen [[harmony:object_literals|basic object literal extensions]] proposal]
+  * Want accessor "half-override", e.g. ''get super set x''//...//. [RESOLVED same as previous, see Allen's proposal]
+  * Are static methods inherited with ''this'' bound to the class receiver? See [[https://gist.github.com/1006999|@wycats' CoffeeScript/Ruby example]]
+
+===== See =====
+
+  * [[http://code.google.com/p/traceur-compiler/wiki/LanguageFeatures#Classes|Traceur Classes and Traits]]
+  * [[http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.17.1949| Encapsulation and Inheritance in Object-Oriented Programming Languages]]: classic 1986 paper by Alan Snyder.
+  * [[https://mail.mozilla.org/pipermail/es-discuss/2009-March/009115.html|Classes as Sugar thread]] which starts with pointers to earlier threads.
+  * [[https://docs.google.com/document/d/1gOFRSBOKtB8VjXC5LRhhNiGi1n1QQ6z1O6LyxjrOB3g/edit?hl=en_US|Harmonious Classes]]: write-up of discussion to unify this and [[strawman:obj_initialiser_class_abstraction]] proposals.
+
+Related and historical strawmen
+  * [[strawman:object_initialiser_extensions]], especially [[strawman:obj_initialiser_class_abstraction]] and [[strawman:instance_variables]]
+  * [[strawman:classes as sugar]]
+  * [[strawman:classes as inheritance sugar]] (not yet ready)
+  * [[strawman:trait_composition_for_classes]]
+  * [[strawman:classes_with_trait_composition]]

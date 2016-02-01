@@ -1,0 +1,226 @@
+
+(Also see the [[discussion::nullability|discussion page]] for this proposal.)
+
+
+====== Motivation ======
+
+To prevent the dreaded [[http://en.wikibooks.org/wiki/Java_Programming/Preventing_NullPointerException|NullPointerException]]!
+
+As [[http://www.cis.upenn.edu/~bcpierce/tapl/|many]] have pointed out, types in languages like Java that always allow the ''null'' value are really a sort of option type.
+
+We would like to be able to allow programmers to use the type system to guarantee that certain expressions can never evaluate to ''null'', i.e., to express that some types are //not// option types.
+
+====== Constraints ======
+
+  * historically, ''null'' is allowed by default for many types
+  * but ''null'' has not historically been allowed for datatypes that traditionally (e.g., in C or Java) were "atomic", such as ''int'', ''float'', ''boolean''
+  * we'd like to keep the rules as simple and uniform as possible -- too many special cases are too hard to understand
+  * ActionScript has precedent for non-nullable numeric and boolean types
+  * must be compatible with subtyping
+  * no soundness holes (uninitialized non-nullable entities)
+
+====== Proposal ======
+
+===== Notation =====
+
+Built-in, specific numeric types are not capitalized:
+
+  * ''int''
+  * ''uint''
+  * ''decimal''
+  * ''double''
+
+All other types are capitalized:
+
+  * ''Object''
+  * ''String''
+  * ''Number''
+  * ''Boolean''
+  * ''Numeric'' (see [[numbers]])
+
+===== Defaults =====
+
+Almost all types are nullable by default. The only types that are non-nullable by default are:
+
+  * ''Boolean''
+  * all numeric types (see [[numbers]])
+
+This convention is consistent with historical precedent for boolean and numeric types. These are the only special cases; in all other cases, types are nullable by default.
+
+Classes can be defined to be non-nullable by default via a special declaration syntax:
+
+<code javascript>
+class C! { ... }
+</code>
+
+This annotation does not imply anything about subclasses of C; they are still nullable by default unless declared non-nullable.
+
+
+===== Type constructors for nullability =====
+
+For any type expression ''T'', the expression ''T?'' means the nullable version of ''T'', and ''T!'' means the non-nullable version of ''T''.
+
+===== Redundant annotations =====
+
+For any non-nullable type ''T'', ''T!'' is allowed and is identical in meaning to ''T''.
+
+For any nullable type ''T'', ''T?'' is allowed and is identical in meaning to ''T''.
+
+===== Subtyping =====
+
+For any type ''T'', ''T! <: T?''. That is, a non-nullable type ''T'' may always be used in a context that expects the nullable version of ''T''. The reverse requires a coercion and may cause a runtime error.
+
+====== Initial values ======
+
+Entities that have non-nullable types must have reasonable initial values. The syntax of the language is constrained to require that all such entities (variables and properties) are given well-typed initial values.
+
+===== Initial values for built-in non-nullables =====
+
+The built-in types that are non-nullable by default do not require explicit initial values and are given reasonable default initial values. These types and their default values are:
+
+^Built-in type  ^Default value |
+| ''Boolean''   | ''false''    |
+| ''Numeric''   | ''0''        |
+
+===== Initial values for compound types =====
+
+A compound type that contains a variant with a default value (such as ''Boolean'') may use that default value as its initial value and does not require an explicit initial value. A compound type that contains multiple variants with default values, e.g.:
+
+<code javascript>
+type T = (Boolean, int)
+</code>
+
+may automatically receive any of the available initial values (in this example, ''false'' or ''0''). It is up to the implementation to decide which of these values to provide.
+
+===== Non-nullable properties =====
+
+==== Property initializers ====
+
+Property initializer expressions occur on the right-hand side of property declarations. Example:
+
+<code javascript>
+class C {
+    var x = 10
+    ...
+}
+</code>
+
+
+==== Property settings in constructor headers ====
+
+Class constructors have a special syntax for setting properties somewhat similar to that of C++. These property settings are guaranteed to evaluate after formal parameters are bound (possibly via [[destructuring assignment]]) but before the constructor body so that all property references are safe to make within the constructor body. 
+
+<code javascript>
+class C {
+    var x : Object!
+    var y : int
+
+    function C(initialX : Object!, initialY : int)
+      : x = initialX, y = initialY
+    {
+        ...
+    }
+}
+</code>
+
+Note that because class constructors are not permitted to return a value, they do not have a type annotation, so this syntax does not create an ambiguity with return type annotations.
+
+Note also that settings evaluate in the scope of the constructor activation, followed by class scope. Only when the control flow enters the class body is the ''this'' object inserted in the scope chain between the class scope and the activation at the head of the scope chain.
+
+==== Restriction on property initializers ====
+
+Property initializer expressions have class scope, meaning they may not refer to ''this'' or instance methods or properties.
+
+==== Restriction on property settings ====
+
+Property settings in constructor headers have no access to ''this'' in any way. They may only call external functions or static methods, may not refer explicitly to ''this'', and do not have any of the object's methods or properties in scope.
+
+==== Restriction on super ====
+
+The call to ''super(...)'' (if there is one) must be the last expression in the constructor header's property settings. Its arguments have the same restriction as property settings: they may not refer to ''this'' and they have none of the methods or properties of the object in scope.
+
+==== Initialization protocol ====
+
+Initialization of an object proceeds in the following order:
+
+  - Property initializers (i.e., the right-hand sides of property declarations) are evaluated and assigned to their respective properties.
+  - Property settings (i.e., assignments in the constructor header) are evaluated and assigned to their respective properties.
+  - The ''super(...)'' call (whether explicit or implicit) is evaluated, recursively performing the initialization for the superclass.
+  - The constructor body is evaluated.
+
+Effectively this means that, first, initializers and settings are evaluated from bottom to top in the class hierarchy, and then constructor bodies are evaluated from top to bottom.
+
+==== Rationale ====
+
+First of all, a deterministic evaluation order is important to prevent subtle differences in behavior between different implementations of ECMAScript.
+
+The reason why initializers and settings are performed before any constructor bodies run is to preserve the invariant that all non-nullable fields must already have been initialized before any code may refer to them. The reason why **all** initializers and settings are performed before running **any** constructor bodies is that even if all superclass fields have been initialized, a constructor may call an overridden method which might refer to a subclass's fields.
+
+We considered having initializers run top-down just like constructor bodies, but decided against it since it's unclear what the meaning of the ''super'' call would then be (is it a setting? is it a part of the constructor body? what exactly does it do/mean?). In the proposal as it stands, the ''super(...)'' call means "recursively invoke the initialization protocol of the superclass".
+
+===== Errors =====
+
+==== Uninitialized properties ====
+
+It is an error not to initialize any non-nullable property either with a property initializer expression, e.g.:
+
+<code javascript>
+var x : Object! = 42
+</code>
+
+or a constructor field settings using the special syntax.
+
+In strict mode, this is a static error caught by the verifier.
+
+At runtime, this results in an ''UninitializedError'' being thrown on entry to the **top-most** constructor body; the evaluator must check, before entering the body of the top-most constructor, that all non-nullable properties declared in any of the classes of the object have been initialized.
+
+If all of the classes of the object were compiled in strict mode, it may be safe to optimize away that check. **TODO:** Dave and Cormac should think about this carefully, as well as cases where some of the classes were **not** compiled in strict mode.
+
+==== Non-nullable locals ====
+
+Local variables declared with non-nullable types that have no default values and are not given a value when they are declared will have "no value" until they are given a value.  Accessing a variable that has no value will result in a run-time error (''UninitializedError'') being signalled.
+
+<code javascript>
+{
+    print(x) // dynamic error: use before definition
+    let x : Object! = 42;
+}
+</code>
+
+==== Non-nullable class statics ====
+
+Class static variables declared with non-nullable types that have no default values and are not given a value when they are declared will have "no value" until they are given a value.  Accessing a class static variable that has no value will result in a run-time error (''UninitializedError'') being signalled.
+
+<code javascript>
+class C{
+    static var x : Object!;
+    static function init() {
+        x = new Object;
+    }
+}
+print(C.x); // dynamic error because C.init() was not yet called
+</code>
+
+==== Non-nullable globals ====
+
+Global variables (defined with ''var'' and ''const'' in the global scope) cannot be declared as non-nullable; the nullability constraint will be silently dropped.
+
+The implementation is however allowed to provide non-nullable globals in its initial environment, and to flag errors if null values are assigned to these.
+
+----
+
+//Rationale//: There is an efficiency / soundness concern underlying the access to global variables.  Global names are defined incrementally, so an implementation would always have to check dynamically not just whether a variable has "no value" but also whether it is non-nullable.
+
+The reason the nullability constraint is dropped rather than seen as an error is that you want to be able to say ''var v : Complex'' at the global level even if ''Complex'' is non-nullable by default.  The type annotation is silently turned into ''Complex?''.  We could see this another way: every annotation ''T'' on a global variable is compiled as ''T?''.  
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/27 09:09//
+
+==== Additional static errors ====
+
+Some implementers may choose to perform stronger static analyses that provide more information, in addition to the required strict mode checks, to find references to uninitialized locals/globals. These are not required by the spec, but are allowed.
+
+====== Safety of optimizations ======
+
+We are getting closer to understanding what optimizations are safe with code that has been compiled in strict mode. However there are still a few remaining questions. In particular, what about class hierarchies compiled with mixed strict/standard modes?
+
+Without at least informal proofs about the safety of optimizations, we should assume that leaving out the runtime checks for strict-mode code is unsafe and warn implementers against making them.

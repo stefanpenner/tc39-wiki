@@ -1,0 +1,132 @@
+This is the discussion page for [[proposals:generic functions|the generic functions proposal]].
+
+
+====== Rationale etc for aspects of the proposals ======
+
+===== Arguments in favor of generic functions =====
+
+  * powerful operator overloading
+  * powerful ad-hoc overloading -- more powerful than C++ style, since a generic function is an object that can be passed around like any other function
+  * automates common dispatch idioms in a general way (see [Clifton 2006] for more)
+  * continues a tradition of offering multiple choices
+  * fills the type dispatch gap in ES4
+  * very well studied technology; most general issues are known
+  * way cool
+
+===== Arguments against generic functions =====
+
+  * we don't (yet) have a MOP, so the utility is reduced relative to other languages, but there's always ES5...
+  * a lot of things are now done with regular methods and functions; adding generic functions is a little redundant
+  * very late in the ES4 game -- don't know how well they'll fit
+  * performance and complexity issues
+  * hard to do "just a little"?
+  * "generic" is an overloaded term now, and "multimethods" is sort of obscure and relates in a sense to objects, which our generic functions are not (yet) about
+
+===== No parameterized generic function types =====
+
+The problem here is to figure out what it would mean to add a new method to a generic function that has live instantiations.  Does this update all the instantiations (and if so, what does it mean if the new method makes some subset of the instantiations obviously incorrect, eg by redefining a method) or just the parameterized generic function?
+
+
+
+
+
+===== Null =====
+
+The problem with ''null'' is that it is a member of any nullable class type.  Naively speaking, if ''C'' and ''D'' are nullable classes, the following code is illegal:
+
+<code>
+  generic function f(x);
+
+  generic function f(x:C) { ... }
+  generic function f(x:D) { ... }
+</code>
+
+The reason is that the first method defines cases for ''C!'' and ''null'', and the second case for ''D!'' and ''null'', thus redefining the behavior for ''null'', which is illegal.
+
+I see the following possibilities.
+
+(1) This solution strips ''null'' from any union type or nullable class type, so these are the same:
+
+<code>
+  generic function f(x: C) { ... }
+  generic function f(x: C!) { ... }
+</code>
+
+It then requires any specialization on ''null'' to use that specializer by itself.  This is harsh; it requires duplication of code, and that is not nice:
+
+<code>
+  generic function f(x: C) { ... }
+  generic function f(x: null) { ... }
+</code>
+
+But we can milden the harshness by requiring ''null'' to be mentioned explicitly in a union:
+
+<code>
+  generic function f(x: (C,null)) { ... }
+</code>
+
+The distinction is syntactic: the specializer must be an explicit union with null in the parameter list, it can't be hidden in a type definition, say.
+
+(2) We can milden the previous proposal even further by allowing the specializer to be the name of a defined type that is a union with null:
+
+<code>
+  type t = (C, null)
+  generic function f(x: t) { ... }
+</code>
+
+In other words, the type of a nullable class may well be the same as a union of its nonnullable equivalent with null in ES4, but unions defined with type definitions are different from nullable class definitions.
+
+I don't care for this; it's too subtle.
+
+(3) If the ES4 type system equates ''C?'' completely with ''(C,null)'' then the most reasonable avenue is to require the programmer explicitly to strip ''null'' when defining generic methods, eg the programmer must write
+
+<code>
+  generic function f(x:C!) { ... }
+  generic function f(x:D!) { ... }
+</code>
+
+It would be error-prone for the generic function system to strip ''null'' from union types, not knowing how those union types originated.
+
+On the other hand, writing just plain ''C'' defines a method for ''null'' as well.
+
+(4) If the ES4 type system does not equate ''C?'' with ''(C,null)'' then it is most reasonable for the generic function system to interpret any nullable class by itself or in a union type as ''C!''.  This is like solutions (1) and (2) above, but assumes an even clearer distinction between a nullable class and a union with null.
+
+(5) MultiJava interprets a null value as being of the same type as the static constraint on the generic function in the parameter position, ie, if the generic function is defined as
+
+<code>
+  generic function f(x: Object);
+</code>
+
+then a null value passed as the first parameter will be assumed to be of type ''Object'' during method resolution.  This is not an excellent fit with ECMAScript since we have union types, for one thing.
+
+----
+
+I vote for (3) above, the explicit ''C!'' requirement. We allow ''class Complex! {...}'' so this is not onerous, and indeed usually desirable for classes with operator multimethods. Dave just confirmed that we do (still) equate ''C?'' and ''(C!, null)'', and while order matters when converting to union type, ''null'' is not a conversion target so it can occur anywhere -- a compiler is free to move ''null'' to the end of a union type, collapse all ''null'' type occurrences in a union, etc.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/08/17 23:13//
+
+Noted.
+
+This is conjecture of course, but IMO: (a) people are not going to define non-nullable classes to any great extent and so (b) they will be required to write ''C!'' all over the place, which is actually onerous.
+
+Do we still need ordered unions?  I sure hope not -- they're a major wart.  I thought we only needed them for the implicit conversion, but we got rid of that.  (Maybe they are still required for wrappers?  Ouch.)
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/08/18 09:58//
+
+===== Conversions =====
+
+Suppose a call to a generic function finds that there are no applicable methods at all.  Then it might be interesting to look for one or more methods that would be applicable if some of the argument values were converted to primitive values.  Here is one proposal for an algorithm that does that.
+
+Assume we have some set of candidate methods:
+
+<code>
+  m1(T, ...)
+  m2(S, ...)
+  m3(R, ...)
+</code>
+
+and a signature for the call (a tuple of manifest types) that is ''(t, ...)''.  
+
+Since there are no applicable methods there will be some set of values i s.t. t(i) is not a subtype of R(i), and ditto for the S and the T.  If all of those R(i) are a primitive type to which arbitrary types can be converted (numbers, strings, boolean) then the method m3 continues to be a candidate; otherwise not.  Ditto for the S and T.
+
+Now sort the remaining candidate types, assuming type ''*'' where conversions are necessary for each individual method.  This yields an unambiguous most specific method or not.  In the latter case, fail.  In the former case, convert the values  to primitives for the most specific method, then select from among the current candidate set all applicable methods, sort them to get a set of totally ordered methods, and then apply them in order.  (Some optimizations may be possible, this is just a sketch.)

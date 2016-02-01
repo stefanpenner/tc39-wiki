@@ -1,0 +1,113 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:gc_semantics&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:gc_semantics&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:gc_semantics&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:gc_semantics&amp;do=export_html.html#thoughts_on_specifying_garbage_collection_semantics" class="toc">Thoughts on Specifying Garbage Collection Semantics</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:gc_semantics&amp;do=export_html.html#safety_integrity_consistency" class="toc">Safety, Integrity, Consistency</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:gc_semantics&amp;do=export_html.html#liveness_availability_progress" class="toc">Liveness, Availability, Progress</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:gc_semantics&amp;do=export_html.html#confidentiality" class="toc">Confidentiality</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:gc_semantics&amp;do=export_html.html#baseline_semantics" class="toc">Baseline Semantics</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:gc_semantics&amp;do=export_html.html#references" class="toc">References</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="thoughts_on_specifying_garbage_collection_semantics"></a><h1>Thoughts on Specifying Garbage Collection Semantics</h1>
+<div class="level1">
+
+<p>
+ In the absence of <a href="doku.php%3Fid=strawman:weak_references.html" class="wikilink1" title="strawman:weak_references" onclick="return svchk()" onkeypress="return svchk()">weak references</a>, garbage collection decisions are not observable and so need not have a precise semantics. But programmers code to expectations of how garbage collectors work, and expect implementers to live up to these expectations. Further, some proposals such as <a href="doku.php%3Fid=strawman:weak_references.html" class="wikilink1" title="strawman:weak_references" onclick="return svchk()" onkeypress="return svchk()">weak references</a>, <a href="doku.php%3Fid=harmony:weak_maps.html" class="wikilink1" title="harmony:weak_maps" onclick="return svchk()" onkeypress="return svchk()">weak maps</a>, or <a href="doku.php%3Fid=strawman:proper_tail_calls.html" class="wikilink1" title="strawman:proper_tail_calls" onclick="return svchk()" onkeypress="return svchk()">proper tail calls</a> are garbage collection aware. Their purpose can only be understood in terms of their interaction with the garbage collector. Without stating our baseline GC expectations, it becomes impossible to specify these other proposals. As usual, we divide specifications into <em>safety</em> (or <em>integrity</em> or <em>consistency</em>) concerns, <em>liveness</em> (or <em>availability</em> or <em>progress</em>) concerns, and <em>confidentiality</em> concerns.
+</p>
+
+</div>
+<!-- SECTION [1-846] -->
+<a name="safety_integrity_consistency"></a><h2>Safety, Integrity, Consistency</h2>
+<div class="level2">
+
+<p>
+ The safety constraint is that the garbage collector MUST NOT collect any storage that then becomes needed to continue correct execution of the program. Should <a href="doku.php%3Fid=strawman:weak_references.html" class="wikilink1" title="strawman:weak_references" onclick="return svchk()" onkeypress="return svchk()">weak references</a> be added, then garbage collection decisions become observable. Based on a suggestion from Cameron McCormack, we state the safety constraint as follows: So long as operational semantics of the remainder of the program execution includes the possibility that a reference to an object X may be dereferenced, then X MUST NOT be collected. Thus, the garbage collector is allowed to ignore any references that remain present in the semantic state, but which it can ascertain will never be dereferenced in any possible execution. This sets an upper bound on what state MAY be collected. Put another way, if the garbage collector ever reports that X has been collected, such as by nullifying a weak reference to X, if operational semantics of remaining execution requires the traversal of a strong (non-weak) reference to X, then the previous report demonstrates a safety violation.
+</p>
+
+</div>
+<!-- SECTION [847-1945] -->
+<a name="liveness_availability_progress"></a><h2>Liveness, Availability, Progress</h2>
+<div class="level2">
+
+<p>
+ A garbage collector that never collects is safe but not very useful. Programmers need some expectation of what storage implementers will consider garbage, so that they can write long running programs that occupy limited memory. Where safety sets an upper bound on what may be collected, these expectations form approximately a lower bound. However, there is no spec of how much actual memory any individual object occupies, nor is there likely to be. Thus we never have any guarantee when any program may exhaust its actual raw memory allotment, so all lower bound expectations are not precisely observable. Therefore, all lower bounds on collection are stated here as SHOULDs, not MUSTs. Of course, if our stated lower bounds ever exceed our upper bounds, that is an error in this specification. 
+</p>
+
+</div>
+<!-- SECTION [1946-2791] -->
+<a name="confidentiality"></a><h2>Confidentiality</h2>
+<div class="level2">
+
+<p>
+ We place no further constraints on when collections happen, how long they take to execute, or how data dependent these timings may be. Therefore, to code that can sense the duration of, for example, an allocation which may trigger a collection, we place no bounds on the bits that may leak over the resulting non-overt channel (whether a side channel or a covert channel). For code that can overtly sense what has been collected, such as by using <a href="doku.php%3Fid=strawman:weak_references.html" class="wikilink1" title="strawman:weak_references" onclick="return svchk()" onkeypress="return svchk()">weak references</a>, such observation opens an overt information leakage channel, so the ability to create weak references must only be made available to code allowed to sense such information. Further, the difference between the lower and upper bounds above implies another non-overt channel, even for code that cannot sense the duration of time.
+</p>
+
+</div>
+<!-- SECTION [2792-3617] -->
+<a name="baseline_semantics"></a><h1>Baseline Semantics</h1>
+<div class="level1">
+
+<p>
+ Our starting point must be the expected garbage collection semantics of normal programs in the absence of special garbage collection aware primitives. An operational semantics defines <em>semantic state</em> and operations that derive a next state from a previous state. We identify within this state the <em>root references</em> as those which an enabled operation may directly dereference. Root references are necessarily reachable. We then define <em>strong reachability</em> from references to objects, and from objects to references. We can then state the lower bound expectation as <strong>All objects which are not transitively strongly reachable from roots SHOULD eventually be collected, if needed to prevent the program execution from failing due to memory exhaustion.</strong> Our safety requirements allow some reachable objects to be collected as well, so long as the garbage collector can ascertain that they will never be reached. Since a reference which is presently not reachable from roots can never become reachable, and since an unreachable reference can never be dereferenced, our lower bound is within out upper bound.
+</p>
+
+<p>
+Of all semantic state, that not collected is retained. The upper (safety) bound on what MAY be collected implies a lower bound on what MUST be retained. The lower (liveness) bound on what SHOULD be collected implies an upper bound on what is expected to be retained. The asymptotic space complexity of an algorithm is to be calculated in terms of this expected upper bound; but requires an additional theory about the space complexity bounds on the individual objects occupying this storage.
+</p>
+
+<p>
+We leave it to the various GC-aware proposals, such as <a href="doku.php%3Fid=strawman:weak_references.html" class="wikilink1" title="strawman:weak_references" onclick="return svchk()" onkeypress="return svchk()">weak references</a>, <a href="doku.php%3Fid=harmony:weak_maps.html" class="wikilink1" title="harmony:weak_maps" onclick="return svchk()" onkeypress="return svchk()">weak maps</a>, or <a href="doku.php%3Fid=strawman:proper_tail_calls.html" class="wikilink1" title="strawman:proper_tail_calls" onclick="return svchk()" onkeypress="return svchk()">proper tail calls</a>, to specify how they would elaborate on this starting point.
+</p>
+
+</div>
+<!-- SECTION [3618-5444] -->
+<a name="references"></a><h1>References</h1>
+<div class="level1">
+
+<p>
+ <a href="http://www.cesura17.net/~will/Professional/Research/Papers/tail.pdf" class="urlextern" target="_blank" title="http://www.cesura17.net/~will/Professional/Research/Papers/tail.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Clinger's &quot;Proper Tail Recursion and Space Efficiency&quot;</a>
+</p>
+
+<p>
+<a href="http://calculist.blogspot.com/2006/03/proper-tail-recursion-and-space.html" class="urlextern" target="_blank" title="http://calculist.blogspot.com/2006/03/proper-tail-recursion-and-space.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Dave Herman's blog on Clinger's paper</a>.
+</p>
+
+<p>
+<a href="http://www.cs.brown.edu/~sk/Publications/Papers/Published/hk-sem-gc-oo/" class="urlextern" target="_blank" title="http://www.cs.brown.edu/~sk/Publications/Papers/Published/hk-sem-gc-oo/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Hunter &amp; Krishnamurthi's &quot;The Semantics of Garbage Collection in OO Languages&quot;</a> 
+</p>
+
+</div>
+<!-- SECTION [5445-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/0/03080fe8b485aa7522fd189bcc8d1461.xhtml used -->
+</body>
+</html>

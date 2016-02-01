@@ -1,0 +1,106 @@
+===== Problem Statement =====
+
+Both [[strawman:arrow function syntax]] and [[strawman:block lambda revival]] want, for different reasons, blocks and object literals to be usable in the same context: as an expression-like body of an arrow function, as the zero-argument form of a block-lambda.
+
+Independent interest in statements as expressions comes up on es-discuss from time to time, e.g. [[https://mail.mozilla.org/pipermail/es-discuss/2011-June/014933.html|here]].
+
+[[strawman:let expressions]] proposed new syntax allowing explicit wrapping of statements to make them expressions, but this strawman was deferred.
+
+Blocks-as-expressions and object literals must have different evaluation semantics (blocks are quoted, their evaluation is deferred until "invocation"; object literals evaluate eagerly). The purpose of this strawman is to refactor the grammar to eliminate grammatical conflicts that prevent treating blocks as expressions in JS today.
+
+
+
+
+===== Grammar Changes =====
+
+<code ebnf>
+Block:
+    { UnlabeledStatementFirstList? }
+    { WellLabeledStatement StatementList? }
+
+UnlabeledStatementFirstList:
+    UnlabeledStatement
+    UnlabeledStatementFirstList Statement
+
+Statement:
+    UnlabeledStatement
+    LabeledStatement
+
+UnlabeledStatement:
+    VariableStatement
+    EmptyStatement
+    ExpressionStatement
+    ContinueStatement
+    ReturnStatement
+    LabelUsingStatement
+    DebuggerStatement
+
+LabelUsingStatement:
+    Block
+    IfStatement
+    IterationStatement
+    BreakStatement
+    WithStatement
+    SwitchStatement
+    ThrowStatement
+    TryStatement
+</code>
+
+A //LabelUsingStatement// is a statement that might possibly use a label in ES3-5 but not in any ES extended to support blocks-as-expressions or [[strawman:block lambda revival|block-lambdas]]. For maximum backward compatibility, //LabeledStatement// (spelled //LabelledStatement// in ECMA-262) remains the same, and //WellLabeledStatement// restricts the statement after one or more labels to be a //LabelUsingStatement//.
+
+<code ebnf>
+LabeledStatement:
+    Identifier : Statement
+
+WellLabeledStatement:
+    Identifier : LabelUsingStatement
+    Identifier : WellLabeledStatement
+</code>
+
+We retain the ''[lookahead ∉ {**{**, **function**}]'' restriction in //ExpressionStatement//. At the start of a statement, ''**{**'' can be the start of a block only, never an object literal.
+
+<code ebnf>
+PrimaryExpression:
+    ...
+    BlockExpression
+
+BlockExpression:
+    { UnlabeledStatementFirstList }
+    { WellLabeledStatement StatementList? }
+
+PropertyAssignment:
+   IdentifierName : AssignmentExpression
+   StringLiteral : AssignmentExpression
+   NumericLiteral : AssignmentExpression
+   get PropertyName ( ) { FunctionBody }
+   set PropertyName ( PropertySetParameterList ) { FunctionBody }
+
+PropertyName:
+   IdentifierName
+   StringLiteral
+   NumericLiteral
+</code>
+
+Thus non-empty blocks may be used as expressions without ambiguity. An empty pair of braces ''**{}**'' other than at start of //Statement// is an //ObjectLiteral//. //PropertyAssignment// must inline-expand //PropertyName// to avoid an LR(1) shift-reduce conflict with //WellLabeledStatement//.
+
+===== Semantics =====
+
+The refactored //Block// semantics are straightforward and backward-compatible. The semantics for //PrimaryExpression// : //BlockExpression// depend on [[strawman:block lambda revival]]: a non-empty block used as an expression is equivalent to a zero-parameter block-lambda.
+
+
+
+===== Compatibility =====
+
+This proposal is mostly backward-compatible. In particular, the "stray label" problem whereby
+
+<code javascript>
+javascript:foo()
+</code>
+
+migrates from URL contexts (links, ''src'' attribute values, the browser's address toolbar) into script content, but not at the start of a block, continues to work. Note that such a "label" is not used by the statement or expression to which it is affixed.
+
+Useless labels are thus allowed other than at the start of a block (immediately after the ''**{**'' that starts the block).
+
+A block in JS today, or a [[strawman:block lambda revival|block-lambda]] if that extension is supported, may be prefixed by a label and actually use that label, e.g. via a ''break'' targeting that label. The grammar changes above support such a label-using block(-lambda).
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/07/01 16:19//

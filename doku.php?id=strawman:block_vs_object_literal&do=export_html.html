@@ -1,0 +1,155 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:block_vs_object_literal&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:block_vs_object_literal&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:block_vs_object_literal&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="problem_statement"></a><h2>Problem Statement</h2>
+<div class="level2">
+
+<p>
+ Both <a href="doku.php%3Fid=strawman:arrow_function_syntax.html" class="wikilink1" title="strawman:arrow_function_syntax" onclick="return svchk()" onkeypress="return svchk()">arrow function syntax</a> and <a href="doku.php%3Fid=strawman:block_lambda_revival.html" class="wikilink1" title="strawman:block_lambda_revival" onclick="return svchk()" onkeypress="return svchk()">block lambda revival</a> want, for different reasons, blocks and object literals to be usable in the same context: as an expression-like body of an arrow function, as the zero-argument form of a block-lambda.
+</p>
+
+<p>
+Independent interest in statements as expressions comes up on es-discuss from time to time, e.g. <a href="https://mail.mozilla.org/pipermail/es-discuss/2011-June/014933.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2011-June/014933.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">here</a>.
+</p>
+
+<p>
+<a href="doku.php%3Fid=strawman:let_expressions.html" class="wikilink1" title="strawman:let_expressions" onclick="return svchk()" onkeypress="return svchk()">let expressions</a> proposed new syntax allowing explicit wrapping of statements to make them expressions, but this strawman was deferred.
+</p>
+
+<p>
+Blocks-as-expressions and object literals must have different evaluation semantics (blocks are quoted, their evaluation is deferred until &ldquo;invocation&rdquo;; object literals evaluate eagerly). The purpose of this strawman is to refactor the grammar to eliminate grammatical conflicts that prevent treating blocks as expressions in <acronym title="JavaScript">JS</acronym> today.
+</p>
+
+</div>
+<!-- SECTION [1-958] -->
+<a name="grammar_changes"></a><h2>Grammar Changes</h2>
+<div class="level2">
+<pre class="code ebnf">Block:
+    { UnlabeledStatementFirstList? }
+    { WellLabeledStatement StatementList? }
+
+UnlabeledStatementFirstList:
+    UnlabeledStatement
+    UnlabeledStatementFirstList Statement
+
+Statement:
+    UnlabeledStatement
+    LabeledStatement
+
+UnlabeledStatement:
+    VariableStatement
+    EmptyStatement
+    ExpressionStatement
+    ContinueStatement
+    ReturnStatement
+    LabelUsingStatement
+    DebuggerStatement
+
+LabelUsingStatement:
+    Block
+    IfStatement
+    IterationStatement
+    BreakStatement
+    WithStatement
+    SwitchStatement
+    ThrowStatement
+    TryStatement
+</pre>
+<p>
+A <em>LabelUsingStatement</em> is a statement that might possibly use a label in ES3-5 but not in any ES extended to support blocks-as-expressions or <a href="doku.php%3Fid=strawman:block_lambda_revival.html" class="wikilink1" title="strawman:block_lambda_revival" onclick="return svchk()" onkeypress="return svchk()">block-lambdas</a>. For maximum backward compatibility, <em>LabeledStatement</em> (spelled <em>LabelledStatement</em> in ECMA-262) remains the same, and <em>WellLabeledStatement</em> restricts the statement after one or more labels to be a <em>LabelUsingStatement</em>.
+</p>
+<pre class="code ebnf">LabeledStatement:
+    Identifier : Statement
+
+WellLabeledStatement:
+    Identifier : LabelUsingStatement
+    Identifier : WellLabeledStatement
+</pre>
+<p>
+We retain the <code>[lookahead ∉ {<strong>{</strong>, <strong>function</strong>}]</code> restriction in <em>ExpressionStatement</em>. At the start of a statement, <code><strong>{</strong></code> can be the start of a block only, never an object literal.
+</p>
+<pre class="code ebnf">PrimaryExpression:
+    ...
+    BlockExpression
+
+BlockExpression:
+    { UnlabeledStatementFirstList }
+    { WellLabeledStatement StatementList? }
+
+PropertyAssignment:
+   IdentifierName : AssignmentExpression
+   StringLiteral : AssignmentExpression
+   NumericLiteral : AssignmentExpression
+   get PropertyName ( ) { FunctionBody }
+   set PropertyName ( PropertySetParameterList ) { FunctionBody }
+
+PropertyName:
+   IdentifierName
+   StringLiteral
+   NumericLiteral
+</pre>
+<p>
+Thus non-empty blocks may be used as expressions without ambiguity. An empty pair of braces <code><strong>{}</strong></code> other than at start of <em>Statement</em> is an <em>ObjectLiteral</em>. <em>PropertyAssignment</em> must inline-expand <em>PropertyName</em> to avoid an LR(1) shift-reduce conflict with <em>WellLabeledStatement</em>.
+</p>
+
+</div>
+<!-- SECTION [959-3149] -->
+<a name="semantics"></a><h2>Semantics</h2>
+<div class="level2">
+
+<p>
+ The refactored <em>Block</em> semantics are straightforward and backward-compatible. The semantics for <em>PrimaryExpression</em> : <em>BlockExpression</em> depend on <a href="doku.php%3Fid=strawman:block_lambda_revival.html" class="wikilink1" title="strawman:block_lambda_revival" onclick="return svchk()" onkeypress="return svchk()">block lambda revival</a>: a non-empty block used as an expression is equivalent to a zero-parameter block-lambda.
+</p>
+
+</div>
+<!-- SECTION [3150-3450] -->
+<a name="compatibility"></a><h2>Compatibility</h2>
+<div class="level2">
+
+<p>
+ This proposal is mostly backward-compatible. In particular, the &ldquo;stray label&rdquo; problem whereby
+</p>
+<pre class="code javascript">javascript:foo<span class="br0">&#40;</span><span class="br0">&#41;</span></pre>
+<p>
+migrates from <acronym title="Uniform Resource Locator">URL</acronym> contexts (links, <code>src</code> attribute values, the browser&rsquo;s address toolbar) into script content, but not at the start of a block, continues to work. Note that such a &ldquo;label&rdquo; is not used by the statement or expression to which it is affixed.
+</p>
+
+<p>
+Useless labels are thus allowed other than at the start of a block (immediately after the <code><strong>{</strong></code> that starts the block).
+</p>
+
+<p>
+A block in <acronym title="JavaScript">JS</acronym> today, or a <a href="doku.php%3Fid=strawman:block_lambda_revival.html" class="wikilink1" title="strawman:block_lambda_revival" onclick="return svchk()" onkeypress="return svchk()">block-lambda</a> if that extension is supported, may be prefixed by a label and actually use that label, e.g. via a <code>break</code> targeting that label. The grammar changes above support such a label-using block(-lambda).
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2011/07/01 16:19</em> 
+</p>
+
+</div>
+<!-- SECTION [3451-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/2/2350f63c3715f9cd0215edcdc10203dc.xhtml used -->
+</body>
+</html>

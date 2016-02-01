@@ -1,0 +1,94 @@
+DO NOT EXPORT
+
+====== Motivation ======
+
+Type refinements complement the [[structural_types_and_typing_of_initializers|type system]] by allowing programmers to specify detailed invariants that cannot be checked by the static type system. Although the type system allows programmers to check a fairly expressive range of invariants, the system can only express statically checkable invariants. Type refinements, by contrast, are designed to be checked dynamically, and allow programmers to guard their code with syntactically lightweight assertions about precise program invariants.
+
+Type refinements facilitate software engineering styles such as:
+
+  * [[http://java.sun.com/j2se/1.4.2/docs/guide/lang/assert.html|programming with assertions]]
+  * [[http://en.wikipedia.org/wiki/Design_by_contract|design by contract]]
+
+====== Proposal 1: Object-oriented ======
+
+Type refinements are specified as dynamic //predicates//, i.e., functions with ''Boolean'' result type. These predicates take one of two forms, //bound predicates// and //unbound predicates//.
+
+===== Bound predicates =====
+
+In the case where a predicate is a bound method (with the return type ''Boolean'') defined in the class of the object in question, a predicate can simply be specified with the name of the method. When the value is received at runtime, the system implicitly invokes the method on the object; if the result is ''false'', a runtime error is signalled.
+
+For example, imagine that the ''Int'' class has a method called ''isNatural'' which checks whether the integer is non-negative:
+
+<code javascript>class Int {
+    ...
+    function isNatural() : Boolean { return this >= 0 }
+    ...
+}</code>
+
+Then an expression typed as ''Int'' may refine the type with the bound predicate ''isNatural'' via some special operator (''"@"''? ''"#"''? ''"|"''? ''"."'' would be nice but I believe introduces ambiguities with package qualifiers):
+
+<code javascript>function factorial(n : Int#isNatural) { ... }</code>
+
+===== Unbound predicates =====
+
+Unbound functions may be used as type refinements as well. In this case, the type of the function used for the predicate must have as its ''this'' type a compatible type with the type being refined.
+
+<code javascript>function trimmedString(this:String) : Boolean {
+    return (this.length == 0) || ((this[0] != ' ') && (this[this.length - 1] != ' '))
+}
+
+function trim(s : String) : String#trimmedString { ... }</code>
+
+===== Arguments to predicates =====
+
+It should also be possible to pass extra arguments to type refinements. For example:
+
+<code javascript>function hasLength(this:String, n:Int#isNatural) : Boolean { return s.length == n }
+
+function repeat(n : Int#isNatural, s : String) : String#hasLength(n * s.length) { ... }</code>
+
+Here the unbound method ''hasLength'' receives as its argument the value ''n * s.length''. Notice that the arguments to ''repeat'' are in scope for the predicate expression.
+
+===== Arbitrary expressions for type refinements =====
+
+The syntax used above may not be conducive to using complex expressions for predicates. We may also want a syntax that allows any expression to be used (for unbound predicates), such as:
+
+<code javascript>function foo() : << String | /* complicated expression */(args, ...) >> { ... }</code>
+
+This reads something like "''foo'' has return type ''String'', where the string must pass the predicate specified by calling the unbound method returned by the //complicated expression// on arguments //args//."
+
+===== Problems =====
+
+  * the difference between bound and unbound predicates is subtle
+  * the syntax is overwhelming
+  * we need a better syntax for the arbitrary expression form, but we're out of delimiters (''['', ''{'', and ''('' are all taken, and ''<'' conceptually means type parameterization)
+  * if we tried to combine the two syntactic forms, there'd be an ambiguity between a simple predicate that is being given arguments (e.g., the ''hasLength'' example) and an ordinary expression that happens to be a function call expression
+
+====== Proposal 2: Functional ======
+
+In this proposal, predicates are simply functions that take a single argument and return a ''Boolean''. There is no way to write a predicate that operates on multiple function arguments.
+
+**To do:** //more detail//
+
+===== Problems =====
+
+  * less expressive: no way to express invariants between arguments
+  * perhaps less idiomatic (no useful meaning for ''this'' in the predicate)
+
+====== Subtyping and Conversion ======
+
+''Int#isNatural'' is a subtype of ''Int''. 
+
+''Int#isNatural'' and ''Int#isPositive'' are not subtypes of each other, but they are convertible.
+
+Similarly, ''Int'' is convertible to ''Int#isNatural''.
+
+====== Predicate combinators ======
+
+It's useful to have predicate combinators like "and" and "or", e.g.:
+
+  C ::= ...
+     |  C "&&" C
+     |  C "||" C
+
+Is this worth adding to the grammar? It could basically be sugar for a wrapper predicate that performs the conjunction or disjunction, but it's more concise and could be implemented more efficiently.

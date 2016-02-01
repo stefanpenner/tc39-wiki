@@ -1,0 +1,583 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=export_html.html#introduction" class="toc">Introduction</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=export_html.html#goals" class="toc">Goals</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=export_html.html#proposal" class="toc">Proposal</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=export_html.html#implementation_by_desugaring" class="toc">Implementation by desugaring</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=export_html.html#layered_systems_commonjs" class="toc">Layered systems (CommonJS)</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=export_html.html#commonjs_with_standard_asts" class="toc">CommonJS with standard ASTs</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=export_html.html#commonjs_without_asts" class="toc">CommonJS without ASTs</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=export_html.html#interoperation_with_legacy" class="toc">Interoperation with legacy</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=export_html.html#using_modular_code_today" class="toc">Using modular code today</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=export_html.html#building_dual-use_modules" class="toc">Building dual-use modules</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=export_html.html#variants" class="toc">Variants</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=export_html.html#statically_computable_import_argument" class="toc">Statically computable ''import'' argument</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=export_html.html#accessible_shared_static_module_objects" class="toc">Accessible shared static module objects</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=export_html.html#module_annotations" class="toc">Module annotations</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=export_html.html#module_self_reference" class="toc">Module self reference</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=export_html.html#alternate_module_construction" class="toc">Alternate module construction</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=export_html.html#primordials" class="toc">Primordials</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=export_html.html#comments" class="toc">Comments</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=export_html.html#open_issues" class="toc">Open issues</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:modules_emaker_style&amp;do=export_html.html#references" class="toc">References</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="introduction"></a><h1>Introduction</h1>
+<div class="level1">
+
+<p>
+ This proposal describes a candidate semantics for modular code in ECMAScript. This candidate is built using lambda abstraction and lexical scoping to achieve, depending on the reader&rsquo;s perspective: 
+</p>
+<ul>
+<li class="level1"><div class="li"> The software engineering benefits of strict dependency injection; and</div>
+</li>
+<li class="level1"><div class="li"> The security benefits of strict object capability safety.</div>
+</li>
+</ul>
+
+<p>
+ This proposal is named after the <a href="http://wiki.erights.org/w/index.php?title=Emaker" class="urlextern" target="_blank" title="http://wiki.erights.org/w/index.php?title=Emaker" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Emaker</a> modules used in <a href="http://erights.org/" class="urlextern" target="_blank" title="http://erights.org/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">E</a>, after which it is closely modeled. A very similar system is built into <a href="http://code.google.com/p/google-caja/" class="urlextern" target="_blank" title="http://code.google.com/p/google-caja/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Caja</a>.
+</p>
+
+<p>
+In the subsequent sections, we describe the candidate proposal. We then describe how alternative semantics may be layered in terms of this one.
+</p>
+
+</div>
+<!-- SECTION [1-765] -->
+<a name="goals"></a><h1>Goals</h1>
+<div class="level1">
+
+<p>
+ <u>Isolation.</u> We need to build an isolation mechanism that prevents accidental name collisions in a large system with components created by independent developers.
+</p>
+
+<p>
+<u>Security.</u> Our isolation mechanism must be strong enough to be relied upon for security, so that the effects of code created by an independent, and possibly malicious, developer can be bounded.
+</p>
+
+<p>
+<u>No global namespace.</u> Our standard must not rely on a global namespace into which modular code or any objects created from it are placed.
+</p>
+
+<p>
+<u>No constraints on simultaneous &ldquo;versions&rdquo;.</u> To the extent that the idea of &ldquo;versions&rdquo; of a piece of modular code is well-defined, it should be possible for any number of &ldquo;versions&rdquo; of that code to coexist in the same system. There must not be a requirement for a global solution that selects a single &ldquo;version&rdquo; of each module. This is a special case of the <em>No global namespace</em> requirement.
+</p>
+
+<p>
+<u>First class objects.</u> To the extent possible, module system components must be represented as first-class ECMAScript objects.
+</p>
+
+<p>
+<u>Non-blocking without boilerplate.</u> ECMAScript is <em>de facto</em> event loop concurrent, and may become <em>de jure</em> so. In cases where code needs to be fetched from remote sites, and so as not to block the event loop, the correct behavior is to use asynchronous execution. This means that progress after the code is loaded needs to be made in a callback function. However, in order for use of modules to be ubiquitous, the module proposal must not require developers to perform a continuation-passing transform on all their code that uses modules.
+</p>
+
+<p>
+<u>Zero-admin provisioning.</u> Since ECMAScript is primarily deployed within Web browsers, and often in consumer devices, the mechanism for locating and fetching code must be able to reproduce a predictable software environment in the absence of a local &ldquo;system administrator&rdquo; in charge of software installation. This property also helps with the reliability &ndash; and, ultimately, security &ndash; of the deployed software.
+</p>
+
+<p>
+<u>Uniform location and retrieval.</u> In addition to the format of modular ECMAScript, and in order to maximize reuse and enable zero-admin provisioning, we must specify a uniform manner for the code to be located and retrieved.
+</p>
+
+</div>
+<!-- SECTION [766-3012] -->
+<a name="proposal"></a><h1>Proposal</h1>
+<div class="level1">
+
+<p>
+ Modular code is written using the <code>import</code> operator. We will describe its use by induction, showing the viewpoint of an importing module and an imported module. We will then describe the base case.
+</p>
+
+<p>
+To import a module, a program specifies the identifier (loosely, a path) of the module in an <code>import</code> expression:
+</p>
+<pre class="code javascript"><span class="kw2">import</span> <span class="st0">'util/point'</span></pre>
+<p>
+The identifier <code>util/point</code> specifies, loosely, a file <code>util/point.js</code> in some location. This identifier must be a string literal.
+</p>
+
+<p>
+The value of the <code>import</code> expression is a <code>Function</code>, which we call the <em>module function</em>, representing the code compiled from <code>util/point.js</code>. A module function is deeply immutable, and so is safe to pass around without providing a communication channel.
+</p>
+
+<p>
+A module function is called with an object literal providing bindings for the free variables of the module code. As with regular ECMAScript functions, there are two calling conventions, as a function:
+</p>
+<pre class="code javascript"><span class="br0">&#40;</span><span class="kw2">import</span> <span class="st0">'util/point'</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="br0">&#123;</span> x: <span class="nu0">3</span>, y: <span class="nu0">4</span> <span class="br0">&#125;</span><span class="br0">&#41;</span></pre>
+<p>
+and as a constructor:
+</p>
+<pre class="code javascript"><span class="kw2">new</span> <span class="br0">&#40;</span><span class="kw2">import</span> <span class="st0">'util/point'</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="br0">&#123;</span> x: <span class="nu0">3</span>, y: <span class="nu0">4</span> <span class="br0">&#125;</span><span class="br0">&#41;</span></pre>
+<p>
+The contents of a module satisfy a <em><strong>FunctionBody</strong></em> production. In the module&rsquo;s code, <code>this</code> is initialized to a new object that is <code>instanceof</code> the module function, and is the implicit return value of the module function unless the module executes an explicit <code>return</code> statement. The module <code>util/point.js</code> could therefore be written in two different ways, respectively: one as a function:
+</p>
+<pre class="code javascript"><span class="kw1">return</span> <span class="br0">&#123;</span>
+  getX: <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> x; <span class="br0">&#125;</span>,
+  getY: <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> y; <span class="br0">&#125;</span>,
+  setX: <span class="kw2">function</span><span class="br0">&#40;</span>x_<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">if</span> <span class="br0">&#40;</span>x_ &gt; <span class="nu0">0</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> x = x_; <span class="br0">&#125;</span> <span class="br0">&#125;</span>,
+  setY: <span class="kw2">function</span><span class="br0">&#40;</span>y_<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">if</span> <span class="br0">&#40;</span>y_ &gt; <span class="nu0">0</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> y = y_; <span class="br0">&#125;</span> <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;</pre>
+<p>
+and one as a constructor:
+</p>
+<pre class="code javascript"><span class="kw1">this</span>.<span class="me1">getX</span> = <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> x; <span class="br0">&#125;</span>;
+<span class="kw1">this</span>.<span class="me1">getY</span> = <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> y; <span class="br0">&#125;</span>;
+<span class="kw1">this</span>.<span class="me1">setX</span> = <span class="kw2">function</span><span class="br0">&#40;</span>x_<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">if</span> <span class="br0">&#40;</span>x_ &gt; <span class="nu0">0</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> x = x_; <span class="br0">&#125;</span> <span class="br0">&#125;</span>;
+<span class="kw1">this</span>.<span class="me1">setY</span> = <span class="kw2">function</span><span class="br0">&#40;</span>y_<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">if</span> <span class="br0">&#40;</span>y_ &gt; <span class="nu0">0</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> y = y_; <span class="br0">&#125;</span> <span class="br0">&#125;</span>;</pre>
+<p>
+In either calling convention, observe how the free variables of the module code, <code>x</code> and <code>y</code>, were supplied by the call to the module function. The act of calling a module function is called <em>instantiation</em>, and the return value of a module function is called a <em>module instance</em>.
+</p>
+
+<p>
+An <code>import</code> expression evaluates immediately to a module function despite the fact that the specified module may have been fetched by asynchronous means (<em>e.g.</em>, nonblocking network operations). This is done by taking advantage of the fact that <code>import</code> is a special form. Consider the following situation:
+</p>
+
+<p>
+<a href="lib/exe/detail.php%3Fid=strawman%253Amodules_emaker_style&amp;cache=cache&amp;media=strawman:importingmodulegraph_006.png.html" class="media" title="strawman:importingmodulegraph_006.png" onclick="return svchk()" onkeypress="return svchk()"><img src="lib/exe/fetch.php%3Fw=&amp;h=&amp;cache=cache&amp;media=strawman:importingmodulegraph_006.png" class="media" alt="" /></a>
+</p>
+
+<p>
+<strong>(1)</strong> Some code invokes a platform-provided &ldquo;import module&rdquo; function, <code>pim</code>, to load a module <code>A</code>. Assuming the invoking code is part of some bootstrap process, <code>A</code> may not be present (<em>e.g.</em>, it may need to be fetched from the network), so <code>pim</code> provides its value asynchronously (in our example, via a callback function).
+</p>
+
+<p>
+<strong>(2)</strong> The <code>pim</code> function fetches and evaluates module <code>A</code>. By recursively recognizing the <code>import</code> special form, it also retrieves the transitive static (<em>i.e.</em>, <code>import</code>-ed) dependencies of <code>A</code>, namely <code>B</code> and <code>C</code>.
+</p>
+
+<p>
+<strong>(3)</strong> The <code>pim</code> function invokes the callback provided in step (1) with a reference to the module function for <code>A</code>. The function calls it, passing a variety of free variable bindings, including a variable <code>thePim</code> which is bound to the platform&rsquo;s <code>pim</code> function.
+</p>
+
+<p>
+<strong>(4)</strong> Module <code>A</code> uses the provided reference to <code>thePim</code> to load a module based on a dynamically computed module, which happens to be <code>D</code>.
+</p>
+
+<p>
+<strong>(5)</strong> The <code>pim</code> implementation once again loads the transitive closure of the static dependencies of <code>D</code>. Note that module <code>E</code> statically refers to <code>B</code> and, since the same <code>pim</code> function was used to load the entire set of modules, it is linked back, by <code>pim</code>, to the previously loaded module function for <code>B</code>.
+</p>
+
+<p>
+<strong>(6)</strong> The <code>pim</code> implementation then invokes the callback provided in step (4) with a reference to the module function for <code>D</code>.
+</p>
+
+<p>
+Note especially the decoupling between the dynamic loading functions provided by the platform (<code>pim</code>, passed down to module <code>A</code> as <code>thePim</code>) and the static <code>import</code> expressions. By the time the code is executed, the <code>import</code>s have all been resolved, so the running code need be given no special abilities for module loading. Any such powers, to the extent they are needed, are passed down to the code as regular objects like any other.
+</p>
+
+<p>
+Since module functions are first class ECMAScript objects, they can be passed down directly to any code which would, under different circumstances, receive the <em>identifier</em> of a module to operate on. The design guideline, therefore, is to load modules as early as possible and pass them down as first-class objects, so that (a) it is more likely they will be statically known and can be loaded using <code>import</code>; or, failing that, (b) the platform dynamic module loading function does not have to be passed down as deeply into the call stack.
+</p>
+
+<p>
+In order to ensure easy analyzability and predictable results, modular code (<em>i.e.</em>, any code brought into the system via <code>import</code> as described here) is restricted to <a href="doku.php%3Fid=strawman:lexical_scope.html" class="wikilink1" title="strawman:lexical_scope" onclick="return svchk()" onkeypress="return svchk()">lexical_scope</a>. This means that: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Modular code is permitted access only to the ECMA-262 primordials and the caller-supplied bindings for its free variables; and</div>
+</li>
+<li class="level1"><div class="li"> The top-level <code>this</code> in a module does not shadow any lexical scope.</div>
+</li>
+</ul>
+
+<p>
+ Modular code must assume that all ECMA-262 primordials to which it has access are deeply frozen.
+</p>
+
+<p>
+If the caller of a module function does not supply bindings for a free variable, that variable has a value of <code>undefined</code> within the invocation of the module.
+</p>
+
+</div>
+<!-- SECTION [3013-8776] -->
+<a name="implementation_by_desugaring"></a><h1>Implementation by desugaring</h1>
+<div class="level1">
+
+<p>
+ To implement this proposal by desugaring: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Analyze the text of the module and identify all free variables <code>v<sub>0</sub></code>, <code>v<sub>1</sub></code>, ...;</div>
+</li>
+<li class="level1"><div class="li"> Generate and <code>eval</code> the following code (assuming <code>mod_args</code> is not used by the code). The completion value of the <code>eval</code> is the module function.</div>
+</li>
+</ul>
+<pre class="code javascript"><span class="kw2">function</span><span class="br0">&#40;</span>mod_args<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw2">var</span> v0 = mod_args.<span class="me1">v0</span>;
+  <span class="kw2">var</span> v1 = mod_args.<span class="me1">v1</span>;
+  <span class="coMULTI">/* ... */</span>
+  <span class="coMULTI">/* original module code */</span>
+<span class="br0">&#125;</span>;</pre>
+<p>
+For example, our module <code>util/point.js</code> would desugar to:
+</p>
+<pre class="code javascript"><span class="kw2">function</span><span class="br0">&#40;</span>mod_args<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw2">var</span> x = mod_args.<span class="me1">x</span>;
+  <span class="kw2">var</span> y = mod_args.<span class="me1">y</span>;
+  <span class="kw1">return</span> <span class="br0">&#123;</span>
+    getX: <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* ... */</span> <span class="br0">&#125;</span>,
+    <span class="coMULTI">/* ... */</span>
+  <span class="br0">&#125;</span>;
+<span class="br0">&#125;</span>;</pre>
+</div>
+<!-- SECTION [8777-9487] -->
+<a name="layered_systems_commonjs"></a><h1>Layered systems (CommonJS)</h1>
+<div class="level1">
+
+<p>
+ The calling convention of a module &ndash; the free variables it expects its caller to provide &ndash; are part of its interface. Communities of ECMAScript users may wish to define specific calling conventions for their application, for example, plugins for specific applications or frameworks.
+</p>
+
+<p>
+At time of writing, the most important such community is the <a href="http://wiki.commonjs.org/wiki/CommonJS" class="urlextern" target="_blank" title="http://wiki.commonjs.org/wiki/CommonJS" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">CommonJS</a> group. CommonJS modules have a fixed calling convention, accepting only the free variables <code>require</code>, <code>module</code>, and <code>exports</code>. Modules are used via the <code>require</code> function:
+</p>
+<pre class="code javascript">require<span class="br0">&#40;</span><span class="st0">'util/pointUtils'</span><span class="br0">&#41;</span></pre>
+<p>
+CommonJS modules are instantiated within a <em>sandbox</em>. Within each sandbox, there exists at most one instance of each module, which all modules in the sandbox share. This allows modules to work in a manner more similar to Python: loading a module gives access to shared state, not just code. The sandbox is therefore the unit of strict isolation.
+</p>
+
+<p>
+CommonJS programmers would like <code>require</code> to behave similarly to the <code>import</code> keyword specified in this proposal &ndash; specifically, it should synchronously return even if the underlying module retrieval mechanism is asynchronous. We present two ways in which this may be done, depending on other support in the ES-Harmony platform.
+</p>
+
+</div>
+<!-- SECTION [9488-10845] -->
+<a name="commonjs_with_standard_asts"></a><h2>CommonJS with standard ASTs</h2>
+<div class="level2">
+
+<p>
+ If the <a href="doku.php%3Fid=strawman:ast.html" class="wikilink1" title="strawman:ast" onclick="return svchk()" onkeypress="return svchk()">ast</a> proposal were accepted as part of Harmony, the CommonJS system could implement, in userland, the same transformation for <code>require</code> that this proposal specifies for <code>import</code>. In fact, the most direct implementation would be to rewrite instances of <code>require</code> into <code>import</code> expressions, then pass the resulting code down the normal path.
+</p>
+
+</div>
+<!-- SECTION [10846-11254] -->
+<a name="commonjs_without_asts"></a><h2>CommonJS without ASTs</h2>
+<div class="level2">
+
+<p>
+ Without Harmony ASTs, it is possible to use a pure-ECMAScript parser to do the <code>require</code> transformation anyway. However, given the complexities of parsing ECMAScript (primarily due to semicolon insertion), this is such an expensive proposition, we do not consider it a practical option.
+</p>
+
+<p>
+Otherwise, since <code>import</code> simply evaluates to a first-class module function object, it is possible to wrap it in a <code>require</code> expression, for example:
+</p>
+<pre class="code javascript">require<span class="br0">&#40;</span><span class="kw2">import</span> <span class="st0">'util/pointUtils'</span><span class="br0">&#41;</span></pre>
+</div>
+<!-- SECTION [11255-11793] -->
+<a name="interoperation_with_legacy"></a><h1>Interoperation with legacy</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [11794-11835] -->
+<a name="using_modular_code_today"></a><h2>Using modular code today</h2>
+<div class="level2">
+
+<p>
+ To use modular code, written to this proposal using <code>import</code> expressions, in an ECMAScript 3 or 5 system, it is necessary to emulate the recognition of the special form and the static linking.
+</p>
+
+<p>
+To the extent that the problem is most painful for developers of ECMAScript running in Web browsers, due to the limited resources and libraries available, this proposal can be implemented using a server script, as follows: 
+</p>
+<ul>
+<li class="level1"><div class="li"> The client is configured with an asynchronous platform-provided module loading function (like <code>pim</code> in our example) that sends its arguments to a server and <code>eval</code>s the code returned.</div>
+</li>
+<li class="level1"><div class="li"> The server parses the requested code, retrieves and bundles the static dependencies into a single unit, and returns the result to the client.</div>
+</li>
+<li class="level1"><div class="li"> To avoid duplication of module loading (similar to how module <code>B</code> was not loaded twice, in our example), there are two options:</div>
+<ul>
+<li class="level2"><div class="li"> The client and server can maintain a persistent connection so that the server always knows what modules the client has and sends only the ones needed; or</div>
+</li>
+<li class="level2"><div class="li"> The client can send a list of all the modules it has (perhaps using short hashes assigned by the server) every time it requests modules from the server.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ For applications that do not require any dynamic module loading, the entire application can be statically linked prior to deployment.
+</p>
+
+</div>
+<!-- SECTION [11836-13220] -->
+<a name="building_dual-use_modules"></a><h2>Building dual-use modules</h2>
+<div class="level2">
+
+<p>
+ It is possible to modify legacy code, written assuming the existence of a shared global scope, to work both as a module in an ES-Harmony system and as a legacy script. The code must explicitly assign symbols the it wishes to share to <code>this</code>, and ensure that <code>this</code> is returned as the module instance when used as a module. For example, the following legacy script:
+</p>
+<pre class="code javascript"><span class="kw2">function</span> foo<span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> bar<span class="br0">&#40;</span>x<span class="br0">&#41;</span> + <span class="nu0">1</span>; <span class="br0">&#125;</span>
+<span class="kw2">var</span> baz = <span class="nu0">3</span>;</pre>
+<p>
+has a free variable <code>bar</code> and assigns symbols <code>foo</code> and <code>baz</code> to the global scope. We can rewrite it to:
+</p>
+<pre class="code javascript"><span class="kw1">this</span>.<span class="me1">foo</span> = <span class="kw2">function</span> foo<span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> bar<span class="br0">&#40;</span>x<span class="br0">&#41;</span> + <span class="nu0">1</span> <span class="br0">&#125;</span>;
+<span class="kw1">this</span>.<span class="me1">baz</span> = <span class="nu0">3</span>;</pre>
+<p>
+The modified code works as a legacy script because <code>this</code> provides dynamic access to the topmost lexical scope. It also works as a module (when called as a constructor with <code>new</code>) because it returns <code>this</code>, populated with the symbols it chooses to share, as the module instance.
+</p>
+
+<p>
+Clearly, the semantics of this code as a legacy script are different from those under our ES-Harmony proposal. This technique is not intended as a full emulation but rather a helpful bridge.
+</p>
+
+</div>
+<!-- SECTION [13221-14385] -->
+<a name="variants"></a><h1>Variants</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [14386-14409] -->
+<a name="statically_computable_import_argument"></a><h2>Statically computable ''import'' argument</h2>
+<div class="level2">
+
+<p>
+ In our base proposal, the argument to <code>import</code> must be a string literal. However, all we really require is that it be statically computable. Were such a usage possible, a programmer could avoid error-prone repetition:
+</p>
+<pre class="code javascript"><span class="kw2">const</span> base = <span class="st0">'path/to/some/modules/'</span>;
+<span class="kw2">import</span> base + <span class="st0">'X'</span>;
+<span class="kw2">import</span> base + <span class="st0">'Y'</span>;
+<span class="kw2">import</span> base + <span class="st0">'Z'</span>;</pre>
+<p>
+Given that requiring all statically computable values to be supported in full generality could impose a heavy burden on ES implementors, we leave it up to the TC39 committee to decide how much, if at all, this variant is appropriate.
+</p>
+
+</div>
+<!-- SECTION [14410-15040] -->
+<a name="accessible_shared_static_module_objects"></a><h2>Accessible shared static module objects</h2>
+<div class="level2">
+
+<p>
+ As specified, modules are strictly generative: two instances of the same module cannot share access to any common object that was not supplied by a common caller (except for values which are automatically interned, like <code>String</code>s). Practically, this means that a module&rsquo;s code cannot compute nontrivial <em>static</em> information that is shared between all instances of the module.
+</p>
+
+<p>
+As an example, consider a module that computes the sine and cosine functions by interpolating between values in a lookup table. The table can be deeply immutable, and hence safely shared between instances, but our generative proposal permits no such thing.
+</p>
+
+<p>
+One way to address this is to recast our module lifecycle and, by corollary, the way modules are written. In our variant form: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Module code may have no free variables apart from the standard primordials;</div>
+</li>
+<li class="level1"><div class="li"> The module code is executed once, when a module is loaded;</div>
+</li>
+<li class="level1"><div class="li"> The result of execution is guaranteed by construction to be deeply immutable; and</div>
+</li>
+<li class="level1"><div class="li"> Services may be invoked on the result at will.</div>
+</li>
+</ul>
+
+<p>
+ To see how this would work out in practice, consider the sine and cosine function example in our original proposal:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> table = <span class="br0">&#91;</span> <span class="nu0">0</span>.<span class="nu0">0</span>, <span class="nu0">0</span>.<span class="nu0">0998334166</span>, <span class="nu0">0</span>.<span class="nu0">198669331</span>, <span class="coMULTI">/* ... */</span> <span class="br0">&#93;</span>;
+&nbsp;
+<span class="kw1">return</span> <span class="br0">&#123;</span>
+  sin: <span class="kw2">function</span><span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* use 'table' to compute sin(x) */</span> <span class="br0">&#125;</span>,
+  cos: <span class="kw2">function</span><span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* ... */</span> <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;</pre>
+<p>
+As we noted before, <code>table</code> is (wastefully) constructed each time. In the variant form, our module woud look like:
+</p>
+<pre class="code javascript"><span class="kw2">const</span> table = <span class="br0">&#91;</span> <span class="nu0">0</span>.<span class="nu0">0</span>, <span class="nu0">0</span>.<span class="nu0">0998334166</span>, <span class="nu0">0</span>.<span class="nu0">198669331</span>, <span class="coMULTI">/* ... */</span> <span class="br0">&#93;</span>;
+&nbsp;
+<span class="kw1">return</span> <span class="br0">&#123;</span>
+  sin: <span class="kw2">function</span><span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* use 'table' to compute sin(x) */</span> <span class="br0">&#125;</span>,
+  cos: <span class="kw2">function</span><span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* ... */</span> <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;</pre>
+<p>
+Under this variant, our earlier <code>util/point.js</code> example would look like:
+</p>
+<pre class="code javascript"><span class="kw1">return</span> <span class="kw2">function</span><span class="br0">&#40;</span>x, y<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw1">return</span> <span class="br0">&#123;</span>
+    getX: <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> x; <span class="br0">&#125;</span>,
+    getY: <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> y; <span class="br0">&#125;</span>,
+    setX: <span class="kw2">function</span><span class="br0">&#40;</span>x_<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">if</span> <span class="br0">&#40;</span>x_ &gt; <span class="nu0">0</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> x = x_; <span class="br0">&#125;</span> <span class="br0">&#125;</span>,
+    setY: <span class="kw2">function</span><span class="br0">&#40;</span>y_<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">if</span> <span class="br0">&#40;</span>y_ &gt; <span class="nu0">0</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> y = y_; <span class="br0">&#125;</span> <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span>;
+<span class="br0">&#125;</span>;</pre>
+<p>
+allowing it to be called with positional parameters:
+</p>
+<pre class="code javascript"><span class="br0">&#40;</span><span class="kw2">import</span> <span class="st0">'util/point'</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="nu0">3</span>, <span class="nu0">4</span><span class="br0">&#41;</span></pre>
+<p>
+More typically, in this case, we expect modules would contain <em>multiple</em> entry points, in other words:
+</p>
+<pre class="code javascript"><span class="kw1">return</span> <span class="br0">&#123;</span>
+  makeCartesianPoint: <span class="kw2">function</span><span class="br0">&#40;</span>x, y<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* ... */</span> <span class="br0">&#125;</span>,
+  makePolarPoint: <span class="kw2">function</span><span class="br0">&#40;</span>r, t<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* ... */</span> <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;</pre>
+<p>
+which would be called like:
+</p>
+<pre class="code javascript"><span class="br0">&#40;</span><span class="kw2">import</span> <span class="st0">'util/point'</span><span class="br0">&#41;</span>.<span class="me1">makeCartesianPoint</span><span class="br0">&#40;</span><span class="nu0">3</span>, <span class="nu0">4</span><span class="br0">&#41;</span></pre>
+</div>
+<!-- SECTION [15041-17528] -->
+<a name="module_annotations"></a><h2>Module annotations</h2>
+<div class="level2">
+
+<p>
+ A module object, as constructed by this proposal, is not annotated with any information provided by the environment or the programmer. Both may be useful.
+</p>
+
+<p>
+The environment may wish to attach to the module the identifier by which it was loaded, perhaps providing some measure of convenience to higher-order code that manipulates module objects. For example, the following could be true:
+</p>
+<pre class="code javascript"><span class="br0">&#40;</span><span class="kw2">import</span> <span class="st0">'util/point'</span><span class="br0">&#41;</span>.<span class="me1">id</span> === <span class="st0">'util.point'</span></pre>
+<p>
+The developer of a module may wish to annotate the module with information that is made accessible to clients. For example, the Java-style doc comment could be parsed and exposed. If <code>util/point.js</code> contained:
+</p>
+<pre class="code javascript"><span class="coMULTI">/**
+ * This is a module for making points. The authors have chosen a
+ * particulary vociferous implementation.
+ *
+ * @author alyssa.p.hacker@example.com
+ */</span>
+<span class="kw1">return</span> <span class="br0">&#123;</span>
+  getX: <span class="coMULTI">/* ... */</span>
+<span class="br0">&#125;</span>;</pre>
+<p>
+then the following could be true:
+</p>
+<pre class="code javascript"><span class="br0">&#40;</span><span class="kw2">import</span> <span class="st0">'util/point'</span><span class="br0">&#41;</span>.<span class="me1">author</span> === <span class="st0">'alyssa...'</span>;
+<span class="br0">&#40;</span><span class="kw2">import</span> <span class="st0">'util/point'</span><span class="br0">&#41;</span>.<span class="me1">doc</span> = <span class="st0">'This is a module...'</span>;</pre>
+<p>
+We note that this variant can be expanded to a more general strawman for annotations on ECMAScript objects.
+</p>
+
+</div>
+<!-- SECTION [17529-18705] -->
+<a name="module_self_reference"></a><h2>Module self reference</h2>
+<div class="level2">
+
+<p>
+ A module may wish to refer to its own module function. For example, it could recursively instantiate itself, or check if a particular object is an instance of itself (in cases where it is called as a constructor using <code>new</code>). We propose a variant where the module code receives, in its top-level lexical scope, a <code>const</code> reference called <code>module</code> pointing to the module function. This could be used in <code>util/point.js</code> as follows:
+</p>
+<pre class="code javascript"><span class="kw1">this</span>.<span class="me1">getX</span> = <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> x; <span class="br0">&#125;</span>;
+<span class="coMULTI">/* ... */</span>
+<span class="kw1">this</span>.<span class="me1">compareTo</span> = <span class="kw2">function</span><span class="br0">&#40;</span>aPoint<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw1">if</span> <span class="br0">&#40;</span>!<span class="br0">&#40;</span>aPoint <span class="kw1">instanceof</span> module<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">throw</span> <span class="st0">'Not a point'</span>; <span class="br0">&#125;</span>
+  <span class="coMULTI">/* ... */</span>
+<span class="br0">&#125;</span>;</pre>
+</div>
+<!-- SECTION [18706-19363] -->
+<a name="alternate_module_construction"></a><h2>Alternate module construction</h2>
+<div class="level2">
+
+<p>
+ Since a module function, as a type, has important semantics (namely, according to this proposal, it is guaranteed not to capture any external sources of authority in its lexical scope), it may be desireable to construct module functions as part of an application&rsquo;s architecture simply for these properties, rather than for breaking up code into separate compilation units. This can be done in either of two ways:
+</p>
+
+<p>
+<strong>1. Module <code>eval</code> function.</strong> Some <code>eval</code>-like function could be provided which compiles a string as a module and returns a module function:
+</p>
+<pre class="code javascript">moduleEval<span class="br0">&#40;</span><span class="st0">"this.getX = function() { return x; };"</span><span class="br0">&#41;</span></pre>
+<p>
+<strong>2. Module special form in code.</strong> A <code>module</code> grammar could be provided, similarly to <code>function</code>, which can encapsulate inline code. Its semantics would be to create a cut-point in the lexical scope of some code without having to relegate the disconnected code to a separate file and inventing a file name for it. For example:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> point = module<span class="br0">&#40;</span>x, y<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">this</span>.<span class="me1">getX</span> = <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> x; <span class="br0">&#125;</span>; <span class="coMULTI">/* ... */</span> <span class="br0">&#125;</span>;
+module person<span class="br0">&#40;</span><span class="kw3">name</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">this</span>.<span class="me1">getName</span> = <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="kw3">name</span>; <span class="br0">&#125;</span>; <span class="coMULTI">/* ... */</span> <span class="br0">&#125;</span>
+&nbsp;
+<span class="coMULTI">/* 'point' and 'person' are now in scope, of type module function */</span></pre>
+</div>
+<!-- SECTION [19364-20628] -->
+<a name="primordials"></a><h2>Primordials</h2>
+<div class="level2">
+
+<p>
+ To provide an alternative set of primordials (<code>Object</code>, <code>Array</code>, <em>etc.</em>) to a module instance, module functions could take an optional parameter of type <code>Context</code> as described in <a href="doku.php%3Fid=strawman:modules_primordials.html" class="wikilink1" title="strawman:modules_primordials" onclick="return svchk()" onkeypress="return svchk()">modules_primordials</a>:
+</p>
+<pre class="code javascript"><span class="br0">&#40;</span><span class="kw2">import</span> <span class="st0">'util/point'</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="br0">&#123;</span> x: <span class="nu0">3</span>, y: <span class="nu0">4</span> <span class="br0">&#125;</span>, aContext<span class="br0">&#41;</span></pre>
+</div>
+<!-- SECTION [20629-20948] -->
+<a name="comments"></a><h2>Comments</h2>
+<div class="level2">
+
+<p>
+ Some of the variants we present here are special cases of a general idea: allowing a module to specify a subprogram that runs once, when the module is loaded, which generates another subprogram which runs every time the module (or some part of it) is instantiated. As long as we ensure that the output of the first phase is transitively immutable, we can enforce isolation between instances created during the second phase.
+</p>
+
+<p>
+We welcome the committee&rsquo;s feedback on whether such a utility would be useful in general.
+</p>
+
+</div>
+<!-- SECTION [20949-21486] -->
+<a name="open_issues"></a><h1>Open issues</h1>
+<div class="level1">
+<ul>
+<li class="level1"><div class="li"> The exact grammar and candidate ECMA-262 text is not yet specified.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Should the platform-provided, asynchronous module loading function, which we call <code>pim</code> in our example, be specified by ECMA-262, or should it be left completely up to the host?</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> The relationship to <a href="doku.php%3Fid=strawman:modules_packages.html" class="wikilink1" title="strawman:modules_packages" onclick="return svchk()" onkeypress="return svchk()">modules_packages</a> is undetermined and pending discussion of the latter.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> The format of module identifiers is not a strong part of this proposal. Two options are path-like using the <code>/</code> separator, and Python-like using the <code>.</code> separator. Further options include module identifiers that do not look like paths at all &ndash; perhaps pointers to entries in a database or references to dynamically created code objects in a mobile code system.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Is <code>import</code> the correct name to use here? It is certainly the most logical reserved word for this specification to camp on, but does it adequately convey the meaning of what is being done? Should we use <code>load</code>, for example?</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [21487-22484] -->
+<a name="references"></a><h1>References</h1>
+<div class="level1">
+<ul>
+<li class="level1"><div class="li"> <a href="http://wiki.commonjs.org/wiki/Modules/1.1" class="urlextern" target="_blank" title="http://wiki.commonjs.org/wiki/Modules/1.1" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://wiki.commonjs.org/wiki/Modules/1.1</a> &ndash; Modules specification of the <a href="http://wiki.commonjs.org/wiki/CommonJS" class="urlextern" target="_blank" title="http://wiki.commonjs.org/wiki/CommonJS" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">CommonJS</a> project.</div>
+</li>
+<li class="level1"><div class="li"> <a href="http://docs.google.com/Doc?id=dfgxb7gk_34gpk37z9v" class="urlextern" target="_blank" title="http://docs.google.com/Doc?id=dfgxb7gk_34gpk37z9v" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://docs.google.com/Doc?id=dfgxb7gk_34gpk37z9v</a> &ndash; Proposal presented to TC39 in January 2009.</div>
+</li>
+<li class="level1"><div class="li"> <a href="http://code.google.com/p/google-caja/source/browse/#svn/trunk/experimental/gadgy" class="urlextern" target="_blank" title="http://code.google.com/p/google-caja/source/browse/#svn/trunk/experimental/gadgy" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://code.google.com/p/google-caja/source/browse/#svn/trunk/experimental/gadgy</a> &ndash; Example of using the Emaker-style module system built into Caja (keyword is <code>load</code> instead of <code>import</code>).</div>
+</li>
+<li class="level1"><div class="li"> <a href="http://wiki.erights.org/w/index.php?title=Emaker" class="urlextern" target="_blank" title="http://wiki.erights.org/w/index.php?title=Emaker" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://wiki.erights.org/w/index.php?title=Emaker</a> &ndash; Emaker documentation.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [22485-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/3/3c65e7bba9a466298a09337df9600628.xhtml used -->
+</body>
+</html>

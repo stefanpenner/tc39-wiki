@@ -1,0 +1,127 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:hashcodes&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:hashcodes&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:hashcodes&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:hashcodes&amp;do=export_html.html#hashcodes" class="toc">Hashcodes</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:hashcodes&amp;do=export_html.html#open_tickets" class="toc">Open tickets</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:hashcodes&amp;do=export_html.html#proposal" class="toc">Proposal</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:hashcodes&amp;do=export_html.html#rationale" class="toc">Rationale</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:hashcodes&amp;do=export_html.html#a_note_regarding_security" class="toc">A note regarding security</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="hashcodes"></a><h1>Hashcodes</h1>
+<div class="level1">
+
+<p>
+ (Also see the <a href="doku.php%3Fid=discussion:hashcodes.html" class="wikilink1" title="discussion:hashcodes" onclick="return svchk()" onkeypress="return svchk()">discussion page</a> for this proposal)
+</p>
+
+</div>
+<!-- SECTION [1-100] -->
+<a name="open_tickets"></a><h2>Open tickets</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="http://bugs.ecmascript-lang.org/ticket/52#preview" class="urlextern" target="_blank" title="http://bugs.ecmascript-lang.org/ticket/52#preview" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Ticket #52</a>: What is the interaction of intrinsic::hashcode with the overloaded <code>===</code> operator?</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [101-282] -->
+<a name="proposal"></a><h2>Proposal</h2>
+<div class="level2">
+
+<p>
+ A global, non-deletable, non-alterable function <code>intrinsic::hashcode(o:*):uint</code> <strong>shall</strong> exist in every implementation. 
+</p>
+
+<p>
+The function <strong>shall</strong> be pure with respect to <code>===</code>:
+</p>
+<ul>
+<li class="level1"><div class="li"> Given two objects <code>a</code> and <code>b</code> with <code>a===b</code>, the implementation must maintain <code>hashcode(a) === hashcode(b)</code></div>
+</li>
+</ul>
+
+<p>
+ The function <strong>should</strong> be <em>mostly-pure</em> with respect to <code>!==</code>:
+</p>
+<ul>
+<li class="level1"><div class="li"> Given two objects <code>a</code> and <code>b</code> with <code>a !== b</code>, the implementation should aim to maintain <code>hashcode(a) !== hashcode(b)</code>.</div>
+</li>
+<li class="level1"><div class="li"> <em>Mostly-pure</em> means that the implementation <strong>should</strong> aim for this condition to hold in a probabilistic majority of cases. The intention is that hashtables indexed by value can use <code>hashcode</code> to divide the set of live objects in a program into &ldquo;very shallow&rdquo; buckets. It is acceptable for such buckets to contain some collisions, but the number of collisions should be as close to zero as possible.</div>
+</li>
+<li class="level1"><div class="li"> An obvious exception: <code>NaN !== NaN</code> for all not-a-number values, but it&rsquo;s legal for <code>intrinsic::hashcode</code> to hash all <code>NaN</code>s to <code>0</code>.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [283-1358] -->
+<a name="rationale"></a><h2>Rationale</h2>
+<div class="level2">
+
+<p>
+ Hashing for the purpose of inserting an object into various kinds of fast-lookup data structures is a common operation.  The two most common subjects of hashing are strings (hashing their names) and objects (hashing their identities).
+</p>
+
+<p>
+String hashing can be implemented in the language, but typical ECMAScript implementations will contain faster internal string hashing mechanisms that might as well be exposed in a standard way.
+</p>
+
+<p>
+Object identity hashing cannot be implemented in the language without support from the garbage collector (weak references, weak tables, or a mechanism like &ldquo;SRO&rdquo;) to make sure the map from objects to identity names is garbage collected.  Since there exist efficient behind-the-scenes mechanisms for maintaining such a map, it is probably better for the system to provide the object identity facility.
+</p>
+
+</div>
+<!-- SECTION [1359-2215] -->
+<a name="a_note_regarding_security"></a><h2>A note regarding security</h2>
+<div class="level2">
+
+<p>
+ <em>This text belongs in an informative annex</em>
+</p>
+
+<p>
+The function <code>intrinsic::hashcode</code> <strong>should not</strong> return pointer values cast to integers:
+</p>
+<ul>
+<li class="level1"><div class="li"> Exposing memory locations of objects may make security vulnerabilities in the host environment significantly worse. Implementations &ndash; in particular those which read network input &ndash; should return numbers unrelated to memory addresses if possible, or at least use memory addresses subject to some cryptographically strong one-way transformation, or sequence numbers, cookies, etc.</div>
+</li>
+</ul>
+
+<p>
+ See <a href="https://github.com/justdionysus/gcwoah" class="urlextern" target="_blank" title="https://github.com/justdionysus/gcwoah" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Conservative GC for Memory Disclosure</a> and <a href="https://esdiscuss.org/topic/memory-safety-and-weak-references" class="urlextern" target="_blank" title="https://esdiscuss.org/topic/memory-safety-and-weak-references" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow"> memory safety and weak references</a>.
+</p>
+
+</div>
+<!-- SECTION [2216-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/c/c1efa4a362cac0d15de88a4cb932cca8.xhtml used -->
+</body>
+</html>

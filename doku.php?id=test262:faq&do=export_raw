@@ -1,0 +1,41 @@
+====== Frequently Asked Questions ======
+
+=== Why is there only a single ES5Harness.registerTest invocation per *.js file in test262 tests? ===
+
+== Answer (2011/07/27) ==
+Some fraction of the tests on test262 are destructive in nature.  For example, imagine a test doing something like calling //Object.freeze// on the global object.  If we tried bundling test262 files together, this type of test would have to be executed last, there couldn't be similar destructive tests in the same file, etc.  We're not limited to destructive failures in nature either, and have seen the following class of issues occur:
+
+<code javascript>
+	//Test A
+	function testcase() {
+		/*adds an "abc" property to the global object; does some verification on it; does not remove "abc" from the global object*/
+	}
+
+	//Test B
+	function testcase() {
+		/*does something that should fail to add "abc" property to the global object; verifies that "abc" isn't there*/
+	}
+</code>
+
+Running these two tests in the same file fails if:
+  * Test B is run first and fails (i.e., "abc" is added to the global object => it doesn't matter if Test A succeeds in doing this or not, the test will pass regardless) 
+  * Test A runs first and forgets to delete "abc" => Test B cannot fail 
+  * Test A runs first and "abc" is a non-config/non-writable property => there's no way "abc" can be deleted by Test A to clean-up the execution environment for Test B
+
+
+\\ \\ One final reason to separate the test cases into distinct files is for testing of new syntax added to JavaScript.  Suppose ES.Next adds a new **//z//** modifier to RegExp objects, and accordingly some new test262 case similar to:
+<code javascript>
+  function testcase() {
+      assertEquals(/a/z.test("a"), true);
+  }
+</code>
+
+is added.  If this test case was added to a file containing **all** other test cases **and** browser A does not yet support the **//z//** modifier => browser A will end up failing **all** test cases as the entire file will be unparsable due to the **//z//** modifier usage. 
+
+
+=== Why are there a bunch of failures where no test case details are reported (e.g., empty 'Description' ) each time the test262 website is updated? ===
+
+
+
+== Answer (2011/07/01) ==
+The test262 website is configured to cache test cases such that all 10,000+ do not need to be re-downloaded each time the test suite is run.  This has caused some confusion among test262 users in the past, and is something we'll be [[https://bugs.ecmascript.org/show_bug.cgi?id=87|changing soon]].  In the meantime, clearing your browser's cache ensures you'll have the most recent test cases available.  For example, you can do this in //Internet Explorer 9// by pressing //Ctrl-R// and //Chrome// has a //Clear Browsing Data...// option available in chrome://settings/advanced which will do the same thing.

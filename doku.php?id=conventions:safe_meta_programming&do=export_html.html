@@ -1,0 +1,130 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=conventions:safe_meta_programming&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=conventions" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=conventions:safe_meta_programming&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=conventions:safe_meta_programming&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="safe_meta_programming"></a><h1>Safe Meta Programming</h1>
+<div class="level1">
+
+<p>
+ How does one write a JavaScript meta-program that can operate reliably on other objects in its JavaScript context (in a browser &ndash; within the same frame), despite the loading of arbitrary code later into that same frame? The problem is that the later code may arbitrarily modify, override, or remove methods on the primordial built-in objects. To make the problem tractable, we assume that the meta program consists of modules that are first evaluated before their frame has become corrupted.
+</p>
+
+<p>
+<em>By &ldquo;meta program&rdquo;, all I mean here is a program that must operate correctly in the context of arbitrary other programs in the same context, and on arbitrary instances of those other programs. Sorry for the unnecessary jargon.</em>
+</p>
+
+<p>
+To take a simple problem, in ES5, the way to emulate the ES-next rest params is to slice the <code>arguments</code> object. Say we want to write a reliable equivalent of something as simple as a function that adds all its arguments. In ES-next we might say:
+</p>
+<pre class="code javascript">  <span class="kw2">function</span> addAll<span class="br0">&#40;</span>...<span class="me1">args</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">var</span> result = <span class="nu0">0</span>;
+    <span class="kw1">for</span> <span class="br0">&#40;</span><span class="kw2">var</span> i = <span class="nu0">0</span>; i &lt; args.<span class="me1">length</span>; i++<span class="br0">&#41;</span> <span class="br0">&#123;</span> result += args<span class="br0">&#91;</span>i<span class="br0">&#93;</span>; <span class="br0">&#125;</span>
+    <span class="kw1">return</span> result;
+  <span class="br0">&#125;</span></pre>
+<p>
+In ES5 we might think to say
+</p>
+<pre class="code javascript">  <span class="co1">// THIS CODE IS NOT YET SAFE</span>
+  <span class="kw2">var</span> slice = <span class="br0">&#91;</span><span class="br0">&#93;</span>.<span class="me1">slice</span>; <span class="co1">// safe so far, since we assume no corruption yet.</span>
+ 
+  <span class="kw2">function</span> addAll<span class="br0">&#40;</span>var_args<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">var</span> args = slice.<span class="me1">call</span><span class="br0">&#40;</span>arguments, <span class="nu0">0</span><span class="br0">&#41;</span>;
+    <span class="co1">//.... as above</span>
+  <span class="br0">&#125;</span></pre>
+<p>
+The problem with the above code is that slice&rsquo;s <code>call</code> property may no longer be the original <code>Function.prototype.call</code>. We could try to save <code>Function.prototype.call</code> as well, but then how do we use it without naming call&rsquo;s <code>call</code>, <code>bind</code>, or <code>apply</code> methods after a &ldquo;.&rdquo;, which would have the same problem? We can use the following short prelude to define an <code><a href="http://www.2ality.com/2011/11/uncurrying-this.html" class="urlextern" target="_blank" title="http://www.2ality.com/2011/11/uncurrying-this.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">uncurryThis</a></code> function, which we can then use to make a <code>sliceFn</code> function which we can use safely. The <code>sliceFn</code> function is like the <code>slice</code> method, except that the implicit <code>this</code> parameter of the <code>slice</code> method is instead the new explicit first argument of the <code>sliceFn</code> function.
+</p>
+
+<p>
+Here, we show the full ES5 module pattern, to make explicit how there lexical variables are encapsulated in the module. Our solution here presumes that <code>Function.prototype.bind</code> is built into the language.
+</p>
+<pre class="code javascript">  <span class="kw2">var</span> addAll;
+  <span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="st0">"use strict"</span>;
+&nbsp;
+    <span class="kw2">var</span> bind = <span class="kw2">Function</span>.<span class="me1">prototype</span>.<span class="me1">bind</span>;
+    <span class="kw2">var</span> uncurryThis = bind.<span class="me1">bind</span><span class="br0">&#40;</span>bind.<span class="me1">call</span><span class="br0">&#41;</span>;
+&nbsp;
+    <span class="co1">// not needed for this example, but often useful</span>
+    <span class="kw2">var</span> applyFn = uncurryThis<span class="br0">&#40;</span>bind.<span class="me1">apply</span><span class="br0">&#41;</span>;
+&nbsp;
+    <span class="kw2">var</span> sliceFn = uncurryThis<span class="br0">&#40;</span><span class="br0">&#91;</span><span class="br0">&#93;</span>.<span class="me1">slice</span><span class="br0">&#41;</span>;
+&nbsp;
+&nbsp;
+    addAll = <span class="kw2">function</span><span class="br0">&#40;</span>var_args<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw2">var</span> args = sliceFn<span class="br0">&#40;</span>arguments, <span class="nu0">0</span><span class="br0">&#41;</span>;
+      <span class="co1">//...as above</span>
+    <span class="br0">&#125;</span>;
+  <span class="br0">&#125;</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;</pre>
+<p>
+Once you know what <code>uncurryThis</code> does, it is simple to understand how to use it correctly. But how does the above code implement this meaning? To understand this, we need to introduce a bit of notation. 
+</p>
+
+<p>
+In terms of the first example, our notation &ldquo;<code>slice.call(arguments,0) ==&rArr;&gt; arguments.slice(0)</code>&rdquo; means: The first expression, which works, <em>is like</em> the meaning the second expression would have under the assumptions that
+</p>
+<ul>
+<li class="level1"><div class="li"> The value of <code>slice.call</code> is the original <code>call</code> member of <code>slice</code>, and</div>
+</li>
+<li class="level1"><div class="li"> The value of <code>arguments.slice</code> on the right is the value of <code>slice</code> on the left.</div>
+</li>
+</ul>
+
+<p>
+Notice that the second assumption does not happen to be true for <code>arguments</code>, but the equivalence would hold if both assumptions were true.
+</p>
+
+<p>
+ Recall that our unsafe code used <code>slice.call(..)</code> in the same position that we&rsquo;re now using <code>sliceFn(..)</code>. In <code>slice.call(..)</code>, we&rsquo;re calling <code>Function.prototype.call</code> with call&rsquo;s this-binding being the <code>slice</code> method. So to turn this method call into a function call, we need to bind <code>slice</code> as the this-binding of <code>call</code>, which we could do with <code>function badUncurryThis(f) { return call.bind(f); }</code>. This works because 
+</p>
+
+<p>
+<code>call.bind(f)(thisBinding, ...args) ==&rArr;&gt; f.call(thisBinding, ...args) ==&rArr;&gt; thisBinding.f(...args)</code>.
+</p>
+
+<p>
+This <code>badUncurryThis</code> is safe so long as it is <em>only</em> used at initialization time, since <code>call.bind</code> may again be something else later. This would be ironic, since the functions that it makes are safe to use later. 
+</p>
+
+<p>
+Notice that the same observation applies here: <code>call.bind(f)</code> is calling the <code>bind</code> method, with its this-binding being the <code>call</code> method. To turn this method call into a function call, we need to bind <code>call</code> as the this-binding of <code>bind</code>, i.e., <code>bind.bind(Function.prototype.call)</code>. For brevity, we obtain the <code>call</code> method above simply as <code>bind.call</code>, which is assumed safe because it happens <em>only</em> at initialization time. This works because
+</p>
+
+<p>
+<code>bind.bind(call)(f)(thisBinding, ...args) ==&rArr;&gt; call.bind(f)(thisBinding, ...args)</code>, bringing us into the earlier almost-equivalences.
+</p>
+
+<p>
+Finally, <code>applyFn(f, thisBinding, args) ==&rArr;&gt; bind.bind(call)(apply)(f, thisBinding, args) ==&rArr;&gt; thisBinding.f(...args)</code>. 
+</p>
+
+<p>
+For example, <code>applyFn(slice, array, [1,2]) ==&rArr;&gt; slice.apply(array, [1,2]) ==&rArr;&gt; array.slice(1,2)</code>. 
+</p>
+
+</div>
+
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/1/17dcc257d2a698e883786250b0380010.xhtml used -->
+</body>
+</html>

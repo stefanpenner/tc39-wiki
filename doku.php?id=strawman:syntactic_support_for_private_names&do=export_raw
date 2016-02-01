@@ -1,0 +1,537 @@
+====== Syntactic Support for Private Names ======
+
+This is a proposal for syntactic extensions that make it easier to use [[harmony:private_name_objects|unique and private names]].
+
+===== "At-Names" and Their Declaration =====
+
+An "At-Name" is a new form of lexical token that consists of an @ character immediately followed by an //IdentifierName//:
+
+<code ebnf>
+Token :: 
+   ...
+   AtName
+
+AtName :: 
+   @ IdentifierName 
+</code>
+
+At-Names are used to identify lexically scoped bindings whose values are always [[harmony:private_name_objects|Name Objects]]. Such bindings are introduced using new declaration statements. For example:
+<code javascript>
+name @foo;  //declare a lexically scoped At-Name with a new unique name value.
+</code>
+
+A name declaration of the above form creates a constant binding in the local scope contour whose value is a newly created [[harmony:private_name_objects|Unique Name Objects]]. Semantically the above declaration is similar to:
+
+<code javascript>
+import Name from "@name";
+const __foo = new Name(true);  // __foo represents an unique identifier that is different from foo
+</code>
+
+The static semantics for name declaration are similar to let/const declarations. They have a temporal dead zone and a lexical contour may not contain multiple declarations for a specific At-Name.
+
+A name declaration may bind only an At-Name. It is an early error to try to bind a regular identifier in a name name declaration:
+<code javascript>
+name foo;  //this is an early error. Only At-Names are allowed
+</code>
+
+For binding purposes, At-Names are distinct from the same //IdentifierName// without the leading **@**.
+<code javascript>
+{
+   //these are two distinct declarations that create separate bindings for the At-Name "@foo" and the identifier "foo".
+   name @foo;
+   const foo = new Name(true);
+}
+</code>
+
+At-Names are not simply identifiers prefixed with a "@". They are special binding forms that are handled specially by environment records. At-Names never shadow or conflict with identifier based bindings. At-Names may be declared in the global scope, but they do not create global property objects. Instead they exist (possibly along with modules names) as part of the global environment record that is separate from the global object.
+
+Like let/const declarations, a single name declaration may create multiple bindings:
+<code javaScript>
+name @foo, @bar, @baz;
+</code>
+Again, only //AtNames// may occur in such a declaration list.
+
+
+
+==== Private Name Declarations ====
+A private declaration of the above form creates a constant binding in the local scope contour whose value is a newly created [[harmony:private_name_objects|Private Name Objects]].  A private declaration is just like a name declaration except that the bound value is a private name rather than a unique name:
+<code javascript>
+private @secret;  //declare a lexically scoped At-Name with a private name value.
+</code>
+
+Semantically the above declaration is similar to:
+
+<code javascript>
+import Name from "@name";
+const __secret = new Name(false);  //__secret represents an unique identifier that is different from "secret"
+</code>
+
+Other than for the type of value they create, name declarations and private name declarations are semantically identical. In most places in this strawman, discussions of name declarations apply equally to private name declarations. 
+
+
+
+==== Backwards Compatibility Considerations ====
+
+Name declarations use a keyword that was not reserved in previous ECMAScript editions. Hence, existing programs may use "name" as an variable or function name:
+<code javascript>
+var name;
+name = function() {alert('name')}
+name();
+</code>
+
+With the addition of name declarations, "name" would be a context sensitive keyword. It only interpreted as a keyword when it appears as the first token in a //Declaration// context and is immediately followed by an //AtName//. Single-token look-ahead is adequate to disambiguate valid name declarations or any other uses of the identifier "name".
+
+Because the second token of a name declaration must be an //AtName//, there is no need to restrict line terminators after the contextual "name" keyword in order to maintain backwards comparability in the presences of ASI. Hence multi-line name declarations are allowed:
+<code javascript>
+name
+   @foo,
+   @bar;
+</code>
+
+===== Referencing and Using At-Names =====
+
+
+==== At-Names in Expressions ====
+An //AtName// may occur as a //PrimaryExpression//, similar to an //Identifier//:
+
+<code ebnf>
+PrimaryExpression ::
+   ...
+   AtName
+</code>
+
+An//AtName// used as a primary express evaluates to its unique or private name value.  However, it is an early syntax error if a name declaration for the referenced //AtName// is not within the scope of the expression. Because AtNames always has a constant binding, it is an early error to use an //AtName// as the left-hand-side of an assignment operator.
+
+A usage example:
+
+<code javascript>
+name @foo;
+private @bar;
+let obj = {};
+obj[@foo] = 1;  //create a couple properties
+obj[@bar] = 2;
+
+function logProp(o,key) {console.log("property value: "+ o[key])}
+
+logProp(obj, @foo); // will log "property value: 1"
+logProp(obj, @bar); // will log "property value: 2"
+let key = @foo;     // assign value of @foo to variable key
+logProp(obj,key);   // will also log "property value: 1"
+</code>
+
+When used as a primary expression, //AtNames// behave just like const declaration references.  The above example behaves identicially to:
+<code javascript>
+const __foo = new Name(true);
+const __bar = new Name(false);
+let obj = {};
+obj[__foo] = 1;  //create a couple properties
+obj[__bar] = 2;
+
+function logProp(o,key) {console.log("property value: "+ o[key])}
+
+logProp(obj,__foo);  //will log "property value: 1"
+logProp(obj,__bar);  //will log "property value: 2"
+let key = __foo;     //assign value of @foo to variable key
+logProp(obj,key);    //will also log "property value: 1"
+</code>
+
+While //AtNames// can be used in expressions, their utility is greater when they appear in various non-expression contexts.
+
+
+==== At-Names in Dot Notation Property Accessors ====
+
+An //AtName// may occur after a dot in a property accessor:
+
+<code javascript>
+name @foo, @bar;
+let obj = {};
+
+//use assignment to define two properties
+obj.@foo = function(v){alert(v + this.@bar)} ;
+obj.@bar = "world!";
+
+//call a method
+obj.@foo("Hello, ");
+</code>
+
+When a //AtName// appears after a dot in a property access, the //AtName// is dynamically resolved to a declared name binding and the binding value is used as the key for the property access.  It is an early error if the property access is not within the scope of a name declaration for the //AtName//.
+
+An property access such as ''obj.@foo'' is semantically identical to a property access like ''obj[@foo]''.   However, the dot notation is more suggestive of the intent to use a fixed rather than a dynamically variable computed property value.
+
+
+==== At-Names in Object Literals ====
+
+An //AtName// may appear in any //PropertyName// context within an object literal:
+<code javascript>
+private @foo, @bar, @baz, @bam;
+let obj = {
+   @foo: "a data property",
+   @bar() {return "a concise method property"},
+   get @baz() {return "a get accessor"},
+   *@bam(n) {yield 0; return n} //a generator method
+};
+</code>
+Appearance of an //AtName// as a //PropertyName// must be within the scope of a name declaration for that At-Name. It is in early error if an unresolvable //AtName// is used as a //PropertyName//.
+
+
+Using At-Names in object literals supports declarative construction of objects that include unique/private name keys.  Without the use of At-Names the definition of the above object would have to be expressed more imperatively :
+<code javascript>
+const __foo = new Name(),
+      __bar = new Name(),
+      __baz = new Name(),
+      __bam = new Name();
+let obj = {};
+obj[__foo] = "a data property";
+obj[__bar] = function() {return "a concise method property"};
+Object.defineProperty(obj,__baz,{get: function() {return "a get accessor"}, configurable: true});
+obj[__bam] = function *(n) {yield 0; return n};
+</code>
+
+==== At-Names in Class Definitions  ====
+
+Similarly to their use in object literals, an //AtName// may appear in any //PropertyName// context within a class definition:
+<code javascript>
+private @x, @y;
+name @validate;
+class Point {
+   get x() {return this.@x}
+   set x(v) {this.@x = this.@validate(v)}
+   get y() {return this.@y}
+   set y(v) {this.@y = this.@validate(v)}
+   @validate(value) {
+      if (typeof value !== "number") throw TypeError("number expected");
+      return value;
+   }
+   constructor (x,y) {
+      this.x = x;
+      this.y = y;
+   }
+};
+
+class QIPoint extends Point{
+   @validate(value) {
+      super.@validate(value);
+      if (value<0) throw RangeError("negative values not accepted");
+      return value;
+   }
+}
+</code>
+Again, it is useful to contrast this to the equivalent code written without At-Names:
+
+<code javascript>
+const __x = new Name(), __y= new Name();
+const __validate = new Name(true);
+class Point {
+   get x() {return this[__x]}
+   set x(v) {this[__x] = this[__validate](v)}
+   get y() {return this[__y]}
+   set y(v) {this[__y] = this[__validate](v)}
+   constructor (x,y) {
+       this.x = x;
+       this.y = y;
+    }
+};
+Point.prototype = function __validate(value) {
+   if (typeof value !== "number") throw TypeError("number expected");
+   return value;
+};
+
+class QIPoint extends Point {};
+
+// note that the following is currently illegal, because it contains a super reference outside of a class definition body
+QIPoint.prototype = function __validate(value) {
+   super[__validate](value);
+   if (value<0) throw RangeError("negative values not accepted");
+   return value;
+}
+</code>  
+:!: The above example demonstrates that without At-Names, there is no way to define unique/private named methods within a class definition.  Instead all such methods must be imperatively added to the class prototype object.  In this example, using the current consensus class semantics it is actually impossible to legally define the subclass QIPoint.  The problem is that without At-Names the method with the unique name key __validate must be defined separate from the class definition.  However, it is currently illegal to reference **super** in a function that is outside of the body of a class definition. This issue is eliminated when At-Name are used within class declarations.  It could also be eliminated by supporting the [[strawman:define_properties_operator|:= define properties operator]] and allowing it to rebind **super**.   
+
+===== Other Possible At-Name Features =====
+
+The above is a base level of syntactic support for Unique/Private Names.  It could be enhanced in the following ways.
+
+
+
+==== Name Declarations with Explicit Initializers  ====
+As describe above name declarations always create a binding to a newly instantiated unique/private name object. The actually declaration consists of a comma-separated list of //AtName// tokens.  Unlike const/let declarations there is no optional //Initialiser//.  If an //Initialiser// is allowed, then such name declarations could create alias for already existing unique/private name objects.  For example:
+
+<code javascript>
+name @foo;
+name @bar = @foo;
+console.log(@foo === @bar);  //true because both @foo and @bar are bound to the same name object
+let obj = {@foo: 42};
+console.log(obj.@bar);  //42
+</code>
+
+The name declaration initialization semantics would ensure that the value bound to the //AtName// was always a name value.  It would be a runtime TypeError if the value of the //initialiser// was not a name object.
+
+The primary use case of such initialized name declaration would be to allow easy use of unique/private names that are obtained by function call or long qualified path names.  For example:
+
+<code javascript>
+name @secret = GeorgeFenneman.getTodaysSecretWord();
+name @reset = Graphics.colorModels.CYN.resetKey;
+let obj = {
+   @secret: 'cigar',
+   init() {
+       Background.@reset();
+   }
+};
+</code>
+
+Name declarations and modules are covered in the next item. However, it is appropriate here to point out that names with initializers also provides a basic mechanism for sharing name declarations between modules:
+
+<code javascript>
+module A {
+   name @aName;
+   export const aName=@aName;
+}
+module B {
+   import aName from A;
+   name @aName=aName;
+   ...
+}
+</code>
+
+The main issue with initialized name declarations is that it premits what appears to be distinct //AtNames// to actually reference the same property key.  For example,
+<code>
+name @foo;
+name @bar = @foo;
+...
+...
+let obj={
+   @foo: 1,
+   @bar: 2
+};
+</code>
+A casual inspection of the above object literal would suggest that it is defining an object with two properties.  However, because both @foo and @bar have the same name object value, it is really creating an object with a single property. It has been previously argued in the context of the [[harmony:object_literals#object_literal_computed_property_keys|computed property keys proposal]] that this could be error prone for code readers and could preclude certain sorts of early code optimization opportunities. However, aliasing of computed or long path names seems to have relatively high utility that may justify the asociated hazards.      
+
+
+==== Export/Import of Name Declarations ====
+
+Can a name declaration have an export prefix?  This seems desirable.  For example:
+<code javascript>
+module SystemNames {
+   //make available unique names that are used as extension points for some standard built-in function
+   export name @iterator, @toStringTag, @concatTarget, @metaObject;
+}
+
+module myCode {
+   import @toStringTag from SystemNames;
+   let obj = {
+      x: 0,
+      y: 0,
+      @toStringTag: "literal point"   //text used by Object.prototype.toString
+   };
+   ...
+}
+
+module myCollection {
+   import @concatTarget from SystemNames;
+   export class MyArraySubclass extends Array {
+      @concatTarget() {
+          return new this.constructor(); //make sure concat returns subclass instances
+      }
+      ...
+   }
+}
+</code>
+The above seems like a desirable way to share name declaration among modules.  However, a problem arises with module instances.  In addition to being usable as explicit imports, Module exports also appear as properties of the associated module instance. Name declarations based on At-Names will cause issues if they appear as properties of module instances. Consider:
+<code javascript>
+module MyModule {
+   // This can't work, @concatTarget isn't defined in the scope of MyModule,
+   // its value is what we want to import
+   name @ct = SystemNames.@concatTarget;
+
+   // This shouldn't work. It creates confusion between lexically scoped
+   // At-Names and string property keys that we have avoided up to this point.
+   name @tST = SystemNames["@toStringTarget"];
+}
+</code>
+
+The solution to this problem may be to simply disallow name declarations from appearing as properties of module instance objects and to require the use of explicit imports for cross-module name declaration access.
+  
+==== Class Local Name Declarations  ====
+
+As shown [[strawman:syntactic_support_for_private_names#at-names_in_class_definitions|above]], the private name declarations used within a class definition must occur in separate declarations that are not part of the actual class definition. This is anti-modular in that it breaks what should be a cohesive class definition into multiple pieces. This results in refactoring hazards and code that is more difficult to read.
+
+A solution to this problem would be to allow name declarations to occur as //ClassElement// within a //ClassBody//:
+<code ebnf>
+ClassElement :
+   NameDeclaration
+   PrivateDeclaration
+   MethodDefinition
+   ;
+</code>
+The //ClassBody// would serve as a new nested lexical contour for any name declarations that appear as a //ClassElement//. Any **name** or **private** declarations within class body are local to that body. Because name declarations are  the only declaration forms that are class elements, the lexical contour of a //ClassBody// only contains  bindings for At-Names.
+
+Using //ClassElement// level name declarations the class example from above can be restated as:
+<code javascript>
+name @validate;
+
+class Point {
+   private @x, @y;  // <======= private declaration now scoped to class body
+   get x() {return this.@x}
+   set x(v) {this.@x = this.@validate(v)}
+   get y() {return this.@y}
+   set y(v) {this.@y = this.@validate(v)}
+   @validate(value) {
+      if (typeof value !== "number") throw TypeError("number expected");
+      return value;
+   }
+   constructor (x,y) {
+      this.x = x;
+      this.y = y;
+   }
+};
+
+class QIPoint extends Point{
+   @validate(value) {
+      super.@validate(value);
+      if (value < 0) throw RangeError("negative values not accepted");
+      return value;
+   }
+}
+</code>
+
+Note that the declaration for ''@validate'' still needs to be outside the body of Point.  This is because it is shared among two separate class bodies and hence can't be scoped to either individual body.
+
+==== Class "Protected" Name Declarations  ====
+In the above example, the declaration of ''@validate'' must be outside of both class declarations so it can be referenced from within the class bodies of both declarations.  In this example, placeing the name declaration at the same lexical level as the the class declarations is sufficient to achieved the necessary shared visibility for ''@validate''.
+
+However, it is frequently desirable for subclasses to have access to non-public properties of superclasses that are defined in different modules or scopes. Such would be the case if ''QIPoint'' in this example needed to be defined in a separate source file.  Static OO languages such as C++ and Java support this with the concept of "protected" member visibility. A protected member is visible to subclasses but not visible to to code that is outside the subclass class hierarchy within which it is declared.
+
+Note that "protected" member visibility is not a security mechanism, as such members can be accessed by any code that is capable of subclassing the class that defines a protected member.  Instead, "protected" member visibility is useful as a means of formalizing a //public// subclass extensibility interface provided by a class. Separation between the subclass and client object interfaces can be clarified by using using "protected" member names for members of the subclass interface and normal "public" names  for the regular client object interface. 
+
+The concept of subclass "protected" property visibility can be supported for ECMAScript by providing a **protected** name declaration that can only occur as a //ClassElement//.  Within a //ClassBody//, a **protected** name declaration is semantically equivalent to a **name** declaration.  This permits the above Point example to be restated as:
+
+<code javascript>
+class Point {
+   private @x, @y; 
+   protected @validate;  //<==== protected is locally scoped to class body and ...
+   get x() {return this.@x}
+   set x(v) {this.@x = this.@validate(v)}
+   get y() {return this.@y}
+   set y(v) {this.@y = this.@validate(v)}
+   @validate(value) {
+      if (typeof value !== "number") throw TypeError("number expected");
+      return value;
+   }
+   constructor (x,y) {
+      this.x = x;
+      this.y = y;
+   }
+};
+</code>
+
+Locally, within the class body, a **protected** name declaration is semantically equivalent to a **name** declaration. It creates a new unique name object and binds it to an At-Name within the scope of the class body.  However, such declarations have an additional semantics that name declaration do not have:  the protected At-Name bindings are also visible as local bindings within the bodies of any subclass definitions that directly or indirectly "extends" the class declaration containing the protected name declaration.  This permits  ''QIPoint'' to reference ''@validate'' even if it isn't in the same module or source files as ''Point'': 
+
+<code javascript>
+class QIPoint extends Point{
+   @validate(value) {  //<==== @validate At-Name binding is "inherited" from Point
+      super.@validate(value);
+      if (value<0) throw RangeError("negative values not accepted");
+      return value;
+   }
+}
+</code>
+
+How does this work? When a class definition that contains **protected** name declarations in its class body is evaluated, a ''Map'' object is created.  The keys of this map are the strings representation of At-Names that appear in protected declarations within the class body. The values of each map element is the unique name object that is bond to the corresponding At-Name.  This map is stored as the value of a property of the class object (the constructor) that is created by evaluating the class definition. The name of this property is a system provided unique name that we will refer to as ''@protectedBindings''. Because the protected At-Name bindings of a class are a direct reflection of the source code of the class, the ''@protectedBindings'' property of a class object is frozen and the its map value is immutable.
+
+So, for example, ''Point.@protectedBindings.get("@validate")'' would evaluate to the same unique name value as a reference to ''@validate'' from within the class body of ''Point''.
+
+When a class definition with an **extends** clause is evaluated it walks the prototype chain of the extended object looking for ''@protectedBindings'' maps. From all such maps it composes a new lexical environment, called the //inherited names environment//,  containing At-Name bindings.  When constructing the inherited names environment, protected name bindings in subclasses over-ride any like-named bindings from superclasses. The inherited names environment is used as an intermediate lexical environment between the environment containing the class definition and the class body environment.  The inherited names environment shadows the environment containing the class definition and is, itself, shadowed by its class body environment.
+
+=== Scoping Issues with Protected Properties  ===
+
+In the absence of protected name declarations, At-Name references are statically resolvable to specific bindings.  As stated above, it is an early error for a reference to an At-Name to not be statically in the scope of a name declaration.  As described so far, protected declaration would make such static At-Name resolution impossible.  Consider this class declaration that occurs by itself in a module:
+
+<code javascript>
+module QI {
+  class QIPoint extends Point{
+     @validate(value) {     //<==== we can't tell by inspection whether @validate is defined
+        super.@validate(value);
+        if (value<0) throw RangeError("negative values not accepted");
+        return value;
+     }
+  }
+}
+</code>
+
+Whether or not the references to ''@validate'' are legal now depend upon upon the value of ''Point'' used when the ''QIPoint'' class definition is evaluated. If ''Point'' has ''"@validate"'' in its ''@protectedBindings'' maps then the class definition for ''QIPoint'' is valid. If not, a dynamic error will occur when evaluating the class definition.
+
+Another issue is illustrated by this version:
+<code javascript>
+module QI {
+
+  private @validate;
+
+  class QIPoint extends Point{
+     @validate(value) {  //<==== does this use the module level definition of @validate or one inherited from Point?
+        super.@validate(value);
+        if (value<0) throw RangeError("negative values not accepted");
+        return value;
+     }
+  }
+}
+</code>
+In this case there is a local definition of ''@validate'' that is clearly in scope of the class definition's ''@validate'' references.  However, in the presence of protected name declarations we can't be sure that this local declaration is actually being used because if ''Point'' has a protected declaration for ''@validate'' it will shadow the local declaration. Even if this happen, it is other clear whether or not that is the actual programmer's intent.
+
+One way around such issue is to always require an explicit **protected** declaration within a class definition, in order to reference inherited protected named.  In that case, class definitions would not automatically include the inherited names environment in the scope chain of a class body.  Instead, when a protected name declaration is instantiated in the class body's local scope its At-Name is first looked up in the inherited names environment if a binding is found, its value is used to initialize the local At-Name binding.  If an inherited binding is not found and new unique name object is created and used to initialize the local At-Name binding.  With this semantics, the validity of all At-Name reference can again be determined. For example:
+
+<code javascript>
+module QI {
+  class QIPoint extends Point{
+     @validate(value) {     //<==== static error - @validate not declared
+        super.@validate(value);
+        if (value<0) throw RangeError("negative values not accepted");
+        return value;
+     }
+  }
+}
+</code>
+In this example, we know the references to ''@validate'' within ''QIPoint'' is invalid because the class is not visibly in the scope of any name declarations for ''@validate''.  Any protected names provided by ''Point'' will not be visible because there are not **protected** declarations within the body of ''QIPoint''.  
+<code javascript>
+module QI {
+  class QIPoint extends Point{
+     protected @validate;   //<=== either a new or inherited local name
+     @validate(value) {     //<==== statically binds to local declaration
+        super.@validate(value);
+        if (value<0) throw RangeError("negative values not accepted");
+        return value;
+     }
+  }
+}
+</code>
+In the second example, references to ''@validate'' within ''QIPoint'' are guaranteed to resolve because the class body contains a **protected** declaration for ''@validate''.  If ''Point'' provides a protected binding for ''@validate'' its value will be used within ''QIPoint''.  If Point does not provide such a binding then a new unique name object is created and used as the value of ''@validate''.
+
+<code javascript>
+module QI {
+
+  private @validate;
+
+  class QIPoint extends Point{
+     protected @validate;
+     @validate(value) {  //<==== always binds to the module level declaration.
+        super.@validate(value);
+        if (value<0) throw RangeError("negative values not accepted");
+        return value;
+     }
+  }
+}
+</code>
+Finally, in the last example, we know that references to ''@validate'' within ''QIPoint'' will not resolve to the the module-level private declaration.  Instead, it will resolve to the class-scoped binding provided by either ''Point'' or ''QIPoint''. In either case, their is a clearly expressed programmer's intent to use a class-proved protected ''@validate'' binding rather than the lexically available private name binding.
+
+The use of protected inherited member visibility to delineate subclass extension interfaces is an important technique in object-oriented programming. But, issues concerning interactions between inheritance-based scoping and syntactic lexical scoping are common in object-oriented languages. It isn't clear whether they are always a significant usage problem or just strange edge cases.  However, the pervasive use of lexical scoping within ECMAScript suggest that implicit inheritance-based scoping of protected members is likely to be error prone. In that light, the preferable semantics for protected name declarations in ECMAScript may be the alternative semantics that requires an explicit **protected** declaration within a class body to enable  visibility of inherited protected At-Names.
+
+===== Other Syntactic Approaches to Private Names =====
+
+There are been several previous unsuccessful attempts to provide syntactic support for private names.  The primary innovation in this current proposal is the use of @ as sigil prefix for all declared private names intended for use in non-expression contexts.  This seems to address abmiguities that existed in earlier proposals.
+
+For the previous proposals see:
+
+  * [[harmony:object_literals#object_literal_computed_property_keys|Computed Property Keys Proposal]]
+  * [[strawman:private_names|Private Names: Unique Unforgeable Property Names]]
+  * [[strawman:names]]
+ 
+ 

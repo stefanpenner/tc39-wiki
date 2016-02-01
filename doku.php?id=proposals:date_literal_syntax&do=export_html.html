@@ -1,0 +1,168 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:date_literal_syntax&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:date_literal_syntax&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:date_literal_syntax&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:date_literal_syntax&amp;do=export_html.html#date_literal_syntax" class="toc">Date literal syntax</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:date_literal_syntax&amp;do=export_html.html#motivation" class="toc">Motivation</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:date_literal_syntax&amp;do=export_html.html#proposal" class="toc">Proposal</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:date_literal_syntax&amp;do=export_html.html#syntax" class="toc">Syntax</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:date_literal_syntax&amp;do=export_html.html#semantics" class="toc">Semantics</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:date_literal_syntax&amp;do=export_html.html#prior_art" class="toc">Prior art</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:date_literal_syntax&amp;do=export_html.html#references" class="toc">References</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:date_literal_syntax&amp;do=export_html.html#to_do_issues" class="toc">To do / Issues</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="date_literal_syntax"></a><h1>Date literal syntax</h1>
+<div class="level1">
+
+<p>
+ Spec retracted 2006-08-28 following meeting on 2006-08-23; proposals for supporting a sensible date syntax have been folded into <a href="doku.php%3Fid=proposals:date_and_time.html" class="wikilink1" title="proposals:date_and_time" onclick="return svchk()" onkeypress="return svchk()">proposals:date_and_time</a>.
+</p>
+
+<p>
+<strong>Spec location:</strong> <a href="doku.php%3Fid=spec:chapter_19_native_objects.html#date_objects" class="wikilink1" title="spec:chapter_19_native_objects" onclick="return svchk()" onkeypress="return svchk()">Chapter 19 Native Objects: Date objects</a>
+</p>
+
+<p>
+(Also see the <a href="doku.php%3Fid=discussion:date_literal_syntax.html" class="wikilink1" title="discussion:date_literal_syntax" onclick="return svchk()" onkeypress="return svchk()">discussion page</a> for this proposal)
+</p>
+
+<p>
+Rok raised the issue of having a date (really timestamp) literal syntax.  Here is a modest proposal that fits into the current <code>Date</code> framework.
+</p>
+
+</div>
+<!-- SECTION [1-559] -->
+<a name="motivation"></a><h2>Motivation</h2>
+<div class="level2">
+
+<p>
+ ECMAScript 3 has literals (or at least initializers) for every type but timestamps.  Having timestamp literals would probably help dissuade developers from the current practice of passing some (often) random string to <code>Date.parse</code> and ask it to figure out what it means.  Since the input syntax to that function is not defined in the spec, this practice is is evil.
+</p>
+
+</div>
+<!-- SECTION [560-952] -->
+<a name="proposal"></a><h2>Proposal</h2>
+<div class="level2">
+
+</div>
+<!-- SECTION [953-974] -->
+<a name="syntax"></a><h3>Syntax</h3>
+<div class="level3">
+
+<p>
+ Timestamp literals are represented using a subset of <acronym title="International Organization for Standardization">ISO</acronym> time syntax and semantics.  A full timestamp literal has the following grammar (spaces are not allowed anywhere) with the exception that if the string looks like an identifier (eg &ldquo;T12&rdquo;) then it is an identifier: 
+</p>
+<pre class="code">  timestamp ::= date? &quot;T&quot; time? tz?
+  date     ::= dig{4} ( &quot;-&quot; dig{2} ( &quot;-&quot; dig{2} )? )?
+  time     ::= dig{2} ( &quot;:&quot; dig{2} ( &quot;:&quot; dig{2} ( &quot;.&quot; dig+ )? )? )?
+  tz       ::= (&quot;+&quot; | &quot;-&quot;) dig{2} ( &quot;:&quot; dig{2} )?
+             | &quot;Z&quot;
+  dig      ::= &quot;0&quot; ... &quot;9&quot;</pre>
+
+<p>
+ For example 
+</p>
+<pre class="code">  2006-04-17T
+  2006-04-17T12:37:00.005+03:30
+  T12:37+03</pre>
+
+<p>
+ If a timestamp represents an invalid time then a syntax error is thrown.
+</p>
+
+<p>
+The value for an omitted field is taken from the current UTC time.  If a timezone field is present, the current time converted to that timezone is used, otherwise UTC is used directly.  (This may need tighter wording, and it may be the wrong thing.  It&rsquo;s possible that known default values should be used instead.)
+</p>
+
+<p>
+The meaning of an integer f represented by a string of n digits after the period in the <code>time</code> part is the fractional second value <code>f/10^n</code>.
+</p>
+
+<p>
+The method <code>Date.parse</code> shall be able to parse strings on this format, and it shall even be able to parse strings that look like identifiers (eg, <code>T12</code>).
+</p>
+
+<p>
+A new method <code>Date.prototype.toISOString</code> shall generate strings on this format with all fields present and the shortest possible nonempty string of digits following the period in the <code>time</code> part.
+</p>
+
+</div>
+<!-- SECTION [975-2505] -->
+<a name="semantics"></a><h3>Semantics</h3>
+<div class="level3">
+
+<p>
+ The evaluation of a date literal creates a new <code>Date</code> object with an internal time value corresponding to the time denoted by the date literal.
+</p>
+
+</div>
+<!-- SECTION [2506-2673] -->
+<a name="prior_art"></a><h2>Prior art</h2>
+<div class="level2">
+
+<p>
+ A quick Google turns up date literals only in VBScript, which apparently allows #whatever# as a date literal, where &ldquo;whatever&rdquo; appears to be interpreted pretty liberally, ie, it doesn&rsquo;t solve our problem
+</p>
+
+</div>
+<!-- SECTION [2674-2901] -->
+<a name="references"></a><h2>References</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <acronym title="World Wide Web Consortium">W3C</acronym> dates: <a href="http://www.w3.org/TR/NOTE-datetime" class="urlextern" target="_blank" title="http://www.w3.org/TR/NOTE-datetime" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://www.w3.org/TR/NOTE-datetime</a></div>
+</li>
+<li class="level1"><div class="li"> <acronym title="International Organization for Standardization">ISO</acronym> dates: <a href="http://www.cl.cam.ac.uk/~mgk25/iso-time.html" class="urlextern" target="_blank" title="http://www.cl.cam.ac.uk/~mgk25/iso-time.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://www.cl.cam.ac.uk/~mgk25/iso-time.html</a> </div>
+</li>
+<li class="level1"><div class="li"> <a href="http://www.imc.org/atom-syntax/mail-archive/msg13103.html" class="urlextern" target="_blank" title="http://www.imc.org/atom-syntax/mail-archive/msg13103.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://www.imc.org/atom-syntax/mail-archive/msg13103.html</a></div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [2902-3099] -->
+<a name="to_do_issues"></a><h2>To do / Issues</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> There&rsquo;s no way to specify dates before year 1.  <a href="http://books.xmlschemata.org/relaxng/ch19-77049.html" class="urlextern" target="_blank" title="http://books.xmlschemata.org/relaxng/ch19-77049.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">xsd:dateTime</a> allows a leading <code>-</code> to specify this.  Need to check what ISO8601/RFC3339 say.</div>
+</li>
+<li class="level1"><div class="li"> There are open issues on default values for missing fields, as outlined above</div>
+</li>
+<li class="level1"><div class="li"> A few currently valid expressions are going to be mistaken for date literals, for example, <code>T12-10</code> is one such expression.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [3100-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/b/b3094d2d4954c5d013a63ffcf21a9e9c.xhtml used -->
+</body>
+</html>

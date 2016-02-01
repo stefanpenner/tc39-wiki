@@ -1,0 +1,58 @@
+====== Instance Variables ======
+
+In some situations it is desirable to strictly limit access to per object state such that they are totally unaccessable to unknown or untrusted code.  //Instance Variables// provide this capability.  An instance variable is a similar to a property in that it associates a name with a ECMAScript language value. Like properties, instance variables are associated with objects.  However, they differ from properties in how they are created and accessed and also in that they are not automatically inherited via the %%[[%%Prototype%%]]%% chain. Any object may have an arbitrary  number of instance variables.
+
+Instance variable names may be either string or private name values. Instance variables are always referenced using identifiers prefix by **''@''**.  The identifier may (and typically will be) a private name identifier:
+<code javascript>
+   @secret = 42;
+   this.notSecret = @secret;
+</code>
+
+**''@''** references always access the object that is the current ''**this**'' value. This object association is always implicit.  A instance variable reference can not be used with dot or backet property access syntax
+<code javascript>
+   this.@secret = another.@secret;  //both references produce syntax errors
+</code>
+Using a @ in a property name string does not access the corresponding instance variable:
+<code javascript>
+   this["@secret"] = another["@secret"]  //regular property accesses
+</code>
+Of course, the value returned from an instance variable access may be used as a regular property name:
+<code javascript>
+   this[@secret] = another[@secret]  //evaluates as this[42] = another[42]
+</code>
+
+===== Creating Instance Variables =====
+Instance variables can be accessed or modified by any method invoked on an object assuming it the method knows the name of the instance variable. However, an instance variable can only be created during the initial construction of an object.  This construction may be via a Object or Class Initialiser or a constructor function:
+<code javascript>
+var obj = {
+   @secret: 42,   //created during object construction
+   get secret() {return @secret},
+   set latter(value) {@anotherSecret = value}
+}
+
+print(obj.secret);  //prints 42 because accessor function can access instance variable
+obj.latter = -42;   //TypeError because instance variable @anotherSecret doesn't exist
+
+function Con(x) {
+   @hidden = x;  //assignment in constructor creates instance variable
+}
+var c = new Con(42);
+print((function () {return @hidden}).call(c));  //prints 42
+(function (x) {@hidden2 = x}).call(c, -42);   //TypeError, @hidden2 doesn't exist
+</code>
+
+Note that normally a private name would be used as an instance variable name to in order to prevent adversaries from using method application such as the above to gain access to instance variables. Disallowing instance variable creation after completion of the constructor prevents adversaries from using instance variables to attach parasite payload to objects.
+
+===== Implementation Requirements =====
+Instance variables must not be implemented as property accesses and must not trigger traps if the this object is a Proxy object.  Instance variables are not enumerated by for-in and are not visible to any of the built-in reflection functions.
+
+===== Implementation Considerations =====
+It is, of course, up to any implementation how it actually goes about implementing instance variables.  Some alternatives include:
+  * Store as regular properties but add internal per property attribute that tags instance variables and trigger enforcement of requirements.
+  * Add a single internal object reference slot to every object that has instance variables. That slot can reference a regular object whose own properties are the instance variable store making sure that this object is never leaked.
+  * Allocated dedicated slots for each instances variable in an object (fairly easy to identify in either object literals or constructor functions).  Access them via direct slot offsets.
+
+
+
+
+

@@ -1,0 +1,64 @@
+====== Fixing the Read-only Override Prohibition Mistake ======
+
+Currently, according to the ES5.1 spec, if object y inherits a non-writable data property "foo" from object x, then one cannot override "foo" on y simply by using assignment. In other words, 
+<code javascript>
+  var x = Object.freeze({foo: 88});
+  var y = Object.create(x);
+  y.foo = 99; // Currently specified to fail
+</code>
+
+This is a problem for efficiency, convenience, and security. Although currently specified, it is not implemented correctly as of this writing by Chrome/v8 and Safari/JSC, and so legacy web content does not yet depend on this behavior. In retrospect, I believe that specifying it this way was a mistake due to lack of adequate attention to this issue and its implications.
+
+----
+**Not a Mistake**
+ --- //[[Allen@Wirfs-Brock.com|Allen Wirfs-Brock]] 2012/01/09 20:45//
+
+
+This was not a mistake in ES5/5.1 and it is not a bug.  It is a semantics that goes all the way back to ES1.  It is also a behavior which makes complete sense from a prototypal inheritance perspective and can be found in the Self language. 
+
+The basic idea is that the properties prototype object are shared parts of all of inheriting child object.  Modifying such a shared part by a child, introduces a local change that is visible to that child (and its children) so this requires creation of a "own" property on the child. However, read-only properties can not modified (by normal means, eg assignment) so there is no need to create a "own" copy.  Assigning to an inherited read-only property or a "own" read-only property should have the same affect (whether it is ignoring the assignment, throwing, etc.).  Allowing assignment to an inherited read-only property would break the invariant that that a prototype's readonly property is an immutable value that is  shared among all children of the prototype.
+
+If there was a mistake in designing ES5, it was allowing Object.defineOwnProperty to create child properties that over-ride inherited read-only data properties.  This broke an invariant that previously existed in the language but this invariant  was already violated by some pre-ES5 clause 15 objects, (eg the writability of the prototype property of some children of Function.prototype).  However, I think the ES5 decision was probably the right one given the legacy clause 15 usages and the overall reflective nature of defineOwnProperty).
+
+Finally, this issue was given plenty of attention in during the development of ES5.  In various drafts, the ES5 specification actually broke the legacy behavior causing it to behave similarly to what is suggested by this strawman.  Those specification bugs were corrected in order to ensure that the semantics specified by ES3 and earlier editions were not changed by ES5.
+----
+
+
+
+==== Why it's bad for efficiency ====
+
+To be written
+
+==== Why it's inconvenient ====
+
+To be written
+
+
+==== Why it's bad for security ====
+
+To be written
+
+==== How bad would fixing it be for legacy compatibility? ====
+
+To be written
+
+
+
+
+===== Proposal (currently in ES5 spec language) =====
+
+Changes to **[[http://es5.github.com/#x8.12.4|8.12.4]] %%[[CanPut]]%%(P)**
+  ...
+  8. Else inherited must be a DataDescriptor
+    a. ...
+    b. Else return true
+
+This change is independent of the "mode" of the code in which the assignment appears. As of ES-next, this change would affect non-strict, strict, and extended-mode assignment. The only difference in assignment behaviors would remain that non-strict assignment failures are silent. But all would fail for all the same cases, which would differ from the cases specified to fail in ES5.1.
+
+====== See ======
+
+[[https://mail.mozilla.org/pipermail/es-discuss/2011-November/017997.html|ES-discuss thread]] and [[https://mail.mozilla.org/pipermail/es-discuss/2011-November/018774.html|another]]
+
+[[http://code.google.com/p/v8/issues/detail?id=1169|Overriding inherited read-only proprties must fail / throw]]
+
+[[http://hg.ecmascript.org/tests/test262/file/c84161250e66/test/suite/chapter15/15.2/15.2.3/15.2.3.6/15.2.3.6-4-405.js|Test262 test case]]

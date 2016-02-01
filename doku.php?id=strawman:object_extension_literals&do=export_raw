@@ -1,0 +1,141 @@
+====== Object Extension Literals ======
+
+An Object Extension Literal uses //ObjectLiteral//-like syntax to define or modify a set of properties of a preexisting object.  The //ObjectLiteral//-like syntax is treated as an Object Extension Literal when it appears immediately to the right of the **''.''** in a //MemberExpression// or a //CallExpression//. While an Object Extension Literal is syntactically similar to an //ObjectLiteral// its semantics are somewhat different and there are some differences between the syntactic features that are available.  
+
+
+
+===== Adding Properties to an Existing Object =====
+
+When an //PropertyDefintion// occurs in a Object Extension Literal its semantics are largely the same as in an //ObjectLiteral// except that the property is defined on the already existing object rather than on a newly created object.
+
+For example:
+
+<code javascript>
+obj.{
+   a: 1,
+   b: 2,
+   c: 3
+};
+</code>
+
+This is, for the most part, semantically equivalent to:
+<code javascript>
+Object.defineProperties(obj, {
+   a: {value: 1, enumerable: true, writable: true, configurable: true},
+   b: {value: 2, enumerable: true, writable: true, configurable: true},
+   c: {value: 3, enumerable: true, writable: true, configurable: true}
+};
+</code>
+
+All object literal property forms are valid in an Object Extension Literal including get/set properties, concise methods, and [[harmony:object initialiser shorthand|Implicit property values]]. 
+
+<code javascript>
+
+//initializing instance state from constructor parameters
+function Point(x,y) {
+   this.{x,y};
+};
+
+//defining methods on a prototype object
+Point.prototype.{
+   plus(aPoint) {return new Point(this.x+aPoint.x,this.y+aPoint.y},
+   get rho() {return Math.sqrt(this.x*this.x+this.y*this.y}
+};
+</code>
+
+
+
+
+
+===== Modify Property Values on an Existing Object =====
+
+One capability of Object Extension Literals that //ObjectLiterals// lack is the ability to assign property values (semantically a %%[[%%Put]] operation) rather than defining/redefining a own property (semantically a %%[[%%DefineOwnProerty]] operation). This can be signified in an Object Extension Literal by using a **=** in place of the **:** in a Property Definition.  For example:
+
+<code javascript>
+obj.{
+   a = 1,
+   b = 2,
+   c = 3
+};
+</code>
+
+
+The above example is semantically equivalent to:
+<code javascript>
+{
+ let temp = obj;
+ temp.a = 1;
+ temp.b = 2;
+ temp.c = 3;
+};
+</code>
+
+Such assignment properties enables the use of Object Extension Literals as a concise way to assign multiple values to objects that extensively use accessor properties (eg, DOM objects) or to "sealed" objects that permit property assignment but not property creation.
+
+<code javascript>
+someDomElement.style.{
+   color = 'red',
+   backgroundColor = 'pink'
+};
+</code>
+
+===== Nested Object Extensions =====
+
+Another form of Property Definition that only occurs in Object Extension Literals is a nested Object Extension.  A nested Object Extension is a PropertyName immediately followed by an Object Extension Literal. For example:
+
+<code javascript>
+someDomElement.{
+  textContent = 'Hello world',
+  style.{
+    color = 'red',
+    backgroundColor = 'pink'
+  },
+  onclick = alert
+};
+</code>
+
+===== Grammar Extensions =====
+
+
+<code ebnf>
+CallExpression :
+    CallExpression ObjectExtension
+    ...
+
+MemberExpression :
+    MemberExpression ObjectExtension
+    ...
+
+ObjectExtension :
+    . { }
+    . { PropertyExtensionList }
+    . { PropertyExtensionList , }
+
+PropertyExtensionList :
+    PropertyExtension
+    PropertyExtensionList , PropertyExtension
+
+PropertyExtension :
+    PropertyDefinition
+    PropertyAssignment
+    PropertyName ObjectExtension
+
+PropertyAssignment :
+    PropertyName = AssignmentExpression
+
+</code>
+
+===== Semantic Details =====
+
+The value of an //MemberExpression// or //CallExpression// with an //ObjectExtension// element is the value of the nested //MemberExpression// or //CallExpression// that is to the left of the //ObjectExtension//. This is the object that is being extended. The ToObject abstract operation is applied to the nested //MemberExpression// or //CallExpression// before applying the //ObjectExtension// to it.  This will throw a TypeError if the expression evaluated to **null** or **undefined**.  For a nested //ObjectExtension// the object that is the value of the //PropertyName// property of the object being extended is itself extended.  If the named property does not exist or if its ECMAScript Type is not Object a TypeError is thrown.
+
+%%[[%%DefineOwnProperty]] is used to install a //PropertyExtension// that is a //PropertyDefinition//.  %%[[%%Put]] is used for a //PropertyExtension// that is a //PropertyAssignment//. If the object being extended already has an property with the same name as a property defined in a //PropertyDefinition// or //PropertyAssignment//, the existing property is replaced or modified according to the rules of %%[[%%DefineOwnProperty]] or %%[[%%Put]].
+The static semantic rules for duplicate //PropertyName// values within an //ObjectExtension// are the same as are used within an //ObjectLiteral// (appropiate extended to include //PropertyAssignment// and nested //ObjectExtension// productions).  However those rules only apply to the actual syntactic elements of the //ObjectExtension//.  The dynamic semantics for already existing properties of the object are those of %%[[%%DefineOwnProperty]] and %%[[%%Put]].
+
+Note for a //ObjectExtension// the apparent object literal on the right of the **''.''** is not actually instantiated as a distinct object.  Instead each //PropertyExtension// in the object literal is directly created on (or assigned to in the case of **=**)  the object being extented.  This is important if the property  is a method or accessor function containing **''super''** references because it means that the **''super''** binding is made to the %%[[%%Prototype]] of the LHS object rather than to ''Object.prototype'' which is the %%[[%%Prototype]] of normally instantiated object literals.  It also means that any private named properties can be directly created on the LHS object without  requiring private named properties to be exposed to reflection operations that would otherwise be need to copy them from the extension object to the existing object.
+
+===== History =====
+This proposal combines elements of Allen Wirfs-Brock's earlier object extension literal proposals [[harmony:object_literals#object extension literal]] proposal and Dave Herman's [[strawman:batch assignment operator]] proposal.  Douglas Crockford first suggested using the **.{ }** syntax for literal object extensions.  Some people have informally used the terms "mustache" or "monocle" operator to refer to this syntax.
+
+
+

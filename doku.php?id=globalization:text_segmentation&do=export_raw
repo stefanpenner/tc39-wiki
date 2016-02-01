@@ -1,0 +1,38 @@
+====== Text Segmentation ======
+
+This is a very rough proposal for adding a text-segmentation capability to the next edition of the ECMAScript internationalization standard.
+
+===== Use cases =====
+
+   * Splitting a single string into its constituent [grapheme clusters, words, sentences, paragraphs].
+   * Counting the number of [grapheme clusters, words, sentences, paragraphs] in a string.
+   * Locating the starting and ending boundaries of the [grapheme cluster, word, sentence, paragraph] containing a particular character offset in a document.  (e.g., for double-click handling in a text editing application).
+   * Supporting breaking a document into lines for rendering by locating the last legal line-break position before a given position in the string.
+   * Offline indexing of documents.
+
+===== Proposed API =====
+
+Introduce an ''Intl.TextSegmenter'' object.  Constructor takes the same ''locale'' and ''options'' parameters as the other ''Intl'' objects, plus a ''String'' parameter referring to the string to be segmented*.  For now, one property in the options object is significant: ''segmentType''.  This can have five values: ''"grapheme"'', ''"word"'', ''"lineBreak''", ''"sentence"'', and ''"paragraph"'', which are strings.  (Anything else defaults to ''"word"''.)
+
+''String.prototype.split()'' can now take a ''TextSegmenter'' as well as a ''RegEx''.  When used with a ''TextSegmenter'', ''split()'' breaks the string into the units the ''TextSegmenter'' detects.
+
+''TextSegmenter.prototype'' would have the following functions as properties:
+   * ''numSegments()'': Returns the number of segments in the string.
+   * ''segmentContaining(pos)'': Returns an ''Object'' with two properties: ''start'' and ''end'', representing the starting and ending positions in the string of the segment containing the specified position.  (Out-of-range values would return ''undefined''.)
+   * ''segmentType(segment)'': Returns some sort of value indicating the "type" of the specified segment.  This is really only useful for word breaking, where the text between two word boundaries might be a delimiter (whitespace or punctuation) rather than a word.  The input value is intended to be the result of a ''segmentContaining()'' call—an ''Object'' whose ''start'' and ''end'' properties are valid boundary positions in the string.  If it's anything else, we use ''segmentContaining()'' to get a valid "segment" object.
+   * We could also provide ''firstSegment()'', ''lastSegment()'', ''nextSegment()'', and ''previousSegment()'' convenience functions, although all of these operations can also be done with ''segmentContaining()''.
+
+It might be nice to also modify ''String.prototype.substring()'' to allow the caller to pass in a "segment" object.
+
+ --- //Rich Gillam 2012/12/19//
+
+ --- //Nebojsa Ciric 2012/12/21//
+
+ * Intl.TextSegmenter(locales, options, text) - so it would be 1 segmenter object per string? Isn't that expensive? Why not assign text to the object after construction?
+
+ --- //Rich Gillam 2013/1/2//
+
+ * Yes.  I expected this to be controversial, and I'm not married to it.  My thinking was that it simplifies the usage model-- instead of creating a segmenter and then assigning a string to it, you do both in one step.  This doesn't match the implementation in ICU, of course, but I was thinking that the glue layer might be able to cache and reuse ICU BreakIterators so as to support the simpler usage model.  In the same way, I was trying for an API design that was stateless, on the theory that it better supported the use cases I knew about.  Again, the glue layer could maintain state when necessary to optimize performance.  I don't know-- maybe it'd make more sense to stick with a thin wrapper around ICU's API, but I wanted to "think outside the box" a little bit.
+
+ --- //Jungshik Shin 2013/04/09//
+ * What about 'line' (breaking opportunities)? Line breaking is mentioned as an example, but 'line' type is not included. I also wonder how well 'paragraph' breaks are defined. 

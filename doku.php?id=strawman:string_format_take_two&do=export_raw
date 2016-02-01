@@ -1,0 +1,109 @@
+====== EcmaScript String Format Method ======
+
+
+===== Introduction =====
+
+EcmaScript lacks a method to format strings in a flexible and controllable manner. Most EcmaScript strings are constructed by concatenating a series of substrings. Such practice really hurts code readability. Especially for localization, it is almost impossible to translate the string when it is split into multiple pieces. This problem has been identified long before. Brendan Eich proposed something in 2006 for ECMA 3 ([[discussion:string_formatting|discussion]]). Mike Samuel's [[strawman:quasis]] and Douglas Crockford's [[strawman:string_format]] each proposed a solution as well. This proposal references those proposals, and borrows many ideas introduced by Python (http://www.python.org/dev/peps/pep-3101/).
+This proposal also applies lessons learned in Localization (l10n) and Internationalization (i18n) practice, both in Javascript and other languages.
+
+===== Goal =====
+
+The goal of this proposal is to provide a convenient and flexible string generation method to the EcmaScript Language, to empower developers to have more control on what is produced, and enforce good i18n and l10n practices.
+
+For practical purposes, the proposal will avoid introducing any new language syntax. It can be implemented through a library before it is implemented in browser. 
+
+===== Design =====
+
+The main contribution of this proposal is to add a “format” method to the String prototype.  This method will greatly improve the language’s expressiveness, and probably improve its performance in string construction. String.format method will not have any locale dependent behavior.
+
+
+
+==== String.prototype.format() ====
+
+**1. The basic idea is to use placeholder to argument a string. "{" and "}" are used to mark placeholders; literal "{" and "}" will be escaped as %%"{{" and "}}"%%.**
+
+**2. Placeholder can reference argument by position.**
+<code javascript>
+var msg = "{0}'s father has two sons, {0} and {1}".format("tom", "jerry");
+msg == "tom's father has two sons, tom and jerry."
+</code>
+
+**3. Placeholder can reference argument by key. In such case, the argument will be provided as an Object.**
+<code javascript>
+var msg = "The car is made by {brand} in year {make}.".format({brand: "Nissan", make: 2009});
+msg == "The car is made by Nissan in year 2009."
+</code>
+
+**4. Placeholder can reference a field of an object argument.**
+<code javascript>
+var car = {brand: "Nissan", make: 2012};
+var msg1 = "The car is made by {0.brand} in year {0.make}.".format(car);
+var msg2 = "The car is made by {0[brand]} in year {0[make]}.".format(car);
+msg1 == "The car is made by Nissan in year 2012."
+msg2 == "The car is made by Nissan in year 2012."
+</code>
+
+Item 3 can be considered as a simple form of this one. This form allow object to be specified in any argument, not just the first one. It also allow multiple objects to be specified.
+
+**5. Placeholder can reference an item of an argument that is an array. **As array is really associated map in Javascript, this item can also be treated as a special case of item 4.
+<code javascript>
+var msg = "This year’s top two Japanese brands are {0[0]} and {0[1]}.".format(["Honda", "Toyota"]);
+msg == "This year’s top two Japanese brands are Honda or Toyota."
+</code>
+
+**6. Each placeholder can specify an optional set of format specifiers, which is used to further define how certain argument should be formatted. The specifiers are separated from argument identification part by an ‘:’.**
+<code javascript>
+var msg = "Number {0} can be presented as decimal {0:d}, octex {0:o}, hex {0:x}".format(56);
+msg == "Number 056 can be presented as decimal 56, octex 70, hex 38"
+</code>
+
+**7. The formatting is taken care of by each argument's object type through method <object>.prototype.toFormat.** Format specifiers are passed to <object type>.prototype.toFormat().
+
+**8. Object.prototype.toFormat() will return toString() if format specifiers is not given, otherwise it will raise an exception.** In other words, if format specifier(s) presents, it(they) must be taken care of. That will be the default implementation for all object type that does not define toFormat for its own. 
+
+
+**9. The set of format specifiers supported by ES's implementation of toFormat is mostly compatible with other languages’ common printf implementation, like C++ , Java and Python. Modifications are made to make it fit with EcmaScript language.**
+
+
+**10. The format specifiers supported by Number.prototype.toNumber is described as below.**
+
+The syntax of format specifiers is //"[flags][width][.precision]type"//.
+  * **Flags** can be zero or more (in any order) of:
+
+|  +  | Causes the sign '+' or '-' of a number to be always used (the default is to omit the sign for positive numbers). Only applicable to numeric types. |
+|  -  | Causes the output of this placeholder to be left-aligned (the default is to right-align the output). |
+|  #  | Alternate form. For 'g' and 'G', trailing zeros are not removed. For 'f', 'F', 'e', 'E', 'g', 'G', the output always contains a decimal point. For 'o', 'x', and 'X', a 0, 0x, and 0X, respectively, is prepended to non-zero numbers. |
+|  0  | Causes 0 to be used instead of spaces to left-fill a fixed-length field. For example, "%2d".format(3) results in " 3", while "%02d".format(3) results in "03". |
+
+  * **Width** can be omitted or be a number. Output of this placeholder will be padded with spaces until it is at least number of characters wide. 
+  * **Precision** can be omitted or a number. For non-integral numeric types, causes the decimal portion of the output to be expressed in at least number digits. For the string type, causes the output to be truncated at number characters. If the precision is zero, nothing is printed for the corresponding argument.
+  * **Type** can be any of:
+
+|  d  |Print a number as a signed decimal number. The number is converted to integer by apply math.round(n - 0.5) to it.|
+|  f,F  | Print a number as float in normal (fixed-point) notation. 'f' and 'F' only differs in how the strings for an infinite number or NaN are printed ('inf', 'infinity' and 'nan' for 'f', 'INF', 'INFINITY' and 'NAN' for 'F').|
+|  e,E  |	Print a number in standard form ([-]d.ddd e[+/-]ddd). An E conversion uses the letter E (rather than e) to introduce the exponent. The exponent always 			contains at least two digits; if the value is zero, the exponent is 00.|
+|  g,G  |	Print a number in either normal or exponential notation, whichever is more appropriate for its magnitude. 'g' uses lower-case letters, 'G' uses upper-case 			letters. This type differs slightly from fixed-point notation in that insignificant zeroes to the right of the decimal point are not included. Also, the decimal point is not included on whole numbers.|
+|  x,X  | Print a number in hexadecimal form. 'x' uses lower-case letters and 'X' uses upper-case. The number is converted to integer by apply math.round(n - 0.5) to it. | 
+|  o  | Print a number in octal form.  The number is converted to integer by apply math.round(n) to it.|
+|  b  | Print a number in binary form.  The number is converted to integer by apply math.round(n) to it.|
+|  s  | Print a string. If the given argument is not string, it will be converted to string through toString() automatically.|
+
+
+**11. Format specifiers can also be provided through an embedded placeholder inside the placeholder. **Example like,
+<code javascript>
+var msg = "Number formatter: {0} formatted string: {1:{0}}".format("02d", 56);
+msg == "Number formatter: 02d formatted string: 56"
+</code>
+Placeholder used in format specifier part can not have format specifier. This prevent the replacement from embedding more than one level.
+
+**12. String.prototype.format method will not have any locale specific behavior by itself.** Locale specific behavior will be provided through LocaleInfo in future once it lands in ECMAScript. We intentionally avoid using anything related with the default locale as provided by now-a-day's browser, due to its unexpected and inconsistent behavior. This proposal should lay a good foundation for future locale specific behavior implementation, most likely happen in another namespace.
+
+===== References =====
+
+Brendan Eich, [[discussion:string_formatting|string formatting discussion]]
+
+Mike Samuel, [[strawman:quasis]]
+
+Douglas Crockford, [[strawman:string_format|String format]]
+
+Python string format design (http://www.python.org/dev/peps/pep-3101/)

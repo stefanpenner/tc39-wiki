@@ -1,0 +1,552 @@
+====== Communicating Event-Loop Concurrency and Distribution ======
+
+On both the browser and the server, JavaScript's de-facto concurrency model is increasingly "shared nothing" communicating event loops. JavaScript event loops within the browser (both frames and workers) send asynchronous messages to other JavaScript event loops via postMessage. JavaScript event loops in the browser send and receive asynchronous messages with servers using asynch XHR, and shortly, Server-Sent Events and WebSockets. And server-side JavaScript has a rapidly growing role as the counterparty of these protocols, and increasingly uses event loops to service them. 
+
+This strawman consists of several major parts, not all of which need be accepted together.
+  - **Reality:** Codifying and formalizing JavaScript's de-facto concurrency model as a de-jure model.
+  - **Promises:** A way to
+    * (**Q(p).post(), Q(p).get()**) Make asynchronous requests of objects that may not be synchronously reachable, such as remote objects.
+    * (**Q(p).then()**) Ease the burden of local event loop programming, by reifying the ability to register a callback as a first class value.
+    * (**[[strawman:async_functions|Q.async, yield]]:**) for implicit registration of shallow continuations on promises.
+  - **Syntactic sugar**
+    * **The infix "''!''" operator:** An eventual analog of "''.''", for making eventual requests look more like immediate requests.
+  - (**Q.makeFar()** and **Q.makeRemote()**) A promise extension mechanism, so that promise handlers can turn local promise operations into remote messages.
+    * **Transport independence:** Using remote object messaging as a symmetric abstraction layer, hiding the annoying differences among the various transports listed above as well as server-to-server TCP and UDP transports.
+  - (**Vat()**) An event-loop spawning mechanism for spawning new event loops that run concurrently with the event loop which spawned it.
+    * **Worker independence:** Using ''Vat'' API as an abstraction layer around worker spawning on the browser or process spawning on the server.
+  - (**Vat.evalLater(), there()**) Using JavaScript itself as mobile code, so event loops can safely inject new behavior into other event loops
+    * **Symmetric Mobile Code:** Generalizes from the current use of JavaScript as mobile code sent only from server and only to browsers.
+    * **Async-PGAS:** Provides a distributed analog to the expressiveness of [[http://www.cs.rochester.edu/u/cding/amp/papers/full/The%20Asynchronous%20Partitioned%20Global%20Address%20Space%20Model.pdf|The Asynchronous Partitioned Global Address Space Model]].
+
+===== Concurrency Model and Promises =====
+
+Aggregate objects into process-like units called //vats//. Objects in one vat can only send asynchronous messages to objects in other vats. //Promises// represent such references to potentially remote objects. //Eventual message sends// queue //eventual-deliveries// in the work queue of the vat hosting the target object. A vat's thread processes each eventual-delivery to completion before proceeding to the next. Each such processing step is a //turn//. A //then expression// registers a callback to happen in a separate turn once a promise is resolved, providing the callback with the promise's //resolution//. The eventual send and then expressions immediately return a promise for the eventual outcome of the operation they register.
+
+This model is free of conventional race condition or deadlock bugs. While a turn is in progress, it has mutually exclusive access to all state to which it has synchronous access, i.e., all state within its vat, avoiding conventional race condition bugs without any explicit locking. The model presented here provides no locks or blocking constructs of any kind, although it does not forbid a host environment from providing blocking constructs (like ''alert''). Without blocking, conventional deadlock is impossible. Of course, less conventional forms of race condition and deadlock bugs [[http://www.hpl.hp.com/techreports/2009/HPL-2009-78.html|remain]].
+
+
+===== Vats =====
+
+Partition the JavaScript reference graph into separate units, corresponding to prior concepts variously called vats, workers, processes, tanks, or grains. We adopt the "//vat//" terminology here for expository purposes. Vats are only asynchronously coupled to each other, and represent the minimal possible unit of concurrency, transparent distribution, orthogonal persistence, migration, partial failure, resource control, preemptive termination/deallocation, and defense from denial of service. Each vat consists of 
+  * a single sequential thread of control, 
+  * a single call-return stack, 
+  * a single fifo queue holding //eventual-deliveries//, 
+  * an internal object heap, 
+  * and incoming and outgoing //remote references//. 
+A vat's thread of control dequeues the next eventual-delivery from the queue and processes it to completion before proceeding to the next. When the queue is empty, the vat is idle. 
+
+<code javascript>
+  const vat = Vat(); //makes a new vat, as an object local to the creating vat.
+  // A Vat has an ''evalLater'' method that evaluates a Program in a turn of that vat.
+  // The ''evalLater'' method returns a promise for the evaluation's completion value.
+  const funP = vat.evalLater('' + function fun(x, y) { return x + y; }); // see below
+  const sumP = funP ! (3, 5); // sumP will eventually resolve to 8, unless...
+  const doneP = vat.terminateAsap(new Error('die')); // that vat is terminated before ''sumP'' is resolved.
+  // If the vat is terminated first, then ''sumP'' resolves to a //rejected// problem, with
+  // (Error: die) as its alleged reason for rejection.
+  // Once the vat is terminated, ''doneP'' will eventually resolve to ''true''.
+</code>
+
+The vat object that represents a new vat is local to the creating vat, so that a vat may be terminated without waiting for that vat's eventual-delivery queue to drain. 
+
+The vat abstraction differs from the WebWorker abstraction, even though both are based on communicating event loops, since inter-vat messages are always directed at objects within a vat, not a vat as a whole. We intend that WebWorkers can be implemented in terms of vats and vice versa. However, when vats are built on WebWorkers, in the absence of some kind of weak reference and gc notification mechanism, it is probably impossible to arrange for the collection of distributed garbage. Even with them, [[http://erights.org/history/original-e/dgc/index.html|much more]] is needed to enable collection of distributed cyclic garbage. On the other hand, when vats are provided more primitively, multiple vats within an address space can be jointly within the purview of a single concurrent garbage collector, enabling full gc among these co-resident vats. However, truly distributed vats would still be faced with these same distributed garbage collection worries.
+
+The "'' %%''%% + function... ''" trick above depends on [[harmony:function_to_string]] to actually pass a string which is the program source for the function, while nevertheless having the function itself appear in the spawning program as code rather than as a literal string. This helps IDEs, refactoring tools, etc. A vat's ''evalLater'' method evaluates that string as a program in a safe scope -- a scope containing only the standard global variables such as ''Object'', ''Array'', etc. Except for these, the source passed in should be //closed// -- should not contain free references to any other variables. If the function is closed but for these standard globals, and these standard globals are not shadowed or replaced in the spawning context, then an IDE's scope analysis of the code remains accurate.
+
+
+
+===== Promises and Promise States =====
+
+We introduce a new opaque type of object, the //Promise// to represent potentially remote references. A normal JavaScript direct reference may only designate an object within the same vat. Only promises may designate objects in other vats. A promise may be in one of several states:
+
+{{strawman:refstates3.png}}
+(TODO: Revise diagram to replace "unresolved" with "pending" and "broken" with "rejected".)
+
+  * //pending// -- when it is not yet determined what object the promise designates,
+    * //pending-local// -- when the right to determine what the promise designates resides in the same vat,
+    * //pending-remote// -- when that right is either in flight between vats or resides in a remote vat,
+  * //fulfilled// -- resolved to successfully designate some object,
+    * //near// -- resolved to a direct reference to a local object,
+    * //far// -- resolved to designate a remote object,
+  * //rejected// -- will never designate an object, for an alleged reason represented by an associated error.
+
+
+A promise may transition from //pending// to any state. Additionally a promise can transition from //far// to //rejected//. A //resolved// promise can designate any non-promise value including primitives, ''null'', and ''undefined''. Primitives, ''null'', ''undefined'', and some objects are pass-by-copy. All other objects are pass-by-reference. A promise resolved to designate a pass-by-copy value is always near, i.e., it always designates a local copy of the value.
+
+If a function ''foo'' immediately returns either ''X'' or a promise which it later fulfills with ''X'', we say that ''foo'' **//reveals//** ''X''. Unless stated otherwise, we implicitly elide the error conditions from such statements. For the more explicit statement, append: //"or it throws, or it does not terminate, or it rejects the returned promise, or it never resolves the returned promise."// Put another way, such a function returns a **//reference//** to ''X'', where by //reference// we mean either ''X'' or a promise for ''X''.
+
+===== Eventual Operations =====
+
+The existing JavaScript infix ''.'' (dot or //now//) operator enables synchronous interaction with the local object designated by a direct reference. We introduce a corresponding infix ''!'' (bang or //eventually//) operator for corresponding asynchronous interaction with objects eventually designated by either direct references or promises.
+
+Abstract Syntax:
+<code>
+  Expression : ...
+      Expression ! [ Expression ] Arguments    // eventual send
+      Expression ! Arguments                   // eventual call
+      Expression ! [ Expression ]              // eventual get
+      Expression ! [ Expression ] = Expression // eventual put
+      delete Expression ! [ Expression ]       // eventual delete
+</code>
+
+The ''...'' means "and all the normal right hand sides of this production. By "abstract" here I mean the distinction that must be preserved by parsing, i.e., in an [[strawman:ast]], but without explaining the precedence and associativity which explains how this is unambiguously parsed. In all cases, the eventual form of an expression queues a eventual-delivery recording the need to perform the corresponding immediate form in the vat hosting the (eventually) designated object. The eventual form immediately evaluates to a promise for the result of eventually performing this eventual-delivery.
+
+<code javascript>
+  function add(x, y) { return x + y; }
+  const sumP = add ! (3, 5); //sumP resolves in a later turn to 8.
+</code>
+
+
+Attempted Concrete Syntax:
+<code>
+  MemberExpression : ...
+      MemberExpression [nlth] ! [ Expression ]
+      MemberExpression [nlth] ! IdentifierName
+  CallExpression : ...
+      CallExpression [nlth] ! [ Expression ] Arguments
+      CallExpression [nlth] ! IdentifierName Arguments
+      MemberExpression [nlth] ! Arguments
+      CallExpression [nlth] ! Arguments
+      CallExpression [nlth] ! [ Expression ]
+      CallExpression [nlth] ! IdentifierName
+  UnaryExpression : ...
+      delete CallExpression [nlth] ! [ Expression ]
+      delete CallExpression [nlth] ! IdentifierName
+  LeftHandSideExpression :
+      Identifier
+      CallExpression [ Expression ]
+      CallExpression . IdentifierName
+      CallExpression [nlth] ! [ Expression ]
+      CallExpression [nlth] ! IdentifierName
+</code>
+
+"''[nlth]''" above is short for "''[No LineTerminator here]''", in order to unambiguously distinguish infix from prefix bang in the face of automatic semicolon insertion. 
+
+
+
+
+===== Fundamental Static Q Methods =====
+
+|<code javascript>Q(target) -> targetP</code>                   |Lifts the ''target'' argument into a promise designating the same object. If ''target'' is already a promise, then that promise is returned. (A promise for promise for T simplifies into a promise for T. Category theorists will be more pleased than Type theorists ;).)  |
+|<code javascript>Q.reject(reason) -> rejectedP</code>                |Makes and returns a fresh //rejected// promise recording (a sanitized form of) ''reason'' as the alleged reason for rejection. ''reason'' should generally be an immutable pass-by-copy Error object.  |
+|<code javascript>Q.promise(f(resolve,reject)->()) -> promise</code>           |Makes a fresh promise, where the promise is initially //pending-local//, and the argument function f is called with ''resolve'' and ''reject'' functions for resolving this promise.  |
+|<code javascript>Q.isPromise(target) -> boolean</code>             |Is ''target'' a promise? If not, then using ''target'' as a target in the various promise operations is still equivalent to using ''Q(target)'', i.e., the promise operations will automatically lift all values to promises.  |
+|<code javascript>Q.makeFar(handler, nextSlotP) -> promise</code>   |Makes a resolved //far// reference, which can only [[http://wiki.erights.org/wiki/Proxy#makeProxy|further resolve]] to //rejected//.|
+|<code javascript>Q.makeRemote(handler, nextSlotP) -> promise</code>   |Makes an //pending-remote// promise, which can [[http://wiki.erights.org/wiki/Proxy#makeProxy|further resolve]] to anything.|
+|<code javascript>Q.ahorten(target1) -> target2</code>                 |Returns the currently most resolved form of target1. If ''target1'' is a //fulfilled// promise, return its resolution. If ''target1'' is a promise that is following promise ''target2'', then return ''target2''. If ''target1'' is a terminal //pending// or //rejected// promise, or a non-promise, then return ''target1''.  |
+
+Additional non-fundamental static Q convenience methods appear below.
+
+
+===== Promise methods =====
+
+Assuming ''p'' is a promise
+
+|<code javascript>p.get(name) -> valueP</code>                   |Returns a promise for the result of eventually getting the value of the name property of target.  |
+|<code javascript>p.post(opt_name, args) -> resultP</code>       |Eventually invoke the named method of target with these args. Returns a promise for what the result will be.  |
+|<code javascript>p.send(opt_name, ...args) -> resultP</code>    |''p.send(m, a, b)'' is equivalent to ''p.post(m, [a,b])'' |
+|<code javascript>p.fcall(...args) -> resultP</code>             |''p.fcall(a, b)'' is equivalent to ''p.post(void 0, [a,b])'' |
+|<code javascript>p.put(name, value) -> voidP</code>             |Eventually set the value of the name property of target to value. Return a promise-for-undefined, used for indicating completion.  |
+|<code javascript>p.delete(name) -> trueP</code>                 |Eventually delete the name property of target. Returns a promise for the boolean result.  |
+|<code javascript>p.then(success, opt_failure) -> resultP</code> |Registers functions ''success'' and ''opt_failure'' to be called back in a later turn once target is //resolved//. If //fulfilled//, call ''success(resolution)''. Else if //rejected//, call ''opt_failure(reason)''. Return a promise for the callback's result.  |
+|<code javascript>p.end()</code>                                 |If p resolves to //rejected//, log the reason to wherever uncaught exceptions go on this platform, e.g., ''onerror(reason)''.|
+
+
+===== Syntactic Sugar =====
+
+^  Abstract Syntax  ^  Expansion         ^  Simple Case      ^  Expansion             ^  JSON/RESTful equiv  ^
+|x ! [i](y, z)      |Q(x).send(i, y, z)  |x ! p(y, z)        |Q(x).send('p', y, z)    |POST   %%https://...q=p%% {...}  |
+|x ! (y, z)         |Q(x).fcall(y, z)    | -                 | -                      |POST   %%https://...%%    {...}  |
+|x ! [i]            |Q(x).get(i)         |x ! p              |Q(x).get('p')           |GET    %%https://...q=p%%        |
+|x ! [i] = v        |Q(x).put(i, v)      |x ! p = v          |Q(x).put('p', v)        |PUT    %%https://...q=p%% {...}  |
+|delete x ! [i]     |Q(x).delete(i)      |delete x ! p       |Q(x).delete('p')        |DELETE %%https://...q=p%%        |
+
+===== Non-fundamental Static Q Conveniences =====
+
+
+==== Q.delay ====
+
+Reveal the ''answer'' sometime after ''millis'' milliseconds have elapsed.
+
+<code javascript>
+  Q.delay = function(millis, answer = undefined) {
+    return Q.promise(resolve => {
+      setTimeout(() => resolve(answer), millis);
+    });
+  };
+</code>
+
+
+==== Q.race ====
+
+Given a list of promises, returns a promise for the resolution of whichever promise we notice has completed first.
+
+<code javascript>
+  Q.race = function(answerPs) {
+    return Q.promise((resolve,reject) => {
+      for (answerP of answerPs) {
+        Q(answerP).then(resolve,reject);
+      };
+    });
+  };
+</code>
+
+We can compose ''Q.race'', ''Q.delay'', and ''Q.reject'' to timeout eventual requests.
+
+<code javascript>
+  var answer = Q.race([bob ! foo(carol), 
+                       Q.delay(5000, Q.reject(new Error("timeout")))]);
+</code>
+
+
+==== Q.all ====
+
+Often it's useful to collect several promised answers, in order to react either when //all// the answers are ready or when //any// of the promises becomes //rejected//.
+
+<code javascript>
+  Q.all = function(answerPs) {
+    let countDown = answerPs.length;
+    const answers = [];
+    if (countDown === 0) { return Q(answers); }
+    return Q.promise((resolve,reject) => {
+      answerPs.forEach((answerP, index) => {
+        Q(answerP).then(answer => {
+          answers[index] = answer;
+          if (--countDown === 0) { resolve(answers); }
+        }, reject);
+      });
+    });
+  };
+</code>
+
+We can compose ''Q.all'', ''then'', and [[harmony:destructuring]] to delay until several operands are revealed
+
+<code javascript>
+  var sumP = Q.all([xP, yP]).then(([x, y]) => (x + y);
+</code>
+
+
+
+==== Q.join ====
+
+Join is our eventual equality operation. Any messages sent on the join of ''xP'' and ''yP'' are only delivered if ''xP'' and ''yP'' both reveal the same target, in which case these messages are eventually delivered to that target and this joined promise itself eventually becomes fulfilled to designate that target. Otherwise, all these messages are discarded with the usual rejected promise contagion.
+
+<code javascript>
+  Q.join = function(xP, yP) {
+    return Q.all([xP, yP]).then(([x, y]) => {
+      if (Object.is(x, y)) {
+        return x;
+      } else {
+        throw new Error("not the same");
+      }
+    });
+  };
+</code>
+
+
+
+
+
+==== Q.memoize ====
+
+''Q.memoize'' of a one argument function returns a new similar one argument function, except that it (eventually) calls the original function no more than once for each such argument. The memo function immediately returns a promise for what the original function will eventually return. Equivalence of arguments is determined by the optional memoMap passed in, which defaults to a new WeakMap() if absent. (Passing a memoMap in also allows the caller to seed the mapping with some prior associations.)
+
+The difference from a traditional synchronous memoizer is that the original function is called //eventually// after a promise for its result is //already// memoized, enabling cycles to work. For example, if memoF === memoize(f) and f(x) calls memoF(x), then an outer call to memoF(x) schedules an eventual call to f(x) which makes an inner call to memoF(x). Both outer and inner calls to memoF(x) returns a promise for what f(x) will eventually return.
+
+<code javascript>
+   Q.memoize = function(oneArgFuncP, memoMap = WeakMap()) {
+
+     return function oneArgMemo(arg) {
+       if (memoMap.has(arg)) {
+         return memoMap.get(arg);
+       } else {
+         const resultP = oneArgFuncP ! (arg);
+         memoMap.set(arg, resultP);
+         return resultP;
+       }
+     }
+   };
+</code>
+
+
+==== Q.async ====
+
+See [[strawman:async_functions#reference_implementation|async functions reference implementation]].
+
+
+==== Q.defer() ====
+
+(Will likely be deprecated)
+
+<code javascript>
+  Q.defer = function() {
+    const deferred = {};
+    deferred.promise = Q.promise((resolve,reject) => {
+      deferred.resolve = resolve;
+      deferred.reject = reject;
+    });
+    return deferred;
+  };
+</code>
+
+====== Examples ======
+
+
+===== Infinite Queue =====
+
+<code javascript>
+  function makeQueue() {
+    let rear;
+    let front = Q.promise(r => { rear = r; });
+    return Object.freeze({
+      enqueue: function(elem) {
+        let nextRear;
+        const nextTail = Q.promise(r => { nextRear = r; });
+        rear({head: elem, tail: nextTail});
+        rear = nextRear;
+      },
+      dequeue: function() {
+        const result = front ! head;
+        front = front ! tail;
+        return result;
+      }
+    });
+  }
+</code>
+
+
+Calling ''queue.dequeue()'' will return a promise for the next element that has or will be enqueued.
+
+
+
+===== Spawn =====
+
+The following ''spawn'' function is a simple abstraction built on ''Vat'' and ''then'' that captures a simple common case:
+
+<code javascript>
+  function spawn(src) {
+    const vat = Vat();
+    const resultP = vat.evalLater(src);
+    Q(resultP).then(function(_) {
+      vat.terminateAsap(new Error('done')); 
+    });
+    return resultP;
+  }
+
+  const sumP = spawn('3+5'}); // sumP eventually resolves to 8.
+</code>
+
+The argument string to ''spawn'' is evaluated in a new Vat spawned for that purpose. Spawn returns a promise for what that string will evaluate to. Once that promise resolves, the spawned vat is shut down.
+
+
+
+
+===== Vat.evalLater() as Async-PGAS =====
+
+In the Async-PGAS language X10, the "at" statement is defined as
+
+<code>
+  // x10 grammar, not javascript or proposed javascript
+  Statement :
+    at ( PlaceExpression ) Statement
+</code>
+
+The "at" statement first evaluates the PlaceExpression to a place, which is analogous to a vat. It then evaluates the Statement at that place. The statement evaluates with the lexical scope containing the "at" statement, so the locality of the values bound to these identifiers is the locality they have at that place rather than at the location containing the "at" statement. Although the argument to ''Vat.evalLater'' must be a closed expression (modulo whitelisted globals), we can get the same effect, a bit more verbosely, by passing in these bindings as an explicit eventual call to a closed function.
+
+For example, the X10-ish program
+
+<code javascript>
+  const x = 6;
+  let ultimateP;
+  at (place) { ultimateP = x*7; }
+</code>
+
+can be expressed using ''aVat.evalLater()'' as
+
+<code javascript>
+  const x = 6;
+  let ultimateP = place.evalLater(x => x*7) ! (x);
+</code>
+
+
+
+
+
+===== Open Vat =====
+
+The ''makeOpenVat'' function makes an ''OpenVat'' function. Each ''OpenVat'' function is like the ''Vat'' function, in that both make an return a new vat instance. Each ''OpenVat'' function additionally maintains a side table mapping from all incoming remote promises to the evaluation function of the open vat made by this ''OpenVat'' function. The reason we call such vats //open// is that, given a remote promise into such a vat and the ''OpenVat'' function that made that vat, one can thereby inject new code into that vat.
+
+TODO: explain the membrane variation used below.
+
+<code javascript>
+  function makeOpenVat() {
+    const wm = WeakMap();
+  
+    function OpenVat() {
+      const vat = Vat();
+      const openVat = Object.freeze({
+        evalLater: makeMembraneX(
+          vat.evalLater,
+          { registerRemote: function(remote) {
+              wm.set(remote, openVat.evalLater); }}),
+        terminateAsap: vat.terminateAsap
+      });
+      return openVat;
+    }
+    OpenVat.evalAt = function(p, src) {
+      return wm.get(p)(src);
+    };
+    return OpenVat;
+  }
+</code>
+
+
+
+===== there =====
+
+The ''there(p, ...)'' function is analogous to ''Q(p).then(...)'', except instead of merely relocating the execution of the callback in time till after ''p'' is resolved, it further relocates it in spacetime, to where and when p is near. Like ''Q(p).then(...)'', ''there'' immediately returns a promise for the eventual outcome. We do not likewise relocate the errback, so that we can still notify it and it can still react on the requesting side to a partition between the requestor and ''p'''s host.
+
+<code javascript>
+  function there(p, callback, opt_errback) {
+    var callbackP = OpenVat.evalAt(p, '' + callback);
+    return (callbackP ! (p)).then(
+      v => v,
+      opt_errback);
+  }
+</code>
+
+
+
+===== Map-Reduce Lite =====
+
+Given an initial result value, a list of potentially remote promises to elements, a closed mobile ''mapper'' function from elements to mapped result values, and an associative / commutative ''reducer'' function from pairs of references to result values to a new reference to a result value, ''mapReduce'' immediately returns a promise for the result of mapping all the elements where they live, and reducing all of these results together with the initial result value to a result.
+
+I call this "Map-Reduce Lite" because, unlike a production map-reduce infrastructure, the following ''mapReduce'' does all reductions on the spawning machine, which is therefore a scaling bottleneck, and has none of the fault-tolerance. Here, any failure causes the overall map-reduce to fail, i.e., the returned promise becomes a //rejected// promise. The mapper and reduction functions are like the conventional functional programming variety, rather than the map-reduce variety which arranged for group-by keys.
+
+<code javascript>
+  /**
+   * Type/Guard syntax below is only a placeholder, not a serious proposal.
+   * @param initValue ::T2
+   * @param elemPs    ::Array[Ref[T1]]  // i.e., Array[T1 | Promise[T1]]
+   * @param mapper    ::(T1 -> T2)      // closed mobile function
+   * @param reducer   ::(T2 x T2 -> T2)
+   * @reveals         ::T2              // i.e., @returns ::Ref[T2]
+   */
+  function mapReduce(initValue, elemPs, mapper, reducer) {
+    let countDown = elemPs.length;
+    if (countDown === 0) { return initValue; }
+    let result = initValue;
+
+    return Q.promise((resolve, reject) => {
+      elemPs.forEach(elemP => {
+        const mappedP = there(elemP, mapper);
+        Q(mappedP).then(mapped => {
+          result = reducer(result, mapped);
+          if (--countDown === 0) { resolve(result); }
+        }, reject);
+      });
+    });
+  }
+</code>
+
+===== AMD Loader Lite =====
+
+This is a minimal Asynchronous Module Definition (AMD) Loader for a subset of the [[https://github.com/amdjs/amdjs-api/wiki/AMD|AMD API]] specification. In this subset, ''define'' is called with exactly two arguments, a ''dependencies'' list of module names, and a factory function with one parameter per dependency.
+
+<code javascript>
+   function makeSimpleAMDLoader(fetch, moduleMap = Map()) {
+     var loader;
+
+     function rawLoad(id) {
+       return Q(fetch(id)).then(src => {
+         var result = Q.reject(new Error('"define" not called by: ' + id));
+         function define(deps, factory) {
+           result = Q.all(deps.map(loader)).then(imports => {
+             return factory(...imports);
+           });
+         }
+         define.amd = {lite: true};
+
+         Function('define', src)(define);
+         return result;
+       });
+     }
+     return loader = Q.memoize(rawLoad, moduleMap);
+   }
+</code>
+
+If module "W" depends on modules "X", "Y", and "Z", then only once the promises for the "X", "Y", and "Z" modules have all been fulfilled will the "W" factory function be called with these module instances. The result of calling this factory function will then become the "W" module instance.
+
+What it means to //be// the source for the "W" module is that ''fetch("W")'' will eventually return that source string. For example, a given ''fetch'' function might fetch it from ''%%https://example.com/prefix/W.js%%''.
+
+<code javascript>
+  // At https://example.com/prefix/W.js
+  define(['X', 'Y', 'Z'], function(X, Y, Z) {
+    return X(Y, Z);
+  })
+</code>
+
+Since the memo mapping we need is from module names, which are strings rather than objects, we need to provide an explicit memoMap argument to ''Q.memoize'', which should be a map that accepts strings as keys.
+
+Although the cycle tolerance of ''Q.memoize'' is generally useful, here it hurts. Because ''define'' won't call the factory function until all (''Q.all'') of the dependencies are fulfilled, any cyclic AMD dependencies cause an undetected deadlock. Still, in the naive absence of this cycle tolerance, such cyclic dependencies would have instead caused an infinite regress which is even worse. Better would be cycle detection and rejection, which we leave as an exercise for the reader. 
+
+
+
+
+
+
+
+
+
+
+
+====== See ======
+
+[[https://github.com/promises-aplus/promises-spec|Promises/A+]]
+
+[[https://github.com/slightlyoff/Promises|DOM Promises]]
+
+[[http://soft.vub.ac.be/~tvcutsem/talks/presentations/WGLD_CommEventLoops.pdf|An exploration of communicating event loops in Javascript]]
+
+[[strawman:deferred_functions]] and [[strawman:async_functions]]
+
+[[https://brendaneich.com/2007/02/threads-suck/|threads suck]]
+
+[[http://erights.org/talks/promises/paper/tgc05.pdf|Concurrency Among Strangers]] and [[http://erights.org/talks/thesis/|Part III of Robust Composition]]
+
+[[http://soft.vub.ac.be/~tvcutsem/publications/phd_tom_van_cutsem.pdf|Ambient References: Object Designation in Mobile Ad hoc Networks]]
+
+[[http://nodejs.org/|NodeJS]]
+
+[[http://waterken.sourceforge.net/web_send/|ref_send and web_send]] 
+
+[[http://wiki.commonjs.org/wiki/Promises/B|CommonJS Promises/B]] with [[https://github.com/kriskowal/q|implementation]] as node npm package.
+
+[[https://github.com/kriskowal/q-connection|Similar to ref_send, but connection-oriented and symmetric]]
+
+[[https://sites.google.com/site/belayresearchproject/introduction/concepts|BCap, another RESTful JSON object-capability protocol]]
+
+[[http://erights.org/elib/distrib/captp/|CapTP]] and [[http://code.google.com/p/caja-captp/|caja-captp]]
+
+[[http://wiki.erights.org/wiki/Causeway|Causeway, a message oriented distributed debugger]]
+
+[[http://softech.informatik.uni-kl.de/twiki/pub/Homepage/Publikationen/SchaeferPoetzschHeffter10jcobox.pdf|JCoBox]] (has a formal semantics of a similar model)
+
+[[http://www.hpl.hp.com/techreports/2009/HPL-2009-258.html|Towards Fearless Distributed Computing]]
+
+[[http://research.microsoft.com/apps/pubs/?id=141999|Orleans: A Framework for Cloud Computing]] with [[http://channel9.msdn.com/Shows/Going+Deep/Project-Orleans-A-Cloud-Computing-Framework|video]]. Starts with the same general model -- async messages returning promises, vats (called grains) processing the reception of such messages in sequential turns that run to completion, pipelined polymorphism between promises and far references. Adds scalability by on-demand grain replication and optimistic reconciliation. 
+
+[[http://www.cs.rochester.edu/u/cding/amp/papers/full/The%20Asynchronous%20Partitioned%20Global%20Address%20Space%20Model.pdf|The Asynchronous Partitioned Global Address Space Model]]
+
+[[http://softech.informatik.uni-kl.de/twiki/pub/Homepage/Publikationen/loctypes2011tr.pdf|Location Types for Safe Distributed Object-Oriented
+Programming]]
+
+[[http://www.infoq.com/presentations/Secure-Distributed-Programming|Secure Distributed Programming on ECMAScript 5 + HTML5 Platforms]]
+
+[[http://asyncobjects.sourceforge.net/asyncscala/|AsyncScala]]
+
+[[http://static.googleusercontent.com/external_content/untrusted_dlcp/research.google.com/en/us/pubs/archive/40673.pdf|Distributed Electronic Rights in JavaScript]]
+
+{{strawman:promisesvsmonads2.pdf|Promises vs. Monads}} Slide Deck
+
+{{strawman:roadmap.pdf|Draft ES6,ES7,ES8... Roadmap}} Slide Deck

@@ -1,0 +1,190 @@
+<html>
+<head>
+<title>ECMAScript Harmony Strawman Proposal </title>
+<style>
+/* -*- indent-tabs-mode: nil -*- */
+.fixme { font-size: smaller; padding-left: 1em; color: red }
+.note { font-size: smaller; padding-left: 1em }
+.part { font-size: 24pt }
+.grammar { font-style: italic }
+.indented { padding-left: 3em }
+.nonterm { padding-top: 1em }
+.xref { border: thin solid red; }
+.section { margin-bottom: -1em; font-family: sans-serif; font-size: smaller }
+.implsection { margin-bottom: -1em; padding-bottom: 0.3em; font-family: sans-serif; font-size: smaller }
+.literal { font-style: normal; font-weight: bold }
+H1,H2,H3,H4,H5,H6 { font-family: sans-serif }
+H1 { font-size: 14pt }
+H2 { font-size: 12pt }
+H3 { font-size: 11pt }
+H4 { font-size: 10pt }
+
+P code { font-size: 10pt }
+code { font-style: normal; font-weight: normal }
+
+pre { font-size: 9pt }
+
+body { counter-reset: chapter section subsection subsubsection subsubsubsection;
+       font-size: 10pt; 
+       margin: 0.75in }
+
+table { font-size: inherit;
+        width: 70%;
+        margin: 2em; 
+        border: 1px solid lightgrey; }
+
+th { background: lightgrey; }
+
+td { padding: 1em; }
+
+.pcounter:before {
+    content: counter(para); 
+}
+
+.pcounter {
+    position: absolute; left: 0.5in;
+    counter-increment: para
+}
+
+H1:before {
+    padding-right: 1em;
+    content: counter(chapter) "  ";
+    counter-increment: chapter }
+
+H1 {
+    counter-reset: section para;
+}
+
+H2:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "  ";
+    counter-increment: section }
+
+H2 {
+    counter-reset: subsection para;
+}
+
+H3:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "  ";
+    counter-increment: subsection }
+
+H3 {
+    counter-reset: subsubsection para;
+}
+
+H4:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "  ";
+    counter-increment: subsubsection }
+
+H4 {
+    counter-reset: para;
+}
+
+H5:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "." counter(subsubsubsection) "  ";
+    counter-increment: subsubsubsection }
+
+H5 {
+    counter-reset: para;
+}
+
+</style>
+</head>
+
+<body>
+<h1>Record Types Proposal for Harmony</h1>
+
+<P><span class="pcounter"></span>A <i>record type</i> is a subtype of the <code><b>Object</b></code> class
+type that has additional type constraints on some specific set of
+named properties.
+
+<P><span class="pcounter"></span>Record types are arranged implicitly into a subtype relation
+through structural comparison of their property constraints.
+
+<P><span class="pcounter"></span>A record type is denoted in a type expression by listing the names
+of the specified properties in a comma separated list, with optional
+type annotations, enclosed in curly braces.
+
+<P><span class="pcounter"></span>An example is <code><b>{x: Number, y: String}</b></code>, which denotes a record
+type with two properties <code><b>x</b></code> and <code><b>y</b></code>, the first constrained to
+type <code><b>Number</b></code> and the second to type <code><b>String</b></code>. The type <code><b>{ }</b></code>
+denotes the empty record type.
+
+<h2>Type Evaluation</h2>
+
+<P><span class="pcounter"></span> At run-time, when a type <code><b>T</b></code> is encountered in the source program,
+that type is immediately <i>evaluated</i>, essentially by doing name lookup on any contained identifiers.
+
+<h2>The Subtype Relation</h2>
+
+<P><span class="pcounter"></span>The <i>subtype relation</i> is a binary relation on types.  It is
+defined by the collection of subtype rules described below and in the
+following subsections.
+
+<P><span class="pcounter"></span>
+Subtyping is reflexive, so every type is a subtype of itself.
+
+<P><span class="pcounter"></span> Subtyping is transitive, so if <code><b>S</b></code> is a subtype of <code><b>T</b></code>
+and <code><b>T</b></code> is in turn a subtype of <code><b>U</b></code>, then <code><b>S</b></code> is
+also a subtype of <code><b>U</b></code>.
+
+<h3>Subtyping Record Types</h3>
+
+<P><span class="pcounter"></span> A record type <code><b>{N<sub>1</sub>:S<sub>1</sub>, .., N<sub>n</sub>:S<sub>n</sub>}</b></code> (where each
+distinct <code><b>N<sub>i</sub></b></code> is a name and each <code><b>S<sub>i</sub></b></code> is a type) is
+a subtype of <code><b>{N<sub>1</sub>:T<sub>1</sub>, .., N<sub>m</sub>:T<sub>m</sub>}</b></code> if m &#x2264; n and
+<code><b>S<sub>i</sub></b></code> is equivalent to <code><b>T<sub>i</sub></b></code> for all i in 1..m.
+
+<P><span class="pcounter"></span> The ordering of the <code><b>Name:Type</b></code> bindings in a record type is
+irrelevant, and so re-arranging these bindings yields an equivalent
+type.  In particular, this re-arranging may be necessary in order to
+make the above rule applicable. The function <code>nameExpressionEqual</code>
+checks if two field names are equal.
+<h3>Relating Structural and Nominal Types</h3>
+
+<P><span class="pcounter"></span> A record type <code><b>{N<sub>1</sub>:S<sub>1</sub>, .., N<sub>n</sub>:S<sub>n</sub>}</b></code>  is a subtype of the class
+type <code><b>public::Object</b></code>.
+
+<h2>Compatible Types</h2>
+
+<P><span class="pcounter"></span>The compatibility relation is a binary relation on type values. Two
+types <code><b>S</b></code> and <code><b>T</b></code> are compatible if <code><b>T</b></code> can be obtained from
+<code><b>S</b></code> by replacing certain portions of <code><b>S</b></code> by the any type <code><b>*</b></code>.
+
+<P><span class="pcounter"></span>For example, the record type <code><b>{x : int}</b></code> is compatible with
+both <code><b>{x : *}</b></code> and with <code><b>*</b></code>, but the type <code><b>{x : *}</b></code> is not
+compatible with <code><b>{x : int}</b></code>.
+
+<P><span class="pcounter"></span>This compatibility relation is reflexive and transitive, but not
+symmetric.
+
+<h2>Compatible-Subtyping</h2>
+
+<P><span class="pcounter"></span>The compatible-subtype relation is a binary relation on types.  A
+type <code><b>S</b></code> is a compatible-subtype of a type <code><b>T</b></code> if there exists
+some type <code><b>U</b></code> such that <code><b>S</b></code> is a subtype of <code><b>U</b></code> and <code><b>U</b></code>
+compatible with <code><b>T</b></code>.
+
+<P><span class="pcounter"></span>For example, the record type <code><b>{x : int, y : bool}</b></code> is a
+compatible-subtype of the types <code><b>{x : *, y : *}</b></code>, <code><b>{x : int}</b></code>,
+<code><b>{x : *}</b></code>, and <code><b>*</b></code>.
+
+<P><span class="pcounter"></span>The compatible-subtyping relation is reflexive and transitive, but not symmetric.
+
+<h2>Type Invariants at Run Time</h2>
+
+<P><span class="pcounter"></span>Every value in ES has an associated <i>allocated type</i>, which is a type that is
+associated with the value when the value is first allocated or created. An allocated
+type is always a reifiable type. The allocated type of a value is invariant; for example,
+updating the fields of an object cannot change the allocated type of that object.
+
+<P><span class="pcounter"></span>If a property of storage type <code><b>T</b></code> hold a value <code><b>v</b></code> of type
+<code><b>S</b></code>, then <code><b>S</b></code> is a compatible-subtype of <code><b>T</b></code>.
+
+
+
+</body>
+</html>

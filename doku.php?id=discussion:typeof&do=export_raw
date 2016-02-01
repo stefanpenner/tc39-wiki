@@ -1,0 +1,45 @@
+(this is the discussion page for [[proposals:typeof]])
+
+===== Previous proposal and discussion =====
+
+We are adding some new fundamental types in edition 4. What should the result of ''typeof'' be when a value of one of these new types is its operand?
+
+^ Type	^ Result ^ Comment ^
+| Undefined	| "undefined" | |
+| Null	        | "null" | es4 bug fix |
+| Boolean	| "boolean" | | 
+| Number	| "number" | | 
+| String	| "string" | | 
+| XML	        | "xml" | new to e4x, but with no special case for Namespace | 
+| XMLList	| "xml" | ditto | 
+| Object (native and doesn't implement ''[Call]'') | "object" | | 
+| Object (native and implements ''[Call]'')	 | "function" | | 
+| Class | "type" | or "class", ''typeof String'' returns "function" in es3 | 
+| Interface | "type" | or "interface" | 
+| Namespace | "namespace" | e4x chose "object", does it deserve special status? | 
+| int | "number" | | 
+| uint | "number" | |
+
+----
+
+From [[proposals:bug fixes]] where the ''typeof'' fixing started, more about the ''typeof null === "null"'' fix:
+
+  * Spidering the web shows no dependencies on ''typeof null === "object"''.
+  * Spidering discloses a number of pages that will suffer a ''ReferenceError'' if ''null'' is passed.
+    * I.e., these pages contain scripts that use ''typeof foo == "object"'' to guard ''foo'' dereferences.
+
+Note that if we make ''RegExp'' have a ''[Call]'' internal method, ''typeof /hi/ === "function"''.  In IE, ''typeof alert === "object"'' even though ''alert'' is callable (but of course not a function object, so not ''apply''able, etc.).  Do we really want all callable objects to be of type ''"function"''?
+
+In general, ''typeof'' seems like a mess that will be hard to reform sensibly.  If we provide a ''builtin::type()'' function, or perhaps ''reflect::type()'', we could do something much better, and stop investing in ''typeof''.  Comments?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/31 15:13//
+
+I tend to agree that we should deprecate ''typeof''. But can we ignore the fact that we are introducing new builtin types that are peers of function, number, etc? Maybe that argues for associating ''Class'' and ''Interface'' with a more generic name like ''"type"'' (i think ''"object"'' is too generic) and leaving ''Namespace'' with ''"object"''. Also, I'd rather break compatibility with E3 ''typeof String'' and other constructors giving ''"function"'' and let them instead give ''"type"'' (or ''"class"'') in E4. Is that going too far? Maybe it is.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/03/31 16:08//
+
+We have reason to believe ''typeof null === "object"'' is a bug that could bite real content, from our spidering of the web.  We have no such evidence in favor of breaking ''typeof String === "function"'', and plenty of reason to fear incompatibility.  It might be best to leave ''typeof'' utterly alone and deprecate it, but I'm still in favor of the ''null'' bug-fix.
+
+In any event, ''reflect::type()'' or something like it wins.  (BTW, I don't mean to suggest that a ''type'' built-in function or unary operator should be part of the optional [[proposals:meta objects|reflection]] package -- I do think it will be hard to reserve ''type'', so we might rather put it in a namespace that is open by default but prioritized somehow such that user-defined ''function type...'' or ''var type...'' hide it.)  
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/31 16:34//

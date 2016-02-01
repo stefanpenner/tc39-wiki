@@ -1,0 +1,250 @@
+<html>
+<head>
+<title>ECMAScript Harmony Strawman Proposal </title>
+<style>
+/* -*- indent-tabs-mode: nil -*- */
+.fixme { font-size: smaller; padding-left: 1em; color: red }
+.note { font-size: smaller; padding-left: 1em }
+.part { font-size: 24pt }
+.grammar { font-style: italic }
+.indented { padding-left: 3em }
+.nonterm { padding-top: 1em }
+.xref { border: thin solid red; }
+.section { margin-bottom: -1em; font-family: sans-serif; font-size: smaller }
+.implsection { margin-bottom: -1em; padding-bottom: 0.3em; font-family: sans-serif; font-size: smaller }
+.literal { font-style: normal; font-weight: bold }
+H1,H2,H3,H4,H5,H6 { font-family: sans-serif }
+H1 { font-size: 14pt }
+H2 { font-size: 12pt }
+H3 { font-size: 11pt }
+H4 { font-size: 10pt }
+
+P code { font-size: 10pt }
+code { font-style: normal; font-weight: normal }
+
+pre { font-size: 9pt }
+
+body { counter-reset: chapter section subsection subsubsection subsubsubsection;
+       font-size: 10pt; 
+       margin: 0.75in }
+
+table { font-size: inherit;
+        width: 70%;
+        margin: 2em; 
+        border: 1px solid lightgrey; }
+
+th { background: lightgrey; }
+
+td { padding: 1em; }
+
+.pcounter:before {
+    content: counter(para); 
+}
+
+.pcounter {
+    position: absolute; left: 0.5in;
+    counter-increment: para
+}
+
+H1:before {
+    padding-right: 1em;
+    content: counter(chapter) "  ";
+    counter-increment: chapter }
+
+H1 {
+    counter-reset: section para;
+}
+
+H2:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "  ";
+    counter-increment: section }
+
+H2 {
+    counter-reset: subsection para;
+}
+
+H3:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "  ";
+    counter-increment: subsection }
+
+H3 {
+    counter-reset: subsubsection para;
+}
+
+H4:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "  ";
+    counter-increment: subsubsection }
+
+H4 {
+    counter-reset: para;
+}
+
+H5:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "." counter(subsubsubsection) "  ";
+    counter-increment: subsubsubsection }
+
+H5 {
+    counter-reset: para;
+}
+
+</style>
+</head>
+
+<body>
+<h1>Core Types Proposal</h1>
+
+
+
+<P><span class="pcounter"></span>ECMAScript supports optional
+type annotations on properties (e.g., on variables and fields).  These
+type annotations are enforced dynamically; there is no separate static type checking phase.
+
+<P><span class="pcounter"></span>Types are first-class values
+and can be stored in variables, passed to functions, etc, just like other values. In particular, there is no need for a separate notion of type variables.
+
+<P><span class="pcounter"></span>Every value has an <i>allocated type</i>. The allocated type is the
+type given to a value when it is created and which defines its fixed
+structure. The allocated type of a value never changes.
+
+<P><span class="pcounter"></span>Every property (e.g., variable or field) has a <i>storage type</i>. The storage type of a
+property 
+constrains the set of values
+that can be stored in the property. The storage type of a property is
+also called the property's <i>type constraint</i>.
+
+<P><span class="pcounter"></span>The declarations of properties can carry type <i>annotations</i>,
+which define the storage type of the property. Annotation is denoted
+by following the annotated property name with a colon and a type
+expression. Annotations are not required: any property lacking an
+annotation is implicitly given the storage type <code><b>*</b></code>, meaning that
+the property can hold a value of any allocated type.
+
+<P><span class="pcounter"></span>If a property holds a value, then that value must have an allocated
+type that is a <i>compatible subtype</i> of the property's storage type.
+The notion of compatible subtype is a key design question.  For now,
+given the minimal type language in this proposal,
+we assume that two types are consistent if and only if they
+are identical. (This requirement may subsequently need to be relaxed,
+for example, to support subtyping or to support interoperation between
+typed and untyped code.)
+
+<P><span class="pcounter"></span>For a given type <code><b>T</b></code>, a set of values is said to <i>populate</i>
+<code><b>T</b></code> if the values all have allocated types that are compatible
+subtypes of <code><b>T</b></code>. Some types are specified by specifying the values
+that populate them.
+
+<h2>The Type Language</h2>
+
+<P><span class="pcounter"></span> An open question is whether there is a separate language for
+types, or whether the type and expression language should be merged.
+
+<P><span class="pcounter"></span> Merging the type and expression language at first glance appears
+simpler, but could lead to significant difficulties/ambiguities in
+parsing, and might be difficult to later extend (eg to additional
+types).
+
+<P><span class="pcounter"></span> Separate type and expression languages requires some way to escape
+from one language to the other. We could use the syntax <code><b>type(...)</b></code>
+to encode types in the term language, and use <code><b>let</b></code> to store the
+result of an expression in a variable when could then be referred to
+from within a type.
+
+<P><span class="pcounter"></span> This draft tries to aviod these issues of syntax, which are
+somewhat orthogonal to the semantic issues of the type language. Since
+we need some syntax for describing types, we assume a separate type
+language.
+
+<P><span class="pcounter"></span>This proposal describes a rather minimalist type language, which
+subsequent proposals may explore extending in various ways, for
+example, with structural types for records, functions, etc.
+
+<P><span class="pcounter"></span>Initially, ES-Harmony includes the following types:
+
+<h3>The any type</h3>
+
+<P><span class="pcounter"></span>The <i>any type</i> is the type populated by every possible value. In
+other words, every other type is consistent with the any type.
+
+<P><span class="pcounter"></span>The any type is denoted in a type expression as <code><b>*</b></code>.
+
+<P><span class="pcounter"></span>No value has the any type as its allocated type. The any type
+is only meaningful as the storage type of a property.
+
+<h3>Nominal types</h3>
+
+<P><span class="pcounter"></span>A <i>class type</i> is a type defined by a class definition.
+Each class type implicitly includes the value <code><b>null</b></code>.
+
+<h3>Primitive types</h3>
+
+<P><span class="pcounter"></span>Primitive types include <code><b>Object</b></code>, <code><b>Function</b></code>, etc.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp; The complete list should  be enumerated here.
+
+<h2>Type Evaluation</h2>
+
+<P><span class="pcounter"></span> At run-time, when a type <code><b>T</b></code> is encountered in the source program,
+that type is immediately <i>evaluated</i>, essentially by doing name lookup on any contained identifiers.
+
+<h2>The Subtype Relation</h2>
+
+<P><span class="pcounter"></span>The <i>subtype relation</i> is a binary relation on types.  It is
+defined by the collection of subtype rules described below and in the
+following subsections.
+
+<P><span class="pcounter"></span>
+Subtyping is reflexive, so every type is a subtype of itself.
+
+<P><span class="pcounter"></span> Subtyping is transitive, so if <code><b>S</b></code> is a subtype of <code><b>T</b></code>
+and <code><b>T</b></code> is in turn a subtype of <code><b>U</b></code>, then <code><b>S</b></code> is
+also a subtype of <code><b>U</b></code>.
+
+<h3>Subtyping ANY Types</h3>
+
+<P><span class="pcounter"></span>Any type is a subtype of the ANY type.
+
+<h3>Subtyping Nominal Types</h3>
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp; Makes many assumptions about the class system.
+
+<P><span class="pcounter"></span>
+Given a class definition
+
+<b>
+<PRE>
+    class C extends D implements I<sub>1</sub>, .., I<sub>n</sub> { ... }
+</PRE>
+</b>
+
+the type <code><b>C</b></code> is a subtype of <code><b>D</b></code>, and  <code><b>C</b></code> is also a subtype of
+<code><b>I<sub>j</sub></b></code> for j in 1..n.
+
+<P><span class="pcounter"></span>
+Given an interface definition
+
+<b>
+<PRE>
+    interface K extends I<sub>1</sub>, .., I<sub>n</sub> { ... }
+</PRE>
+</b>
+
+the type <code><b>K</b></code> is a subtype of <code><b>Ij</b></code> for j in 1..m.
+ 
+
+<h2>The Type Equivalence Relation</h2>
+
+<P><span class="pcounter"></span>The type equivalence relation is also a binary relation on types.
+Two types are equivalent if and only if they are both subtypes of each other.
+
+
+
+
+  
+
+
+</body>
+</html>

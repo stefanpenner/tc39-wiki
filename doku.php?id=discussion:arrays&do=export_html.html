@@ -1,0 +1,349 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=discussion:arrays&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=discussion" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=discussion:arrays&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=discussion:arrays&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=discussion:arrays&amp;do=export_html.html#arrays" class="toc">Arrays</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:arrays&amp;do=export_html.html#limitations_in_the_type_syntax" class="toc">Limitations in the type syntax</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=discussion:arrays&amp;do=export_html.html#older_proposals_not_carried_forward" class="toc">Older proposals not carried forward</a></span><ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=discussion:arrays&amp;do=export_html.html#fixed-length_arrays" class="toc">Fixed-length arrays</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=discussion:arrays&amp;do=export_html.html#iteration" class="toc">Iteration</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=discussion:arrays&amp;do=export_html.html#the_class_array" class="toc">The class &quot;array&quot;</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:arrays&amp;do=export_html.html#open_issues_about_the_older_proposal" class="toc">Open Issues about the older proposal</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:arrays&amp;do=export_html.html#tuples_of_length_1" class="toc">Tuples of length 1</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:arrays&amp;do=export_html.html#multi-dimensional_arrays" class="toc">Multi-dimensional arrays</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:arrays&amp;do=export_html.html#is_the_array_class_necessary" class="toc">Is the &quot;array&quot; class necessary?</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:arrays&amp;do=export_html.html#generic_array_type" class="toc">Generic Array type</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="arrays"></a><h1>Arrays</h1>
+<div class="level1">
+
+<p>
+ This is the discussion page for <a href="doku.php%3Fid=proposals:arrays.html" class="wikilink1" title="proposals:arrays" onclick="return svchk()" onkeypress="return svchk()">the array proposal</a>.
+</p>
+
+</div>
+<!-- SECTION [1-97] -->
+<a name="limitations_in_the_type_syntax"></a><h2>Limitations in the type syntax</h2>
+<div class="level2">
+
+<p>
+ It will not be possible to indicate a tuple of length 1.  This is probably not a big problem in practice (it&rsquo;s not an important use case), and a programmer who believes that it is possible will only be confused in some edge cases where he finds that behavior he thought was illegal or false is in fact legal or true, ie
+</p>
+<pre class="code">
+  function f() : [int] { return [1]:[int] }
+  delete f()[0]
+</pre>
+
+<p>
+will successfully delete the <code>0</code>th element, which is not what the programmer expected.
+</p>
+
+</div>
+<!-- SECTION [98-629] -->
+<a name="older_proposals_not_carried_forward"></a><h1>Older proposals not carried forward</h1>
+<div class="level1">
+
+<p>
+ The following is structured as independent fixes to observed problems, with a new class <code>array</code> capturing all the fixes in a way that fits into the existing language.
+</p>
+
+</div>
+<!-- SECTION [630-850] -->
+<a name="fixed-length_arrays"></a><h3>Fixed-length arrays</h3>
+<div class="level3">
+
+<p>
+ (See also ticket 69, unresolved as of 2007-07-16.)
+</p>
+
+<p>
+There is a property <code>fixed</code> on true arrays and tuples.  Its type is <code>boolean</code>.  If its value is <code>true</code> then <code>length</code> cannot be changed (attempts to change it will throw exceptions).
+</p>
+
+<p>
+For tuple types, <code>fixed</code> is set at construction time to <code>true</code> and it is read-only.
+</p>
+
+<p>
+For true array types, <code>fixed</code> can be set at construction time if we accept a constructor syntax that accepts a length argument, and in that case the property should also be read-only.  See ticket 69.
+</p>
+
+<p>
+In all other cases, <code>fixed</code> can be set and reset arbitrarily by the user program, see ticket 69.  Setting <code>length</code> and then setting <code>fixed</code> to true effectively creates an array that will catch out-of-bound assignments and references.  There is no need for the <code>fixedLength</code> or <code>bound</code> properties proposed in ticket 69.
+</p>
+
+</div>
+<!-- SECTION [851-1747] -->
+<a name="iteration"></a><h3>Iteration</h3>
+<div class="level3">
+
+<p>
+ For-in iteration over tuples and true arrays step through every index from 0 through length-1 in that order and consider neither the prototype property nor properties outside the index range.
+</p>
+
+<p>
+For-each iteration does the same, except of course it iterates over values.
+</p>
+
+</div>
+<!-- SECTION [1748-2039] -->
+<a name="the_class_array"></a><h3>The class &quot;array&quot;</h3>
+<div class="level3">
+
+<p>
+ This all comes together in a new class called <code>array</code>.  The class <code>array</code> is to <code>Array</code> as <code>string</code> is to <code>String</code>: a subclass, final, sealed, and hopefully rather more optimizable.
+</p>
+
+<p>
+Tuples and true arrays are instances of <code>array</code>, whereas other arrays are instances of <code>Array</code>, as before.
+</p>
+
+<p>
+Using the type name: 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>new array()</code> means <code>[]:[*]</code></div>
+</li>
+<li class="level1"><div class="li"> <code>new array(n)</code> means <code>let (x=[]:[*]) x.length=n, x.fixed=true, x</code> </div>
+</li>
+<li class="level1"><div class="li"> <code>new array(a, b, ..., k)</code> is illegal, an exception is thrown.</div>
+</li>
+<li class="level1"><div class="li"> <code>array</code> used as a type annotation is to be interpreted as <code>[*]</code>.</div>
+</li>
+</ul>
+
+<p>
+ Operations on <code>array</code> instances: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Reads by index will throw an exception if the index is not in the range <code>0</code> through <code>length-1</code>.</div>
+</li>
+<li class="level1"><div class="li"> Writes outside the index range will throw an exception</div>
+</li>
+<li class="level1"><div class="li"> Extending and shrinking the array must be done by increasing or decreasing <code>length</code></div>
+</li>
+<li class="level1"><div class="li"> Element deletion in the index range will fail (return false) in all cases.</div>
+</li>
+<li class="level1"><div class="li"> <code>in</code> always succeeds in the index range and always fails outside the index range.</div>
+</li>
+<li class="level1"><div class="li"> iterators on the class iterate only over elements in the index range</div>
+</li>
+</ul>
+
+<p>
+ See <span class="curid"><a href="doku.php%3Fid=discussion:arrays.html" class="wikilink1" title="discussion:arrays" onclick="return svchk()" onkeypress="return svchk()">the discussion page</a></span> for a discussion on whether a new type is really necessary.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2007/07/16 13:46</em>
+</p>
+
+</div>
+<!-- SECTION [2040-3343] -->
+<a name="open_issues_about_the_older_proposal"></a><h2>Open Issues about the older proposal</h2>
+<div class="level2">
+
+<p>
+ (Recorded at the July 2007 f2f.)
+</p>
+
+<p>
+These should turn into trac tickets or be disposed of quickly here: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Should <code>array</code> be named <code>vector</code> or something differing by more than the case of the first letter from <code>Array</code>?</div>
+<ul>
+<li class="level2"><div class="li"> Votes for <code>vector</code>: chris, pratap, allen, doug</div>
+</li>
+<li class="level2"><div class="li"> Votes for <code>array</code>: </div>
+</li>
+<li class="level2"><div class="li"> Abstaining: jeff</div>
+</li>
+<li class="level2"><div class="li"> Brendan&rsquo;s point: users don&rsquo;t need to talk about this type, so maybe it doesn&rsquo;t need a name, but calling it <code>vector</code> makes it plain it&rsquo;s something different</div>
+<ul>
+<li class="level3"><div class="li"> Second point: <code>vector</code> might mean homogenous fixed length only, to many programmers who already use the word informally.</div>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Doug: will this thing have a prototype?</div>
+</li>
+<li class="level1"><div class="li"> Real-world (bogo-benchmark and production code) bug:</div>
+<ul>
+<li class="level2"><div class="li"> People use <code>a.sort()</code> for an array of numbers.</div>
+</li>
+<li class="level2"><div class="li"> But the default comparison function (which converts element values to strings and compares them in lexicographic order) does not adapt to the latent element type.</div>
+</li>
+<li class="level2"><div class="li"> With array types we have explicit type information with which to do better.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> The proposal breaks the progression <code>[int, string, int] &lt;: [int, string] !&lt;: [int]</code>.</div>
+<ul>
+<li class="level2"><div class="li"> Will this be confusing to users who widen structural types to unit-length tuple types?</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> If this proposal is accepted, should rest args be of type <code>array</code> instead of <code>Array</code>?</div>
+</li>
+<li class="level1"><div class="li"> The prohibition on writing outside the index range means the array idiom <code>a[a.length]=x</code> to push an element onto the array won&rsquo;t work with these structures.  Bug or feature?</div>
+<ul>
+<li class="level2"><div class="li"> If you allow deleting at the end of unfixed length arrays, why not allow writing at the end?  &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2007/07/20 12:40</em></div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Any reason this should not be a parameterized type <code>vector.&lt;T&gt;</code>, either with the proposed type syntax as shorthand or with just that syntax?  (For easy construction we may wish to retain <code>[...]:[int]</code> in any case.)</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [3344-5271] -->
+<a name="tuples_of_length_1"></a><h2>Tuples of length 1</h2>
+<div class="level2">
+
+<p>
+ The syntax I propose for array types does not provide for tuples of length 1.  One can simulate these with fixed-length arrays of length 1, but it&rsquo;s ugly:
+</p>
+<pre class="code">
+  x = new [int](1); 
+  x[0] = 37
+</pre>
+
+<p>
+and it can&rsquo;t be done for non-nullable types without default values.  <acronym title="In my opinion">IMO</acronym> this use case is worth less than the ability to just write down a type and have it &ldquo;mean what I say&rdquo;, ie, <code>[int]</code> means array of int and <code>[int,string]</code> is a tuplish array.  This is especially true since a program that uses
+</p>
+<pre class="code">
+  x = [37]:[int]
+</pre>
+
+<p>
+will in fact work as expected in most cases, and finally since the asymmetry of this case is similar to the asymmetry of the ES3 <code>Array</code> constructor, which treats a single argument differently from no arguments or more than one argument.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2007/07/16 11:11</em>
+</p>
+
+</div>
+<!-- SECTION [5272-6141] -->
+<a name="multi-dimensional_arrays"></a><h2>Multi-dimensional arrays</h2>
+<div class="level2">
+
+<p>
+ Consider matrices of floating-point numbers, which we can type as [][double], allocate using <code>x = new [][double](5,8)</code>, and dereference as <code>x[1][5]</code>.  We can extract subarrays using <code>x[2:4][1:3]</code>, maybe (creating a 2&times;2 matrix).  This should not be important for ES4 but it might be important to make sure we can consider it for ES5, somehow.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2007/07/16 13:33</em>
+</p>
+
+</div>
+<!-- SECTION [6142-6590] -->
+<a name="is_the_array_class_necessary"></a><h2>Is the &quot;array&quot; class necessary?</h2>
+<div class="level2">
+
+<p>
+ It certainly allows most of the semantics of true arrays and tuples to be expressed in the language, using getters, setters, operator overloading (maybe), and iterators.  It also avoids introducing new properties on existing classes, which is nice for backwards compatibility.
+</p>
+
+<p>
+The <code>array</code> class is also unobtrusive, it can be hidden in the same namespace where we hide <code>string</code> et al so it won&rsquo;t clutter up the global namespace.
+</p>
+
+<p>
+I don&rsquo;t know what kind of burden this is on the type system, if any.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2007/07/16 13:58</em>
+</p>
+
+</div>
+<!-- SECTION [6591-7197] -->
+<a name="generic_array_type"></a><h2>Generic Array type</h2>
+<div class="level2">
+
+<p>
+ At various times we&rsquo;ve discussed whether the <code>Array</code> type should be generic, ie, <code>Array.&lt;int&gt;</code> creates some sort of monotyped array.  We&rsquo;ve rejected this because it introduces backwards compatibility issues.  Attempt to summarize this discussion:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>Array</code> must itself be a valid object and also a type name for backwards compatibility reasons.</div>
+</li>
+<li class="level1"><div class="li"> Thus there will either have to be an <code>Array</code> that is different from the type <code>Array.&lt;T&gt;</code> or the T will have to default to <code>*</code>, ie <code>Array.&lt;T=*&gt;</code>. </div>
+</li>
+<li class="level1"><div class="li"> If we introduce a default type argument then:</div>
+<ul>
+<li class="level2"><div class="li"> Just mentioning <code>Array</code> must imply (for backwards compatibility reasons) an implicit instantiation of the type.</div>
+</li>
+<li class="level2"><div class="li"> Thus for any generic class <code>Cls.&lt;T=*&gt;</code> there will be a similar implicit instantiation.</div>
+</li>
+<li class="level2"><div class="li"> This is probably not what&rsquo;s desired.</div>
+</li>
+<li class="level2"><div class="li"> (Anyway it&rsquo;s unclear that default type parameters are a good thing, and we don&rsquo;t want to add this just so that we can get one step further to implementing <code>Array</code> in the language.)</div>
+</li>
+<li class="level2"><div class="li"> Thus we&rsquo;re stuck.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Otherwise, there is some <code>Array</code> object that is different from the <code>Array.&lt;T&gt;</code> type object</div>
+<ul>
+<li class="level2"><div class="li"> It must be possible for a program to talk about both without ambiguity</div>
+</li>
+<li class="level2"><div class="li"> Our only mechanism for this is namespaces, eg <code>intrinsic</code></div>
+</li>
+<li class="level2"><div class="li"> Thus the type will be known as <code>intrinsic::Array.&lt;T&gt;</code></div>
+</li>
+<li class="level2"><div class="li"> Note that it can&rsquo;t be in an implicitly opened namespace, or we&rsquo;ll have ambiguity; in particular, it can&rsquo;t be in whatever namespace we end up putting <code>int</code> and friends in</div>
+</li>
+<li class="level2"><div class="li"> This is probably not what&rsquo;s desired.</div>
+</li>
+<li class="level2"><div class="li"> Thus we&rsquo;re stuck.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2007/07/16 10:52</em>
+</p>
+
+</div>
+<!-- SECTION [7198-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/c/cecf8f88196454aefddd514d6d1eb2e2.xhtml used -->
+</body>
+</html>

@@ -1,0 +1,262 @@
+====== Classes as Sugar ======
+
+ES5 makes high integrity possible but not convenient. This strawman suggests further syntactic conveniences beyond those in [[strawman:const_functions#High_Integrity_Factories]]
+
+This strawman depends on the [[harmony:block scoped bindings]] and [[harmony:weak maps]] proposals and the [[strawman:const functions]] and [[strawman:inherited explicit soft fields]] strawmen. For the sake of better layering, dependencies on the [[strawman:trademarks]] strawman have been removed, in anticipation of moving these to the [[strawman:trademarks]] strawman.
+
+We extend the Declaration production from [[harmony:block scoped bindings]] to 
+
+<code>
+  Declaration :
+      LetDeclaration
+      ConstDeclaration
+      FunctionDeclaration
+      ClassDeclaration
+  ClassDeclaration : // defines a high integrity factory function
+      class Identifier ( FormalParameterList? ) { ObjectBody }
+  ObjectBody : // by analogy to FunctionBody
+      ObjectElements?
+  ObjectElements : // by analogy to SourceElements
+      ObjectElement
+      ObjectElements ObjectElement
+  ObjectElement : // by analogy to SourceElement
+      Statement // but not ReturnStatement
+      Declaration
+      PrivateDeclaration
+      PublicDeclaration
+  PrivateDeclaration :
+      private Declaration
+      private Identifier = Expression
+      private Identifier ( FormalParameterList? ) { FunctionBody }
+  PublicDeclaration :
+      public Declaration
+      public Identifier = Expression
+      public Identifier ( FormalParameterList? ) { FunctionBody }
+</code>
+
+===== Expressions =====
+
+<code>
+  ExpressionStatement : 
+      [lookahead not-in { "{", "function", "const", "class" }] Expression ";"
+  MemberExpression : ... // "..." means existing members
+      ClassExpression
+      private ( AssignmentExpression )
+  ClassExpression : // by analogy with FunctionExpression
+      class Identifier? ( FormalParameterList? ) { ObjectBody }
+</code>
+
+Just as an ExpressionStatement cannot begin with ''function'', it would also not be able to begin with ''const'' or ''class''.
+
+Since a class is just sugar for a function, its syntax and scoping is analogous to that for functions.
+
+The ''private'' keyword can be used as-if to call a 1-argument function for accessing the private facet of another instance of the same class. See [[strawman:classes_as_sugar#PrivateDeclaration]] below.
+
+===== ClassDeclaration and ClassExpression =====
+
+<code>
+  ClassDeclaration
+      class Identifier ( FormalParameterList? ) { ObjectBody }
+  ClassExpression : // by analogy with FunctionExpression
+      class Identifier? ( FormalParameterList? ) { ObjectBody }
+</code>
+
+A ClassDeclaration or ClassExpression defines a [[strawman:const functions|const function]] with the stated parameter list that makes a new object by 
+  * executing the ObjectBody,
+  * collecting its public declarations into a new object
+  * freezing the new object
+  * returning the new frozen stamped object.
+
+===== PublicDeclaration =====
+
+There are three forms of public declaration. Each expands in two ways. First, it expands in place into a normal declaration. Second, it expands into the initialization of a property of the same name on the object to be returned. 
+
+<code>
+  PublicDeclaration :
+      public Declaration
+</code>
+
+This first form of PublicDeclaration expands in place to the Declaration. 
+
+The declarations beginning ''const'' or ''class'' define non-assignable lexical variables. The declarations beginning ''let'' or ''function'' define assignable lexical variables. Note that variables declared with ''var'' are not declared by Declaration productions, and so cannot be the subject of a PublicDeclaration.
+
+A public declaration of a non-assignable lexical variable //x// expands into an initialization of an enumerable, non-writable, non-configurable, data property. 
+
+<code javascript>
+  { ...
+    x: { value: x, writable: false, 
+         enumerable: true, configurable: false },
+    ... }
+</code>
+
+A public declaration of an assignable lexical variable //y// expands into an initialization of an enumerable, non-configurable, accessor property whose getter and setter effectively joins the property with the variable. 
+
+<code javascript>
+  { ...
+    y: { get: const() { return y; },
+         set: const(newY) { y = newY; }, 
+         enumerable: true, configurable: false },
+    ... }
+</code>
+
+In order to define a lexical variable which is locally assignable, but whose property is not settable, we use a PublicDeclaration that declares and initialized the variable directly:
+
+<code>
+  PublicDeclaration :
+      public Identifier = Expression
+</code>
+
+This expands in place to a corresponding LetDeclaration, using ''let'' in place of ''public'' above. Such a public declaration of a variable //z// expands to initialize an enumerable, non-configurable, joined, read-only accessor property:
+
+<code javascript>
+  { ...
+    z: { get: const() { return z; },
+         set: undefined, 
+         enumerable: true, configurable: false },
+    ... }
+
+</code>
+
+Finally, a method is declared as a public function declaration without direct use of the ''const'' or ''function'' keywords.
+
+<code>
+  PublicDeclaration :
+      public Identifier ( FormalParameterList? ) { FunctionBody }
+</code>
+
+This expands in place to the corresponding ''const'' FunctionDeclaration, substituting ''const'' for ''public'' above, and substituting a reference to the new object for free occurrences of ''this'' in the method. Such a public declaration of a method //m// expands to initialize a //non-enumerable//, non-configurable, data property:
+
+
+  { ...
+    m: { value: m, writable: false, 
+         enumerable: false, configurable: false },
+    ... }
+
+===== PrivateDeclaration =====
+
+The purpose of PrivateDeclaration is "per-class encapsulation", i.e., to declare a member as being visible among all instances of the same class, but not otherwise. The normal case is per-instance encapsulation, which is what you get for unqualified in-scope variables.
+
+The mechanics of PrivateDeclaration is much like PublicDeclaration, except the object being initialized is a private facet object which should not escape from the class' code. One instance of the class accesses the private facet of another instance of the same class with the new expression ''private(otherInstance)''. This returns a direct reference to the other instance's private facet. This value is first class, so "friend" relationships (in the C++ sense) can be expressed by handing out selective access to this private facet.
+
+Note that the notion of per-class access provided by PrivateDeclaration is generative. To separate evaluations of a ClassDeclaration or ClassExpression ''Point'' results in two separate ''Point'' classes. Instances of Point class one cannot see the private facets of instances of the other ''Point'' class.
+
+===== Delicate Self Reference =====
+
+In the example below, any uses of ''this'' in the ObjectElements, except in nested functions, are replaced with ''%%result___%%'' (where ''%%result___%%'' represents some variable name not appearing otherwise in the program), so that it refers to the new instance to be returned. The ''this'' in ''toString'' is replaced and the ''this'' in ''fun2'' is not. An open issue is what should happen with the ''this'' in ''fun1''. The example below does replace it but the rule above suggests otherwise. It is not clear which better obeys the principle of least surprise.
+
+In the expansion, ''%%result___%%'' is defined by a ''const'' declaration appearing at the bottom of the ObjectBody expansion, so it is in scope throughout the ObjectBody, but is not initialized until the explicit portion of the ObjectBody has finished executing. The leverages the [[harmony:const]] read barrier to prevent access to the new instance until it is fully initialized.
+
+====== Example ======
+
+[[https://mail.mozilla.org/pipermail/es-discuss/2009-March/009116.html|Our historic example]] now appears as follows:
+
+<code javascript>
+  class Point(privX, privY) {
+    let privInstVar = 2;
+    const privInstConst = -2;
+    public toString() {
+      return '<' + getX() + ',' + this.getY() + '>';
+    }
+    public getX() { return privX; }
+    public getY() { return privY; }
+    public let pubInstVar = this.getX() + 4; // violates read barrier
+    public const pubInstConst = -4;
+    public pubInstRO = -5;
+
+    public function fun1() { return this; } // controversial
+    public fun2 = function() { return this; };
+
+    // class private
+    private const magnitude = prixX*privX + privY*privY;
+    public sumOfMagintudes(other) {
+      return magnitude + private(other).magnitude;
+    }
+  }
+</code>
+
+and expands as shown below. Unlike the expansion proposed in that email thread, the following expansion does not involve [[strawman:let expressions]] or object expressions.
+
+<code javascript>
+const Point = (const(){
+
+  // Where "priv___" is actually some non-conflicting name
+  const priv___ = SoftField();
+
+  return const(privX, privY) {
+
+    let privInstVar = 2;
+    const privInstConst = -2;
+    const toString() {
+      return '<' + getX() + ',' + result___.getY() + '>';
+    }
+    const getX() { return privX; }
+    const getY() { return privY; }
+    let pubInstVar = result___.getX() + 4; // violates read barrier
+    const pubInstConst = -4;
+    let pubInstRO = -5;
+
+    function fun1() { return result___; } // controversial
+    const fun2 = function { return this; };
+
+    const magnitude = prixX*privX + privY*privY;
+    const sumOfMagintudes(other) {
+      return magnitude + priv___.get(other).magnitude;
+    }
+
+    // Where "result___" is actually some non-conflicting name
+    const result___ = Object.freeze(Object.create(Point.prototype, {
+      toString: { value: toString },
+      getX: { value: getX },
+      getY: { value: getY }
+      pubInstVar: { get: const() { return pubInstVar; },
+                    set: const(newV) { pubInstVar = newV; },
+                    enumerable: true },
+      pubInstConst: { value: pubInstConst,
+                      enumerable: true },
+      pubInstRO: { get: const() { return pubInstRO; },
+                   enumerable: true },
+
+      fun1: { get: const() { return fun1 },
+              set: const(newF) { fun1 = newF; },
+              enumerable: true },
+      fun2: { value: fun2,
+              enumerable: true },
+
+      sumOfMagintudes: { value: sumOfMagintudes }
+    }));
+    priv___.set(result___, Object.freeze(Object.create(Object.prototype, {
+      magnitude: { value: magnitude,
+                   enumerable: true }
+    }));
+    return result___;
+  };
+})();
+</code>
+
+
+
+====== Open Issues ======
+
+The "Delicate Self Reference" section above raises the issue of which ''this'' occurrences in the ObjectBody should be replaced with referenced to the object to be returned. Clearly, all those not in nested functions should be (as in the initialization of ''pubInstVar'') as well as those in method declarations like ''toString''. Nested functions which appear only as data values, such as ''fun2'' should not be subject to this replacement. What about ''fun1''? It is not clear which outcome would better obey the principle of least surprise.
+
+Above, we have public Declarations of explicitly assignable variables result in a read-write property that is joined to the variable, while a simple public declaration results in a read-only joining of a ''let'' variable. An earlier design has all public assignable variables result in read-only joining and a simple public declaration resulting in a const variable and property. Both options are perhaps too economical with notation. Perhaps we need some explicit notation for read-write or read-only?
+
+Inheritance using the prototype chain does not work since the members are added to the instance and not the prototype. This makes this proposal non compatible with existing JavaScript paradigms. This in turn leads to classes becoming something completely new that exists on the side of existing best practices of doing OOP in JS.
+
+<code>
+function MyPoint(x, y);
+  Point.call(this, x, y);
+}
+MyPoint.prototype = Object.create(Point.prototype, ...);
+
+var mp = new MyPoint(1, 2);
+mp.getX(); // Error, no such method 'getX'
+</code>
+
+====== See ======
+
+[[strawman:trademarks]]
+
+[[strawman:inherited explicit soft fields]]
+
+[[https://mail.mozilla.org/pipermail/es-discuss/2009-March/009115.html|Classes as Sugar thread]] which starts with pointers to earlier threads.

@@ -1,0 +1,96 @@
+(See [[proposals:versioning|the versioning proposal]], from which this was split.)
+
+
+===== Open Issues =====
+
+  * "The paragraph quoted above from RFC 4329 implies that content written in future versions of ES may vary the value of a ''version'' parameter to shield new scripts from older, or merely other, versions of ES implementations. Since ES1-4 all retain backward compatibility (see [[bug fixes]] for exceptions), ES4 shall define ''version'' parameter values as natural numbers in base ten."  Is this still true? How does this interact with ES3.1? --- //[[ecmascript@collinjackson.com|Collin Jackson]] 2008/03/28 23:43//
+
+  * "Because existing user agents, notably Internet Explorer, ignore ''version'' for all JavaScript/ECMAScript types, content authors cannot depend on ''version'' alone to shield old user agents from new content for many years to come." I don't believe this is true. Internet Explorer does not execute <script type="application/ecmascript;version=4">.  --- //[[ecmascript@collinjackson.com|Collin Jackson]] 2008/03/28 23:00//
+
+  * I've intentionally equated ''"application/javascript;version=2"'' with ''"application/ecmascript;version=4"'', in order to reduce version-itis. As always, and in accord with ES3 Chapter 16 ("Errors"), an implementation may extend the set of standard global and other properties. Content portable across versions can use "object detection" to provide fallback or alternative behavior. But this proposal explicitly joins ES4 and JS2, ignoring the orthogonal issue of extensions peculiar to an implemetation. Comments?
+
+  * Should we define an intermediate version? I say no. We have our work cut out for us specifying one version, ES4. Once we are done, implementations should claim to support ES4 by processing the type with corresponding version, or not support ES4, by treating such type/version pairs as unsupported content. We don't need more work, and content authors do not need more complexity.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/01/22 13:47//
+
+  * Is scoping of %%__ECMASCRIPT_VERSION__%% by means of global-level ''let'' or ''var''?  (Only the former allows different scripts to use different types.)
+
+  * Saying that browser vendors must not honor scripts that are missing a version parameter on the mime type looks like a non-starter to me, and anyway can't be enforced; browsers already recognize these scripts as ECMA3 and will continue to do so.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/01/23 13:04//
+
+  * Object detection requires a property, not a lexical binding (''if (this.%%__ECMASCRIPT_VERSION__%%) ...''), so the property must have a getter to return the right answer for each script.
+
+  * We can't enforce anything about ''text/javascript'' or ''application/x-javascript'', but ''application/ecmascript'' and ''application/javascript'' are fair game in my book. I will clarify if necessary, but the proposal as written is explicit about which types it means: the ones specified by RFC 4329.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/01/23 15:20//
+
+===== Pragma =====
+
+Larry Masinter suggests an in-language version selector, which would have to be a pragma. His point is that MIME types and their parameters tend to get stripped, and also too often contain typos (or are simply wrong from the start). Something like
+
+<code javascript>
+use version 5;
+</code>
+
+could be used in the future. A version 4 compiler would immediately throw an error, before parsing further. We would need to get this specified in ES4 to have it help in that future scenario, so I'm sketching it here for comments and rapid inclusion.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/05/04 09:38//
+
+Something like this was in the original Netscape proposal: 
+
+[[http://www.mozilla.org/js/language/js20/core/pragmas.html]]
+
+
+For consistency with ECMA we might use ''edition'' rather than ''version'' as the pragma identifier.
+
+<code javascript>
+use edition 5
+</code>
+
+Also, ''edition'' connotes association with some external (maybe official) document. We don't want these pragmas to be taken lightly :-)
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2007/05/04 17:39//
+
+I agree it's good for the program to be self-contained and "declare its intentions".  However:
+
+  * The reality is that mime types will have to be handled in a new and reliable way for the ES3-to-ES4 switch to go at all smoothly.  Once ES4 takes off, most ES4 programs will not be valid ES3 programs.  Software that misbehaves around mime types will break the transition.  If the transition to ES4 is indeed successful then that's probably an indication that an edition specifier in the language is not necessary to work around the problem of mime types.
+  * This being a pragma, it can really only relate to the compile-time view of the program, like our other pragmas (the fragments of a program can have incompatible pragmas).  Yet the user's expectation is probably that "use edition 5" gives her full edition-5 run-time semantics, to the extent they may be different from edition-4 semantics.  This may or may not be a problem, I just see it as such.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/05/07 06:12//
+
+===== Older Discussion =====
+
+New keywords in ES4 (for example "yield" and "let") will break some existing code on the Web. So version selection will be necessary.
+
+We ought to follow: http://www.ietf.org/rfc/rfc4329.txt.
+To quote from section 3: //For the application/ecmascript media type, implementations MUST NOT process content labeled with a "version" parameter as if no such parameter had been specified; this is typically achieved by treating the content as unsupported.  This error handling behavior allows extending the definition of the media type for content that cannot be processed by implementations of [ECMA].//
+
+Currently IE ignores the version parameter. This is true for both
+<script type="text/javascript;version=1.5">...</script> and
+<script language="JavaScript1.5">...</script>
+Firefox too ignores the "1.5" in this deprecated language attribute's value. But for type=<xyz> the MIME type parameter should not be ignored.
+
+How about saying that "application/ecmascript;version=4" should mean ES4?
+
+Also, should we have an interim level of support that we all can agree to? This level can be used by vendors who want to adopt a staged support for ES4. Perhaps we can indicate this level of support using a version=1.8 tag?
+
+ --- //[[pratapl@microsoft.com|Pratap Lakshman]] 2007/01/16 04:51//
+
+Thanks for making this page.  Another possible ES4 feature to consider: some easy-to-test ''this.%%__ECMA_VERSION__%%'' property of the global object in every implementation.  If there's no such property, then script can assume that the implementation does not support ES4.  If the property exists and has a value of 4, then script can assume that ES4 is supported.  Comments?
+
+FYI, Mozilla's JS engine used to respect version selected via ''language="JavaScript1.5"'', e.g., but we stopped in order to be compatible with IE and Opera.  We do respect version selected via the MIME type parameter in the ''type'' attribute value.
+
+Specifying an intermediate version may be more work that it's worth.  Web content authors won't use ES4 features in broadly-targeted content until enough browsers support ES4 to force the rest to upgrade, or to tolerate the degraded experience for the minority.  Firefox implementation ahead of ES4 has been for two reasons: to get and feed back implementation and usability experience to ECMA TG1; to improve the language for Mozilla-targeted content, especially XUL apps and extensions.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/01/16 10:00//
+
+Do we have a complete list of words that cause breakage?
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2007/01/16 10:31//
+
+A complete list is impossible to gather, due to registration-walling, pay-walling, and firewalling of content. We have experience gained during Firefox 2 betas that led us to amend the [[proposals:reserved_words|keyword reservation algorithm]], but not enough to avoid versioning in at least two cases: ''yield'' and ''let''. I know of ''is'' and ''to'' use-cases for parameter and variable names, which will also break. And it turns out IE has never reserved any but four (''class'', ''enum'', ''extends'', and ''super'' -- if I recall correctly) of the "Future Reserved Words" (ECMA-262 Ed. 3 7.5.3).
+
+As discussed last May in Redmond, trying to unreserve variable and parameter names imposes significant costs on implementations, raises dilemmas in handling script that mixes unreserved and reserved meanings for an identifier in a compilation unit, and allows for confusion not seen since the days of PL/1. We decided not to go there.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/01/16 10:42//

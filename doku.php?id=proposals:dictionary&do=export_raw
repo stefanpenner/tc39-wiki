@@ -1,0 +1,122 @@
+====== Map ======
+
+Also see [[discussion:dictionary|the discussion page]] for this proposal.
+
+The class is now called ''Map'' by agreement between Brendan and myself after a protracted discussion on es4-discuss where a thousand opinions bloomed, none of them alike.   --- //[[lth@acm.org|Lars T Hansen]] 2007/07/30 03:32//
+
+All praise to P. Tucker Withington, who suggested ''Map'' on the list.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/08/17 23:17//
+
+===== Rationale =====
+
+"Everyone" wants a reliable hash table data structure, but ''Object'' is not reliable (due to the enumeration problem) and converts all the keys to strings before using them.
+
+
+
+===== Issues / design space / preliminary decisions =====
+
+There has been much discussion on es4-discuss and in the group.  We've decided to do something "simple" without weak references or special syntax; just a library that can be implemented in ES4 (but which is standard).
+
+With those simplifications out of the way, the only real questions are how to do:
+
+  * Key hashing
+  * Key equality
+
+The primary contenders are (a) passing in hash and equality functions to the ''Map'' constructor, with reasonable default values for these, and (b) providing for ''hashcode'' and ''equals'' protocols on key objects.  We can't do just the latter unless we add those protocols on the ''Object'' level, because some useful key types (ints, strings) can't be subclassed and it would not be reasonable to prevent them from being used as keys.  Yet many users on es4-discuss favor this interface, and it is standard OOP.
+
+The mood doesn't seem right for trying to add ''hashcode'' and ''equals'' protocols on all objects, so we'll try to do without, and cater to both styles.
+
+It's important to note that hashing and equality are coupled: two keys that are equal by the equality test should never both be in the hash table at the same time.  The ''Map'' can check that, but not in a reasonable amount of time.  Thus it becomes a requirement on user code to make sure that hashing and equality are in sync, and a requirement on system code to make sure that the defaults are in sync.
+
+It does not seem reasonable to test each key object to see if it has a hashcode method, for example; the user should select the desired behavior when the table is constructed.  Inspecting keys seems brittle: methods come and go, and methods named ''equals'' and ''hashcode'' may be intended for other uses, not for use by ''Map''.  It's good to be explicit (once again).
+
+The default hashcode method will be ''intrinsic::hashcode'', and the default equality test will be ''intrinsic::==='', because these two are in sync.
+
+
+===== Proposal 1: Map =====
+
+(This was approved at the 2007-08-28 phone meeting.)
+
+==== The Map class ====
+
+The ''Map'' class is placed in the %%__ES4__%% namespace in the unnamed package and parameterized over the types of keys and values, ''K'' and ''V'':
+
+<code>
+package 
+{
+    __ES4__ class Map.<K,V> 
+    {
+        ...
+    }
+}
+</code>
+
+
+=== Construction ===
+
+== Primary constructor ==
+
+The primary constructor for a ''Map'' accepts an equality predicate and a hashcode function:
+
+<code>
+    public function Map(equals = intrinsic::===, hashcode = intrinsic::hashcode) {
+        ...
+    }
+</code>
+
+The ''equals'' parameter will be used to compare keys.
+
+The ''hashcode'' parameter will be used to compute hash values for keys.
+
+It's a requirement on user and system code that hashing and equality must be synchronized: if two objects compare as equal using ''equals'', then ''hashcode'' must return the same value for the two.
+
+
+
+== Secondary constructor ==
+
+There is a conversion function:
+
+<code>
+meta static function convert(x : Object!)
+</code>
+
+This creates a ''Map.<EnumerableId,V>'' table from the enumerable own elements of x whose names are namespace-less.  The value of ''K'' is ignored.
+
+//Fixme:// We no longer have a ''convert'' protocol in the language; this would normally be a ''meta static function invoke''.
+
+=== Method suite ===
+
+The methods are what you expect (modelled on Java):
+
+<code>
+    public function size() : uint;
+    public function get(key: K) : V?;
+    public function put(key:K, value:V) : void;
+    public function has(key:K) : boolean;
+    public function remove(key:K) : boolean;
+</code>
+
+''get'' returns null if the element was not found; ''put'' replaces the value if the key was alreday in the table; ''remove'' returns true if the element was found and false otherwise.
+
+
+=== Iteration and enumeration ===
+
+<code>
+    iterator function get(deep: boolean = false) : iterator::IteratorType.<K>;
+    iterator function getKeys(deep: boolean = false) : iterator::IteratorType.<K>;
+    iterator function getValues(deep: boolean = false) : iterator::IteratorType.<V>
+    iterator function getItems(deep: boolean = false) : iterator::IteratorType.<[K,V]>
+}
+</code>
+
+
+===== Proposal 2: ObjectIdentity and IdentityMap =====
+
+See [[proposals:oopKoolAid|a separate proposal page]].
+
+===== Code =====
+
+Code (untested at this time) is in ''builtins/Map.es''.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/07/16 16:11//

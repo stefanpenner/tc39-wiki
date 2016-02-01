@@ -1,0 +1,119 @@
+===== Handler access to proxies =====
+
+We should consider the possibility of extending the [[strawman:proxies#api|Proxy Handler API]] such that handlers get access to the proxy for which they are currently intercepting. Motivating use cases:
+  * A handler shared by many proxy instances may want to identify the proxy for which it is currently "servicing" an operation. For instance, the shared handler could use a [[harmony:weak maps|WeakMap]] keyed by the proxy's identity to store per-proxy state.
+  * Without access to the proxy, the handler has no way of accessing the prototype passed to ''Proxy.create''. It also cannot reliably distinguish whether it is servicing an object or a function proxy. When given access to a proxy, the handler could perform ''Object.getPrototypeOf(proxy)'', ''typeof proxy'' and ''proxy instanceof Fun'' to get at this data (credit goes to David Bruant)
+  * If the (currently fundamental) ''getPropertyDescriptor'' and ''getPropertyNames'' traps would have access to the ''proxy'', they can easily be turned into derived traps, as indicated in this [[strawman:proxy_derived_traps|strawman]].
+
+==== Extended API ====
+
+The easiest way to allow a handler access to the proxy it is currently servicing is to pass the proxy as an additional argument to the handler traps. From here, there are multiple routes to take:
+  - Add ''proxy'' as an optional last argument to all traps.
+  - Add ''proxy'' as an argument at the most appropriate position for each trap.
+  - Add ''proxy'' only as an argument to the ''getPropertyDescriptor'' and ''getPropertyNames'' traps (for the purpose of defining their derived behavior).
+
+=== Proxy as optional argument ===
+
+We could add a ''proxy'' parameter as an optional last argument to all existing traps.
+
+Pro:
+  * regular API
+  * traps that aren't interested in accessing the proxy can simply ignore it
+
+Con:
+  * adding an optional last argument restricts our options if one of the Object API methods would change in the future. If e.g. ''Object.getOwnPropertyDescriptor'' takes an extra argument in a later edition, how can we reconcile this with existing code that assumes that the second parameter is the proxy? (requires refactoring)
+  * for some traps, getting the proxy as the last argument is counter-intuitive.
+
+For example, the trap ''getOwnPropertyDescriptor'' is triggered by code like:
+<code javascript>
+Object.getOwnPropertyDescriptor(proxy, name)
+</code>
+
+Yet the order in which the params are passed to the trap is reversed:
+
+<code javascript>
+getOwnPropertyDescriptor: function(name, proxy) {...}
+</code>
+
+Passing ''proxy'' as the last argument is odd in this way for ''get{Own}PropertyDescriptor'', ''defineProperty'', ''delete'', ''hasOwn''.
+It is OK for ''get{Own}PropertyNames'', ''keys'', ''fix'' (freeze/seal/preventExtensions), ''has'', ''enumerate''.
+The ''get'' and ''set'' traps already have implicit access to ''proxy'' via ''receiver'' (which is either the ''proxy'' or an object inheriting from the ''proxy''). The ''proxy'' argument could be passed either as an extra first argument or as an extra last argument.
+
+=== Proxy as additional argument ===
+
+We could add a ''proxy'' parameter as an extra argument to all existing traps.
+Depending on the trap, the argument is added either as a mandatory argument or as an optional trailing argument.
+
+Pro:
+  * The position of ''proxy'' is consistent with its position in the intercepted code.
+Con:
+  * Less consistent.
+  * Some traps can't ignore the ''proxy'' parameter.
+
+Below is a proposed updated API (when the ''proxy'' parameter is optional, it is enclosed in square brackets):
+<code javascript>
+// fundamental traps
+getOwnPropertyDescriptor: function(proxy, name) -> PropertyDescriptor | undefined // Object.getOwnPropertyDescriptor(proxy, name)
+getOwnPropertyNames:      function([proxy]) -> [ string ]                         // Object.getOwnPropertyNames(proxy) 
+defineProperty:           function(proxy, name, propertyDescriptor) -> any        // Object.defineProperty(proxy,name,pd)
+delete:                   function(proxy, name) -> boolean                        // delete proxy.name
+fix:                      function([proxy]) -> { string: PropertyDescriptor }     // Object.{freeze|seal|preventExtensions}(proxy)
+                                            | undefined
+// derived traps
+getPropertyDescriptor:    function(proxy, name) -> PropertyDescriptor | undefined // Object.getPropertyDescriptor(proxy, name)   (not in ES5)
+getPropertyNames:         function([proxy]) -> [ string ]                         // Object.getPropertyNames(proxy)              (not in ES5)
+has:       function(name, [proxy]) -> boolean                  // name in proxy
+hasOwn:    function(proxy, name) -> boolean                  // ({}).hasOwnProperty.call(proxy, name)
+get:       function(receiver, name, [proxy]) -> any            // receiver.name
+set:       function(receiver, name, val, [proxy]) -> boolean   // receiver.name = val
+enumerate: function([proxy]) -> [string]                     // for (name in proxy) (return array of enumerable own and inherited properties)
+keys:      function([proxy]) -> [string]                     // Object.keys(proxy)  (return array of enumerable own properties only)
+</code>
+
+Other ways to decide on the optionality of ''proxy'':
+  * make ''proxy'' mandatory for the traps that trap methods on ''Object'', and optional (trailing) for all others.
+  * make it optional for derived traps, mandatory for fundamental traps.
+
+=== Proxy as argument only for particular traps === 
+
+Only add the ''proxy'' parameter to the ''getPropertyDescriptor'' and ''getPropertyNames'' traps.
+Pro: keeps the overall API simple while still allowing derived behavior for these traps.
+Con: inconsistent, doesn't cater to all motivating use cases.
+
+==== Reservations ====
+
+  * Should a handler really be able to distinguish whether it is handling an object or a function proxy?
+  * Having access to the proxy by default increases the risk for infinite recursion hazards.
+
+--- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2011/02/28 06:10//
+
+===== References =====
+  * [[https://mail.mozilla.org/pipermail/es-discuss/2011-January/012640.html|Discussion thread]] on es-discuss (the idea originated while discussing the default behavior of the ''getPropertyDescriptor'' and ''getPropertyNames'' traps).
+
+
+===== Feedback =====
+
+Discussed at the March 2011 TC39 meeting.
+
+Q: Why not consider proxy as an instance variable of the handler?
+A: Would preclude sharing a single handler among multiple proxies, or else handler would have to keep track of all the proxies it is serving as part of its instance state.
+
+Q: why not bind a handler's ''this'' to the proxy it is serving?
+A: confuses meta-levels (this = handler = meta-level, proxy = base-level). Also, makes handler inheritance unworkable: can inherit from a handler, in which case ''this'' in a parent handler should refer to the inheriting handler.
+
+General agreement that we may want to provide the proxy as an argument to all traps.
+
+Andreas: experimenting with DOM wrappers. All prototype-climbing traps require access to the receiver object (which is not necessarily the proxy object), not just the get/set traps.
+The get and set trap may want access to both the receiver and the proxy.
+
+Tom: propose to add ''proxy'' as a first argument to all traps.
+Andreas, Brendan, Dave: in favor of adding it as an optional last argument:
+  * in most use cases that came up thus far, there was no need for the ''proxy'' parameter
+  * ''proxy'' parameter is dangerous (runaway recursion hazard), good to be able to ignore it most of the time
+  * Tom: what about inconsistent ordering w.r.t the trapped code? Dave: Proxy API is for experts, they will cope.
+
+Current consensus:
+  * add ''receiver'' as a first argument to all prototype-climbing traps (get, set, has, getPropertyNames, getPropertyDescriptor traps)
+  * add proxy as an optional last argument to all traps.
+
+--- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2011/03/30 12:54//

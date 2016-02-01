@@ -1,0 +1,87 @@
+====== Code mixing ======
+
+If we are serious about best-effort backward compatibility as a prerequisite for adoption, we ought to be thinking not just about keeping the old language semantics around as a subset, but also about the //interactions// which will occur when "new code" (objects constructed in the supersest) encounters old code in the wild. In particular, we should make sure we've considered and defined each type of code interaction which can take place, involving mixtures of old and new code. 
+
+===== Calling =====
+
+==== Old code as caller ====
+
+  * Name lookup: 
+    * Old code might expect bare name ''foo'' to bind and we might have put ''foo'' in a namespace. Maybe open such namespaces by default.
+    * Depending on whether we mess with scope-chain rules (eg. to permit closing over a value rather than the variable object used for dynamic lookup), old code //might// depend on old scope-chain behavior.  
+  * Parameter conversion: old code might expect parameters to convert under rules different from the '':T'' / ''function to T'' rule. 
+  * Dispatch rules: old code will expect the dispatch rules (no overloading, no type-dispatch).
+  * ''this''-binding: old code might expect dynamic ''this'' binding, even when calling objects on which there will be no such binding. Not sure if this is a significant or common case: it's always possible to create old code which simply doesn't //use// ''this'', which is similar to "not doing dynamic binding".
+
+==== Old code as callee ====
+
+    * Name lookup:
+      * I don't think old code can find out what name it was looked up as.
+      * New code will find objects using new-code name rules. No surprise there.
+    * Parameter conversion: old code might performs ad-hoc type conversions on its parameters. Or will it? Will we simply outlaw the old behavior? This might break code. The old code will still //get// the types it demands; it will just might get different values than it was written to expect. 
+    * Dispatch rules: code can't tell how it was dispatched-to, and new callers will not be surprised by the rules anyways.
+    * ''this''-binding: old code will bind ''this'' dynamically, as new code would if it were non-bound method code.
+
+===== Prototypes =====
+
+==== Old code as prototype-ancestor ====
+
+  * Will not add to the set of type constraints on new children. 
+  * May not have a sensible type other than ''Object''.
+  * May be freely shadowed as in ES3.
+
+==== Old code as prototype-child ====
+
+  * May be confused by slot-binding being prohibited by type-constrained prototype.
+  * May expect to be able to set ''%%__proto__%%'' slot (implementation-defined anyways).
+
+===== Slot setting =====
+
+==== Old code as slot container ====
+
+  * Old objects can have their slots set unless the slot carries ''DontDelete'' and ''ReadOnly''; these are modeled in the new language. No assumptions about the ability to set a slot on such an object are lost.
+
+==== Old code as slot contents ====
+
+  * All denotabe old values exist in the new language, and can be put in slots of new objects if the slot permits it.
+
+==== Old code code performing slot-setting ====
+
+  * Old code //putting a value into a slot// may trigger a conversion if the new slot is type constrained. This might come as a surprise to old code.
+  * Might also throw an exception if a constraint is violated. Surprising.
+
+===== Slot getting =====
+
+==== Old code as slot container ====
+
+  * Slots can always be retrieved from old objects, and when modelling such an old (unconstrained) object in the new language, this remains true.
+  * Possibly some ad-hoc conversions which old objects did will differ? Getting-as-some-value?
+  * Possibly the value returned for missing slots will differ?
+
+==== Old code as slot contents ====
+
+  * Old values can be retrieved from slots, and are not subject to any alteration on the way out. If you can represent the value in the new language, as far as I know you can get it from a slot.
+
+==== Old code performing slot-getting ====
+
+  * As mentionned in the "as slot container" section above, perhaps old code expects getting from an empty slot to return something we're not returning anymore?
+  * Old code might be surprised if there was a conversion during the set which preceeded the get.
+  * Old code might be unable to get a value it's expecting if the slot is private?
+
+===== Operands =====
+
+TBD. No discussion of operators yet. See [[proposals:operators|operators proposal]].
+
+===== Exceptions =====
+
+==== Old code as thrower ====
+
+==== Old code as catcher ====
+
+===== Mixed method extraction and ''this''-binding =====
+
+==== Extracting method from old object ====
+
+==== Attaching method to old object ====
+
+"Old" code here means Javascript 1.x, ActionScript 2.x, ECMAScript 3, and JScript.NET (version?).

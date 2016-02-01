@@ -1,0 +1,59 @@
+====== getter and setter proposal ======
+
+(Also see the [[catchalls]] proposal, the ''intrinsic::get'' and ''intrinsic::set'' methods specifically.)
+
+This proposal is to standardize the following method initialisers as valid alternatives to property initialisers within an object initialiser:
+
+  * ''get ''//name//''() {''//...//''}'', the getter for //name//.
+  * ''set ''//name//''(value) {''//...//''}'', the setter for //name//.
+
+These methods are to be called, if defined in an object initialiser, when //name// is respectively read or written.
+
+Formal parameter and return types may be annotated, except only ''void'' is legal for the return type of a ''set'' initialiser, and therefore ''set'' method bodies must not contain ''return ''//Expression//.  The getter's return type must be the same as the setter's parameter type.  So if the getter has no return type annotation, the setter must have no annotation, or else use an explicit '': *'' annotation for its parameter.
+
+The type of a property defined via a getter and/or setter is thus the return type of the getter or the parameter type of the setter.  The type system therefore cannot distinguish a property defined via a getter/setter from a plain property.
+
+If //name// is read when there is a setter but no getter, ''undefined'' is returned.  If //name// is written when there is a getter but no setter, a ''TypeError'' is thrown.
+
+The normal prototype chain search is used to find //name//, irrespective of whether the property is being read or written.  ES3's %%[[CanPut%%]] internal method tests only the ''ReadOnly'' attribute, so a getter/setter can shadow or be shadowed.
+
+Grammar note: the identifiers ''get'' and ''set'' by themselves (i.e. without trailing identifier or left parenthesis, respectively) must be legal field names, for backwards compatibility.
+
+Syntax note: the implementation should throw SyntaxError when a property name is defined for which there is also a getter or setter, eg ''{ get x() { return 10; }, x }''.  This is just a sanity measure.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/10/20 09:05//
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/10/20 05:23//
+
+----
+
+Late-breaking small "surface syntax" proposal: allow ''const ''//FieldName//'': ''//AssignmentExpression// on the right of //LiteralField// in the grammar, too. Lack of ability to define a write-once property using an object initialiser has been a source of low-level pain in Mozilla's experience.  Anything further (private access control, DontDelete attribute setting) should not be supported in object initialisers -- use a class.  But ''const'' is a fairly common data access modifier, and parallel to ''get'' and ''set'' in some sense.  Comments?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/12/06 13:58//
+
+Sounds reasonable. I assume we want to make the same concession to compatibility that we do for ''get'' and ''set'' and allow field names spelled ''const''. And, just to be clear ''const'', ''get ... function'' and ''set ... function'' are not allowed in object patterns.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/12/07 09:52//
+
+Yes, just as ''get get() {...}'' in an object initialiser is allowed by this proposal, and works in SpiderMonkey 1.7 / Firefox 2.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/12/12 15:45//
+
+See [[https://bugzilla.mozilla.org/show_bug.cgi?id=379566|Mozilla bug 379566]] for questions about the JS2/ES4 ''get/set'' style function initialisers in object initialisers, which date back to Waldemar's proposals (but are not clearly captured there, as far as I can tell). Issues:
+
+  * ''get fld() {...}'' does not allow ''fld'' to be a lexical non-identifier, but regular field initialisers can be named by a number or a string as well as by a lexical identifier.
+    * ES4 allows namespace-qualified identifiers for field initialiser labels, in addition to lexical identifiers, strings, and numbers.
+    * Note also that [[catchalls]] can handle arbitrary property identifiers.
+  * Unlike the progenitor SpiderMonkey syntax (''fld getter: function () {...}''), one cannot share a single function value among several getters.
+    * On the down side, the old ''getter:'' and ''setter:'' syntax allowed non-function values, which would be runtime errors.
+    * The old syntax was also verbose in the typical case compared to the ''get/set'' syntax.
+
+I think we should allow arbitrary property names. I'm not so sure about shared getter or setter function values, or the syntax mapping proposed in [[https://bugzilla.mozilla.org/show_bug.cgi?id=379566#c9|bug 379566 comment 9]]. Thoughts?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/05/04 12:21//
+
+Thoughts:
+
+  * I do think arbitrary field identifiers should be allowed for ''get fld() { ...}'' etc
+  * I do not think losing shared getter and setter function values is much of a loss in practice
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/05/07 06:27//

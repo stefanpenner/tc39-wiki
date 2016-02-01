@@ -1,0 +1,636 @@
+This is a discussion page for [[proposals:switch_class]].
+
+====== Syntax note ======
+
+The variable introduces in the switch head is really not necessary, I suggest we move to a syntax of the form
+
+<code>
+   switch type (E:T) {
+       case (a:U) { ... }
+       default (t:T) { ... }
+   }
+</code>
+
+If the program needs to capture the type for the default case, then the default can be structured as suggested above.  Often the expression will be a variable, so the binding on default should be optional.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/19 06:37//
+
+Agreed, and done.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/05/19 15:07//
+
+Why not use ''case (t:T) ...'', instead of ''default (t:T) ...'' for binding? Then we could drop the binding form of ''default''
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/12/04 13:35//
+
+====== Older comments on type switches ======
+
+I like the way this proposal is shaping up.
+
+Unfortunately, the ''case ( x : T ) {...}'' syntax is hard to parse given the current language allows ''case (x) : ...''. What do you think of adding the ''let'' keyword after ''case'' to distinguish an ordinary switch case from a type switch case. Actually, we could just allow a limited form of let statement after case so the braces would only be required if multiple statement follow. I like ''let'' too because it says what is really going on in the code. Here's a revised example:
+
+<code>
+switch t:T (expr) {
+  case let (p : P) { ... }
+  case let (q : Q) { ... }
+  case let (r : R) { ... }
+  default let ( t : T ) { ... }
+}  
+</code>
+
+It's slightly more verbose but easier to read and easier to parse.
+
+Note: you could drop the ''let'' on the ''default'' case because it is redundant with the ''t:T'' at the head of the ''switch''. But for that matter if you required the ''let'' on the ''default'' case couldn't you drop the ''t:T'' at the head of the ''switch''? Just a though.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/05/11 10:40//
+
+It should not be hard to parse the proposed syntax as it stands, because it is an entirely different language construct.  The statement type ''switch t : T (E)'' is only superficially related to ''switch (E)''.  Once the parser knows it's in a "typecase" and not in a regular switch, it can handle ''case'' differently.  We don't get to reuse the syntax (or the parser code) from the regular switch, but I think that's by design.
+
+I must say that if there is one thing I dislike about the current proposal it is the way it is reusing the "switch" keyword.  I know it's important to avoid breaking code by introducing new keywords, but I suspect we are optimizing for the wrong thing here.  I might counterpropose using ''typecase'' as the keyword, with the traditional declare-and-bind syntax for the control expression:
+
+<code>
+    typecase (t:T = expr) {
+        case (p : P) { ... }
+        case (q : Q) { ... }
+        case (r : R) { ... }
+        default { ... }
+    }  
+</code>
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/11 12:27//
+
+Thanks. Even though I should have known better, the use of the ''switch'' keyword lead me down a wrong syntactic path. Now I don't like that the presence of ''t:T'' changes the syntax of ''case...''. This aligns with your concern that type switch and switch are two different kind of fruit. A small revision to your revised propsal is to use ''type'' instead of ''typecase''. I know that it is overloading the meaning of the ''type'' keyword, but if the syntactic context is different enough, then the various meanings are clear. I think this would be the case here. And anyway we already do something like this with ''let'' statements and ''let'' definitions. Also going for this use of the keyword ''type'' is that it combines nicely with ''case'' to read as "type case".
+
+<code>
+    type (t:T = expr) {
+        case (p : P) { ... }
+        case (q : Q) { ... }
+        case (r : R) { ... }
+        default { ... }
+    }  
+</code>
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/05/11 13:13//
+
+Except that a ''let'' always introduces block-scoped lexical variables (whether the block is implicit or explicit).  Here, ''type T = (P, Q, R)'' and ''type T (x:T = expr) {...}'' are doing two entirely different things.  The first is binding a constant type name to a type expression.  The second is doing "typecase".  Therefore why don't we just contextually (at start of statement only) interpret ''typecase'', and call the thing what it is?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/05/11 16:36//
+
+Agreed. "type" by itself does not capture the spirit of what is happening here. But it also seems wrong to introduce another statement label when we have one that is good enough. The discussion that lead to Graydon's latest proposal above (see "Counterproposal" below) hints at what I think is the right way to spell "typecase"; that is, "switch type". The original objection to "switch type" was that "type" was not a keyword and this particular use didn't give a strong enough reason for making it one. But of course it has since become a keyword because of type definitions. This revision also addresses my concern that "switch" plus a different head syntax didn't give strong enough indication that you are looking at a different kind of switch statement. With the new spelling we'd have:
+
+<code>
+    switch type (t:T = expr) {
+        case (p : P) { ... }
+        case (q : Q) { ... }
+        case (r : R) { ... }
+        default { ... }
+    }  
+</code>
+
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/05/12 11:10//
+
+I agree, ''switch type (t:T=e) {...}'' reads better. Or perhaps ''type switch (t:T=e) { ... }''?
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/05/12 13:32//
+
+Ooh, ''type switch (...) {...}'' -- I think you've got it!
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/05/13 19:29//
+
+I was thinking the reverse is better. ''switch type'' just because it reads more like the name of a control flow construct.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/05/15 13:03//
+
+''switch type'' reads like a control construct; ''type switch'' reads like a noun phrase. There's an argument either way. I don't really care. You guys can fight it out in the next meeting. For the time being I'll change the example to ''switch type''.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/05/16 12:31//
+
+====== Older Enum proposal ======
+(formerly "switch classes")
+
+The language shall support the ''enum'' keyword, for constructing disjoint sum types. It will also support switch statements with an extended form of [[proposals:destructuring_assignment]]. 
+
+See [[http://haxe.org/ref#the_power_of_enum|haXe language]] for some inspiration (though note that since HaXe is an expression language, we cannot do some of the things they do)
+
+===== Construction =====
+
+To declare ''enum'' constructors, we add some new declaration grammar entries:
+
+<code>
+enumDecl ::= modifier* 'enum' enumCons '{' enumCase+ '}'
+
+enumCons ::= ident 
+         |   ident '(' fieldList ')'
+
+fieldList ::= field
+          |   fieldList ',' field
+field ::= ident (':' typeAnnotation)?
+</code>
+
+For example, the following enum cases should be legal:
+
+<code>
+enum state { running, waiting, stopped }
+enum flags { good, bad, ugly }
+enum color { rgb(red:int, green:int, blue:int), 
+             hsv(hue, saturation, value), 
+             clear}
+</code>
+
+Notes:
+
+  * The cases of an enum may or may not have fields, which may or may not have type annotations.
+  * Declaration of an ''enum'' creates a new object type.
+  * The name of the ''enum'' is a type name. 
+  * Values of the ''enum'' type are objects in every way, comparable using object-comparison semantics.
+  * The constructors of the ''enum'' type are constructor functions with scoped names, similar to class-static functions. In the above example, ''color.rgb(r,g,b)'' is a function.
+  * There is no relationship between ''enum'' types and numeric types. 
+    * It is easy for users to write functions performing bijections between numbers and ''enum'' constructors.
+    * Specific ECMAScript implementations (eg. JScript.NET) may extend the ''enum'' form to accept literal numbers associated with ''enum'' constructors. This should be compatible. 
+
+===== Extended destructuring switch =====
+
+The ''switch'' statement is extended to permit a secondary form: when a ''switch'' label carries a destructuring assignment pattern, the switch arm is selected iff the pattern matches. 
+
+----
+
+There are no notions in the current destructuring work of a "match"; destructuring assignment always succeeds and produces undefined values for undefined fields.  Even so, your proposal is clear enough, it's probably just a matter of deferring to ''in'' or ''hasProperty'', and I like the idea.
+
+Compilers will have to work a little harder to produce efficient code, and we'll have to hedge in the spec by saying that getter methods can be called an undetermined number of times in pattern match expressions.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/10 01:39//
+
+Curious. I wonder whether it might make sense to //define// a notion of "matching", and change your notion of destructuring assignment to be an expression form which produces a boolean value, indicating whether all the fields matched. This way people could use destructuring as a pattern-match primitive in ''if (...)'' statements as well.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/04/10 11:28//
+
+----
+
+Additionally, the form of destructuring assignment is extended to permit //matching an object's constructor// by placing the constructor between the ''&'' and ''{'' characters. 
+
+For example:
+
+<code>
+enum color { rgb(red:int, green:int, blue:int), 
+             hsv(hue, saturation, value), 
+             clear }
+
+var r, g, b, h, s, v;
+var col : color = color.rgb(1,2,3)
+
+switch (col) {
+  case &color.rgb{red: r, green: g, blue: b}:
+        //...
+  case &color.hsv{hue: h, saturation: s, value: v}:
+        //...
+  }
+}
+</code>
+
+Notes: 
+  * Any object type can be matched in these switch statements, not just objects declared via ''enum''.
+  * There are no scope issues; the destructuring labels are //assignments//, they do not introduce new variables. 
+
+----
+
+Nit: I assume that's ''&color.hsv{hue: h, saturation: s, value: v}:'' ?
+
+What you are proposing breaks the symmetry for destructuring, because an enum value is composed by ''enum.name(x,y)'', not by ''enum.name{f:x,g:y}'' (though come to think of it, the latter is not half bad, and it resolves the issue of the redundant parentheses on plain enum names).
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/10 01:39//
+
+Yes to the nit, fixed. 
+
+Not sure to the symmetry argument: lots of objects can be constructed by calling constructor functions. Are you proposing ''constructor_name{..object initializer...}'' as a syntax for running a constructor with a custom ''this'' object in general? Or only for the ''enum'' case?
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/04/10 11:28//
+
+==== A further possibility ====
+
+The labels of a ''switch'' statement could be extended to include a particular form that includes scoped variable declarations, if we come up with a sensible way of mixing variable-declaration with destructuring assignment.
+
+<code>
+enum color { rgb(red:int, green:int, blue:int), 
+             hsv(hue, saturation, value), 
+             clear }
+
+var col : color = color.rgb(1,2,3)
+
+switch (col) {
+  case let &color.rgb{r:int=red, g:int=green, blue: b} {
+             //...
+           }
+  case let &color.hsv(h=hue, s=saturation, v=value) {
+             //...
+           }
+}
+</code>
+
+----
+
+I suggest that 'let' can be treated as an annotation on the case to introduce scoped variables and their types, thus decoupling variable definition from destructuring assignment yet keeping things localized:
+
+<code>
+switch (col) {
+  case (let r:int, g:int, b) &color.rgb{r:red, g:green, blue: b} {
+             //...
+           }
+  case (let h, s, v) &color.hsv{h:hue, s:saturation, v:value} {
+             //...
+           }
+}
+</code>
+
+Admittedly this is a bit of a hack.  The hack comes about because we are stretching the syntax for destructuring beyond its capabilities, namely, it just will not allow for type declarations while maintaining the symmetry with object construction syntax.
+
+(I think that if we are going to try to mix type/variable declaration with destructuring, then we should abandon the current destructuring work and instead design good pattern matching syntax and semantics from scratch.  My proposal directly above sidesteps the issue for this particular case, but you can only do this in so many cases before things become absurd.)
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/10 01:03//
+
+====== Older Counterproposal ======
+
+We started talking about sum types earlier but the discussion drifted to enums very quickly because HaXe uses enums.  However, enums are a restricted and non-ECMAScriptish form of sum types, and I'd like us to reconsider the more general case.
+
+As defined above the enum type is effectively a shorthand for constructing smallish class hierarchies: an enum type defines an abstract base class along with a bunch of concrete subclasses, one for each enum case, all together modeling a tagged union.  The switch combines repeated instanceof testing (tag matching) with simple destructuring and binding (extraction of the tagged data).
+
+ECMAScript already has tagged objects, though, so adding another level of tag seems redundant.  We don't want more tags; we want strong typing.  I think that what we would like is to express sums of the types we already have directly, coupled with a more convenient way of dispatching on the elements of that type than a large ''if'' nest.  So I propose the following.
+
+===== Proposal: simple sum types =====
+
+Type definition:  We introduce a syntax for defining sum types:
+
+    type T = (String, Number, MyClass)
+
+where ''type'' is a new keyword.  (//Notes:// I would have preferred "String | Number | MyClass" but since operators can be used in type expressions the comma-separated list has less complexity.  I chose not to reuse the ''class'' keyword here even though it would have worked because the new type is not actually a class type.)
+
+The name T can be used as an annotation just like a class name, but you can't instantiate it.  You can however use it as the right-hand-side of ''instanceof'' and as the target of a conversion.
+
+Conversion: Any value of any of the member types (including their subtypes) can be converted to T without a cast.  Conversion from T to a member type is possible with a cast operator as proposed elsewhere.
+
+Dispatching: a new ''switch type'' statement is introduced, reusing existing keywords and the syntactic structure of ''catch'' for economy:
+
+    switch type (c) {
+        case (s : String) { /* s is a String here */ }
+        case (n : Number) { /* n is a Number here */ }
+        case (c : MyClass) { /* c is an instance of MyClass here */ }
+    }
+
+A ''default'' clause is permitted.  The first case that matches is selected.  (//Notes:// I might prefer a new keyword ''typecase'' rather than ''switch type'', since this statement is pretty different from a switch, and different things should have different names.)
+
+===== Discussion =====
+
+The only important difference between this proposal and the first ''switch class'' proposal is that there is a way of defining and naming a sum type explicitly, not simply implicitly by putting a bunch of classes together in a switch.  But that means that the named type can be used as an annotation, which is essential for a useful strong type system.
+
+An alternative interesting syntax, which was also mentioned in the discussion on ''switch class'', is to use a class name or annotation instead of the ''type'' keyword in the switch, to make it plain even in an untyped setting that we are switching on the members of a particular sum type:
+
+    switch T (c) {
+      etc
+    }
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/11 21:31//
+
+I am not opposed to this proposal; in fact I really have little opposition to //any// variety so long as it achieves a sufficient set of goals. Briefly, here are my goals:
+
+  - Ability to denote types which are disjoint sums of other types.
+  - Ability to construct values of such types.
+  - Ability to switch execution depending on the disjoint-sum membership, and achieve type-safe access to sum members within corresponding branches of the switch.
+  - Ability to declare a disjoint sum at a source-code location independent from the location the sum members are delcared at.
+  - Minimization of impact on the rest of language: minimize extra keywords, syntactic or semantic complexity.
+
+I think your proposal is good, and satisfies all these points save the last: introducing the ''type'' keyword is a lot of cost for a single small feature. I propose a syntax which reuses existing tokens:
+
+<code>
+// Declaration:
+class S = switch { P, Q, R }
+
+// Switching:
+switch S (expr)
+{
+  case (p : P) { ... }
+  case (q : Q) { ... }
+  case (r : R) { ... }
+
+  // "default" only legal if you omitted one or more of the switch cases above,
+  // or you are switching on a non-closed class (see below), or you're in dynamic mode
+  default { ... }
+}
+</code>
+
+I'd also propose that this sort of switch work on //any// class, and that the ''class S = switch {...}'' form creates "closed classes": those which can neither be instantiated nor extended. 
+
+Does this work for you? I'm happy to leave ''enum'' for ES5, if anyone still wants it.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/04/13 17:11//
+
+I'm sufficiently fond of this counterproposal that I've placed a (slightly modified) version of it "up top" and moved the ''enum'' proposal down to another "old" proposal.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/04/13 18:02//
+----
+
+====== Older commentary, now addressed ======
+
+**Equality:** Is ''color.rgb(1,2,3) === color.rgb(1,2,3)'' always?  Sometimes?  Never?
+
+**Syntax:** Is constructing a value by saying ''color.clear()'' (rather than ''color.clear'') compatible with JScript?
+
+**Meaning:** The switch syntax is ambiguous if there is no type information available for ''color'' and ''c'' at the head of the switch: if c is an enum value, then the switch should be interpreted one way (destructuring and binding); if not, another way (namely by evaluating the case expressions and comparing in the standard fashion).  So at a minimum I would propose using the prefix ''&'' as for destructuring assignment.  Consider the code:
+
+<code>
+    function foo(c, color) {
+      switch (c) {
+          case color.rgb(A,B,C): ...;
+      }
+    }
+</code>
+
+which is legal.  You can't know how to compile/interpret this until you know the types of both ''c'' and ''color''.
+
+Using the prefix also helps disambiguate the case where we __do__ want pointer comparisons, ref the question above about the meaning about equality.
+
+**Scoping:** The scoping rules do not quite work out as they stand, at least not without further elaboration of the meaning of ''switch''.  Consider a switch that falls through from the first to second case:
+
+<code>
+switch (c)
+{
+    case &color.rgb(R,G,B):
+        // fall through
+    case &color.hsv(H,S,V):
+        // R, G, B not in scope here, but c can't be destructured as H,S,V so what are H,S,V?
+        break;
+}
+</code>
+
+Is this legal?  If it's not legal then I think we should not use ''switch'' as the keyword.  But then what are the values of H, S, and V inside the second case?
+
+The scoping problem could be fixed a couple of ways:
+  * Requiring 'break' or 'continue' or 'return' for each case matching on an enum value, alternatively saying that there is an implicit 'break' at the end of each case; either would be unsymmetric with the current language and it's sort of a hack but it works
+  * Choosing a syntax that differs but accomplishes the same.
+
+One possibility is to use the add a keyword ''enum'' to the switch and use blocks after each case, sort of like for ''catch'':
+
+<code>
+   switch enum (c) {
+      case color.rgb(R,G,B) { ... }
+      case color.hsv(H,S,V) { ... }
+   }
+</code>
+
+Or even
+
+<code>
+   switch (c : enum) { ... }
+</code>
+
+===== Older commentary still =====
+
+Questions:
+  * What is the scope of the enumeration names (''rgb'', ''hsv'' in the example above)?  In Java I would have to say ''color.rgb'' rather than just ''rgb'' (except in a switch on values of that type)
+  * Since the enum constants carry values it looks as though I can construct a new constant with a distinct set of values; do I say ''rgb(1,2,3)'', or ''new rgb(1,2,3)''?  Something else?
+  * It's a little weird to have enums be subtypes of Number in some cases but not in other, depending on whether they carry values or not.  
+    * This seems like a bit of a hack, especially since Number is already a subtype of Object and admits subtypes (modulo sealing, but then enums will have a problem anyway).  
+    * This means that I can't switch on the "kind" of an enum since I can't take a ''color'' value and coerce it to Number.  
+    * From the syntax above it is clear that even structured enum values have Number values too, so why should it not be possible to extract them?
+  * Must the ''literalExpr'' values be distinct?  Must they be compile-time constants?
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/24 02:31//
+
+Answers:
+  * As far as scopes, I don't really care; ''color.rgb'' is fine by me.
+  * I agree it's weird to have any cases as subtypes of Number, or to have literal values associated with enums. I included this sort of idea in order to retain some measure of similarity to C-family languages (and JScript.NET) which treat ''enum'' as an integral type. I'm happy to abandon this sort of compatibility concern if necessary, as I'm more concerned with modeling the ML-family facility of disjoint unions.
+  * The literal values are there, as above, for similarity to C-family languages, so I assume if they exist at all they need to be distinct and compile-time constants.
+  * For calling constructors, I think the constructors should be considered as functions: ''color.rgb(1,2,3)'' rather than ''new color.rgb(1,2,3)''. But there might be some semantic reason why that's invalid; I'm open to argument.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/03/24 10:26//
+
+====== Older proposal: "switch classes", with discussion ======
+
+Consider a class ''A'' with subclasses ''B'' and ''C''. It is desirable in many circumstances to perform a safe downcast from a value known to be of class ''A'' to either class ''B'' or class ''C''. This proposal suggests that a statement variant be added called ''switch class'', with the following form:
+
+<code>
+class A { ...}
+class B extends A { ... }
+class C extends A { ... }
+
+var x : A = ...;
+
+switch class (x)
+{
+  case B:
+    // variable x is of class B in this arm.
+    break;
+
+  case C:
+    // variable x is of class C in this arm.
+    break;
+
+  default:
+    // variable x is of class A in this arm.
+    break;
+}
+</code>
+
+The ''switch class'' statement is syntactic sugar for the following:
+
+<code>
+// Anonymous helper exception types.
+class ex_nnn {};
+class ex_mmm {};
+
+try 
+{
+  var tmp_nn : A = x;
+  var x : B; 
+  try 
+    x = cast B (x);
+  catch (TypeError e)
+    throw ex_nnn
+  // Code for arm 'B' goes here.
+}
+catch (ex_nnn z)
+{
+  try
+  {
+    var tmp_mm : A = x;
+    var x : C;
+    try
+      x = cast C (tmp_mm);
+    catch (TypeError e)
+      throw ex_mmm;
+    // Code for arm 'C' goes here.
+  }
+  catch (ex_mmm zz)
+  {
+    // Code for ''default'' arm goes here.
+  }
+}
+</code>
+
+===== Restricting cases: sum types =====
+
+Note that the above form always requires a ''default'' arm, because classes may have subclasses not handled by the set of arms provided in the ''switch class'' statement.
+
+This is not always desirable. Some applications of ''switch class'' benefit from the ability to form a //sum type//, or a class ''A'' whose instances are never simply ''A'', but instead one of a discrete set of subclasses ''B'' or ''C''. For example, suppose we have a class ''Expression'' which we would like to always be one of the three subclasses ''Operator'', ''Variable'' or ''Literal''. In this case, we wish to prohibit the formation of ''Expression'' instances which are not one of these three subclasses.
+
+One way of writing this is by adding ''switch class'' and ''case class'' //declaration// constructs, as follows:
+
+<code>
+switch class Expression
+{
+  case class Operator { ... }
+  case class Variable { ... }
+  case class Literal { ... } 
+}
+</code>
+
+Given this declaration, every ''switch class (...) { ... }'' statement on a variable of type ''Expression'' must handle all three cases, either by providing a default arm //or// by providing exactly one arm for each case. The type ''Expression'' is abstract: no code can construct ''Expression'' instances directly, only its subclasses ''Operator'', ''Variable'' or ''Literal''. Furthermore, no other classes can extend ''Expression''; it is equivalent to a ''final'' ''abstract'' class with three inner classes (by analogy to the Scala or Java languages).
+
+==== Enums as sums ====
+
+Many languages model ''enum'' declarations as syntactic sugar for sum types. This is fully compatible with the above proposal.
+
+==== Sums as enums ====
+
+The [[http://haxe.org/|HaXe]] language supports disjoint sums //primarily// as enums. It does not use disjoint class types. So for example, you declare enums like this:
+
+<code>
+enum color
+{
+  rgb(int,int,int),
+  rgba(int,int,int,int),
+  hsv(int,int,int)
+}
+</code>
+
+Their technique also involves destructuring binding in ''switch'' statements:
+
+<code>
+var foo : color = ...;
+switch (foo)
+{
+  case rgb(r,g,b): 
+    // can use r, g and b in here
+    // ...
+    break;
+  case rgba(r,g,b,a):
+    break;
+  case hsv(h,s,v):
+    break;
+}
+</code>
+
+==== Null types as sums ====
+
+In the above proposal, every maybe-null type could (almost) be formulated as a sum type:
+
+<code>
+switch class MaybeObj
+{
+  case class Null {}
+  case class Obj { ... }
+}
+</code>
+
+The word "almost" is written above because ''case class Null'' appears in //every// ''switch class MaybeObj'', for all non-''null'' ''Obj'' types, and in general the language would not permit a single case class to appear in multiple ''switch class'' declarations. ''MaybeObj'' would be the exception, though this could perhaps be made more general if we add [[type parameters]], by constructing the ''switch class Maybe[T]''.
+
+
+==== Alternative syntax with fewer keywords ====
+
+<code>
+class Expression
+{
+  case Operator { ... }
+  case Variable { ... }
+  case Literal { ... } 
+}
+</code>
+
+Is this not sufficiently different-looking to readers?  It's unambiguous, and it has the advantage that it looks like a class definition instead of (at first glance) a switch class statement.
+
+----
+
+This is already possible today:
+
+<code>
+switch (obj.constructor.name)
+{
+  case "A":...
+  case "B":...
+}
+</code>
+
+ --- //[[mdaeumli@adobe.com|Michael Daumling]] 2006/02/16 11:58//
+
+----
+
+No, that's a ''switch'' statement.  The ''class Expression'' shown above is a declaration that defines class ''Expression'' as the disjoint union of ''Operator'', ''Variable'', and ''Literal'' -- and no other types.  Then you could write a ''switch class (e)'' statement to switch on the dynamic type of ''e'', which could only be one of the three types in the sum.
+
+Your point does suggest that we don't need ''switch class'', however.  We could recognize certain ''switch'' statements that discriminate on ''e.%%__type__%%'' (see [[proposals::meta objects]]) or ''e.class'' (using the reserved ''class'' identifier as a property name).  Comments?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/02/24 14:06//
+----
+
+From Waldemar's spec:
+
+##
+
+
+Earlier drafts of this proposal had a .class operator that returned an instance’s class. This operator was defined using the grammar production:
+
+<code>
+PropertyOperator ⇒
+   . QualifiedIdentifier
+|  . class
+|  Brackets
+</code>
+
+The operator was removed because obtaining an instance’s class breaks abstraction. The client of a factory method m could determine whether m was returning instances of some stated class C or subclasses of C, and m could not evolve to alter its implementation decision of what precise instances to return without potentially breaking clients.
+
+
+##
+
+Do you buy it? There is a difference between providing a capability and forcing users to use it. I think .class is fine. 
+
+I also like the simpler 
+
+<code>
+class A {
+case clase B {...}
+case class C {...}
+}
+</code>
+
+primarily because it looks like a class definition, while ''switch class'' does not
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/02/28 13:05//
+
+Reflection vs. abstraction, an eternal struggle.  Or a false dichotomy!  I don't buy it, and like ''.class''.
+
+**Update:**  I'm a reflection fan, and it shows.  Graydon convinced me on IRC that if reflection is optional we shouldn't smuggle it back in non-optionally, and over-generally when the only need is for sum type discrimination.
+
+My minimized syntax did not say ''case class B {...}'', just ''case B {...}''.  Is that problematic?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/02/28 13:57//
+
+----
+
+Re: ''class .. { case class .. {} }'' vs. ''class .. { case .. {} }''
+
+Since the nested case classes are class definitions, it seems clearer to spell them that way. Remember the body of a class might be filled with statements as well as definitions so the standalone ''case'' keyword might not give a strong enough visual clue that a class is being defined there.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/02/28 16:49//
+
+That's symmetric with ''switch class'', which Graydon rightly points out is the narrow special form we want here, not ''.class''.  I'm sold.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/02/28 17:11//
+
+JScript's enum syntax is documented [[http://msdn2.microsoft.com/en-us/library/y94acxy2(VS.80).aspx|here]]. 
+
+<code>
+[modifiers] enum enumName [ : typeAnnotation]{
+   enumValue1 [ = initializer1]
+   [,enumValue2 [ = initializer2]
+   [, ... [,enumValueN [ = initializerN ] ]]]
+}
+</code>
+ --- //[[pratapl@microsoft.com|Pratap Lakshman]] 2007/02/12 22:49//

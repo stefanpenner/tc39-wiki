@@ -1,0 +1,46 @@
+===== Array statics =====
+
+Some of the generic array methods would work just fine on array-like objects (such as ''arguments'' objects, DOM sequences, or strings), but right now you have to use ''[].method.call(x, ...)'' or ''Array.prototype.method.call(x, xxx)'' which is unwieldy and confusing. This strawman proposes adding static versions of those methods, which take the array-like object as the explicit first parameter. This would work for all the array methods, resulting in the following additional methods:
+
+  * ''Array.map''
+  * ''Array.reduce''
+  * ''Array.reduceRight''
+  * ''Array.filter''
+  * ''Array.forEach''
+  * ''Array.every''
+  * ''Array.some''
+  * ''Array.reverse''
+  * ''Array.indexOf''
+  * ''Array.lastIndexOf''
+  * ''Array.concat''
+  * ''Array.slice''
+  * ''Array.splice''
+  * ''Array.shift''
+  * ''Array.unshift''
+  * ''Array.sort''
+  * ''Array.push''
+  * ''Array.pop''
+  * ''Array.join''
+
+In each case, the method ''Array.foo'' behaves the same as:
+
+<code javascript>
+Array.foo = function() {
+    var x = [].shift.call(arguments);
+    return [].foo.apply(x, arguments);
+}
+</code>
+
+Note that some of these operations return a new array; so for example, calling ''Array.map'' on a string returns an array.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2011/03/13 19:01//
+
+----
+
+As perpetrator of these "static generic" ''Array'' methods in SpiderMonkey, I want to write a couple of comments:
+
+  * These are "easy" to implement via a shared re-dispatching layer, which suggests something even more general for "uncurrying ''this''".
+  * Putting them in ''Array'' was a poor-person's-module-system precursor -- can we do better via [[simple modules]]? After all these generics work on array-likes not just ''Array'' instances.
+  * Some may object to the same name for methods of different arity and ''this''-ness. It didn't stop me and I haven't heard any complaints from users, but these are Mozilla-specific and may well be under-used.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/03/13 21:44//

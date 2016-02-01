@@ -1,0 +1,353 @@
+====== Trait Composition for Classes ======
+
+
+//THIS STRAWMAN IS CURRENTLY NOT IN A COHERENT STATE//. Rather, it is mostly a place to collect the support for trait composition, abstract classes, required members, and multiple (trait) inheritance which have been factored out of [[strawman:classes_with_trait_composition]].
+
+
+This strawman shows how to add trait composition to [[strawman:classes_with_trait_composition]], as a way to give a clean semantics to multiple inheritance. From the perspective of [[strawman:traits semantics]], such multiple inheritance is a straightforward generalization of that single inheritance semantics semantics.
+
+<code>
+  ClassAdjective : ...       // "..." means members defined elsewhere
+      abstract
+      trait
+
+  ClassElement : ...
+      MixinDefinition
+  ConstructorElement : ...
+      MixinChaining
+
+  PublicPrototypePropertyDefinition : ...
+      RequiredDeclaration
+  PublicInstancePropertyDeclaration : ...
+      public RequiredDeclaration           // required instance state
+  RequiredDeclaration :
+      requires ForwardDeclaration          // required members
+
+  MixinDefinition :
+      mixin MemberExpression Renamings?
+  ProtoChaining :
+      super Arguments Renamings?
+  MixinChaining :
+      mixin MemberExpression Arguments Renamings?
+
+  Renamings :
+      Renaming
+      Renamings , Renaming
+  Renaming :
+      with Identifier as Identifier
+      without Identifier
+</code>
+
+NOTE: Semantics to be explained, based on [[http://wiki.ecmascript.org/doku.php?id=strawman:classes_with_trait_composition&rev=1305060283|old revision of classes_with_trait_composition]], from when it used trait composition for multiple inheritance.
+
+
+A ClassDeclaration or ClassExpression defines a special constructor function to represent that class. Like a regular function, this constructor function is callable, inherits from ''Function.prototype'', and has a typeof of ''"function"''. Unlike a regular function, it has a %%[[Class]]%% of ''"Class"'', has various other internal properties below specific to such constructor functions, and perhaps even directly inherits from ''Class.prototype'' which then directly inherits from ''Function.prototype''. From here on, we refer to such a special constructor function as a //class//.
+
+
+
+
+
+==== Class Adjectives ====
+
+The ClassAdjectives, when present, clarify the role a given class is intended to serve. The ''abstract'' adjective indicates that this class is not intended to be directly instantiable. Unresolved requirements in an abstract class are no problem, since the class provides only a partial description. 
+
+The ''const'' adjective indicates that this class should provide high integrity. An abstract const class enforces non-instantiability --- its internal %%[[Call]]%% and %%[[Construct]]%% methods only throw a TypeError when called. For non-abstract classes and for non-const abstract classes, their internal %%[[Call]]%% and %%[[Construct]]%% methods directly make the instance they describe, even though these may have unresolved requirements. Const classes are themselves frozen and they bring their class name into scope as a [[harmony:const]] variable, i.e., a non-assignable variable. For a const class ''C'', ''C.prototype'' is also frozen, as are the direct instances of a non-abstract const class.
+
+For a non-abstract class or a non-const abstract class, this constructor code is also the behavior of the class' internal %%[[Call]]%% and %%[[Construct]]%% methods.
+
+
+
+===== Errors =====
+
+
+==== Semi-Static Errors ====
+
+
+During execution of its ClassBody, a const class definition may fail by throwing a TypeError, in order to report a //semi-static error//. For a top level class, the initialization time is Program entry time, so such semi-static errors are effectively early errors. A non-abstract const class with unresolved conflicts or requirements reports an early error, so a successful non-abstract const class definition cannot have unresolved conflicts or requirements. For a const class, the class and its prototype are only frozen when the ClassBody exits. 
+
+==== Dynamic Errors ====
+
+Required prototype properties define a public poisoned property on the prototype of the class on which they appear.
+
+
+==== Early Errors ====
+
+For a const class, every locally declared provided instance member must be "obviously" initialized and every declared required instance property must not be "obviously" initialized or an early SyntaxError is reported. 
+
+===== Chaining =====
+
+
+For each built-in conventional constructor -- such as ''Date'', ''Array'', and perhaps ''Function'' -- where the "''.call''" pattern does not suffice, this class creates an instance that correctly behaves as a proper instance that built-in constructor function, except that they inherits only indirectly from that constructor function's ''"prototype"'' property. Unfortunately, compilers from ES-next to ES5 cannot emulate this behavior by local rewriting.
+
+====== Adapted Examples ======
+
+To facilitate comparisons, the examples below are adapted from earlier or similar proposals. Since some of these are also adapted from each other, you may find some redundancy between these examples.
+
+NOTE: At the present time, these examples are only valid for an earlier version of this proposal that made different syntactic choices. Remove this note when these examples are updated.
+
+===== Adapted from explanations of TraitsJS =====
+
+
+Example adapted from [[http://traitsjs.org/]].
+
+
+<code javascript>
+  trait ColorTrait {
+    new(col) {
+      public color() { return col; }
+    }
+  }
+  class Point : (Object) {
+    new(x, y) {
+      public getX() { return x; }
+      public getY() { return y; }
+      public toString() { return ''+x+'@'+y; }
+    }
+  }
+  class ColoredPoint {
+    mixin ColorTrait;
+    mixin Point;
+    new(x, y, col) {
+      mixin ColorTrait(col);
+      mixin Point(x, y);
+    }
+  }
+  const p = ColoredPoint(0,2,'red');
+  p.color() // 'red'
+</code>
+
+Examples adapted from [[http://howtonode.org/traitsjs|How to Node article on TraitsJS]] which are adapted from [[http://scg.unibe.ch/archive/papers/Scha03aTraits.pdf|the original traits paper]].
+
+<code javascript>
+  trait Equality {
+    requires equals(other);
+    public differs(other) { return !this.equals(other); }
+  }
+  trait Magnitude {
+    mixin Equality;
+    requires smaller(other);
+    public greater(other) { return !this.smaller(other) && this.differs(other); }
+    public between(min, max) {
+      return min.smaller(this) && this.smaller(max);
+    }
+  }
+  class BareCircle {
+    new(center, radius) {
+      public center = center;
+      public radius = radius;
+    }
+    public area() { return Math.PI * this.radius * this.radius; }
+    public equals(other) { return this.center.equals(other.center) &&
+                                  this.radius === other.radius; }
+    public smaller(other) { return this.radius < other.radius; }
+  }
+  class Circle {
+    mixin Magnitude;
+    mixin BareCircle;
+    new(center, radius) {
+      mixin BareCircle(center, radius);
+    }
+  }
+</code>
+
+<code javascript>
+  trait ColorTrait {
+    new(rgb) {
+      public get rgb() { return rgb; }
+    }
+    public equals(col) { return col.rgb.equals(this.rgb); }
+  }
+  class Circle {
+    mixin Magnitude;
+    mixin ColorTrait with equals as equalColors; // conflict avoidance by rename
+    mixin BareCircle;
+    new(center, radius) {
+      mixin ColorTrait(rgb);                     // mixin chaining
+      mixin BareCircle(center, radius);
+    }
+  }
+// or
+  class Circle {
+    mixin Magnitude;
+    mixin Color without equals;                  // conflict avoidance by exclusion
+    mixin BareCircle;
+    new(center, radius) {
+      mixin ColorTrait(rgb);
+      mixin BareCircle(center, radius);
+    }
+  }
+// or
+  class Circle : ColorTrait {                    // conflict avoidance by overriding
+    mixin Magnitude;
+    mixin BareCircle;
+    new(center, radius) {
+      super(rgb);
+      mixin BareCircle(center, radius);
+    }
+  }
+
+</code>
+
+Example adapted from [[http://soft.vub.ac.be/~tvcutsem/traitsjs/tutorial.html|TraitsJS Tutorial]].
+
+<code javascript>
+  trait EnumerableTrait {
+    requires forEach(fun);
+
+    public map(fun) {
+      const seq = [];
+      this.forEach(function(e,i) {
+        seq.push(fun(e,i));
+      });
+      return seq;
+    }
+
+    public filter(pred) {
+      const seq = [];
+      this.forEach(function(e,i) {
+        if (pred(e,i)) {
+          seq.push(e);
+        }
+      });
+      return seq;
+    }
+
+    public reduce(init, fun) {
+      let result = init;
+      this.forEach(function(e,i) {
+        result = fun(result, e, i);
+      });
+      return result;
+    }
+  }
+
+  class BareInterval {
+    new(min, max) {
+      public start = min;
+      public end = max;
+      public size = max - min;
+    }
+    public toString() { return ''+min+'..!'+max; }
+    public contains(e) { return min <= e && e < max; }
+    public forEach(consumer) {
+      for (let i = min; i < max; i++) {
+        consumer(i,i-min);
+      }
+    }
+  }
+  class Interval {
+    mixin EnumerableTrait;
+    mixin BareInterval;
+    new(min, max) {
+      mixin BareInterval(min, max);
+    }
+  }
+// or
+  class Interval : BareInterval {
+    mixin EnumerableTrait;
+    new(min, max) {
+      super(min, max);
+    }
+  }
+
+
+
+  const i = Interval(0,5);
+  i.start // 0
+  i.end // 5
+  i.reduce(0, function(a,b) { return a+b; }); // 0+1+2+3+4 = 10
+</code>
+
+
+
+===== Adapted from explanations of Traceur =====
+
+
+Examples adapted from [[http://code.google.com/p/traceur-compiler/wiki/LanguageFeatures#Classes|Traceur Classes and Traits]].
+
+<code javascript>
+  class Monster : Character {
+    new(x, y, name) {
+      super(x, y);
+      public name = name;
+      private let health_ = x+y;
+    }
+
+    static public let totalAttacks = 0;
+
+    public attack(character) {
+      totalAttacks++;
+      super.attack(character);
+    }
+
+    public isAlive() { return this.health > 0;
+    public get health() { return private(this).health_; }
+    public set(newHealth) {
+      if (newHealth < 0) { throw new Error('Health must be non-negative.');
+      private(this).health_ = newHealth;
+    }
+  }
+</code>
+
+<code javascript>
+  trait ComparableTrait {
+    requires lessThan(other);
+    requires equals(other);
+
+    public lessThanOrEquals(other) {
+      return this.lessThan(other) || this.equals(other);
+    }
+    public greaterThan(other) {
+      return other.lessThan(this);
+    }
+    public greaterThanOrEquals(other) {
+      return other.lessThan(this) || this.equals(other);
+    }
+    public notEquals(other) {
+      return !(this.equals(other));
+    }
+  }
+
+  trait BareInterval {
+    new(min, max) {
+      public start = min;
+      public end = max;
+      public size = max - min + 1;
+    }
+    public lessThan(ival) {
+      return this.end <= ival.start;
+    }
+    public equals(ival) {
+      return this.start === ival.start && this.end === ival.end;
+    }
+  }
+
+  class Interval {
+    mixin ComparableTrait;
+    mixin BareInterval;
+    new(min, max) {
+      mixin BareInterval(min, max);
+    }
+  }
+
+  var i1 = new Interval(0, 5);
+  var i2 = new Interval(7, 12);
+  alert(i1 + ' == ' + i2 + ': ' + i1.notEquals(i2)); // true
+  alert(i1 + ' < ' + i2 + ': ' + i1.greaterThan(i2)); // false
+</code>
+
+
+====== See ======
+
+[[strawman:classes_with_trait_composition]]
+
+[[http://code.google.com/p/traceur-compiler/wiki/LanguageFeatures#Classes|Traceur Classes and Traits]]
+
+[[http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.17.1949| Encapsulation and Inheritance in Object-Oriented Programming Languages]] -- classic 1986 paper by Alan Snyder 
+
+[[http://howtonode.org/traitsjs|How To Node article on Traits.js]]
+
+[[https://jetpack.mozillalabs.com/sdk/1.0b3/docs/packages/api-utils/docs/traits.html|Jetpack Traits]]
+
+[[strawman:syntax for efficient traits]]
+

@@ -1,0 +1,38 @@
+(previous syntax discussion)
+
+===== Syntax =====
+
+Pragmas may occur only at the head of certain syntactic units: the program, package body, function body, class body, and block.  (In practice pragmas will follow ''import'' clauses.)
+
+Pragmas are introduced with the reserved keyword ''use'' followed by a syntactic keyword that names the pragma and then values that are arguments for that pragma.  The standard pragma names and their meanings are enumerated in a later section.
+
+Multiple pragmas may be strung together in a single ''use'' statement, separated by commas, eg
+
+    use decimal, rounding up;
+
+A pragma argument is a single //AssignmentExpression// whose interpretation depends on the pragma.  See the section below.  Multiple arguments may be provided, they are separated by commas:
+
+    use namespace ns1, ns2;
+
+The argument list for a pragma may be enclosed in parentheses:
+
+    use namespace(ns1, ns2);
+
+The ambiguity between multiple pragmas on a line and multiple arguments to a pragma are resolved by ending argument parsing when a standard pragma keyword is seen.  Thus:
+
+    use rounding up, namespace ns1, ns2;
+
+is unambiguous, does not require a backtracking parser, and means:
+
+    use rounding(up), namespace(ns1, ns2);
+
+In the event that a pragma argument should have the same representation as a pragma name, parentheses can be used to override the argument parsing rule.  The statement:
+
+    use namespace ns1, rounding;
+
+is a syntax error, because the pragma ''rounding'' requires one argument.  However, with parentheses the token ''rounding'' can be used as an argument:
+
+    use namespace(ns1, rounding);
+
+An implementation may provide additional pragma names.  These pragma names //must not// end argument parsing like the built-in pragmas do.  (//Rationale:// If implementation pragmas ended argument parsing then they would not do so in all implementations.  That would make it impossible for an implementation to recognize an unknown pragma in all cases.  That in turn would be dangerous; see the section on semantics.)
+

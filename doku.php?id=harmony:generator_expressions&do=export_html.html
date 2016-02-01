@@ -1,0 +1,164 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=harmony:generator_expressions&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="http://wiki.ecmascript.org/feed.php?mode=list&amp;ns=harmony" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=harmony:generator_expressions&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=harmony:generator_expressions&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:generator_expressions&amp;do=export_html.html#overview" class="toc">Overview</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:generator_expressions&amp;do=export_html.html#examples" class="toc">Examples</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:generator_expressions&amp;do=export_html.html#syntax" class="toc">Syntax</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:generator_expressions&amp;do=export_html.html#translation" class="toc">Translation</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:generator_expressions&amp;do=export_html.html#notes" class="toc">Notes</a></span></li>
+</ul>
+</div>
+</div>
+
+<p>
+<strong>This proposal has progressed to the Draft ECMAScript 6 Specification, which is available for review here: <a href="doku.php%3Fid=harmony:specification_drafts.html" class="wikilink1" title="harmony:specification_drafts" onclick="return svchk()" onkeypress="return svchk()">specification_drafts</a>. Any new issues relating to them should be filed as bugs at <a href="http://bugs.ecmascript.org" class="urlextern" target="_blank" title="http://bugs.ecmascript.org" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://bugs.ecmascript.org</a>. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.</strong>
+</p>
+
+<a name="overview"></a><h1>Overview</h1>
+<div class="level1">
+
+<p>
+ Generator expressions were introduced in <a href="https://developer.mozilla.org/en/Core_JavaScript_1.5_Guide/Iterators_and_Generators#Generator_expressions" class="urlextern" target="_blank" title="https://developer.mozilla.org/en/Core_JavaScript_1.5_Guide/Iterators_and_Generators#Generator_expressions" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">JavaScript 1.8</a>. Generator expressions are a convenient, declarative form for creating generators with a syntax based on <a href="doku.php%3Fid=harmony:array_comprehensions.html" class="wikilink1" title="harmony:array_comprehensions" onclick="return svchk()" onkeypress="return svchk()">array comprehensions</a>. Generator expressions also provide a convenient refactoring pattern, making it easy to switch between eager and on-demand generation of values in a sequence simply by changing the bracketing.
+</p>
+
+<p>
+Because generator expressions desugar to an application of <a href="doku.php%3Fid=harmony:iterators.html" class="wikilink1" title="harmony:iterators" onclick="return svchk()" onkeypress="return svchk()">iterators</a>, the surface syntax uses <code>for</code>-<code>of</code> rather than <code>for</code>-<code>in</code>.
+</p>
+
+</div>
+<!-- SECTION [370-1033] -->
+<a name="examples"></a><h1>Examples</h1>
+<div class="level1">
+
+<p>
+ Extracting pages on demand from an array of URL’s:
+</p>
+<pre class="code javascript"><span class="br0">&#40;</span>xhrGet<span class="br0">&#40;</span>url<span class="br0">&#41;</span> <span class="kw1">for</span> <span class="br0">&#40;</span>url of getURLs<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#41;</span></pre>
+<p>
+Filtering a sequence:
+</p>
+<pre class="code javascript"><span class="br0">&#40;</span>x <span class="kw1">for</span> <span class="br0">&#40;</span>x of generateValues<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="kw1">if</span> <span class="br0">&#40;</span>x.<span class="me1">color</span> === ‘blue’<span class="br0">&#41;</span><span class="br0">&#41;</span></pre>
+<p>
+Lazy cartesian product
+</p>
+<pre class="code javascript"><span class="br0">&#40;</span>xhrGet<span class="br0">&#40;</span>row, column<span class="br0">&#41;</span> <span class="kw1">for</span> <span class="br0">&#40;</span>row of rows<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="kw1">for</span> <span class="br0">&#40;</span>column of columns<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#41;</span></pre>
+</div>
+<!-- SECTION [1034-1405] -->
+<a name="syntax"></a><h1>Syntax</h1>
+<div class="level1">
+<pre class="code">
+PrimaryExpression ::= ...
+                   |  &quot;(&quot; Expression (&quot;for&quot; &quot;(&quot; LHSExpression &quot;of&quot; Expression&quot;)&quot;)+ (&quot;if&quot; &quot;(&quot; Expression &quot;)&quot;)? &quot;)&quot;
+</pre>
+
+</div>
+<!-- SECTION [1406-1583] -->
+<a name="translation"></a><h1>Translation</h1>
+<div class="level1">
+
+<p>
+ A generator expression:
+</p>
+
+<p>
+<strong>(</strong> <em>Expression<sub>0</sub></em> <strong>for (</strong> <em>LHSExpression<sub>1</sub></em> <strong>of</strong> <em>Expression<sub>1</sub></em> <strong>)</strong> ... <strong>for (</strong> <em>LHSExpression<sub>n</sub></em> <strong>) if (</strong> <em>Expression</em> <strong>)</strong><sub><em>opt</em></sub> <strong>)</strong>
+</p>
+
+<p>
+can be defined by expansion to the expression:
+</p>
+
+<p>
+<strong>(function () {</strong> <br/>
+     <strong>for (let </strong><em>LHSExpression<sub>1</sub></em> <strong>of</strong> <em>Expression<sub>1</sub></em> <strong>) {</strong> <br/>
+         ... <br/>
+         <strong>for (let </strong><em>LHSExpression<sub>n</sub></em> <strong>of</strong> <em>Expression<sub>n</sub></em> <strong>) {</strong> <br/>
+             <strong>if (</strong> <em>Expression</em> <strong>)</strong><sub><em>opt</em></sub> <br/>
+                 <strong>yield (</strong><em>Expression<sub>0</sub></em><strong>);</strong> <br/>
+             <strong>}</strong> <br/>
+         <strong>}</strong> <br/>
+     <strong>}</strong> <br/>
+ <strong>})()</strong>
+</p>
+
+</div>
+<!-- SECTION [1584-2456] -->
+<a name="notes"></a><h1>Notes</h1>
+<div class="level1">
+
+<p>
+ Background motivation for the syntactic sugar afforded by generator expressions: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Peter Norvig&rsquo;s <a href="http://norvig.com/sudoku.html" class="urlextern" target="_blank" title="http://norvig.com/sudoku.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Sudoku solver</a> based on constraint propagation, written in Python</div>
+</li>
+<li class="level1"><div class="li"> My <a href="https://bug380237.bugzilla.mozilla.org/attachment.cgi?id=266577" class="urlextern" target="_blank" title="https://bug380237.bugzilla.mozilla.org/attachment.cgi?id=266577" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">port</a> of Peter&rsquo;s solver to <a href="https://developer.mozilla.org/en/Core_JavaScript_1.5_Guide/Iterators_and_Generators#Generator_expressions" class="urlextern" target="_blank" title="https://developer.mozilla.org/en/Core_JavaScript_1.5_Guide/Iterators_and_Generators#Generator_expressions" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">JS1.8</a></div>
+</li>
+</ul>
+
+<p>
+ The critical uses of generator expressions, e.g., the actual parameter to <code>all</code> in: 
+</p>
+<pre class="code js">    if (all(eliminate(values, s, d2) for (d2 of values[s]) if (d2 != d)))
+        return values;
+</pre>
+<p>
+ can only be desugared to generation function applications or an equivalent lazy iterator construct. They cannot be replaced with <a href="doku.php%3Fid=strawman:array_comprehensions.html" class="wikilink1" title="strawman:array_comprehensions" onclick="return svchk()" onkeypress="return svchk()">array comprehensions</a> or any such eager construct without the solver taking exponential time and space creating eagerly populated arrays where it would have stopped early using lazy generator expressions, thanks to constraint propagation. Note how <code>all</code> is defined:
+</p>
+<pre class="code js">function all(seq) {
+    for (let e in seq)
+        if (!e)
+            return false;
+    return true;
+}
+</pre>
+<p>
+ so as to stop as soon as a value in the iterated sequence is falsy.
+</p>
+
+<p>
+The JS1.8 version has some XXX comments and helper functions that show where methods such as the Array extras (<code>Array.prototype.every</code> instead of the custom <code>all</code> shown above, e.g.) are not iterator-friendly. This suggests the need for more generic methods that abstract over arrays and iterators.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2010/06/27 19:47</em>
+</p>
+
+<p>
+Another note: <code>yield</code> is verboten in a generator expression, to uphold TCP.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2011/03/24 18:12</em> 
+</p>
+
+</div>
+<!-- SECTION [2457-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/1/1eab703f82aa1ce595552872db0d3a32.xhtml used -->
+</body>
+</html>

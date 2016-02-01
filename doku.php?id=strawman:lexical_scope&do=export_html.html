@@ -1,0 +1,144 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:lexical_scope&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:lexical_scope&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:lexical_scope&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:lexical_scope&amp;do=export_html.html#rationale" class="toc">Rationale</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:lexical_scope&amp;do=export_html.html#syntax" class="toc">Syntax</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:lexical_scope&amp;do=export_html.html#semantics" class="toc">Semantics</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:lexical_scope&amp;do=export_html.html#consequences" class="toc">Consequences</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:lexical_scope&amp;do=export_html.html#restrictions" class="toc">Restrictions</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:lexical_scope&amp;do=export_html.html#issues" class="toc">Issues</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="rationale"></a><h1>Rationale</h1>
+<div class="level1">
+
+<p>
+ Lexical scope is an important principle in programming: it provides better abstraction and makes programs less brittle for refactoring. It also enables faster implementations since compilers and interpreters can resolve variable references early, preventing expensive runtime searches through the scope chain.
+</p>
+
+<p>
+This proposal introduces a pragma enforcing lexical scope in any textual block of code, including the program top level. This enforcement requires preventing certain constructs such as <code>with</code> and <code>eval</code> from dynamically modifying the scope chain. Programmers receive several benefits: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Free variables, caused for example by simple misspellings, are a statically enforceable error.</div>
+</li>
+<li class="level1"><div class="li"> Programs are less sensitive to subtle and potentially malicious changes in behavior by external code.</div>
+</li>
+<li class="level1"><div class="li"> Implementations may be able to improve the efficiency of variable lookup.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1-911] -->
+<a name="syntax"></a><h1>Syntax</h1>
+<div class="level1">
+<pre class="code ebnf">    Pragma ::= ... | &quot;lexical&quot; &quot;scope&quot;
+</pre>
+</div>
+<!-- SECTION [912-993] -->
+<a name="semantics"></a><h1>Semantics</h1>
+<div class="level1">
+
+<p>
+ The <code>use lexical scope</code> pragma changes the scoping semantics of its block (or the program, if it occurs at top level) to use pure lexical scope. This involves the following semantic changes: 
+</p>
+<ol>
+<li class="level1"><div class="li"> The <code>with</code> construct is disallowed; any occurrence of <code>with</code> &mdash; anywhere, at any level of nesting within the block &mdash; is a static error.</div>
+</li>
+<li class="level1"><div class="li"> The <code>eval</code> construct may not modify its containing block&rsquo;s scope. Attempts to do so result in a dynamic error.</div>
+</li>
+<li class="level1"><div class="li"> The scope chain for the block no longer contains the global object. In its place is a lexical frame containing standard (host environment-specific) bindings. These must include at least the <em>initial</em> bindings of the standard library (such as <code>Array</code>, <code>Boolean</code>, <code>String</code>, <code>Object</code>, etc.).</div>
+</li>
+<li class="level1"><div class="li"> The <code>delete</code> operator may not remove any bindings from any part of the scope chain.</div>
+</li>
+<li class="level1"><div class="li"> No language construct may dynamically modify a frame in the scope chain (e.g., non-standard conditional binding constructs).</div>
+</li>
+</ol>
+
+<p>
+ It is expected that <code>use lexical scope</code> might be subsumed by another pragma such as <code>use strict</code> (and perhaps even eliminated as a separate pragma).
+</p>
+
+</div>
+<!-- SECTION [994-2153] -->
+<a name="consequences"></a><h1>Consequences</h1>
+<div class="level1">
+<ul>
+<li class="level1"><div class="li"> With the <code>use lexical scope</code> pragma, all free variable references become an error. This error may be detected statically, since no construct is able to change the meaning of a variable reference at runtime.</div>
+</li>
+<li class="level1"><div class="li"> Because <code>use lexical scope</code> does not affect the initial meaning of <code>this</code>, the global object is still accessible to programs, but it no longer affects variable scope.</div>
+</li>
+<li class="level1"><div class="li"> References to top-level bindings may still occur without prefix since the scope chain binds the initial properties of the global object at its outermost level.</div>
+</li>
+<li class="level1"><div class="li"> However, dynamic tests must be prefixed by <code>this.</code> in order to detect the presence or absence of global properties. It is expected that this will require a moderate but not unreasonable amount of refactoring for code that wishes to make use of the <code>use lexical scope</code> pragma.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [2154-3018] -->
+<a name="restrictions"></a><h1>Restrictions</h1>
+<div class="level1">
+
+<p>
+ The <code>use lexical scope</code> pragma is disallowed in certain contexts to ensure that dynamic objects never appear in the scope chain: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Use of <code>use lexical scope</code> within the scope of a <code>with</code> block results in a compile-time error:<pre class="code javascript"><span class="kw1">with</span> <span class="br0">&#40;</span>obj<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">use</span> lexical scope; <span class="co1">// compile-time error</span>
+    ...
+<span class="br0">&#125;</span></pre></div>
+</li>
+<li class="level1"><div class="li"> Use of <code>use lexical scope</code> within the body of code evaluated by an occurrence of <code>eval</code> that occurs in the scope of a <code>with</code> block results in a runtime error before evaluation of the <code>eval</code>ed code begins:<pre class="code javascript"><span class="kw1">with</span><span class="br0">&#40;</span>obj<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">eval</span><span class="br0">&#40;</span><span class="st0">"use lexical scope; ..."</span><span class="br0">&#41;</span> <span class="co1">// run-time error</span>
+    ...
+<span class="br0">&#125;</span></pre></div>
+</li>
+</ol>
+
+</div>
+<!-- SECTION [3019-3692] -->
+<a name="issues"></a><h1>Issues</h1>
+<div class="level1">
+<ul>
+<li class="level1"><div class="li"> Should <code>eval</code> be restricted in <code>lexical scope</code> mode to operate in the initial scope?</div>
+</li>
+<li class="level1"><div class="li"> Nested <code>use lexical scope</code>: what to use for top-level frame? Initial bindings or current bindings? Example:</div>
+</li>
+</ul>
+<pre class="code javascript"><span class="kw3">alert</span> = <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>
+<span class="br0">&#123;</span>
+    <span class="kw2">use</span> lexical scope;
+    <span class="kw3">alert</span><span class="br0">&#40;</span><span class="st0">'hello, world'</span><span class="br0">&#41;</span>
+<span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [3693-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/3/3485be8bcfac3d4489a19e09dea269fc.xhtml used -->
+</body>
+</html>

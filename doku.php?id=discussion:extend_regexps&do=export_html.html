@@ -1,0 +1,623 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=discussion:extend_regexps&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=discussion" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=discussion:extend_regexps&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=discussion:extend_regexps&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=discussion:extend_regexps&amp;do=export_html.html#discussion" class="toc">Discussion</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:extend_regexps&amp;do=export_html.html#intersection_and_subtraction" class="toc">Intersection and subtraction</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:extend_regexps&amp;do=export_html.html#lexing_and_parsing_issues" class="toc">Lexing and parsing issues</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=discussion:extend_regexps&amp;do=export_html.html#mixing_the_x_flag_comments_and_unescaped_with_separated_lexingparsing" class="toc">Mixing the /x flag, comments, and unescaped / with separated lexing/parsing</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=discussion:extend_regexps&amp;do=export_html.html#java-style_regex_unions_and_3rd_ed_compatibility" class="toc">Java-style regex unions and 3rd Ed compatibility</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=discussion:extend_regexps&amp;do=export_html.html#java-style_intersection_and_subtraction" class="toc">Java-style intersection and subtraction</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=discussion:extend_regexps&amp;do=export_html.html#conclusion_recommendation" class="toc">Conclusion, recommendation</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=discussion:extend_regexps&amp;do=export_html.html#intriguing_idea_that_won_t_work" class="toc">Intriguing idea that won't work</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:extend_regexps&amp;do=export_html.html#extending_regexps_for_unicode_ranges" class="toc">Extending RegExps for Unicode Ranges</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:extend_regexps&amp;do=export_html.html#issues_with_the_x_flag" class="toc">Issues with the &quot;/x&quot; flag</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:extend_regexps&amp;do=export_html.html#issues_with_y_flag" class="toc">Issues with /y flag</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=discussion:extend_regexps&amp;do=export_html.html#older_discussion" class="toc">Older discussion</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=discussion:extend_regexps&amp;do=export_html.html#proposal_amendments_retracted" class="toc">Proposal amendments (retracted)</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=discussion:extend_regexps&amp;do=export_html.html#textual_inclusion" class="toc">Textual inclusion</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<p>
+This is the discussion page for <a href="doku.php%3Fid=proposals:extend_regexps.html" class="wikilink1" title="proposals:extend_regexps" onclick="return svchk()" onkeypress="return svchk()">extend regexps</a>.
+</p>
+
+<a name="discussion"></a><h1>Discussion</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [64-89] -->
+<a name="intersection_and_subtraction"></a><h2>Intersection and subtraction</h2>
+<div class="level2">
+
+<p>
+ Russ Cox raised the issue on es4-discuss that the current intersection and subtraction operators <code>\&amp;</code> and <code>\-</code> have two problems:
+</p>
+<ul>
+<li class="level1"><div class="li"> precedence: what does <code>[a-z\-g-j\-z]</code> mean, precisely (depends on associativity)</div>
+</li>
+<li class="level1"><div class="li"> breaks tradition: the current syntax allows punctuation always to be escaped in a charset with the guarantee that the punctuation then stands for itself; this works even if the punctuation has no special meaning.  Thus code that currently hedges its bets by using <code>\&amp;</code> in a charset rather than plain <code>&amp;</code> loses.</div>
+</li>
+</ul>
+
+<p>
+ In addition, there is prior work that&rsquo;s being ignored, Java regexes provide for intersection, and for subtraction by complementation and intersection.
+</p>
+
+<p>
+The Java solution is to allow for nested character sets and operations involving them.  If they are preceded by a doubled ampersand the operation is intersection, otherwise union.  Processing is left-to-right, and nested sets can be complemented.
+</p>
+<pre class="code">
+  [abc[def]ghi]     ==  [abcdefgi]
+  [c-t&amp;&amp;[aeiouy]]   ==  [eio]
+  [a-z&amp;&amp;[^aeiouy]]  ==  &lt;the set of ASCII consonants&gt;
+  [c-t&amp;&amp;[aeiouy]w]  ==  [eiow]
+</pre>
+
+<p>
+This solution fixes both of Cox&rsquo;s problems, and reuses prior art.  However, it requires that program-level lexing of RegExp literals will need to use a full context-free grammar because it needs to keep track of nested character sets &ndash; because we adopted the MSIE-compatible fix of allowing / to be unescaped inside character sets in RegExp literals.  This puts a slight additional burden on the implementation.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2007/05/08 05:06</em>
+</p>
+
+<p>
+Code that allows you to play with Java regular expressions:
+</p>
+<pre class="code language=java">import java.util.regex.*;
+
+class Main {
+    static public void main(String[] args) {
+        try {
+            Pattern p = Pattern.compile(args[0]);
+            System.out.println(&quot;Compilation succeeded...&quot;);
+            if (args.length &gt; 1) {
+                Matcher m = p.matcher(args[1]);
+                System.out.println(m.matches() ? &quot;Matched&quot; : &quot;Did not match&quot;);
+            }
+        }
+        catch (PatternSyntaxException e) {
+            System.out.println(&quot;Compilation failed!&quot;);
+            System.out.println(e);
+        }
+    }
+}
+</pre>
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2007/05/08 05:20</em> 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+At the May 8 phone conference it was suggested I go look for other prior art than Java.  Here&rsquo;s what I found:
+</p>
+<ul>
+<li class="level1"><div class="li"> <acronym title="Practical Extraction and Report Language">Perl</acronym> 5 does not support intersection and subtraction</div>
+</li>
+<li class="level1"><div class="li"> PCRE explicitly maintains the rule that <code>\&lt;c&gt;</code> for any punctuation char <code>&lt;c&gt;</code> means &ldquo;literally <code>c</code>&ldquo;, it is never an operator.</div>
+</li>
+<li class="level1"><div class="li"> The pertinent note from the Unicode consortium <a href="http://www.unicode.org/unicode/reports/tr18/#Subtraction_and_Intersection" class="urlextern" target="_blank" title="http://www.unicode.org/unicode/reports/tr18/#Subtraction_and_Intersection" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">here</a> suggests that <code>&amp;</code> and <code>-</code> be used as operators inside sets, but their meaning depends on their operands: for single characters, <code>x-y</code> means range, but if <code>x</code> or <code>y</code> is itself a set then it means intersection.  They propose some precedence rules.</div>
+</li>
+<li class="level1"><div class="li"> A CPAN implementation of the Unicode idea <a href="http://www.unicode.org/unicode/reports/tr18/#Subtraction_and_Intersection" class="urlextern" target="_blank" title="http://www.unicode.org/unicode/reports/tr18/#Subtraction_and_Intersection" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">here</a> refines this and requires the operators to be enclosed in spaces, ie, <code>[a-z - g-h]</code> or [[a-z] - [g-h]] is set difference.</div>
+</li>
+<li class="level1"><div class="li"> The Boost C++ libraries manual observes that positive and negative lookahead and character classes can express this already, leading to this beautiful syntax for intersection of sets: <code>(?=[...])[...]</code>, and ditto for subtraction: <code>(?![...])[...]</code></div>
+</li>
+<li class="level1"><div class="li"> Jeffrey Friedl, who wrote the O&rsquo;Reilly book on regexes, credits Sun with the innovation in this area.</div>
+</li>
+<li class="level1"><div class="li"> Basically, Java syntax seems to dominate on sourceforge and other places where I&rsquo;ve looked.</div>
+</li>
+</ul>
+
+<p>
+ My opinion: the only serious prior art is in Java; the Unicode syntax is probably more error-prone and adding space delimiters for clarity interacts poorly with our new <code>/x</code> flag.
+</p>
+
+<p>
+We should go with Java.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2007/05/11 10:47</em>
+</p>
+
+</div>
+<!-- SECTION [90-4082] -->
+<a name="lexing_and_parsing_issues"></a><h2>Lexing and parsing issues</h2>
+<div class="level2">
+
+<p>
+ The following section outlines some problems with lexing/parsing regular expressions; a final section proposes how to fix the problems.  Some of these problems pertain primarily to <code>/.../</code> style literals because the flags are not known until the literal has been scanned and therefore can&rsquo;t be used by the scanner; some pertain also to the <code>new RegExp(&rdquo;...&rdquo;)</code> form.
+</p>
+
+</div>
+<!-- SECTION [4083-4495] -->
+<a name="mixing_the_x_flag_comments_and_unescaped_with_separated_lexingparsing"></a><h3>Mixing the /x flag, comments, and unescaped / with separated lexing/parsing</h3>
+<div class="level3">
+
+<p>
+ The 3rd Ed specifies that regular expression literals can be lexed without considering their internal structure except for escaped characters.  This is nice because (a) a separate (typically third-party) regexp parser can be used without being integrated with the lexer and (b) regexp-less implementations can skip literals reliably.
+</p>
+
+<p>
+Then begins the fun:
+</p>
+
+<p>
+We decided (see the section &ldquo;RegExp scanning&rdquo; in <a href="doku.php%3Fid=proposals:extend_regexps.html" class="wikilink1" title="proposals:extend_regexps" onclick="return svchk()" onkeypress="return svchk()">extend regexps</a>) that for 4th Ed we will allow an unescaped <code>/</code> character inside character sets:  it is useful, MSIE supports it, the web uses it, and it does not add much complexity: the lexer need only keep track of whether it&rsquo;s inside a charset or not &ndash; charsets do not nest and are syntactically distinct.
+</p>
+
+<p>
+We then decided to add the <code>/x</code> flag which allows the expression the use of linebreaks, spaces, and comments in most contexts.  However, for literals the flag is not visible until after the regular expression has been scanned, so the lexer must allow linebreaks to be present in the literal; if the <code>/x</code> flag turns out not to be present but a linebreak is present, then an error is signalled by the lexer.
+</p>
+
+<p>
+We decided to allow two comment forms in regular expressions: <code>(?# text )</code> patterns are always allowed in <em>Atom</em> contexts; <code># text</code> comments are allowed everywhere if the <code>/x</code> flag is present.  These interact poorly with character sets, the expression <code>/a[d-o # Range (c,o]&lt;newline&gt;/]/x</code> can&rsquo;t be lexed because the <code>]</code> in the comment terminates the character set prematurely, meaning the <code>/</code> that should have been in the character set terminates the expression instead.
+</p>
+
+<p>
+Our &ldquo;fix&rdquo; for this was to say &ldquo;don&rsquo;t do that&rdquo;, which is poor UI, but as the problem is not much worse than people using <code>x/*q</code> inadvertently in C or puts <code>*/</code> inside a comment, we could live with it. 
+</p>
+
+<p>
+Ditto, the comment mustn&rsquo;t contain an unmatched <code>[</code>, and comments can&rsquo;t contain <code>/</code> characters either.  This might not seem so bad, but expressions needing to use regular expression literals, linebreaks, and comments are the big ones where rules like these are most likely to be broken.
+</p>
+
+<p>
+So we have managed to preserve the simple scanner &ndash; thus allowing the use of a separate regexp parser &ndash; but at some slight complexity and a couple of rules the programmer must remember.
+</p>
+
+</div>
+<!-- SECTION [4496-6899] -->
+<a name="java-style_regex_unions_and_3rd_ed_compatibility"></a><h3>Java-style regex unions and 3rd Ed compatibility</h3>
+<div class="level3">
+
+<p>
+ The Java union syntax &ndash; nested character sets &ndash; is not backwards compatible with 3rd Edition: <code>[abc[d]</code>, <code><a href="doku.php%3Fid=discussion.html" class="wikilink2" title="discussion" onclick="return svchk()" onkeypress="return svchk()"></a></code>, and <code>[abc[d]]</code> are valid 3rd Ed regular expressions and should remain so, but with nested charsets the former is ill-formed and the latter two take on different meanings.  Can/should we/do we need to support unions?  Their actual utility is questionable (though probably not zero).  The alternative is to support nested charsets only following the <code>&amp;&amp;</code> operator, ie, it is the token sequence <code>&amp;&amp;</code> <code>[</code> inside a charset that is special.
+</p>
+
+<p>
+It&rsquo;s not clear we can support unions in general while remaining backwards compatible.  In 3rd Ed, <code>[abc[d]]</code> is a valid regular expression meaning <code>(?:a|b|c|\[|d)\]</code> and it would take on a new meaning, <code>(?:a|b|c|d)</code>.
+</p>
+
+<p>
+We could stipulate that unions (and intersection and subraction, probably) are only available with the <code>/x</code> flag present.  This seems a little hackish; the <code>/x</code> flag so far has only controlled whitespace and comment interpretation.
+</p>
+
+</div>
+<!-- SECTION [6900-7986] -->
+<a name="java-style_intersection_and_subtraction"></a><h3>Java-style intersection and subtraction</h3>
+<div class="level3">
+
+<p>
+ The Java-style intersection and subtraction operators do not have the same compatibility problems as the union syntax, because the token <code>&amp;&amp;</code> inside a character set signals new behavior.  However, the character set that follows <code>&amp;&amp;</code> must be treated as a properly nested set for the purposes of looking for <code>/</code>; the scanner must at a minimum keep track of the levels of nesting.  That is, <code>[ab[c]d]</code> and <code>[ab&amp;&amp;[c]d]</code> must be handled differently by the scanner, as must <code>[ab[c]d]</code> and <code>[ab&amp;&amp;#this is a comment&lt;newline&gt;[c]d #another comment&lt;newline&gt;]</code>.
+</p>
+
+</div>
+<!-- SECTION [7987-8607] -->
+<a name="conclusion_recommendation"></a><h3>Conclusion, recommendation</h3>
+<div class="level3">
+
+<p>
+ <acronym title="In my opinion">IMO</acronym>:
+</p>
+<ul>
+<li class="level1"><div class="li"> We should not allow nested-charsets-as-unions a la Java.  We would need hackarounds to be backwards compatible, even if the risk of breaking existing regexes is probably slight.  By not allowing them now we do not close the door on allowing them later.</div>
+</li>
+<li class="level1"><div class="li"> We should adopt Java-style intersection and subtraction; this behavior is triggered by the token <code>&amp;&amp;</code> inside a character set, it must be followed by a nested character set.  Intersection and subtraction may be further nested.</div>
+</li>
+<li class="level1"><div class="li"> We will retain separated regexp lexing and regexp parsing, like in 3rd Edition, with these semantics:</div>
+<ul>
+<li class="level2"><div class="li"> Any line terminator characters are scanned as part of the regexp literal (unlike 3rd Ed).</div>
+</li>
+<li class="level2"><div class="li"> If line terminators were consumed but the <code>x</code> flag was not present, then throw a SyntaxError.</div>
+</li>
+<li class="level2"><div class="li"> The lexer needs to count charset nesting.  The lexer has a state variable &ldquo;depth&rdquo;, initially zero.  </div>
+<ul>
+<li class="level3"><div class="li"> If depth==0 then an unescaped <code>[</code> increments depth.</div>
+</li>
+<li class="level3"><div class="li"> If depth&gt;0 then an unescaped <code>]</code> decrements depth.</div>
+</li>
+<li class="level3"><div class="li"> If depth&gt;0 and the three consecutive characters <code>&amp;&amp;[</code> appear, increment depth.</div>
+</li>
+<li class="level3"><div class="li"> If depth&gt;0 then an unescaped <code>/</code> is allowed.</div>
+</li>
+</ul>
+</li>
+<li class="level2"><div class="li"> Regexp literal scanning does <em>not</em> take into account comments.  Thus <code>/</code>, <code>[</code>, or <code>]</code> characters inside comments may throw the lexer off.  The user will just have to deal with it.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [8608-10013] -->
+<a name="intriguing_idea_that_won_t_work"></a><h3>Intriguing idea that won't work</h3>
+<div class="level3">
+
+<p>
+ The alternative is to use the regular expression parser to scan regular expressions.  The parser would first be invoked on the rest of the input with the <code>x</code> flag on.  If this parse succeeds, and the <code>x</code> flag is actually present, then use the consumed input for the regexp literal.  Otherwise, try to parse the rest of the input with the <code>x</code> flag off.  If this parse succeeds, then use the consumed input for the regexp literal.  Otherwise fail.
+</p>
+
+<p>
+The regular expressions that can&rsquo;t be parsed as extended include those containing an <code>#</code> that does not start a comment: <code>/ab#c/g</code>, for example.
+</p>
+
+<p>
+The reason I do not recommend using the parser for lexing regular expressions is that it isn&rsquo;t safe; consider the input <code>/ab#c/g;&lt;newline&gt;z=1/x</code> which really is not a regular expression.
+</p>
+
+<p>
+On the other hand, if one tries parsing non-extended first, slashes in comments will still throw the parser off, so that doesn&rsquo;t solve anything.
+</p>
+
+<p>
+<acronym title="In my opinion">IMO</acronym> it is better to have the simple rule suggested above (avoid <code>/</code>, <code>[</code>, and <code>]</code> in comments) than these kinds of complexities.
+</p>
+
+</div>
+<!-- SECTION [10014-11130] -->
+<a name="extending_regexps_for_unicode_ranges"></a><h2>Extending RegExps for Unicode Ranges</h2>
+<div class="level2">
+
+<p>
+ At the Sep 27 TG1 phone meeting, it was suggested that RegExps should be extended to take better advantage of full Unicode ranges (e.g., our \w flag is barely useful even for <acronym title="American Standard Code for Information Interchange">ASCII</acronym>). The Unicode Consortium has a specific set of suggestions for how to extend RegExp usage for Unicode (<a href="http://www.unicode.org/reports/tr18/index.html" class="urlextern" target="_blank" title="http://www.unicode.org/reports/tr18/index.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://www.unicode.org/reports/tr18/index.html</a>), but even their &ldquo;Level 1&rdquo; support may be too heavy-duty for us. 
+</p>
+
+<p>
+The specific recommendation that concerns me is that they suggest allowing \p{NAME} to match a category of characters, where NAME is one of the many Unicode Character Properties. This is a useful capability which is provided by current versions of <acronym title="Practical Extraction and Report Language">Perl</acronym> and Java (I think, and possibly other languages too)... but supporting the full set of Unicode Character Properties may require a large amount of table data. Current PCRE implementations have roughly 90k of static data dedicated to this, which is likely more than some implementations would want to dedicate to this feature. (The Unicode spec claims that clever table construction can allow these to be stored in &ldquo;only 7 or 8 Kbytes&rdquo;, but provides no code to back up this claim, so I am assuming that PCRE is a reasonable implementation in the absence of proof to the contrary...)
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x73%3B%26%23x74%3B%26%23x65%3B%26%23x6a%3B%26%23x6f%3B%26%23x68%3B%26%23x6e%3B%26%23x73%3B%26%23x40%3B%26%23x61%3B%26%23x64%3B%26%23x6f%3B%26%23x62%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x73;&#x74;&#x65;&#x6a;&#x6f;&#x68;&#x6e;&#x73;&#x40;&#x61;&#x64;&#x6f;&#x62;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Steven Johnson</a> 2006/10/03 18:27</em>
+</p>
+
+<p>
+So, to dive into this a bit more, here are the  specific requirements for Unicode Consortium Level 1 Support, along with comparisons with the Java 5, <acronym title="Practical Extraction and Report Language">Perl</acronym> 5.8, and PCRE 6.x capabilities.  
+</p>
+<ol>
+<li class="level1"><div class="li"> Hex notation</div>
+<ul>
+<li class="level2"><div class="li"> <em>The Unicode spec says:</em> To meet this requirement, an implementation shall supply a mechanism for specifying any Unicode code point (from U+0000 to U+10FFFF).</div>
+</li>
+<li class="level2"><div class="li"> <em>The possible issues:</em> None; we already have an acceptable way to do this, via the <a href="doku.php%3Fid=discussion:update_unicode.html" class="wikilink1" title="discussion:update_unicode" onclick="return svchk()" onkeypress="return svchk()">update_unicode</a> proposal.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Properties</div>
+<ul>
+<li class="level2"><div class="li"> <em>The Unicode spec says:</em> To meet this requirement, an implementation shall provide at least a minimal list of properties, consisting of (list omitted, please see the full spec for details)</div>
+</li>
+<li class="level2"><div class="li"> <em>The rationale:</em> Unicode is a huge set, and hand-rolling specific patterns tends to be error-prone and incomplete. Providing categories that are baked from the official spec makes it easier for typical users to make Unicode-savvy RegExps.</div>
+</li>
+<li class="level2"><div class="li"> <em>The possible issues:</em> It would appear that the existing Unicode-savvy RegExp implementations mentioned above provide this level of support (more or less... PCRE doesn&rsquo;t implement everything that the Unicode spec asks for, but is fairly close and probably an acceptable subset); however, as mentioned earlier in this discussion, it may take a large about of static table data to implement this. It seems likely that compact implementations will be unwilling to dedicate even the 8k that the Unicode spec claims is necessary, so this may have to be an optional part of the implementation. </div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Subtraction and Intersection</div>
+<ul>
+<li class="level2"><div class="li"> <em>The Unicode spec says:</em> To meet this requirement, an implementation shall supply mechanisms for both intersection and set-difference of Unicode sets.</div>
+</li>
+<li class="level2"><div class="li"> <em>The rationale:</em> Unicode Properties aren&rsquo;t nearly as useful without these.</div>
+</li>
+<li class="level2"><div class="li"> <em>The possible issues:</em> We don&rsquo;t currently have them. They were proposed in an earlier draft of the JavaScript 2.0 spec, but apparently didn&rsquo;t ever make it into the ECMA spec. Though Java5 supports union and intersection, it doesn&rsquo;t support set-difference. <acronym title="Practical Extraction and Report Language">Perl</acronym>/PCRE don&rsquo;t appear to support either. I don&rsquo;t know how hard it is to add such support; I&rsquo;m assuming it&rsquo;s probably nontrivial, since <acronym title="Practical Extraction and Report Language">Perl</acronym>/PCRE don&rsquo;t have them.</div>
+</li>
+<li class="level2"><div class="li"> <em>Compatibility:</em> Using <code>-</code> and <code>&amp;</code> as operators for difference and intersection breaks backward compatibility, so we&rsquo;d have to invent strange backward-compatible syntax or require flags to allow the operators, neither of which seem good.   &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/10/11 08:16</em></div>
+</li>
+<li class="level2"><div class="li"> <em>Implementation burden:</em> Modulo syntactic issues I can&rsquo;t quite see why these should be hard, you just end up with sparse-ish character sets.   &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/10/11 08:16</em></div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Simple Word Boundaries</div>
+<ul>
+<li class="level2"><div class="li"> <em>The Unicode spec says:</em> To meet this requirement, an implementation shall extend the word boundary mechanism so that:</div>
+<ol>
+<li class="level3"><div class="li"> The class of &lt;word_character&gt; includes all the Alphabetic values from the Unicode character database, from UnicodeData.txt [UData], plus the U+200C ZERO WIDTH NON-JOINER and U+200D ZERO WIDTH JOINER. See also Annex C: Compatibility Properties.</div>
+</li>
+<li class="level3"><div class="li"> Nonspacing marks are never divided from their base characters, and otherwise ignored in locating boundaries.</div>
+</li>
+</ol>
+</li>
+<li class="level2"><div class="li"> <em>The possible issues:</em> This should be achievable, though there will be performance implications &ndash; apparently PCRE doesn&rsquo;t implement this for \w, \b, etc., for just this reason &ndash; and recommends that explicit Unicode property tests be used instead.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Simple Loose Matches</div>
+<ul>
+<li class="level2"><div class="li"> <em>The Unicode spec says:</em> </div>
+<ol>
+<li class="level3"><div class="li"> To meet this requirement, if an implementation provides for case-insensitive matching, then it shall provide at least the simple, default Unicode case-insensitive matching. </div>
+</li>
+<li class="level3"><div class="li"> To meet this requirement, if an implementation provides for case conversions, then it shall provide at least the simple, default Unicode case conversion.</div>
+</li>
+</ol>
+</li>
+<li class="level2"><div class="li"> <em>The possible issues:</em> We do provide case-insensitive matching, but not conversions. This boils down to yet another big table of data we need to have available at runtime. </div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Line Boundaries</div>
+<ul>
+<li class="level2"><div class="li"> <em>The Unicode spec says:</em> To meet this requirement, if an implementation provides for line-boundary testing, it shall recognize not only CRLF, LF, CR, but also NEL (U+0085), PS (U+2029) and LS (U+2028).</div>
+</li>
+<li class="level2"><div class="li"> <em>The possible issues:</em> Implementation should be simple, but the possibility of backwards-compatibility issues is present</div>
+</li>
+<li class="level2"><div class="li"> <em>Discussion:</em> PS and LS are already line separators in 3rd Edition (15.10.2.6), NEL is new.  I&rsquo;m not sure  what CRLF means today &ndash; I suspect it means two end-of-line characters, ie, an empty line.   &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/10/11 08:24</em></div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Code Points</div>
+<ul>
+<li class="level2"><div class="li"> <em>The Unicode spec says:</em> To meet this requirement, an implementation shall handle the full range of Unicode code points, including values from U+FFFF to U+10FFFF. In particular, where UTF-16 is used, a sequence consisting of a leading surrogate followed by a trailing surrogate shall be handled as a single code point in matching.</div>
+</li>
+<li class="level2"><div class="li"> <em>The possible issues:</em> Just a question of adapting implementations to work on code points rather than bytes or words; many implementations (e.g., PCRE) already have this available as a compile-time option.</div>
+</li>
+<li class="level2"><div class="li"> <em>Incompatible:</em> Actually this is entirely incompatible with the <a href="doku.php%3Fid=proposals:extend_regexps.html" class="wikilink1" title="proposals:extend_regexps" onclick="return svchk()" onkeypress="return svchk()">extend regexps</a> proposal, which requires that a surrogate pair never shall be treated as a single code point.   &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/10/11 08:44</em></div>
+</li>
+</ul>
+</li>
+</ol>
+
+<p>
+ In sum, the proposal is certainly doable, but at a size cost in an implementation that is probably unacceptable for compact implementations &ndash; the Properties and Loose Matches requirements being the most costly. PCRE implements a substantial subset of these, but disabled (at compile-time) by default; I did a quick test case of compiling with and without this support, and it amounts to about 92k of data + code (Intel, MSVC7, optimized). 
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x73%3B%26%23x74%3B%26%23x65%3B%26%23x6a%3B%26%23x6f%3B%26%23x68%3B%26%23x6e%3B%26%23x73%3B%26%23x40%3B%26%23x61%3B%26%23x64%3B%26%23x6f%3B%26%23x62%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x73;&#x74;&#x65;&#x6a;&#x6f;&#x68;&#x6e;&#x73;&#x40;&#x61;&#x64;&#x6f;&#x62;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Steven Johnson</a> 2006/10/03 18:27</em> (?)
+</p>
+
+<p>
+Regarding table sizes, I agree there are open issues.  The suggestions for table layout are in section 5.1 of the Unicode 4 spec, it&rsquo;s a simple trie structure with shared substructure and default values.  For a two-level table the first table maps the high byte and the second table maps the low byte of a UTF16 character.  After that it gets tricky.  Even a 256-element table containing pointers uses 1KB (soon: 2KB), so we can&rsquo;t have one of these tables per property name, for example.  Perhaps an 8-bit offset encoding can be used instead?  &lsquo;twould be neat. Anyway, presumably the lower level tables contain bitsets describing the characters and there just happens to be a great deal of reuse among the second-level tables.  If we imagine eg 8-bit values on level 2 there is space in 6KB for 24 of these.  This still seems very low, and doesn&rsquo;t even account for the names of the character classes.  
+</p>
+
+<p>
+So, the 8KB figure seems unreasonably low for this level of support.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/10/11 08:45</em>
+</p>
+
+</div>
+<!-- SECTION [11131-19603] -->
+<a name="issues_with_the_x_flag"></a><h2>Issues with the &quot;/x&quot; flag</h2>
+<div class="level2">
+
+<p>
+ Brendan, wrt stripping format control characters from regexes, I have proposed in <a href="doku.php%3Fid=discussion:update_unicode.html" class="wikilink1" title="discussion:update_unicode" onclick="return svchk()" onkeypress="return svchk()">update unicode</a> that the /x flag has this effect.  Thus programmers who want to use format control characters for readability will be forced to use this flag.  This seems reasonable to me.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/05/27 08:40</em>
+</p>
+
+<p>
+Are whitespace and comments stripped in a pre-pass or as part of parsing?  If a pre-pass is used then a literal # must be represented as \x23 in the regexp, it can&rsquo;t appear literally anywhere; (?#...) comments will be impossible, because they are most reasonably handled as part of parsing.  
+</p>
+
+<p>
+If a pre-pass is not used, then exactly where is whitespace stripped?  Is it stripped even in backslash sequences?
+</p>
+
+<p>
+I suspect I would favor integrating stripping with parsing, and only stripping whitespace and comments in atom and charset contexts, ie, not as part of escape sequences.  Thus the three character sequence <code>\ s</code> turns into two atoms: a space character and a single <code>s</code>.
+</p>
+
+<p>
+There&rsquo;s also the question of what stripped whitespace means &ndash; does it turn into nothing or an empty pattern?  Once again, stripped whitespace should probably have some sort of separator function, and that favors integrated stripping, not a prepass.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/06/09 02:13</em>
+</p>
+
+<p>
+Resolved in the proposal in favor of format control stripping, integrated comment handling, and limited contexts for ignored whitespace and line comments.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/06/13 03:17</em>
+</p>
+
+</div>
+<!-- SECTION [19604-21187] -->
+<a name="issues_with_y_flag"></a><h2>Issues with /y flag</h2>
+<div class="level2">
+
+<p>
+ Brendan writes re: the old name &ldquo;noSearch&rdquo; for what is now &ldquo;anchored&rdquo;:
+</p>
+
+<p>
+Suggest camelCaps for <code>noSearch</code>, or a better name.  Not obvious what&rsquo;s better, but avoiding a negative seems to help (ruling out &ldquo;no&rdquo; and &ldquo;don&rsquo;t&rdquo; spellings).  We could invert the sense and avoid colliding on &ldquo;search&rdquo;.  &ldquo;Match at current position or fail&rdquo; is what &ldquo;search&rdquo; more precisely means, vs. &ldquo;find first match&rdquo; for &ldquo;nosearch&rdquo;.  &ldquo;Anchored&rdquo; would be good if it weren&rsquo;t taken.  Hmm... how about <code>findMatch</code> defaulting to <code>true</code>?
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/12/13 12:18</em>
+</p>
+
+<p>
+Re &ldquo;nosearch&rdquo; vs &ldquo;noSearch&rdquo;, I figured &ldquo;ignoreCase&rdquo; was an anomaly <img src="lib/images/smileys/icon_razz.gif" align="middle" alt=":-P" />.  I agree negatives should be avoided, but I also think these properties should all be true if the flag is present and false if the flag is absent, so &ldquo;findMatch&rdquo; does not work for me.  Calling the property &ldquo;yylex&rdquo; (from which &ldquo;/y&rdquo; comes) is way obscure.
+</p>
+
+<p>
+In which sense is &ldquo;anchored&rdquo; taken?  The word does not appear in E262-3 at all.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2006/12/14 10:57</em>
+</p>
+
+<p>
+If we can use <code>anchored</code>, I&rsquo;m happy.  In regular expression docs and books going back to grep (at least), an &ldquo;anchored&rdquo; regex is one starting with <code>^</code> or ending in <code>$</code>.  If no one is likely to be confused, then let&rsquo;s use <code>anchored</code>.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/12/14 14:49</em>
+</p>
+
+<p>
+Inspiration: <code>sticky</code> for <code>/y</code> rather than <code>anchored</code> &ndash; avoids double meaning for latter, connotes regex being stuck at current offset in target string.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2007/01/09 11:05</em>
+</p>
+
+<p>
+Agreed.  I&rsquo;ve made the change throughout.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2007/01/16 08:19</em>
+</p>
+
+</div>
+<!-- SECTION [21188-22892] -->
+<a name="older_discussion"></a><h1>Older discussion</h1>
+<div class="level1">
+
+<p>
+ Need more time.  I&rsquo;d like an extension.  I won&rsquo;t propose anything radical, I promise! <img src="lib/images/smileys/icon_wink.gif" align="middle" alt=";-)" />  One item other than bug-fixing and <code>/x</code>: named groups after <a href="http://docs.python.org/lib/re-syntax.html" class="urlextern" target="_blank" title="http://docs.python.org/lib/re-syntax.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Python</a>: 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>(?P&lt;name&gt;...)</code></div>
+<ul>
+<li class="level2"><div class="li"> Similar to regular capturing parentheses, but the substring matched by the group is accessible via the symbolic group name <code>name</code>.</div>
+</li>
+<li class="level2"><div class="li"> Group names must be valid lexical identifiers, and each group name must be defined only once within a regular expression.</div>
+</li>
+<li class="level2"><div class="li"> A symbolic group is also a numbered group, just as if the group were not named. So the group named <code>id</code> in the example below can also be referenced as the numbered group 1.</div>
+</li>
+<li class="level2"><div class="li"> For example, if the pattern is <code>(?P&lt;id&gt;[a-zA-Z_]\w*)</code>, the group can be referenced by its name in <code>String.prototype.match</code> result objects, such as <code>m.id</code>, and also by name in pattern text (for example, <code>(?P=id)</code>) and replacement text (such as <code>\g&lt;id&gt;</code>).</div>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> <code>(?P=name)</code></div>
+<ul>
+<li class="level2"><div class="li"> Matches whatever text was matched by the earlier group named <code>name</code>.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ We will fix the <a href="doku.php%3Fid=proposals:bug_fixes.html" class="wikilink1" title="proposals:bug_fixes" onclick="return svchk()" onkeypress="return svchk()">bug</a> where a <code>RegExp</code> literal evaluates to a singleton, not a new object per evaluation.
+</p>
+
+<p>
+Also, based on SpiderMonkey precedent, I propose we allow <code>RegExp</code> instances to be called.  This invokes <code>RegExp.prototype.exec</code>.  We should revisit the <code>typeof</code> operator to agree on whether callable <code>x</code> implies <code>typeof x === &ldquo;function&rdquo;</code>.  Our testing shows no browsers save Mozilla ones following the letter of ECMA-262 Edition 3 here, so we should probably codify majority practice.  I&rsquo;m adding a <a href="doku.php%3Fid=proposals:bug_fixes.html" class="wikilink1" title="proposals:bug_fixes" onclick="return svchk()" onkeypress="return svchk()">bug fix</a> item on <code>typeof</code>.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/03/01 00:45</em>
+</p>
+
+<p>
+One thing that&rsquo;s been on my to-do list for a long time is a qualifier tentatively named <code>/c</code> that says &ldquo;try to match the regexp at lastIndex, and if that fails, don&rsquo;t search forward but return null&rdquo;.  The use case for this is to be able to use regexes to write simple reasonably efficient lexers for embedded languages.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/03/17 14:09</em>
+</p>
+
+</div>
+<!-- SECTION [22893-25008] -->
+<a name="proposal_amendments_retracted"></a><h1>Proposal amendments (retracted)</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [25009-25055] -->
+<a name="textual_inclusion"></a><h2>Textual inclusion</h2>
+<div class="level2">
+
+<p>
+ A regular expression literal can reference a program variable at construction time.  The string value of the variable is textually inserted into the regular expression, wrapped in a single <code>(?: ... )</code> group.
+</p>
+
+<p>
+<strong>Syntax</strong>: The pattern <code>(?I=id)</code> references the program variable <code>id</code> and obtains its current value as a string.
+</p>
+
+<p>
+<strong>Example</strong>: A readable regular expression for a typical number datum:
+</p>
+<pre class="code">
+    const intpart  : RegExp = / (?: [0-9]+ ) /x;
+    const decimals : RegExp = / (?: \. [0-9]+ ) /x;
+    const exponent : RegExp = / (?: [Ee] [+-]? [0-9]+ ) /x;
+    const fracpart : RegExp = / (?I=decimals)? (?I=exponent) 
+                              | (?I=decimals) (?I=exponent)? 
+                              /x;
+    const number   : RegExp = / (?I=intpart)? (?I=fracpart)
+                              | (?I=intpart) (?I=fracpart)?
+                              /x;
+</pre>
+
+<p>
+<strong>Interactions with the strict language</strong>: If we wanted to get fancy, the strict language could require that the referenced names have static types that are <code>String</code> or <code>RegExp</code>.
+</p>
+
+<p>
+<strong>Constants</strong>: a regular expression literal referencing program variables is a compile-time constant expression iff the referenced variables are themselves compile-time constant expressions.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/06/05 00:46</em>
+</p>
+
+<p>
+Come to think of it, there&rsquo;s no particular reason why it has to be textual inclusion, if the identifier references a regular expression then that regexp could be included &ldquo;by reference&rdquo;.  This could be observable in a couple of ways: space use, for one (no exponential blowup in space use if using by-reference inclusion), and in some of the flags being preserved through the referencing, something I did not envision happening initially.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/06/06 07:25</em>
+</p>
+
+<p>
+This seems to offer relatively little, in practice.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/06/12 06:52</em> 
+</p>
+
+</div>
+<!-- SECTION [25056-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/5/52eb552ca3162cea6561c2f4e60cfeb2.xhtml used -->
+</body>
+</html>

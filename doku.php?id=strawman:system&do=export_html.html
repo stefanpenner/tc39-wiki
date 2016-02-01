@@ -1,0 +1,154 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:system&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:system&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:system&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:system&amp;do=export_html.html#introduction" class="toc">Introduction</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:system&amp;do=export_html.html#goals" class="toc">Goals</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:system&amp;do=export_html.html#non-goals" class="toc">Non-goals</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:system&amp;do=export_html.html#proposal" class="toc">Proposal</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:system&amp;do=export_html.html#variants" class="toc">Variants</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:system&amp;do=export_html.html#open_issues" class="toc">Open issues</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:system&amp;do=export_html.html#references" class="toc">References</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="introduction"></a><h1>Introduction</h1>
+<div class="level1">
+
+<p>
+ From time to time, the ECMA TC39 committee or some other standards body introduces a standard object that a compliant ECMAScript implementation must provide. An example is the <a href="doku.php%3Fid=strawman:weak_references.html" class="wikilink1" title="strawman:weak_references" onclick="return svchk()" onkeypress="return svchk()">weak_references</a> proposal, whereby the provided object(s) allow the code using them to sense information (in this case, about the garbage collector). Other use cases might involve new bindings for objects in Web browsers providing new forms of network access.
+</p>
+
+<p>
+Introducing these objects into the topmost lexical scope is problematic because, every time this is done, some existing code may be affected. Furthermore, there is no agreed-upon namespacing convention for these objects.
+</p>
+
+</div>
+<!-- SECTION [1-699] -->
+<a name="goals"></a><h1>Goals</h1>
+<div class="level1">
+
+<p>
+ <u>Minimal intrusion into topmost scope.</u> Ideally, this proposal would be the last additional item introduced by TC39 or any like-minded organization into the topmost scope of ECMAScript programs.
+</p>
+
+<p>
+<u>Subsetting.</u> The objects to be managed by this proposal carry nontrivial powers. It should be trivially possible to create a subset of these powers by selecting, for some new piece of code, a subset of the provided objects.
+</p>
+
+<p>
+<u>No name collision.</u> The names used as keys in this proposal must reasonably be expected to not collide with one another. Since the entire starting state is under the control of a single implementation, this goal basically says that the organizations defining bindings per the proposed mechanism must have a way to cooperatively agree on the names they use.
+</p>
+
+</div>
+<!-- SECTION [700-1507] -->
+<a name="non-goals"></a><h1>Non-goals</h1>
+<div class="level1">
+
+<p>
+ <u>Provide a general registry for arbitrary components.</u> The object discussed here is not intended to be modified by client code (though it should be trivially subsettable). This object is only intended to provide system-level access to the first program that runs in an ECMAScript interpreter.
+</p>
+
+</div>
+<!-- SECTION [1508-1828] -->
+<a name="proposal"></a><h1>Proposal</h1>
+<div class="level1">
+
+<p>
+ A new top-level ECMAScript object is defined called:
+</p>
+<pre class="code javascript">System</pre>
+<p>
+This object will contain all the ECMAScript primordials as top-level properties:
+</p>
+<pre class="code javascript">System.<span class="me1">Array</span>
+System.<span class="me1">Object</span>
+System.<span class="kw2">Function</span>
+...</pre>
+<p>
+Future objects will also be top-level properties:
+</p>
+<pre class="code javascript">System.<span class="me1">WeakPtr</span>
+System.<span class="me1">WeakMap</span>
+...</pre>
+<p>
+Objects defined by other organizations will follow a dotted reverse domain name scheme reflecting the organization which defined it. For example:
+</p>
+<pre class="code javascript">System.<span class="me1">org</span>.<span class="me1">w3c</span>.<span class="me1">document</span>
+System.<span class="me1">org</span>.<span class="me1">w3c</span>.<span class="me1">window</span>
+...</pre>
+<p>
+A program can trivially construct a subset of the <code>System</code> object as follows:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> mySystem = <span class="br0">&#123;</span>
+  Array: System.<span class="me1">Array</span>,
+  Object: System.<span class="me1">Object</span>,
+  org: <span class="br0">&#123;</span>
+    w3c: <span class="br0">&#123;</span>
+      document: System.<span class="me1">org</span>.<span class="me1">w3c</span>.<span class="me1">document</span>
+    <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;</pre>
+</div>
+<!-- SECTION [1829-2668] -->
+<a name="variants"></a><h1>Variants</h1>
+<div class="level1">
+
+<p>
+ Instead of a hierarchy of objects, an alternative would provide flat names with arbitrary (perhaps hierarchical) structure, like:
+</p>
+<pre class="code javascript">System<span class="br0">&#91;</span><span class="st0">'org/w3c/document'</span><span class="br0">&#93;</span>
+System<span class="br0">&#91;</span><span class="st0">'org/w3c/window'</span><span class="br0">&#93;</span>
+...</pre>
+<p>
+The advantage of this scheme would be that it could be more easily traversed and subsetted. The disadvantage is that it would require two distinct usages: string literals in square brackets for the &ldquo;long&rdquo; cases, while the &ldquo;short&rdquo; names could still be accessed as <code>System.Array</code> and <code>System.Object</code>.
+</p>
+
+</div>
+<!-- SECTION [2669-3208] -->
+<a name="open_issues"></a><h1>Open issues</h1>
+<div class="level1">
+<ul>
+<li class="level1"><div class="li"> The exact grammar and candidate ECMA-262 text is not yet specified.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [3209-3308] -->
+<a name="references"></a><h1>References</h1>
+<div class="level1">
+<ul>
+<li class="level1"><div class="li"> <a href="http://www.knopflerfish.org/osgi_service_tutorial.html" class="urlextern" target="_blank" title="http://www.knopflerfish.org/osgi_service_tutorial.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://www.knopflerfish.org/osgi_service_tutorial.html</a> &ndash; The OSGi service model.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [3309-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/5/5e23f60c44156327be365ded7125c26e.xhtml used -->
+</body>
+</html>

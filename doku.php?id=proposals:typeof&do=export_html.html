@@ -1,0 +1,140 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:typeof&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:typeof&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:typeof&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="fixing_typeof"></a><h1>Fixing ''typeof''</h1>
+<div class="level1">
+
+<p>
+ (Also see the <a href="doku.php%3Fid=discussion:typeof.html" class="wikilink1" title="discussion:typeof" onclick="return svchk()" onkeypress="return svchk()">discussion page</a> for this proposal)
+</p>
+
+<p>
+We are adding some new fundamental types in edition 4. What should the result of <code>typeof</code> be when a value of one of these new types is its operand?
+</p>
+
+<p>
+Based on the need for backward compatibility, we have decided on the following results for <code>typeof</code>: 
+</p>
+<table class="inline">
+	<tr>
+		<th> Type	</th><th> Result </th><th> Comment </th>
+	</tr>
+	<tr>
+		<td> Undefined	</td><td colspan="2">&ldquo;undefined&rdquo;</td>
+	</tr>
+	<tr>
+		<td class="leftalign"> Null	        </td><td>&ldquo;null&rdquo;</td><td> es4 bug fix </td>
+	</tr>
+	<tr>
+		<td> Boolean	</td><td colspan="2">&ldquo;boolean&rdquo;</td>
+	</tr>
+	<tr>
+		<td> Number	</td><td colspan="2">&ldquo;number&rdquo;</td>
+	</tr>
+	<tr>
+		<td> String	</td><td colspan="2">&ldquo;string&rdquo;</td>
+	</tr>
+	<tr>
+		<td class="leftalign"><acronym title="Extensible Markup Language">XML</acronym>        </td><td>&ldquo;xml&rdquo;</td><td> new to e4x, but with no special case for Namespace </td>
+	</tr>
+	<tr>
+		<td> XMLList	</td><td>&ldquo;xml&rdquo;</td><td> ditto </td>
+	</tr>
+	<tr>
+		<td> Object (native and doesn&rsquo;t implement <code>[Call]</code>) </td><td colspan="2">&ldquo;object&rdquo;</td>
+	</tr>
+	<tr>
+		<td> Object (native and implements <code>[Call]</code>)	 </td><td colspan="2">&ldquo;function&rdquo;</td>
+	</tr>
+	<tr>
+		<td> Class </td><td>&ldquo;function&rdquo;</td><td><code>typeof String === &ldquo;function&rdquo;</code></td>
+	</tr>
+	<tr>
+		<td> Interface </td><td colspan="2">&ldquo;object&rdquo;</td>
+	</tr>
+	<tr>
+		<td> Namespace </td><td colspan="2">&ldquo;object&rdquo;</td>
+	</tr>
+	<tr>
+		<td> int </td><td colspan="2">&ldquo;number&rdquo;</td>
+	</tr>
+	<tr>
+		<td> uint </td><td colspan="2">&ldquo;number&rdquo;</td>
+	</tr>
+</table>
+<br />
+<hr noshade="noshade" size="1" />
+
+<p>
+I think it is too late to fix <code>typeof</code>. The change proposed for <code>typeof null</code> will break existing code. For example, <code>isNull</code> functions have been written by idiots as  
+</p>
+<pre class="code">  function isNull(a) {
+      return typeof a == 'object' &amp;&amp; !a;
+  }</pre>
+
+<p>
+ It is possible to write an <code>isNull</code> that performs correctly with the fixed <code>typeof</code>, but existing code cannot anticipate the change.
+</p>
+
+<p>
+Perhaps a better alternative is a new operator, maybe called <code>typeString</code>, which works the way <code>typeof</code> should work, including 
+</p>
+<pre class="code">  typeString [] === 'array'</pre>
+<hr noshade="noshade" size="1" />
+
+<p>
+(Hi Doug &ndash; please sign your comments.  Use the feather-icon button at the right end of the in-page toolbar.  Thanks!)
+</p>
+
+<p>
+This proposal was split from <a href="doku.php%3Fid=proposals:bug_fixes.html" class="wikilink1" title="proposals:bug_fixes" onclick="return svchk()" onkeypress="return svchk()">bug fixes</a>, but neither this proposal nor the bug fixes in that proposal are backward-compatible.  Instead we anticipate some amount of version checking will be required, for some of these fixes.  We don&rsquo;t know whether any of these changes will be acceptable without content &ldquo;opting in&rdquo;.  We were planning to implement and test before finalizing the standard.  And the standard is going to live for a long time and show up in places where prior web content does not matter, so we intended to fix small problems that trip people up repeatedly.
+</p>
+
+<p>
+In this light, any thoughts?  I would like to edit this proposal to be free of discussion &ndash; if I add qualification about version checking probably being required, and how this will be specified normatively one way or the other in ES4, would that suffice?
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/09/05 21:39</em> 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+ I like this fix. New code will definitely be better for it. But the old code breaks. 
+</p>
+
+<p>
+How would version checking work? What does an application look at to determine the version? Perhaps that doesn&rsquo;t matter because old code does not know to ask. Or are you saying that it works the other way, that the language processor has version modes, and the application asks for the one it is confortable with? 
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x40%3B%26%23x79%3B%26%23x61%3B%26%23x68%3B%26%23x6f%3B%26%23x6f%3B%26%23x2d%3B%26%23x69%3B%26%23x6e%3B%26%23x63%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x63;&#x72;&#x6f;&#x63;&#x6b;&#x40;&#x79;&#x61;&#x68;&#x6f;&#x6f;&#x2d;&#x69;&#x6e;&#x63;&#x2e;&#x63;&#x6f;&#x6d;">Douglas Crockford</a> 2006/09/06 21:34</em> 
+</p>
+
+</div>
+
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/1/1ce1f5e6cb0d9539ec874b4c67c6d3b4.xhtml used -->
+</body>
+</html>

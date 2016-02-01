@@ -1,0 +1,57 @@
+===== Dropping receiver from get and set traps =====
+
+As noted by Sean Eagan on es-discuss, the ''receiver'' parameter to the ''get'' and ''set'' traps of Proxy handlers is not strictly necessary.
+
+The purpose of this parameter was to allow proxy handlers to refer to the original receiver of a property access/assignment operation, in the case where the proxy acts as a prototype:
+
+<code javascript>
+// according to the current Proxy spec:
+var p = Proxy.create({
+  get: function(receiver, name) { ... }
+});
+var o = Object.create(p);
+o.foo; // triggers p's get trap with receiver === o and name === "foo"
+</code>
+
+However, according to the ES5 %%[[Get]]%% algorithm (section 8.12.3), this is not how inherited property lookup will occur. The algorithm calls %%[[GetProperty]]%% (section 8.12.2), which in turn walks the prototype chain to look up a //property descriptor//. This will trigger ''p'''s ''getPropertyDescriptor'' trap, not its ''get'' trap:
+
+<code javascript>
+// according to the current ES5 semantics:
+var p = Proxy.create({
+  getPropertyDescriptor: function(name) {
+    ...
+  }
+});
+var o = Object.create(p);
+o.foo; // triggers p's getPropertyDescriptor trap with name === "foo"
+</code>
+
+Under this semantics, the ''get'' trap will only ever be invoked for direct invocations on ''p'', in which case ''receiver'' will always be equal to ''p''. Pending the acceptance of the [[strawman:handler_access_to_proxy|strawman]] that adds a ''proxy'' argument to each trap, ''receiver'' becomes unnecessary.
+
+Note: the same reasoning applies to the ''set'' trap: ES5 %%[[Put]]%% (section 8.12.5) also calls %%[[GetProperty]]%% to find the appropriate property descriptor when it is not found on the receiver object itself.
+
+Note: it is still possible for a proxy handler to get hold of the receiver object when its proxy is used as a prototype, via the ''this''-binding of a function data property or getter/setter:
+
+<code javascript>
+var p = Proxy.create({
+  getPropertyDescriptor: function(name) {
+    return { value: function() { /* this === receiver */ } };
+  }
+});
+var o = Object.create(p);
+o.foo(); // calls the above nested function with this === o
+</code>
+
+The above also works for accessor properties.
+
+ --- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2011/05/04 11:55//
+
+===== Consequences =====
+
+Dropping ''receiver'' as the first argument to ''get'' and ''set'' traps is not backwards-compatible with the current API. Under this strawman, the first argument to ''get'' and ''set'' would be ''name'' (a string), not ''receiver'' (an object/proxy).
+
+===== References =====
+
+  * [[https://mail.mozilla.org/pipermail/es-discuss/2011-April/013916.html|discussion on es-discuss]]
+
+===== Feedback =====

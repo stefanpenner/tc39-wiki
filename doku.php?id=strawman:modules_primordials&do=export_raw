@@ -1,0 +1,269 @@
+===== Abstract =====
+
+This proposal specifies primitives that would enable a variety of module
+systems to be implemented in ECMAScript.  These primitives permit new
+contexts to be created, for modules to be compiled, analyzed for
+dependencies at compile-time, and for modules to request those dependencies at
+run-time.  This proposal specifies support for both "loading"
+dependencies as module factory functions ([[http://wiki.erights.org/w/index.php?title=Emaker|Makers]]) and "requiring"
+memoized module instances.  These primitives can support both permissive and
+secure module systems, with both asynchronous and synchronous module loaders,
+although the evaluation of dependency expressions are required to return 
+immediately without blocking.
+
+{{strawman:moduleprimordialspresentation.pdf}}
+
+ --- //[[kris.kowal@cixar.com|Kris Kowal]] 2010/02/07 01:01//
+
+To illustrate how these primitives might be employed, three examples are
+provided:
+
+  - a permissive, synchronous, packageless module system that supports CommonJS
+  - construction of a secure context
+  - an asynchronous module system **TODO**
+  - a module system that supports packages **TODO**
+
+===== Proposal =====
+
+==== Grammar ====
+
+''import //id// [from //pkg//]<sub>opt</sub> [with //scope//]<sub>opt</sub>''
+
+  - The ''"id"'' clause must be a String literal.
+  - The optional ''"pkg"'' clause must be a JSON literal expression.
+  - The optional ''"scope"'' clause may be any expression.
+
+//Note: the domain of identifiers and packages is restricted to literals so
+that they may be statically analyzed.//
+
+==== Primordials ====
+
+=== Context ===
+
+<code>
+Context()
+</code>
+
+Returns a record of the primordials from a new execution context,
+particularly including "eval", "Function", and "Module" that operate in
+that execution context.  "Context" is callable as a constructor.
+
+=== Module ===
+
+<code>
+Module(functionText, fileName_opt, lineNo_opt)
+    :Function(
+        scope:Object,
+        load_opt:Function,
+        require_opt:Function,
+        context_opt:Context
+    )
+        with dependencies:Array
+    :Any
+</code>
+
+A module is a function (hereafter, "module function" as distinguished
+from the "Module constructor") created from the text of a
+function body.  The module constructor accepts an optional file name and
+line number that may be used for informative stack traces.
+
+The module text must be a function body and may include ''Import'' expressions.
+
+The module function has a ''"dependencies"'' property.  The ''"dependencies"''
+property value is an ''Array'' of [''id'', ''pkg''] ''Array'' pairs
+constructed from the corresponding clauses of every ''Import'' expression in
+the module text using the constructors from the context in which the ''Module''
+constructor is called, not the context that contains the ''Module''
+constructor.  ''pkg'' may be ''undefined'' if a ''From'' clause does not
+exist.
+
+When a module function is called, statements corresponding to the
+module text are executed in a strict, lexical scope.
+
+The module function's closure parent is a lexical scope containing the owned
+properties of the module's context object, or the explicitly provided optional
+context object.  The parent lexical scope has no parent.
+
+Unlike a normal ''Function'' object, the caller may provide the
+//names// and values of the arguments as an ''Object''.  The
+owned properties of the given scope injection ''Object'' are copied into
+the module function's scope.  The values are not translated or wrapped
+from the calling context to the module's context; it is the
+responsibility of the caller to ascertain that they are their intended
+types, albeit constructed in the caller's context or the module's
+context.
+
+During the execution of a module, when an ''Import'' expression with a ''With''
+clause is evaluated, the module calls the value given in the ''"load"''
+argument as a function with an identifier constructed from the ''"id"'' clause
+and a package descriptor from the ''From'' ''"pkg"'' clause of the
+''Import'' production using the constructors from the module's context, not
+necessarily the context in which the module constructor was called, nor
+necessarily the context from which the module function was called.  The
+''"pkg"'' descriptor may be undefined if there is no ''From'' clause.  The
+value returned by ''"load"'' is in turn called with a value constructed from
+the ''"with"'' clause of the ''Import'' production.  The ''ImportWith'' clause
+evaluates to the value returned by that function call.
+
+<code javascript>load(id, pkg)(scope)</code>
+
+//Note: the value returned by ''"load"'' is intended to be a module
+function.//
+
+During the execution of a module, when an ''Import'' expression without a
+''With'' clause is
+evaluated, the module calls the value given as ''"require"'' as a
+function with an identifier constructed from the ''"id"'' clause and a package
+descriptor constructed from the ''From'' ''"pkg"'' clause of the
+''Import'' production using the constructors from the module's context,
+not necessarily the context in which the module constructor was called,
+nor necessarily the context from which the module function was called.
+The ''Import'' expression evaluates to the value returned by
+''"require"'' given the identifier and package descriptor.  The package
+descriptor may be ''undefined'' if there is no ''From'' clause.
+
+<code javascript>require(id, pkg)</code>
+
+//Note: the value returned by the ''"require"'' function is intended
+be an ''Object'' hosting the public API of a module.//
+
+//Note: all free variables that exist in the module text evaluate to
+throwing ReferenceError when the module is called if the caller has not
+injected a corresponding value.  Free variables are not denied at
+the time of a module's construction.//
+
+==== Background ====
+
+There exist similar tools to ''Module'' in present ECMAScript.  ''"eval"''
+is the naive candidate for any module system.  Eval can be used to construct
+module functions.
+
+<code>
+eval(programText)
+    :Any
+</code>
+
+However, those functions invariably will have their closures parented in the
+scope of the caller of ''"eval"'', which necessitates manual "variable
+laundering": the act of making the internal variables of the module system
+unavailable to the internal program.  Also, wrapping a module with the
+boilerplate text of a function declaration is not securable without a
+pre-parsing step to verify that the entire program is a single function body
+production.  Injecting names into the lexical scope of the program either
+requires a "with" block (that has been discredited variously elsewhere) or
+re-evaluation for every combination of argument names to inject.  There is
+also no mechanism for providing helpful debug file names and line numbers.
+
+Some embeddings provide a compile function that aleviates the need for file
+name and line number hints.
+
+<code>
+compile(programText, fileName_opt, lineNo_opt)
+    :Any
+</code>
+
+And some embeddings go further to provide compile functions that verify that
+the given text is a function production, but not generating the boilerplate
+internally.
+
+<code>
+compileFunction(functionText, fileName_opt, lineNo_opt)
+    :Function
+</code>
+
+The strongest resemblence is the ''Function'' constructor.
+
+<code>
+Function(...names:Array*String, functionText:String)
+    :Function(...values:Any)
+    :Any
+</code>
+
+Given the text of a function, it even "launders" the scope chain, parenting
+it directly with the global Object.  Using lexical scoping permits us to fix
+certain hazards.  Permitting the caller to inject arbitrary free variables
+enables modules to used for dependency injection and domain specific
+languages without resorting to "with" blocks or "from module import *"
+productions that make it impossible to trace the definition of a variable by
+static analysis, including the human act of reading the code of the module
+by itself.  Also, the "Function" constructor does not provide a mechanism
+for enabling informative stack traces with file names and line numbers.
+
+All of these constructions lack a way to statically analyze the shallow
+dependencies of a module, which is necessary to permit immediate evaluation
+of dependency requests at run time in an asynchronous program loading
+system.
+
+The ''Module'' constructor closes the gap by providing all of the features
+desirable for the repeatable, hermetic evaluation, in a clean lexical scope,
+with dependency injection, when the module's transitive dependencies are
+known to have loaded and are ready to be executed immediately.  It also,
+through low and high level import constructs, permits both an E-Maker
+approach to module construction and the traditional-albeit-hazardous system
+of mutually trustworthy systems of singleton modules.  This proposal does
+not presume to limit either exercise.
+
+The ''Context'' constructor permits a variety of strategies for scope
+isolation to be employed, from the high-performance and clean but draconian
+strategy of evaluating all modules in a singleton deeply frozen primordial
+context, to the lower-performance but permissive and migration-friendly
+policy of having a separate context for each body of mutually trustworthy
+modules, that must communicate across their security membranes with strings
+or translate primordials to and from each other's constructor types.  This
+proposal does not presume to limit either exercise.
+
+
+===== Examples =====
+
+==== Permissive, Synchronous, Without Packages ====
+
+<code javascript>
+
+function genericLoad(id, baseId) {
+    id = resolve(id, baseId);
+    let text = fetch(id);
+    return Module(text, id);
+}
+
+let memo = {};
+function genericRequire(id, baseId) {
+    id = resolve(id, baseId);
+    if (Object.prototype.hasOwnProperty.call(memo, id)) {
+        let factory = load(scope);
+        let exports = memo[id] = {};
+        var module = {"id": id};
+        let load = function (subId) {
+            return genericLoad(subId, id);
+        };
+        let require = function (subId) {
+            return genericRequire(subId, id);
+        };
+        factory(
+            {load, require, exports, module},
+            load,
+            require
+        );
+    }
+    return memo[id];
+}
+
+
+</code>
+
+==== Frozen Context ====
+
+A module system might be constructed with a singleton deeply frozen context
+by creating a new context and using that context's "eval" method to tame
+the primordials.
+
+<code javascript>
+var ses = fetch("http://code.google.com/p/es-lab/source/browse/trunk/src/ses/initSES.js");
+var context = new Context();
+context.eval(ses);
+</code>
+
+===== Reference =====
+
+  - http://docs.google.com/Doc?id=dfgxb7gk_34gpk37z9v&hl=en January 2009 proposal
+  - http://docs.google.com/Presentation?docid=dcd8d5dk_0cs639jg8&hl=en January 2009 presentation
+  - http://wiki.commonjs.org/wiki/Modules CommonJS modules 

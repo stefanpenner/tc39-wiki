@@ -1,0 +1,49 @@
+====== The atLeastES5 Patterns ======
+
+To ease the transition from ES3R (ES3 approximations as implemented on currently deployed major browsers) and ES5, we suggest these detection patterns. In order for these detection patterns to be useful, it is important that upcoming incremental deployments of ES5 implement strict mode last, so that these detection patterns do not yield false positives.
+
+
+===== Detecting whether the platform supports at least ES5 =====
+
+<code javascript>
+  if (function(){"use strict";return this;}()) {
+    //... pre ES5 code goes here
+  } else {
+    //... code here should be compatible with at least ES5 but still parse as ES3R
+  }
+</code>
+
+Alternatively, if the code already appears within the scope of a ''"use strict"'' directive...
+
+<code javascript>
+  "use strict";
+  if (function(){return this;}()) {
+    //... pre ES5 code goes here
+  } else {
+    //... code here should be compatible with at least ES5-strict but still parse as ES3R
+  }
+</code>
+
+The above "but still parse as ES3R" constraints are necessary, so that this code does not cause a syntax error when parsed by an ES3R platform. Since ES5 introduces very few syntactic constructs beyond those that parse as ES3R, this constraint is rarely significant. When it is, the following variation should be used instead:
+
+<code javascript>
+  if (function(){"use strict";return this;}()) {
+    //... pre ES5 code goes here
+  } else {
+    (1,eval)("//... code here should be compatible with at least ES5");
+  }
+</code>
+
+Since the ''else'' clause is only executed on at least ES5 platforms, the ''(1,eval)'' ensures that the string argument is not executed by a direct-eval-operator, insulating the calling scope (and thereby unfortunately changing the meaning of the pattern). This is needed to ensure the scoping is stable whether or not ''eval'' still has its original binding or has been rebound to an evaluating function with similar behavior but distinct identity.
+
+===== Detecting whether this code is executing as at least ES5-strict code =====
+
+On platforms supporting ES5, generally one knows statically whether a piece of code is strict or not. The rare exception is code appearing in text to be ''eval()''ed which wishes to detect rather than simply declare itself to be strict. So it is unclear how useful the following pattern is. 
+
+<code javascript>
+  if (function(){return this;}()) {
+    //... pre ES5-strict code goes here
+  } else {
+    //... code here should be compatible with at least ES5-strict but still parse as ES3R
+  }
+</code>

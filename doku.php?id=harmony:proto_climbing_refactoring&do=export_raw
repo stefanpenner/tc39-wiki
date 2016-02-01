@@ -1,0 +1,287 @@
+====== Refactoring proto chain walking in the spec ======
+
+**This proposal has progressed to the Draft ECMAScript 6 Specification, which is available for review here: [[harmony:specification_drafts]]. Any new issues relating to them should be filed as bugs at [[http://bugs.ecmascript.org]]. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.**
+
+Goal: in the internal %%[[Get]]%%, %%[[Put]]%% and %%[[HasProperty]]%% methods for Objects, remove the dependency on %%[[GetProperty]]%% for walking the prototype chain.
+
+Motivation: mainly because this dependency is made visible by proxies, and the interaction is obscure and not intuitive. This strawman proposes a refactoring of %%[[Get]]%%, %%[[Put]]%% and %%[[HasProperty]]%% that enables much more sensible behavior for proxies used as prototypes.
+
+The refactoring proposed by this strawman entails the following:
+  * Get rid of the ''getPropertyDescriptor'' and ''getPropertyNames'' traps on proxies
+  * Replace the ES5 %%[[Put]]%%, %%[[Get]]%% and %%[[HasProperty]]%% built-ins with the alternative implementations proposed below.
+  * Enable the ''get'' and ''set'' traps on proxies to work for inherited property access (i.e. when the proxy is used as a prototype).
+  * Add new ''Reflect.get'' and ''Reflect.set'' built-ins to enable computed property get/set that is faithful to the spec algorithm. These built-ins are required for a proxy to faithfully "continue" an intercepted %%[[Get]]%% or %%[[Put]]%% on the prototype chain of the object it wraps.
+
+Note: the term "refactoring" is not used lightly here: we do intend that //for regular objects and in the absence of proxies on the prototype chain//, the below proposed algorithms are semantically equivalent to the ES5 algorithms.
+
+
+===== The Problem =====
+
+When performing property access (''obj[name]''), assignment (''obj[name]=val'') or lookup (''name in obj'') on an object ''obj'' that inherits from a proxy, the ''get'', ''set'' and ''has'' traps of that proxy were previously not triggered. Instead, the built-in algorithms would climb the prototype chain of ''obj'' by calling %%[[GetProperty]]%% (triggering the ''getPropertyDescriptor'' trap of the proxy-as-prototype). Based on the returned descriptor, each algorithm then further decided what to do. This behavior was counter-intuitive and in order to really understand what was going on as a Proxy author, you needed detailed knowledge of the spec algorithms.
+
+The ES5 spec was written before the advent of proxies, and thus many of the design decisions used to construct the built-in algorithms were not observable to user code. Proxies make some choices observable, requiring us to revisit the particulars of the spec algorithms, especially for values of type ''Object''.
+
+This proposal refactors %%[[Get]]%%, %%[[Put]]%% and %%[[HasProperty]]%% such that these algorithms themselves climb the prototype chain, rather than delegating this to %%[[GetProperty]]%%. This simplifies the Proxy API because it:
+
+  * removes the need for ''getPropertyDescriptor'' and ''getPropertyNames'' traps (2 less traps!)
+  * triggers the ''get'', ''set'' and ''has'' traps both for own and inherited properties, which is more intuitive.
+
+In addition, it simplifies reasoning about inheritance, since once a proxy's ''get'', ''set'' or ''has'' trap is triggered, the proxy now has full control over the outcome of the operation, unlike in the current API, where a) the handler has no clue on behalf of what operation its ''getPropertyDescriptor'' trap is triggered and b) the outcome of the operation only indirectly depends on the returned property descriptor.
+
+Finally, the new semantics ought to be more efficient, since we avoid the need to allocate a property descriptor every time %%[[GetProperty]]%% is called on a proxy. Instead each of the ''get'', ''set'' and ''has'' traps immediately return the appropriate value.
+
+===== Refactoring [[Get]] =====
+
+**Proposed alternative for 8.12.3 %%[[Get]]%% (P)**
+
+When the %%[[Get]]%% internal method of O is called with property name P, the following steps are taken:
+  - Return the result of calling the %%[[GetP]]%% internal method of O providing O as the first argument and P as the second argument.
+
+**%%[[GetP]]%% (Receiver, P)**
+
+When the %%[[GetP]]%% internal method of O is called with initial receiver Receiver and property name P, the following steps are taken:
+
+  - Let desc be the result of calling the %%[[GetOwnProperty]]%% internal method of O with property name P.
+  - If desc is undefined,
+    * a. Let proto be the value of the %%[[Prototype]]%% internal property of O
+    * b. If proto is null, return undefined
+    * c. Return the result of calling the %%[[GetP]]%% internal method of proto with arguments Receiver and P.
+  - If IsDataDescriptor(desc) is true, return desc.%%[[Value]]%%.
+  - Otherwise, IsAccessorDescriptor(desc) must be true so, let getter be desc.%%[[Get]]%%.
+  - If getter is undefined, return undefined.
+  - Return the result calling the %%[[Call]]%% internal method of getter providing Receiver as the this value and providing no arguments.
+
+Note: %%[[GetP]]%% traverses the prototype chain until it either encounters a proxy or null. If it encounters a proxy, it is left to the proxy handler whether the operation continues on the prototype chain of its target.
+
+On a proxy, %%[[Get]]%% is defined to be the same as for regular objects. %%[[GetP]]%% triggers the handler's ''get'' trap, passing as arguments the property name, the receiver (that is: the object to which the initial property access was applied), the proxy target (for direct proxies) and the proxy itself:
+
+<code javascript>
+var handler = {
+  get: function(target, name, receiver) {
+    // no-op forwarding. Note: can't do "return target[name]"
+    // since that will set |this| to target instead of to receiver.
+    // that's why we need this new primitive (discussed later):
+    return Reflect.get(target, name, receiver);
+  }
+};
+var p = Proxy(target, handler);
+p[name] // triggers handler.get(target, name, p)
+var child = Object.create(p);
+child[name] // triggers handler.get(target, name, child)
+</code>
+
+
+
+
+===== Refactoring [[Put]] =====
+
+The ES5 %%[[Put]]%% algorithm first calls the %%[[CanPut]]%% algorithm to determine whether the property can be assigned to. %%[[CanPut]]%% walks the proto chain once, by calling %%[[GetProperty]]%%. Then, if the property is indeed assignable, %%[[GetProperty]]%% is called _again_ to perform the actual assignment. This lead to an [[strawman:proxy_set_trap|observable redundant trap invocation]].
+
+In the proposed alternative, %%[[Put]]%% calls an auxiliary %%[[SetP]]%% method that climbs the prototype chain, at each level determining whether the property is assignable. When %%[[SetP]]%% reaches the top of the chain, it can conclude that the property is assignable and performs the assignment on the initial receiver of %%[[Put]]%%.
+
+Note: in the absence of proxies, testing whether a property is assignable and setting the property could be done atomically. Proxies could make observable changes in their ''getPropertyDescriptor'' trap, such that this atomicity was lost. Andreas Rossberg commented about this lost invariant on es-discuss. The below refactoring avoids this hazard: once a proxy on the proto chain is reached, the built-in algorithm transfers full control to the proxy. It does not try to assign the property later, based on possibly false answers returned by the proxy's ''getPropertyDescriptor'' trap.
+
+**Proposed alternative for 8.12.5 %%[[Put]]%% (P, V, Throw)**
+
+When the %%[[Put]]%% internal method of O is called with property P, value V, and Boolean flag Throw, the following steps are taken:
+  - Let success be the result of calling the %%[[SetP]]%% internal method of proto, passing O as the first argument, P as the second argument and V as the third argument.
+  - If success is false and Throw is true, then throw a TypeError exception.
+  - Return.
+
+** %%[[SetP]]%% (Receiver, P, V) **
+
+When the %%[[SetP]]%% internal method of O is called with initial receiver Receiver, property name P and value V, the following steps are taken:
+
+  - Let ownDesc be the result of calling the %%[[GetOwnProperty]]%% internal method of O with argument P.
+  - If ownDesc is not undefined, then
+    * a. If IsAccessorDescriptor(ownDesc) is true, then
+      * i. Let setter be ownDesc.%%[[Set]]%%
+      * ii. If setter is undefined, return false.
+      * iii. Call the %%[[Call]]%% internal method of setter providing Receiver as the this value and providing V as the sole argument.
+      * iv. Return true.
+    * b. Otherwise IsDataDescriptor(ownDesc) must be true.
+      * i. If ownDesc.%%[[Writable]]%% is false, return false.
+      * ii. Let existingDesc be the result of calling Receiver.%%[[GetOwnProperty]]%%(P)
+      * iii. If existingDesc is not undefined, then
+        * 1. Let updateDesc be the Property Descriptor {%%[[Value]]%%: V}.
+        * 2. Return the result of calling the %%[[DefineOwnProperty]]%% internal method of Receiver passing P, updateDesc, and false as arguments //(which should return true in the absence of proxies)//
+      * iv. Else
+        * 1. If the %%[[Extensible]]%% internal property of Receiver is false, return false.
+        * 2. Let newDesc be the Property Descriptor {%%[[Value]]%%: V, %%[[Writable]]%%: true, %%[[Enumerable]]%%: true, %%[[Configurable]]%%: true}.
+        * 3. Return the result of calling the %%[[DefineOwnProperty]]%% internal method of Receiver passing P, newDesc, and false as arguments //(which should return true in the absence of proxies)//
+  - Let proto be the value of the %%[[Prototype]]%% internal property of O
+  - If proto is null, we have not found a non-writable data property in the prototype chain, add the property to the Receiver as follows:
+    * a. If the %%[[Extensible]]%% internal property of Receiver is false, return false.
+    * b. Let newDesc be the Property Descriptor {%%[[Value]]%%: V, %%[[Writable]]%%: true, %%[[Enumerable]]%%: true, %%[[Configurable]]%%: true}.
+    * c. Return the result of calling the %%[[DefineOwnProperty]]%% internal method of Receiver passing P, newDesc, and false as arguments //(which should return true in the absence of proxies)//
+  - Return the result of calling the %%[[SetP]]%% internal method of proto with arguments Receiver, P and V.
+
+Note: %%[[SetP]]%% traverses the prototype chain until it either encounters a proxy or null. If it encounters a proxy, it is left to the proxy handler whether the operation continues on the prototype chain of its target.
+
+On a proxy, %%[[Put]]%% is defined to be the same as for regular objects. %%[[SetP]]%% triggers the handler's ''set'' trap, passing as arguments the direct proxy's target, the assigned property name and value and the receiver (that is: the object to which the initial property assignment was applied):
+
+<code javascript>
+var handler = {
+  set: function(target, name, value, receiver) {
+    // no-op forwarding. Note: can't do "target[name] = value;"
+    // since that will set |this| to target instead of to receiver
+    // if target[name] is an accessor.
+    // That's why we need this new primitive (discussed later):
+    return Reflect.set(target, name, value, receiver);
+  }
+};
+var p = Proxy(target, handler);
+p[name] = val // triggers handler.set(target, name, val, p)
+var child = Object.create(p);
+child[name] = val // triggers handler.set(target, name, val, child)
+</code>
+
+
+===== Refactoring [[HasProperty]] =====
+
+**Proposed alternative for 8.12.6 %%[[HasProperty]]%% (P) **
+
+  - Let hasOwn be the result of calling the %%[[HasOwnProperty]]%% internal method of O with property name P.
+  - If hasOwn is true return true.
+  - Let proto be the %%[[Prototype]]%% internal property of O.
+  - If proto is null, return false
+  - Return the result of calling the %%[[HasProperty]]%% internal method of proto with argument P.
+
+<code javascript>
+var handler = {
+  has: function(target, name) {
+    // no-op forwarding:
+    // no new built-in required to faithfully forward "in"
+    return name in target;
+  }
+};
+var p = Proxy(target, handler);
+name in p // triggers handler.has(target, name)
+var child = Object.create(p);
+name in child // triggers handler.has(target, name)
+</code>
+
+===== Reflect.{get|set} =====
+
+(Note: these built-ins were previously referred to as ''Object.getProperty'' and ''Object.setProperty'')
+
+As noted in the code snippets above, in order to faithfully forward an intercepted %%[[Get]]%% or %%[[Put]]%% operation, a proxy needs new built-ins that allow it to trigger the %%[[GetP]]%% and %%[[SetP]]%% operations of its target, passing along the original receiver. This is crucial in order to faithfully emulate inherited accessor properties.
+
+The following built-ins are added to the [[harmony:reflect api]]:
+
+<code javascript>
+Reflect.get = function(target, name, receiver?) -> any
+Reflect.set = function(target, name, value, receiver?) -> boolean
+</code>
+
+The trailing ''receiver'' parameter is optional and defaults to ''target''. If specified, when an accessor is encountered on the prototype chain, the accessor's ''this''-binding will be set to the given ''receiver'' parameter. Note the following equivalences in the absence of accessors:
+
+<code javascript>
+Reflect.get(obj, name) ~ obj[name]
+Reflect.set(obj, name, val) ~ obj[name] = val // except for return values
+</code>
+
+The built-ins are specified as follows:
+
+** Reflect.get ( O, P, Receiver) **
+
+  - If Type(O) is not Object, throw a TypeError
+  - If Receiver is undefined or missing, set Receiver to O
+  - If Type(Receiver) is not Object, throw a TypeError
+  - Let name be ToString(P)
+  - Return the result of calling the %%[[GetP]]%% internal method of O, passing Receiver and name as arguments.
+
+** Reflect.set ( O, P, V, Receiver) **
+
+  - If Type(O) is not Object, throw a TypeError
+  - If Receiver is undefined or missing, set Receiver to O
+  - If Type(Receiver) is not Object, throw a TypeError
+  - Let name be ToString(P)
+  - Return the result of calling the %%[[SetP]]%% internal method of O, passing Receiver, name and V as arguments.
+
+
+
+
+
+==== Javascript implementation ====
+
+The above built-ins can be expressed in Javascript itself, with the limitation that if the ''target'' is a proxy, it will fail to trigger the proxy's ''get'' or ''set'' trap. Hence, the following implementation is non-normative and for illustrative purposes only:
+
+<code javascript>
+Reflect.get = function(target, name, receiver) {
+  receiver = receiver || target;
+  var desc = Object.getOwnPropertyDescriptor(target, name);
+  if (desc === undefined) {
+    var proto = Object.getPrototypeOf(target);
+    if (proto === null) {
+      return undefined;
+    }
+    return Reflect.get(proto, name, receiver);
+  }
+  if (isDataDescriptor(desc)) {
+    return desc.value;
+  }
+  var getter = desc.get;
+  if (getter === undefined) {
+    return undefined;
+  }
+  return desc.get.call(receiver);
+};
+
+Reflect.set = function(target, name, value, receiver) {
+  receiver = receiver || target;
+    
+  var ownDesc = Object.getOwnPropertyDescriptor(target, name);
+  if (ownDesc !== undefined) {
+    if (isAccessorDescriptor(ownDesc)) {
+      var setter = ownDesc.set;
+      if (setter === undefined) return false;
+      setter.call(receiver, value); // assumes Function.prototype.call
+      return true;
+    }
+    // otherwise, isDataDescriptor(ownDesc) must be true
+    if (ownDesc.writable === false) return false;
+    if (receiver === target) {
+      var updateDesc = {value: value};
+      Object.defineProperty(receiver, name, updateDesc);
+      return true;
+    } else {
+      if (!Object.isExtensible(receiver)) return false;
+      var newDesc =
+        { value: value,
+          writable: true,
+          enumerable: true,
+          configurable: true };
+      Object.defineProperty(receiver, name, newDesc);
+      return true;
+    }
+  }
+  
+  var proto = Object.getPrototypeOf(target);
+  if (proto === null) {
+    if (!Object.isExtensible(receiver)) return false;
+    var newDesc =
+      { value: value,
+        writable: true,
+        enumerable: true,
+        configurable: true };
+    Object.defineProperty(receiver, name, newDesc);
+    return true;
+  }
+  return Reflect.set(proto, name, value, receiver);
+};
+</code>
+
+===== Prototype implementation =====
+
+The following [[http://code.google.com/p/es-lab/source/browse/trunk/src/es5adapt/setProperty.js|source code]] implements ''Object.setProperty'' both using the current ES5 semantics and using the proposed alternative semantics. It then sets up various tests to check whether their behavior is equivalent on normal objects (not considering proxies), and also whether these implementations are equivalent to built-in property assignment triggered by ''obj[name]=value;''. You can run this script in your browser [[http://es-lab.googlecode.com/svn/trunk/src/es5adapt/testSetProperty.html|here]].
+
+
+===== Open issues =====
+  * %%[[GetProperty]]%% is still used in some other places in the spec. If %%[[GetProperty]]%% is no longer needed for the above operations on plain Objects, we may consider refactoring the spec to get rid of %%[[GetProperty]]%% entirely, and do all prototype-climbing explicitly.
+
+===== References =====
+  * Replaced the SameValue test in %%[[SetP]]%% step 2.b.iii as it interfered with proxies. See the thread on [[https://mail.mozilla.org/pipermail/es-discuss/2012-December/027246.html|es-discuss]].
+
+  * Suggested improvement to %%[[SetP]]%% by Jeff Walden on [[https://mail.mozilla.org/pipermail/es-discuss/2012-April/022561.html|es-discuss]] (changes already reflected on this page).
+  * [[https://mail.mozilla.org/pipermail/es-discuss/2012-September/024997.html|Suggestion]] to refactor %%[[HasProperty]]%% to call %%[[HasOwnProperty]]%% rather than %%[[GetOwnProperty]]%% (changes already reflected on this page).

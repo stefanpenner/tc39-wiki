@@ -1,0 +1,24 @@
+This defines the substitution body of a quasi using the //PrimaryExpression// syntactic production.
+Determining where a substitution ends requires, in the general case, the ability to parse an EcmaScript expression.
+See [[http://js-quasis-libraries-and-repl.googlecode.com/svn/trunk/tokenize.html|a lexer demo]] that demonstrates how to lex JavaScript when quasiliterals can nest.
+
+
+=== SubstitutionBody :: ===
+  * //PrimaryExpression//
+
+
+
+=== SubstitutionModifier :: ===
+  * ε
+
+=== SVE ===
+^ Production ^ Result ^
+| //[[#quasiliteral|QuasiLiteral]]// :: //[[#quasitag|QuasiTag]]// ''`'' //LiteralPortion//  //[[#quasiliteraltail|QuasiLiteralTail]]// | SVE(//[[#quasiliteraltail|QuasiLiteralTail]]//) |
+| //[[#quasiliteraltail|QuasiLiteralTail]]// :: //[[#substitution|Substitution]]//  //LiteralPortion//  //[[#quasiliteraltail|QuasiLiteralTail]]// | array-concat(single-element-array(SVE(//[[#substitution|Substitution]]//)), SVE(//[[#quasiliteraltail|QuasiLiteralTail]]//)) |
+| //[[#quasiliteraltail|QuasiLiteralTail]]// :: ''`'' | an empty array |
+| //[[#substitution|Substitution]]// :: ''$'' //Identifier// | //PrimaryExpression// : //Identifier// |
+| //[[#substitution|Substitution]]// :: ''${'' //[[#substitutionmodifier|SubstitutionModifier]]//  //[[#substitutionbody|SubstitutionBody]]// ''}'' | SVE(//[[#substitutionbody|SubstitutionBody]]//) |
+| //[[#substitutionbody|SubstitutionBody]]// :: //PrimaryExpression// | //PrimaryExpression// |
+
+The SVE is an expression that evaluates the specified expression in the scope in which the quasi appears.
+The SVE of the quasi literal is the array of the SVE for each substitution body.

@@ -1,0 +1,135 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:function_to_string&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:function_to_string&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:function_to_string&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:function_to_string&amp;do=export_html.html#function_to_string_conversion" class="toc">Function to String conversion</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:function_to_string&amp;do=export_html.html#problematic_cases" class="toc">Problematic cases:</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:function_to_string&amp;do=export_html.html#built-in_functions" class="toc">Built-in functions</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:function_to_string&amp;do=export_html.html#callable_non_functions_including_callable_host_objects" class="toc">Callable non functions, including callable host objects</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:function_to_string&amp;do=export_html.html#bound_functions" class="toc">Bound functions</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:function_to_string&amp;do=export_html.html#function_proxies" class="toc">Function proxies</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:function_to_string&amp;do=export_html.html#discussion" class="toc">Discussion</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:function_to_string&amp;do=export_html.html#see" class="toc">See</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="function_to_string_conversion"></a><h1>Function to String conversion</h1>
+<div class="level1">
+
+<p>
+ For functions written in JavaScript, see the Harmony <a href="doku.php%3Fid=harmony:function_to_string.html" class="wikilink1" title="harmony:function_to_string" onclick="return svchk()" onkeypress="return svchk()">function_to_string</a> proposal. This strawman discusses only the remaining problematic cases.
+</p>
+
+</div>
+<!-- SECTION [1-202] -->
+<a name="problematic_cases"></a><h2>Problematic cases:</h2>
+<div class="level2">
+
+</div>
+<!-- SECTION [203-234] -->
+<a name="built-in_functions"></a><h3>Built-in functions</h3>
+<div class="level3">
+
+<p>
+ As of this writing, most <acronym title="JavaScript">JS</acronym> engines convert these to, for example, &ldquo;<code>function join() { [native code] }</code>&ldquo;. As a widespread convention this will be hard to displace. However, it is unpleasant on several grounds: 
+</p>
+<ul>
+<li class="level1"><div class="li"> It does not parse as a FunctionDeclaration (violating the de-jure spec) nor as a FunctionExpression (violating the rest of the de-facto spec).</div>
+</li>
+<li class="level1"><div class="li"> It does not parse as any valid JavaScript production, making it useless as input to <code>eval()</code>.</div>
+</li>
+<li class="level1"><div class="li"> It conflicts with the spec&rsquo;s use of the term &ldquo;native&rdquo;, which includes all function written in JavaScript. Rather, it is probably derived from the Java meaning of &ldquo;native&rdquo; which ES5 and ES3 call &ldquo;built ins&rdquo;. (Another way to resolve this conflict is to change our terminology to conform to the rest of the world&rsquo;s meaning of &ldquo;native&rdquo;.)</div>
+</li>
+</ul>
+
+<p>
+ If this behavior could be displaced, for primordial built ins, an alternative with some virtues is to have it print as a FunctionExpression that calls whatever is at the conventional location at which this built-in is normally found. For example: &ldquo;<code>function(...args) { return Array.prototype.join.apply(this, args); }</code>&ldquo;. 
+</p>
+
+<p>
+For the non-primordial built ins, or perhaps for all built ins, we could convert them to a FunctionExpression that uses freely a conventional name that represents the &ldquo;actual&rdquo; built-in function, so that <code>eval()</code>ing the FunctionExpression in an environment in which <code>original</code> was bound to that built in would preserve call behavior. For example: &ldquo;<code>function(...args) { return original.apply(this, args); }</code>&rdquo;
+</p>
+
+</div>
+<!-- SECTION [235-1805] -->
+<a name="callable_non_functions_including_callable_host_objects"></a><h3>Callable non functions, including callable host objects</h3>
+<div class="level3">
+
+<p>
+ Solutions for built ins should apply to these as well, since all we&rsquo;re trying to preserve is [[Call]] behavior.
+</p>
+
+</div>
+<!-- SECTION [1806-1989] -->
+<a name="bound_functions"></a><h3>Bound functions</h3>
+<div class="level3">
+
+<p>
+ Applying the same trick, &ldquo;<code>f.bind(self, a, b)</code>&rdquo; might print as &ldquo;<code>function(...args) { return original.call(p1, p2, ...args); }</code>&ldquo;. The <code>eval()</code>uates to a function with the same [[Call]] behavior if evaluated in an environment in which <code>original</code> is bound to the original function and <code>p</code><em>N</em> is bound to each of the arguments originally provided to that call to <code>bind()</code>.  
+</p>
+
+</div>
+<!-- SECTION [1990-2406] -->
+<a name="function_proxies"></a><h3>Function proxies</h3>
+<div class="level3">
+
+<p>
+If <code>fp</code> is a <a href="doku.php%3Fid=harmony:proxies.html#api" class="wikilink1" title="harmony:proxies" onclick="return svchk()" onkeypress="return svchk()">function proxy</a> with <code>ct</code> as its <em>call trap</em>, then <code>Function.prototype.toString.call(fp)</code> is already specified to return whatever <code>Function.prototype.toString.call(ct)</code> would return. Since function proxies have precisely the [[Call]] behavior of their call trap, both before and after fixing, this works.
+</p>
+
+</div>
+<!-- SECTION [2407-2791] -->
+<a name="discussion"></a><h1>Discussion</h1>
+<div class="level1">
+
+<p>
+The goal assumed here &ndash; that <code>eval()</code>uating the string in an equivalent enough environment would preserve [[Call]] behavior &ndash; to be useful, we would need to be able to construct an equivalent enough environment. For many reasons, this seems impossible in the general case, so it is questionable whether it&rsquo;s worth much trouble to provide this feature. Alternatively, we could make current reality official and mandate that built ins must convert to a string that does <em>not</em> parse as any valid JavaScript production. The current de-facto behavior already satisfies that spec.
+</p>
+
+<p>
+Going in the other direction, various useful <a href="https://mail.mozilla.org/pipermail/es-discuss/2010-September/011858.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2010-September/011858.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">recognition tricks</a> need a stronger spec. Preserving equivalence under <code>eval()</code> doesn&rsquo;t help these. Preserving exactly the original source code, or preserving ASTs, or some abstraction over equivalent ASTs such as alpha renaming of non-free variables, would all enable these recognition tricks. Are we willing to go that far?
+</p>
+
+</div>
+<!-- SECTION [2792-3854] -->
+<a name="see"></a><h1>See</h1>
+<div class="level1">
+
+<p>
+ Harmony <a href="doku.php%3Fid=harmony:function_to_string.html" class="wikilink1" title="harmony:function_to_string" onclick="return svchk()" onkeypress="return svchk()">function_to_string</a> proposal.
+</p>
+
+</div>
+<!-- SECTION [3855-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/b/bce9674861e456963ffcd3f45cd3b5f8.xhtml used -->
+</body>
+</html>

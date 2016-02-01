@@ -1,0 +1,37 @@
+(this is the discussion page for [[proposals:reserved_words]])
+
+===== Discussion =====
+
+At [[meetings:minutes apr 21 2006|the Redmond meeting on April 21]] we discussed doing away with reserved words, on (as I understand it) Douglas Crockford's recommendation (See http://www.crockford.com/javascript/recommend.html.)
+
+I don't think we should do that, but I don't want to change the minutes this late, so I'll argue the case here.  Consider this an anti-proposal, then.
+
+Crockford suggests:
+  * Allowing reserved words without restriction in object initializers and following ''.''
+  * Allowing reserved words as function argument names, effectively shadowing the meaning of the keywords in that lexical scope (and we would probably extend this to ''let'' blocks and expressions as well, though not to ''let''-as-''var'')
+  * Allowing reserved words as variable names inside functions, effectively shadowing the meaning of the keywords in that lexical scope
+
+I don't feel like arguing against the first point, it seems benign enough.
+
+The third point is probably unimplementable as it stands:
+
+  * Consider two ''var'' statements that both define ''var'' as a variable.  By normal semantics both are legal (they define the same variable).  By the definition proposed, one must be illegal, since the other redefines the meaning of ''var''.
+  * You have to parse an entire function before knowing the meaning of any phrase; redefining ''if'' anywhere means that anything that previously looked like ''if'' statements is actually function calls. 
+
+These problems may be fixable (eg require that a keyword-redefining ''var'' is the first statement in the function body, say, though it seems like a crock).  If we assume it can be fixed, the counterarguments will be the same as for the second point.  If they can't be fixed, however, then the value of future-proofing by not reserving words is probably severely limited (most names are bound as local variables, not as parameters).
+
+As for the second point.  It certainly breaks ''eval'', consider:
+
+<code>
+  function f(var, s1) {
+    eval(s1)
+    eval("this.x=var")
+  }
+  f(37, "var y=10")
+</code>
+
+If the parameter is not called ''var'' but something else then that is legal Edition 3 code.  However one of the two eval calls must fail if ''var'' is introduced as a parameter name: either the first string causes a syntax error (because ''var'' is visible as a variable name in the evaluated program) or the second does (because ''var'' is not visible).  Allowing functions to override keywords thus breaks modularity for eval.
+
+One could "fix" this by stating that programs should be compiled in one environment and evaluated in another (thus ''var'' is a reserved word always in a Program phrase passed to ''eval''), which is fine, except it feels absurd that some lexical variables can't be accessed from the program while others can.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/19 01:28//

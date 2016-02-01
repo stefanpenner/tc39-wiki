@@ -1,0 +1,194 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:catchalls&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:catchalls&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:catchalls&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="catchall_proposal"></a><h1>Catchall proposal</h1>
+<div class="level1">
+
+<p>
+ <a href="http://bugs.ecmascript.org/ticket/214" class="urlextern" target="_blank" title="http://bugs.ecmascript.org/ticket/214" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Ticket #214</a> and <a href="http://bugs.ecmascript.org/ticket/196" class="urlextern" target="_blank" title="http://bugs.ecmascript.org/ticket/196" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Ticket #196</a> discuss open issues in the semantics and the method suite.
+</p>
+
+<p>
+(Also see the <a href="doku.php%3Fid=discussion:catchalls.html" class="wikilink1" title="discussion:catchalls" onclick="return svchk()" onkeypress="return svchk()">discussion page</a> for this proposal)
+</p>
+
+<p>
+This proposal is to standardize the following method types 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>meta function has(ident)</code>, the catchall has-property predicate.</div>
+</li>
+<li class="level1"><div class="li"> <code>meta function get(ident)</code>, the catchall getter.</div>
+</li>
+<li class="level1"><div class="li"> <code>meta function set(ident,val)</code>, the catchall setter.</div>
+</li>
+<li class="level1"><div class="li"> <code>meta function invoke(ident, args...)</code>, the catchall method invoker.</div>
+</li>
+<li class="level1"><div class="li"> <code>intrinsic function has(ident)</code>, the non-overridable universal has-property predicate.</div>
+</li>
+<li class="level1"><div class="li"> <code>intrinsic function get(ident)</code>, the non-overridable universal property getter.</div>
+</li>
+<li class="level1"><div class="li"> <code>intrinsic function set(ident, val)</code>, the non-overridable universal property setter.</div>
+</li>
+<li class="level1"><div class="li"> <code>intrinsic function invoke(ident, args...)</code>, the non-overridable universal method.</div>
+</li>
+</ul>
+
+<p>
+ The first four methods are to be called, if defined on an object, when lookup of a named property fails in a particular (has, get, set, invoke) context. Every object supports non-overridable methods in the <a href="doku.php%3Fid=proposals:intrinsic_namespace.html" class="wikilink1" title="proposals:intrinsic_namespace" onclick="return svchk()" onkeypress="return svchk()">intrinsic namespace</a>, that perform primitive has, get, set, and invocation operations.
+</p>
+
+<p>
+The rationale for the <code>has</code> catchall is to handle lexical references that can resolve to objects on the scope chain with <code>get</code>, <code>set</code>, and/or <code>invoke</code> catchalls. A lexical reference is evaluated in ES3 according to 10.1.4 as follows: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Get the next object in the scope chain. If there isn&rsquo;t one, go to step 5.</div>
+</li>
+<li class="level1"><div class="li"> Call the <code>[[HasProperty]]</code> method of Result(1), passing the Identifier as the property.</div>
+</li>
+<li class="level1"><div class="li"> If Result(2) is true, return a value of type Reference whose base object is Result(1) and whose property name is the Identifier.</div>
+</li>
+<li class="level1"><div class="li"> Go to step 1.</div>
+</li>
+<li class="level1"><div class="li"> Return a value of type Reference whose base object is null and whose property name is the Identifier.</div>
+</li>
+</ol>
+
+<p>
+ ES4 does not have the specification-only Reference type, and it does have namespace-qualified identifiers (<code>ns::id</code>) and expressions (<code>ns::[</code><em>expr</em><code>]</code>). But for the purposes of this proposal we&rsquo;ll consider just the Identifier case from ES3; the extension to handle namespaces is trivial.
+</p>
+
+<p>
+ES3&rsquo;s <code>[[HasProperty]]</code> internal method is specified in 8.6.2.4 as follows: 
+</p>
+<ol>
+<li class="level1"><div class="li"> If O has a property with name P, return true.</div>
+</li>
+<li class="level1"><div class="li"> If the <code>[[Prototype]]</code> of O is null, return false.</div>
+</li>
+<li class="level1"><div class="li"> Call the <code>[[HasProperty]]</code> method of <code>[[Prototype]]</code> with property name P.</div>
+</li>
+<li class="level1"><div class="li"> Return Result(3).</div>
+</li>
+</ol>
+
+<p>
+ To implement the <code>has</code> catchall, we need to pass an addition argument: the initial value of O. So we change the <code>[[HasProperty]](P)</code> signature to <code>[[HasProperty]](P, O)</code> when called on object O.
+</p>
+
+<p>
+When the <code>[[HasProperty]]</code> method of O is called with property name P and initial object Q = O, the following steps are taken: 
+</p>
+<ol>
+<li class="level1"><div class="li"> If O has a property with name P, return true.</div>
+</li>
+<li class="level1"><div class="li"> If the <code>[[Prototype]]</code> of O is null, goto step 5.</div>
+</li>
+<li class="level1"><div class="li"> Call the <code>[[HasProperty]]</code> method of <code>[[Prototype]]</code> passing P and Q.</div>
+</li>
+<li class="level1"><div class="li"> Return Result(3).</div>
+</li>
+<li class="level1"><div class="li"> If Q has a property with name <code>meta::has</code>, return Q<code>.meta::has(</code>P<code>)</code></div>
+</li>
+<li class="level1"><div class="li"> Return false.</div>
+</li>
+</ol>
+
+</div>
+<!-- SECTION [1-3212] -->
+<a name="notes"></a><h1>Notes</h1>
+<div class="level1">
+
+<p>
+ It might be somewhat tempting to phrase <code>intrinsic::invoke</code> and <code>invoke *</code> in terms of a getter, but that involves consing a closure per call, so we decide against such an interpretation.
+</p>
+
+<p>
+Note that <span class="curid"><a href="doku.php%3Fid=proposals:catchalls.html" class="wikilink1" title="proposals:catchalls" onclick="return svchk()" onkeypress="return svchk()">catchalls</a></span> are important both for the following use-case, monitoring of <code>length</code> for <code>Array</code> and similar classes; and for <a href="doku.php%3Fid=meetings:minutes_feb_21_2007.html#primitives_yet_again" class="wikilink1" title="meetings:minutes_feb_21_2007" onclick="return svchk()" onkeypress="return svchk()">primitive types</a>. 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+Note: the definitions of catchalls here is probably adequate for most uses, but it&rsquo;s definitely not adequate to implement the ECMA-262 implementation of Array and <acronym title="Extensible Markup Language">XML</acronym>; if I have
+</p>
+<pre class="code">
+  dynamic class Array {
+    function set *(propname, value) { 
+      /* misc code, followed by: */
+      this[propname] = value; 
+    }
+  }
+</pre>
+
+<p>
+it seems that doing code like this:
+</p>
+<pre class="code">
+  var foo = new Array;
+  foo[&quot;0&quot;] = 0; // calls set*
+  foo[&quot;0&quot;] = 1; // doesn't call set* since lookup won't fail!
+</pre>
+
+<p>
+Edwin suggests we could revise this by distinguishing between declared vs. dynamic properties: <em>The first three methods are to be called, if defined on an object, when lookup of a named property <strong>fails to find a declared property</strong> in a particular (has, get, set, invoke) context.</em> Thus, dynamic property lookup would always be bottlenecked through the catchalls (whether or not the property exists), when the catchalls are defined for a given class.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x73%3B%26%23x74%3B%26%23x65%3B%26%23x6a%3B%26%23x6f%3B%26%23x68%3B%26%23x6e%3B%26%23x73%3B%26%23x40%3B%26%23x61%3B%26%23x64%3B%26%23x6f%3B%26%23x62%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x73;&#x74;&#x65;&#x6a;&#x6f;&#x68;&#x6e;&#x73;&#x40;&#x61;&#x64;&#x6f;&#x62;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Steven Johnson</a> 2006/11/29 08:55</em>
+</p>
+
+<p>
+I think that&rsquo;s right.  See some discussion on ticket 196 why that would be:  <a href="http://bugs.ecmascript.org/ticket/196" class="urlextern" target="_blank" title="http://bugs.ecmascript.org/ticket/196" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://bugs.ecmascript.org/ticket/196</a>.
+</p>
+
+<p>
+Why do we not have a catchall for [[Delete]]?
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2007/09/24 18:57</em>
+</p>
+
+<p>
+[[Delete]] is the final frontier. There&rsquo;s no good reason to leave it out, and if we don&rsquo;t support it, abstractions built on catchalls (including ones in the builtins, <acronym title="If I remember correctly">IIRC</acronym>) will break. Shall I edit it here or comment in trac?
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2007/09/24 20:44</em>
+</p>
+
+<p>
+Comment in trac is best at this point.  Thanks.  (Please also comment on what you think of the semantics issue.)
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2007/09/24 21:13</em> 
+</p>
+
+</div>
+<!-- SECTION [3213-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/c/ca50467d378e312ab0f783d95d6ea3c3.xhtml used -->
+</body>
+</html>

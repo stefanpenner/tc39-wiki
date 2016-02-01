@@ -1,0 +1,34 @@
+===== Trapping instanceof =====
+
+Andreas Gal discovered that in order to wrap the DOM faithfully, proxies need to trap ''instanceof''. Apparently, the DOM implements some kind of multiple inheritance relationship that can only be emulated by trapping ''instanceof''. (the issue has to do with "mixin" interfaces such as ''EventTarget'')
+
+A proposed extension to the Proxy API is to enable proxies to trap ''instanceof'' when used as the right-hand operand. That is, if ''p'' is a proxy with handler ''h'', then ''x instanceof p'' traps as ''h.hasInstance(x)''.
+
+The ''hasInstance'' trap would be a derived (optional) trap. If absent, ''x instanceof p'' defaults as follows:
+  * If ''p'' is an object proxy, throw a ''TypeError'' (this mimics step 6 of algorithm 11.8.6)
+  * If ''p'' is a function proxy, default to the built-in ''%%[[HasInstance]]%%'' behavior for Functions.
+
+The ''hasInstance'' trap can be triggered by providing proxies with a custom implementation of the ''%%[[HasInstance]]%%'' built-in method:
+
+** %%[[HasInstance]]%% (V) **
+
+When the %%[[HasInstance]]%% internal method of a proxy ''P'' is called with argument ''V'', the following steps are taken:
+
+  - Let handler be the value of the %%[[Handler]]%% internal property of P.
+  - Let hasInstance be the result of calling the %%[[Get]]%% internal method of handler with argument "hasInstance".
+  - If hasInstance is undefined,
+    * a. If ''P'' is an object proxy, throw a TypeError (as per ES5 section 11.8.6, step 6).
+    * b. If ''P'' is a function proxy, return the result of performing the default %%[[HasInstance]]%% behavior for Functions (as per ES5 section 15.3.5.3).
+  - If hasInstance is not callable, throw a TypeError.
+  - Let result be the result of calling the %%[[Call]]%% internal method of hasInstance providing handler as the this value and V as the first argument.
+  - Return ToBoolean(result).
+
+There is no need to modify the evaluation of ''instanceof'' in ES5 section 11.8.6 as it just calls the right-hand operand's ''%%[[HasInstance]]%%'' internal method if present, which redirects to the above implementation if the right-hand operand is a proxy.
+
+=== Feedback ===
+
+TC39 November 2010 meeting: after a meeting with the Web IDL editors, agreed that Web IDL should not expose the multiple inheritance. Hence, a custom %%[[HasInstance]]%% would not be necessary to wrap these host objects.
+
+There may be other use cases for a custom %%[[HasInstance]]%% (outside of Web IDL), but until such cases are identified we agreed not to pursue this strawman in the interest of not further complicating the Proxy API.
+
+ --- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2010/11/19 3:00//

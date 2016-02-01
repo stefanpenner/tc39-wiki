@@ -1,0 +1,100 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:quasis-substitutions-thunk&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:quasis-substitutions-thunk&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:quasis-substitutions-thunk&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="thunked_substitution_body"></a><h2>Thunked Substitution Body</h2>
+<div class="level2">
+
+<p>
+This defines the substitution body of a <a href="doku.php%3Fid=strawman:quasis.html" class="wikilink1" title="strawman:quasis" onclick="return svchk()" onkeypress="return svchk()">quasi</a> using the <em>PrimaryExpression</em> syntactic production and thunks the resulting expression so that quasi handlers can conditionally &amp; multiple evaluate substitution bodies. Determining where a substitution ends requires, in the general case, the ability to parse an EcmaScript expression.
+</p>
+
+</div>
+<!-- SECTION [1-393] -->
+<a name="susbstitutionbody"></a><h3>//SusbstitutionBody// ::</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> <em>PrimaryExpression</em></div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [394-455] -->
+<a name="substitutionmodifier"></a><h3>//SubstitutionModifier// ::</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> ε</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [456-507] -->
+<a name="sve"></a><h3>SVE</h3>
+<div class="level3">
+<table class="inline">
+	<tr>
+		<th> Production </th><th> Result </th>
+	</tr>
+	<tr>
+		<td><em>QuasiLiteral</em> :: <em>QuasiTag</em><code>`</code><em>LiteralPortion</em>  <em>QuasiLiteralTail</em></td><td> SVE(<em>QuasiLiteralTail</em>) </td>
+	</tr>
+	<tr>
+		<td><em>QuasiLiteralTail</em> :: <em>Substitution</em>  <em>LiteralPortion</em>  <em>QuasiLiteralTail</em></td><td> array-concat(single-element-array(SVE(<em>Substitution</em>)), SVE(<em>QuasiLiteralTail</em>)) </td>
+	</tr>
+	<tr>
+		<td><em>QuasiLiteralTail</em> :: <code>`</code></td><td> an empty array </td>
+	</tr>
+	<tr>
+		<td><em>Substitution</em> :: <code>$</code><em>Identifier</em></td><td> thunk(<em>PrimaryExpression</em> : <em>Identifier</em>) </td>
+	</tr>
+	<tr>
+		<td><em>Substitution</em> :: <code>${</code><em>SubstitutionModifier</em>  <em>SubstitutionBody</em><code>}</code></td><td> SVE(<em>SubstitutionBody</em>) </td>
+	</tr>
+	<tr>
+		<td><em>SubstitutionBody</em> :: <em>PrimaryExpression</em></td><td> thunk(<em>PrimaryExpression</em>) </td>
+	</tr>
+</table>
+<br />
+
+<p>
+ The thunk operator takes an <em>Expression</em> production and returns a (<em>CallExpression</em>, (<em>MemberExpression</em>, (<em>FunctionExpression</em>, (an empty parameter list, (<em>FunctionBody</em>, (<em>ReturnStatement</em>, (the input))))), the <em>IdentifierName</em> <code>bind</code>)), <em>ThisExpression</em>)).  So thunk given <code>1 + 1</code> produces <code>function () { return 1 + 1 }.bind(this)</code> or using the abbreviated syntax <code>#{ 1 + 1 }</code>.
+</p>
+
+<p>
+The SVE is an expression that evaluates the specified expression in the scope in which the quasi appears. The SVE of the quasi literal is the array of the SVE for each substitution body.
+</p>
+
+<p>
+E.g. the SVE of <code>quasitag`literalPortion0 $x literalPortion1 ${y + z} literalPortion2`</code> is <code>[#{ x }, #{ y + z }]</code>.
+</p>
+
+<p>
+It is an error for <code>arguments</code> to be free in the SVE. 
+</p>
+
+</div>
+<!-- SECTION [508-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/9/9c2e804569be434c6a029910fdaae3e2.xhtml used -->
+</body>
+</html>

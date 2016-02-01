@@ -1,0 +1,27 @@
+====== Rationale ======
+
+The ''Array'' constructor is brittle due to its special-case behavior on single numeric arguments; this is the rationale behind a simpler, more uniform factory function for creating arrays (''Array.of'').
+
+There are many array-like objects in JS (''arguments'' objects, DOM NodeLists, arrays from separate windows, typed arrays) and no simple way to convert one of these to an instance of ''Array'' in the current window; this is the rationale behind a simple conversion function (''Array.from'').
+
+====== Proposal ======
+
+  * ''Array.from'' : takes a single argument ''x'', iterates from 0 to ''x.length - 1'', and copies the property at each index into a fresh array object.
+
+  * ''Array.of'' : takes a variable number of arguments and produces an instance of ''Array'' containing those elements.
+
+====== References ======
+
+  * [[https://mail.mozilla.org/pipermail/es-discuss/2011-July/thread.html#15831|es-discuss discussion]]
+  * [[https://gist.github.com/1074126|gist with more discussion]], thanks to [[http://twitter.com/#!/rwaldron|@rwaldron]]
+
+====== Issues ======
+
+  * raised in TC39 discussion: what to do about subclassing; does ''SubArray'' inherit ''Array'' and does it return a new ''SubArray'' or a new ''Array''
+  * Doug raised the point about confusion between this use of ''of'' and the use of ''of'' in ''for''-''of''
+  * Jason Orendorff pointed out on IRC that ''Array.of'' and ''Set.of'' would be better used as conversions from iterables:
+
+<code javascript>
+Set.of([1, 2, 3, 4, 5]);
+Array.of(myset);
+</code>

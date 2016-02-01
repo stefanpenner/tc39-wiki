@@ -1,0 +1,114 @@
+This is the discussion page for [[proposals:reformed_with]].
+
+
+===== Comments =====
+
+This may be implied but does the type expression constrain runtime lookup to the fixed bindings of the type annotation? I say yes but just want to make sure. If no, you still have the possibility of outer fixed bindings being shadowed by inner dynamic ones in the with object so early binding is not possible in that case. If yes, then except in the presence of ''eval'' runtime lookup can be avoided no matter where in the scope chain a fixed binding is found.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/05/11 11:03//
+
+I tried to be explicit: "The lexical scope chain for Statement is extended to include a block containing the names of direct public members of T." What can I do to improve that?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/05/13 17:00//
+
+Educate me? :-) You didn't mention whether or not the value of Expression is pushed onto the scope chain (like it is with ordinary ''with'') before entering the block scope that extends the scope chain. So the implication is that it is not. Sorry if I'm being dense.
+
+Here's an example,
+
+<code>
+var x = 10
+var y = "rats"
+var o = {x:20,y:"mice"}
+with ( o : {x:int} ) { print(x,y) }
+</code>
+
+I say it should print ''20 rats'' if ''with'' is to be fully rehabilitated.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/05/15 14:19//
+
+I read the proposal as saying that the //only// modification to the lexical scope chain is a block containing the public members of the type. Maybe the word "only" should also appear. So in your example, the type is ''{x:int}'', and the scope chain is extended with only a block containing a binding for ''x''. So your example should print ''20 rats''.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/05/18 18:14//
+
+Sweet! Rehabilitated ''with'' is then.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/05/18 19:13//
+
+I understand that the justification for this feature is that there are existing programs that for better or very much worse use ''with'' and we want it to be easier to migrate those programs while minimizing the likelihood of introducing even more errors.
+
+On reflection, it seems to me that the way that bad old programs migrate is by not breaking. It is extremely uncommon to modify bad old programs just to take advantage of new idioms and features. New idioms and features are most likely to be used by new projects. 
+
+So I remain in favor of strongly recommending that ''with'' not be used, and I think we should not do anything to make its use more attractive.
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2006/10/21 10:32//
+
+What exactly is wrong with reformed ''with''?  What was wrong with [[http://www1.cs.columbia.edu/graphics/modula3/tutorial/www/m3_42.html#SEC42|Modula 3's WITH]], or if "nothing", then how does reformed ''with'' differ?
+
+The case for this proposal is simple:
+
+  * ''with'' statements are not going away.
+  * Migrating code should not require hand-expanding ''with'' to get precise types (or using destructuring, if no properties are set in the body).
+  * Any new code that uses reformed ''with'' is good code; there's nothing wrong with it.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/10/22 22:10//
+
+My argument is that old bad code does not get rewritten. If the reformed ''with'' is intended for that purpose, then I think it is irrelevant and unnecessary. I don't believe in The Kitchen Sink. I think that low value features should be tossed out.
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2006/10/23 15:39//
+
+In my opinion Brendan's trump card is: "Any new code that uses reformed ''with'' is good code; there's nothing wrong with it." You may not buy it, but I do. Let's deprecate (that is, neglect) features that have no hope for a healthy future. This does not seem to be the case with reformed ''with''.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/10/23 17:35//
+
+Just to clarify: I'm saying people will continue to write ''with'' statements, as well as migrate old code containing ''with'' statements.  So the intended purpose is not solely to preserve precise typing in migrated ''with'' bodies.  That's one side of the coin; the other is that new code will use ''with''.  The full coin is that ''with'' is insanely popular for reasons that we should attend to, not wish away.  The proof is all around us, and under strict mode, authors should use reformed ''with''.
+
+Since strict mode is new, we could require the type annotation in the ''with'' head.  Comments?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/10/24 09:27//
+
+===== An Ambiguity =====
+
+How does the following code parse?
+
+<code javascript>
+with ({ x: 5 } : { x: int }) { ... }
+</code>
+
+Object literals can be annotated with types, in which case the argument expression is an //AnnotatedObjectLiteralExpression// (or whatever the non-terminal is called), and this is an unreformed ''with''.
+
+Alternatively, it might be an unannotated //ObjectLiteralExpression//, in which case this is a reformed ''with''.
+
+We've decided that we should resolve the ambiguity in favor of **unreformed** ''with'': parsers should greedily consider the expression an annotated object literal, without the reformed-''with'' constraint.
+
+This also means people can write:
+
+<code javascript>
+with ({ x: 5 } : { x: int } : { x: int }) { ... }
+</code>
+
+This looks weird, but it makes sense: it's reformed ''with'', with an annotated object literal.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2006/10/20 12:11//
+
+Note that the same kind of thing can happen with [[proposals:switch_class|switch type]].
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/10/22 22:23//
+
+===== Comparison with Destructuring =====
+
+The usefuless of ''with'' is probably due to the fact that it's a simple form of pattern matching, similar to (but not as general as) [[destructuring assignment]].
+
+A similar way to implement the same functionality as ''with'' is to do:
+
+<code javascript>
+let ({ x: x, y: y, z: z } = obj) { ... }
+</code>
+
+The benefit is that the extra type annotation of reformed-''with'' is unnecessary, but the downside is the need to say each property name twice.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2006/10/20 12:19//
+
+
+The destructuring ''let'' example is not equivalent, because ''with'' allows mutation of ''obj'''s properties.  You would need ''ref''s to do the same with ''let''.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/10/22 22:20//

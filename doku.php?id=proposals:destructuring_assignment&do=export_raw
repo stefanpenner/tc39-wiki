@@ -1,0 +1,526 @@
+====== Destructuring assignment and binding forms ======
+
+(Also see the [[discussion:destructuring_assignment|discussion page]] for this proposal)
+
+===== Summary =====
+
+Allow for destructuring of array and object data using a syntax that mirrors the construction of array and object literals.  The destructuring can appear in assignment statements but also in various initialization and binding forms.
+
+===== Rationale =====
+
+The object and array literal expressions provide convenient means of creating ad-hoc packages of data, returning them from functions, etc.  A common idiom for multiple return values is ''return [a,b]''.
+
+The present proposal provides a convenient syntax for picking apart structured data in various contexts.  Such a syntax is a benefit not just for "scripting" type programs that construct objects using the object and array literal expressions, but also for statically typed programs that need to read a few fields from class instances into other variables.
+
+The syntax is initially introduced as an assignment form.  This assignment form is then extended to the ''let'' and ''var'' binding forms, and then to all binding forms, including formal parameters, catch clauses, and type-switch clauses.
+
+===== Syntax =====
+
+<code>
+   pattern ::= lhs (":" type)
+   lhs     ::= "{" (field ("," field)*)* "}"  
+             | "[" ((lhs | lvalue)? ",")* "]"
+   field   ::= ident ":" (lhs | lvalue)
+   lvalue  ::= <any lvalue expression allowed in a normal assignment expression> 
+   type    ::= <structural type expression>
+</code>
+
+A //pattern// can only appear on the left-hand-side of "=" in the following contexts:
+
+  * in a plain assignment expression
+  * in a variable initializer in a ''var'', ''let'' or ''const'' definition
+  * in a variable initializer in a ''let'' expression or ''let'' statement
+  * in a variable initializer in a ''for'' statement
+
+If preceded by a ''var'', ''let'', or ''const'' the //pattern// must contain //lvalue//s that are all identifiers.  If not, the compiler must throw a SyntaxError for the phrase.
+
+Note that object literals cannot appear in statement positions, so a plain object destructuring assignment statement ''{ x } = y'' must be parenthesized either as ''({ x } = y)'' or ''({ x }) = y''.
+
+
+---
+
+We should allow empty object patterns, just as we allow empty array patterns. Here is some rationale from an email thread between Lars and Jeff:
+
+>>>> [J] One more question. What is the point of using an empty array 
+>>>> pattern? It seems to be allowed by the syntax.
+>>>
+>>> [L] I guess it never occured to me to disallow it.  It has a straightforward
+>>> meaning, I guess the same meaning as the "void" operator except in a 
+>>> more limited context.
+>>>
+>>> Any reason why we should not allow it?  Is the syntax useful for 
+>>> something else?
+>>
+>> [J] I can't think of a reason to not allow it, except for symmetry with 
+>> the object pattern. Should we allow ({} = o) too?
+>
+> [L] Or indeed the even uglier ({}) = o?  :-)
+>
+> No reason not to allow these things, I think.  After all [a,b,c] = E is the same as { 0:a, 1:b, 2:c } = E, so then [] = E ought to be the same as {} = E.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/11/14 12:22//
+
+We talked about this at the Mozilla face-to-face, because I had implemented destructuring for Firefox 2 without supporting empty patterns (I fixed the implementation before final release to support empty patterns). Dave pointed out that code generators won't want to have to special-case for n=0, and I heard Lars concur. Just wanted to point this rationale out.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/11/14 13:36//
+
+Then we are agreed! Cool.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/11/14 14:25//
+
+===== Type annotations =====
+
+If a //type// annotation is provided in a //pattern//, then the structure of the //type// must match the structure of the //lhs// it annotates (recursively):
+  - if //lhs// is an object pattern, then //type// must be an object type
+  - if //lhs// is an array pattern, then //type// must be an array type
+  - if //lhs// is an identifier then //type// can be anything
+  - if //lhs// contains a property ''p'' with value ''v'' and //type// contains a property ''p'' with a type annotation ''t'', then ''t'' must match the structure of ''v''.  (For array patterns the name ''p'' is the index, and it's given implicitly by position in the pattern.)
+  - if a //type// contains a property ''p'' then the corresponding //lhs// must also contain an ''p''
+
+
+===== Semantics =====
+
+The meaning is given separately for the four contexts in which destructuring may appear.
+
+
+==== Assignments ====
+
+The meaning of the assignment expression P "=" E where P is a //pattern// and E is an //expression// is:
+
+  - Evaluate E yielding a value V
+  - Assign V to a fresh temporary T
+  - If P is an array pattern then 
+      - Taking each lhs L at the top level of P in order, with the ordinal position I of L in P
+          - If L is an lvalue N then
+              - Perform N = T[I]
+          - Else L is a pattern P'
+              - Destructure P' and T[I] according to this algorithm (from step 2)
+  - If P is an object pattern then
+      - Taking each field F with name Q at the top level of P in order
+          - If the right-hand-side of F is an lvalue N
+              - Perform N = T.Q
+          - Else the right-hand-side of F is a pattern P'
+              - Destructure P' and T.Q according to this algorithm (from step 2)
+  - Return T
+
+As can be seen, the destructuring assignment is simple syntactic sugar.
+
+//Note//: In contrast with normal assignment expressions, the locations updated by destructuring assignment are not computed before the value that is to be stored.  Destructuring assignment is simple syntactic sugar for a common compute-and-destructure pattern, and true to this pattern it computes the value prior to computing the locations.  (See discussion below for more detail.)
+
+If a //type// is provided in the //pattern// then the concrete type of the value ''V'' must be a subtype of //type//.
+
+==== Variable definitions ====
+
+The meaning of 
+
+<code>
+   <defining-keyword> <pattern> = <expr>;
+</code>
+
+where the //defining-keyword// can be ''var'', ''let'', or ''const'' and all //lvalue//s in //pattern// are simple identifiers, the set of which is i1, i2, ..., is
+
+<code>
+   <defining-keyword> i1, i2, ...;
+   <pattern> = <expr>
+</code>
+
+If a //type// is provided in the //pattern// then the //type// provides type annotations to i1, i2, ...
+
+==== ''let'' statements and ''let'' expressions ====
+
+The meaning of 
+
+<code>
+   let (<b0> ..., <pattern> = <expr>, <b1> ...) { ... }
+</code>
+
+where all //lvalue//s in //pattern// are simple identifiers ''i1'', ''i2'', ..., is
+
+<code>
+   let (<b0> ..., tmp = <expr>, i1, i2, ..., <b1> ...) { 
+      <pattern> = tmp;
+      ... 
+   }
+</code>
+
+where ''tmp'' is a fresh temporary variable.  
+
+Similarly, the meaning of 
+
+<code>
+   let (<b0> ..., <pattern> = <expr0>, <b1> ...) <expr1>
+</code>
+
+where all //lvalue//s in //pattern// are simple identifiers ''i1'', ''i2'', ..., is
+
+<code>
+   let (b0 ..., tmp = <expr0>, i1, i2, ..., <b1> ...) ( <pattern> = tmp, <expr1> )
+</code>
+
+where ''tmp'' is a fresh temporary variable.  
+
+If a //type// is provided in the //pattern// then the //type// provides type annotations to ''i1'', ''i2'', ...
+
+==== For statements ====
+
+Below a //var-keyword// is ''var'' or ''let''.
+
+If a //var-keyword// is present in the ''for'' loops, then all the //lvalue//s in the //pattern// must be simple identifiers.
+
+If a //type// is provided in the //pattern// then the //type// provides type annotations to names defined by the //pattern//.
+
+=== Plain ''for'' statement ===
+
+The meaning of 
+
+<code>
+   for ( <var-keyword>? <b0> ..., <pattern> = <expr0>, <b1> ... ; <expr1> ; <expr2> ) <stmt>
+</code>
+
+is that the //b0// ... are evaluated, then //expr0// is evaluated and destructured into the //lvalue//s of //lhs//, then the //b1// ... are evaluated, and then the loop proceeds by normal rules.
+
+
+
+
+
+
+
+
+
+
+
+
+
+=== For-in statements ===
+
+The meaning of 
+
+<code>
+   for ( <var-keyword> <pattern> = <expr0> in <expr1> ) <stmt>
+   for ( <var-keyword> <pattern> in <expr1> ) <stmt>
+   for ( <pattern> in <expr1> ) <stmt>
+</code>
+
+where //pattern// has the form ''[ i1 , i2 ]'' where both ''i1'' and ''i2'' may be omitted, is that //expr0// (if present) is evaluated and destructured into ''i1'' and ''i2'' before the loop begins; then before each loop iteration ''i1'' receives the property name and ''i2'' receives the property value extracted from the object expression //expr1//.
+
+Neither ''i1'' nor ''i2'' are restricted to being identifiers; they can themselves be destructuring patterns.  If //var-keyword// is present then those patterns must have lvalues that are identifiers, however.
+
+If //pattern// has any other form then the compiler must throw a SyntaxError.
+
+----
+If ''i1'' and ''i2'' are both omitted, the form is ''[, ]'', which has length 1.  In the latest TG1 meeting I believe the requirement was that the length of the destructuring pattern be 2.  If so, the above needs to require a second comma if ''i2'' or both ''i1'' and ''i2'' are omitted.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/09/22 20:42//
+
+Problem: if the object to the right of ''in'' is an [[iterators and generators|iterator]], then the loop iterates over arbitrary values; it does not //enumerate// properties. So there should be no restriction on the destructuring pattern, and ''SyntaxError'' is the wrong exception. Commenting here rather than discussion to get attention, but we can move there if a quick fix here is difficult to find.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/01/13 18:21//
+
+Let's consider keeping to the original, albeit quirky, meaning of ''for-in'' and require the iterator/generator on the right of ''in'' to return a string, and for the pattern in the left of 'in' to be compatible with a string value. ''for-each-in'' can of course still return an object that is destructed by a compatible pattern, but there will be no way to get at the property name and the property value in the same ''for'' head. This also alleviates potential confusion over the new meaning of ''for-in'' in the presence of a pattern on the left side of ''in''.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2007/01/14 16:12//
+
+That would be a proposal for [[iterators and generators]], but I'm against it because it's (a) needlessly verbose; (b) not Pythonic.  The ''each'' contextual keyword is deadwood if there's an iterator on the right of ''in''.  Iterators can return any value, and the values have nothing to do with property identifiers, shadowing along the prototype chain, or delete/for-in coherence.  The quirky tail of enumeration should not wag this dog.
+
+Consider Python:
+<code python>
+>>> d = {"a":1, "b":2}
+>>> s = [v for k, v in d.items()]
+>>> s
+[1, 2]
+>>> t = [k for k in d]
+>>> t
+['a', 'b']
+>>> u = [v for k, v in d]  # oops!
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ValueError: need more than 1 value to unpack
+</code>
+
+It really is a ''ValueError'' (missing from ECMA's overloaded exception taxonomy, ''TypeError'' is used instead) to destructure ("unpack") using an array pattern that does not match.
+
+In JS1.7 (real, live session):
+<code javascript>
+js> d = {a:1, b:2}
+[object Object]
+js> s = [v for ([k, v] in d)]
+1,2
+js> function keys(d){for (let k in d) yield k}
+js> t = [k for (k in d)]
+a,b
+js> u = [v for ([k, v] in d)]
+1,2
+js> function items(d){for (let k in d) yield [k, d[k]]}
+js> u = [v for ([k, v] in items(d))]
+1,2
+js> function values(d){for each (let v in d) yield v}
+js> u = [v for ([k, v] in values(d))]
+,
+</code>
+
+What's different? Ignoring mandatory extra parentheses, we have a special case: ''for ([k, v] in d)'' just works, destructuring key and value given non-iterator ''d''. So we don't need ''items(d)''.
+
+But look what happens when ''values(d)'' is used: ''[k, v]'' unpacks ''undefined'' twice at indexes ''0'' and ''1'' from each (numeric in this example) value in ''d''. This suggests that the problem to fix is not elevating the quirky (enumeration) case above the clean (iteration) case -- it is that destructuring should throw something like ''ValueError'' when there is no such property. Or perhaps when the structural type given by the pattern (array of length 2) does not match the right-hand side.
+
+On the other hand, destructuring is proposed as sugar for assignments from properties of the right-hand-side object, and you can easily mistake a number for some indexed object and get ''undefined'' by mistake from ''n[0]''. But two wrongs don't make a right!
+
+Lars, what do you say?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/01/14 21:49//
+
+Tentative comments:
+
+I think that the fundamental bug here is that iterators change the meaning of for-in, especially given that we have for-each-in.  I understand the desirability for succinctness, but I think for-in should not be "fixed" in this way.  (Ideologically, I also do not consider it important that concepts carry over directly from Python any more than from Java or C++, say, so I sort of think of that as a non-argument :-) )
+
+I agree that destructuring in general is weak in the sense that errors go unnoticed, but destructuring was never intended to be more than syntactic sugar.  What makes it particularly brittle in this case is my proposal about allowing fancy destructuring in the for-in head coupled with the correct-but-sometimes-surprising behavior of trailing commas in array literals.
+
+I think I've argued myself into agreeing with Jeff (but I make no claims about actually understanding the iterators proposal fully yet).
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/01/16 07:47//
+
+First, let me say that I hold no ideological or other //a priori// brief for Python. The costs of being influenced by it are language impedance mismatches and outright mistakes copied from it. The benefits are familiarity and reduced brain-print for programmers who know Python and use JS/AS/ES (non-trivial population given the popularity of Python on the server, and the JS monopoly on the client), and re-use of genuinely good ideas and design elements. The community-joining benefit in particular is important in my view (call this ideology if you like :-P).
+
+Second, ''for each (v in o)'' is a late addition from ECMA-357 (E4X), not supported by browsers other than Firefox, verbose yet without connotation of value rather than key enumeration, and still cursed with ''DontEnum'', shadowing along the prototype chain, and delete coherence. Arguing that we can make it work for iteration because it enumerates values in objects misses the point: iterators return arbitrary values, not values of their properties; and their prototype's properties, unless shadowed or deleted by the time the loop reaches them; and provided the property lacks ''DontEnum''.
+
+Count the semicolons in that last sentence. The problem here is not hijacking ''for-in'', solvable by a lesser incompatible change (which is still hijacking if the first case is truly hijacking) to ''for-each-in''. The problem is the complexity and confusion inherent in **enumeration**.
+
+This is my fault, of course; it goes back to the dawn of JS1. I'm proposing that we fix it directly and compatibly, by allowing the right operand of ''in'' to be an object that has an ''iterator::get'' method. Existing objects defined by ES3 and E4X have no such method. New objects may; user-defined objects, especially collections, will. And new objects matching a structural ''IteratorType'' by definition have an ''iterator::get'' method that returns its ''this'' object.
+
+If the objection is that ''for ([key, value] in obj)'' vs. ''for ([subject, verb, object] in tripledb)'' can't be checked at compile time, the same objection exists for destructuring in general -- and this proposal does not specify even runtime errors for pattern mismatch. That seems inconsistent, to say the least.
+
+If the objection is that old syntax should not be retasked for new semantics, I would like to point out the retasking of ''function'' and ''var'' within classes and ''function'' within interfaces, and (particularly relevant here) the retasking of object and array initialiser syntax for destructuring left-hand side patterns, and (with necessary changes) for structural types. We are retasking old syntax all over the place, and I would argue for good reasons.
+
+Iteration should be easy to say, as easy as enumeration. If there is a compelling argument for brand-new iteration syntax, I'd like to hear it. It would be better to have new syntax than to retask ''for-each-in'' instead of ''for-in'', just because of the red herring of value vs. key enumeration. Iteration is not enumeration. The choice is either to use the obvious (and Pythonic, for a bonus community benefit) syntax of ''for-in'', or to invent something new (and gratuitous, IMHO).
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/01/16 10:08//
+
+See [[https://bugzilla.mozilla.org/show_bug.cgi?id=366941|Mozilla bug 366941]] for a complaint from the field about this restriction on destructuring ''for-in''.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/01/24 10:10//
+
+See [[iterators and generators#itemization]] for a protocol that supports ''for ([k,v] in o)'' loops universally.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/02/22 16:41//
+
+I recall Lars withdrawing the ''for ([key, value] in obj)'' special form at a Mozilla meeting late last year. The [[iterators and generators#itemization]] spec has been revised accordingly, but it also specifies that general destructuring on the left of ''in'' in ''for-in'' loop heads is allowed. If everyone agrees, then this whole section should be rewritten to state that any pattern is allowed in both ''for-in'' and ''for-each-in'' loops and comprehensions, and that the pattern destructures each iterated result in turn.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/03/11 04:21//
+
+=== For-each statements ===
+
+The meaning of 
+
+<code>
+   for each ( <var-keyword> <pattern> = <expr0> in <expr1> ) <stmt>
+   for each ( <var-keyword> <pattern> in <expr1> ) <stmt>
+   for each ( <pattern> in <expr1> ) <stmt>
+</code>
+
+where //lvalue//s in //pattern// are identifiers ''i1'', ''i2'', ... is that //expr0// (if present) is evaluated and destructured into ''i1'', ''i2'', ... before the loop begins.  Then before at each iteration the value extracted from the object //expr1// is destructured into the variables ''i1'', ''i2'' ....
+
+==== Formal parameter lists ====
+
+The fragment
+
+<code>
+    function f({ "name": name, "address": address} : Person) { 
+        ... 
+    }
+</code>
+
+can be transformed into a more primitive form:
+
+<code>
+    function f(tmp : Person) { 
+       var { "name": name, "address": address} : Person = tmp;
+       ... 
+    }
+</code>
+
+where //tmp// is a fresh unforgeable name.  If there are several destructurings, then they are processed in left-to-right order.  All the lvalues must be simple identifiers.
+
+Rest parameters can also be destructured.  The fragment
+
+<code>
+    function f(...[ x, y ] : T) { 
+        ... 
+    }
+</code>
+
+can be transformed into a more primitive form:
+
+<code>
+    function f(...tmp) { 
+       var [x, y] : T = tmp;
+       ... 
+    }
+</code>
+
+where //tmp// is a fresh unforgeable name.  There is no particular reason the pattern needs to be restricted to an array pattern, and in fact the following captures the two first arguments as well as the number of arguments passed:
+
+<code>
+    function f(...{ 0: x, 1: y, "length": len }) { 
+        ... 
+    }
+</code>
+
+
+=== Notes ===
+
+As is the case for non-destructuring formal parameters, parameter names may be duplicated, and from the rewriting rules it follows that last binding wins, as is also the case for non-destructuring formal parameters.
+
+It is necessary to use ''var'' rather than ''let'' in the rewritten fragments to make formal parameter names bound by destructurings to be equivalent to formal parameter names not so bound.  Consider:
+
+<code javascript>
+    function f(a) { let a = 42; return arguments[0] }
+    f(7) => 7
+</code>
+
+compared to:
+
+<code javascript>
+    function f([a, b]) { let a = 42, b = 43; return arguments[0] }
+    f([7, 8]) => [7, 8]
+</code>
+
+as well as
+
+<code javascript>
+    function f(a, b)   { function a(){}; print(a, b) }
+    function g([a, b]) { function a(){}; print(a, b) }
+    f(1, 2)   => "function a() {} 2"
+    g([3, 4]) => "3 4"
+</code>
+
+where the inner function ''a'' must be bound on entering the execution context for g(3, 4), then replaced by the destructured binding of ''3'' to ''a''.
+
+==== Catch clauses ====
+
+The fragment
+
+<code>
+    try { 
+        ... 
+    }
+    catch ( {"message": m } : TypeError ) { 
+        ... 
+    }
+</code>
+
+means
+
+<code>
+    try { 
+        ... 
+    }
+    catch ( tmp : TypeError} ) { 
+       let {"message": m} : TypeError = tmp;
+       ... 
+    }
+</code>
+
+where //tmp// is a fresh unforgeable name and //m// must be an identifier, obviously.
+
+==== Typecase clauses ====
+
+The fragment
+
+<code>
+    switch type (x:U) {
+        case ( { "fnord": f } : X ) { 
+            ... 
+        }
+    }
+</code>
+
+means
+
+<code>
+    switch type (x:U) {
+        case ( tmp : X ) { 
+            let { "fnord": f } : X = tmp;
+            ... 
+        }
+    }
+</code>
+
+where //tmp// is a fresh unforgeable name and //f// must be an identifier, obviously.
+
+
+===== Examples =====
+
+Swap:
+
+<code>
+    [a,b] = [b,a]
+</code>
+
+Multiple-value returns:
+
+<code javascript>
+    function f() { return [1,2] }
+    var a, b;
+    [a,b] = f();
+</code>
+
+Multiple-value returns, some values are not interesting:
+
+<code javascript>
+    function f() { return [1,2,3] }
+    var [a,,b] = f();
+</code>
+
+Going deeper into the array:
+
+<code javascript>
+    [a,,[b,,[c]]] = f();
+</code>
+
+Object destructuring:
+
+<code javascript>
+    var { op: a, lhs: b, rhs: c } = getASTNode()
+</code>
+
+Digging deeper into an object:
+
+<code javascript>
+    var { op: a, lhs: { op: b }, rhs: c } = getASTNode()
+</code>
+
+Looping across an object:
+
+<code javascript>
+    for ( let [name, value] in obj )
+        print("Name: " + name + ", Value: " + value);
+</code>
+
+Looping across values in an object:
+
+<code javascript>
+    for each ( let { name: n, family: { father: f } } in obj )
+       print("Name: " + n + ", Father: " + f);
+</code>
+
+Summing the salary fields of all records whose record key begins with ''N'' (silly, and depends on the proposed string-indexing syntax):
+
+<code javascript>
+    for ( let [[k], { "salary": s }] in database )
+        if (k == "N")
+            sum += s;
+</code>
+ 
+Function that destructures its first argument and accepts some optional object arguments:
+
+<code>
+    function f( { "name": n } : Person, ...[ a, b, c ] : [ Object ] )
+    {
+    }
+</code>
+
+(Not sure about the type of the rest parameter here.)
+
+
+===== Prior art =====
+
+Array destructuring is implemented in the Opera browser starting with Opera 8.

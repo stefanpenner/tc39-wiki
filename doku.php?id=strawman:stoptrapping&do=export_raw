@@ -1,0 +1,26 @@
+====== stopTrapping ======
+
+Since trapping is entirely decoupled from "protecting" a proxy in the direct proxy API, we propose the introduction of a separate operation, named ''Proxy.stopTrapping''. The call ''Proxy.stopTrapping(aProxy)'' triggers the proxy's ''stopTrapping()'' trap. This gives the handler a chance to either accept or reject the request:
+  * If the ''stopTrapping'' trap returns true, the handler will be relinquished and the proxy henceforth becomes nothing but an empty forwarder to its target. In some sense, it has "become" its target (and indeed, smart engines may even implement it that way).
+  * If the ''stopTrapping'' trap returns false, the request to stop trapping is ignored.
+
+Unlike a failed protection operation, a failed ''Proxy.stopTrapping'' operation fails silently. If it were to fail by throwing an exception, this would expose that the object is a proxy and break transparent virtualization. ''Proxy.stopTrapping(obj)'' on a regular non-proxy object ''obj'' is a no-op.
+
+Now that protecting an object no longer requires fixing the proxy, ''Proxy.stopTrapping'' is an operation with a relatively narrow set of use cases. We expect it to only be used in special cases where the original creator of a proxy knows precisely when the proxy is no longer needed, and can be "switched off" for performance reasons. In most cases, we envision that a proxy will be trapping for its full lifetime and ''stopTrapping'' by default returns false.
+
+{{ strawman:stoptrapping.png?600 |stopTrapping operation: before and after}}
+
+===== A better API =====
+
+The above API allows anyone with a reference to the proxy to try and switch off the proxy, by passing it to ''Proxy.stopTrapping''. A better API would represent the ability to switch off a proxy as a separate object (capability):
+
+<code javascript>
+var { proxy, stopTrapping } = Proxy.revokableFor(target, handler);
+// calling stopTrapping() switches off its paired proxy
+</code>
+
+===== Feedback and Discussion =====
+
+  * Discussed at the November 2011 TC39 meeting.
+  * Was proposed as part of [[harmony:direct proxies]], but left out.
+  * Reasoning: narrow set of use cases, complicates API surface and proxy implementation, can still be added later if need be.

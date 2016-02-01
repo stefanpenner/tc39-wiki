@@ -1,0 +1,27 @@
+===== Debugger expressions =====
+
+The ''debugger'' keyword is used by debuggers such as [[http://getfirebug.com|FireBug]] to allow programmers to set breakpoints programmatically. But it can't be used to set a breakpoint in the middle of an expression, since it is a statement form.
+
+This strawman proposes extending the syntax compatibly to allow ''debugger'' to be a //PrimaryExpression//:
+
+<code javascript>
+PrimaryExpression ::= debugger | ...
+</code>
+
+Eliminating the //DebuggerStatement// non-terminal from the grammar then allows existing ''debugger'' statements to be parsed as //ExpressionStatement//s.
+
+===== Semantics =====
+
+In ordinary evaluation, the ''debugger'' keyword would always produce the undefined value. But debuggers could add UI to allow programmers to specify a custom value to override this value. This way a programmer could add a breakpoint into an expression and decide to experiment with producing a different value. For example, when debugging the expression
+<code javascript>
+foo(bar(x))
+</code>
+a programmer might decide to insert a breakpoint before the call to ''bar'' by writing:
+<code javascript>
+foo(bar(debugger ?? x))
+</code>
+If the developer decides not to override the result of the ''debugger'' expression, then the program proceeds as usual. But now they also have the option of overriding the normal value with whatever value they want.
+
+===== References =====
+
+[[http://www.softwareishard.com/blog/planet-mozilla/firebug-tip-disable-debugger-keyword/]]

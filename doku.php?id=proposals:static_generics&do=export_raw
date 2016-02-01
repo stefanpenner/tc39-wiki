@@ -1,0 +1,62 @@
+(Split from [[bug fixes]] -- start a [[discussion:static generics|discussion page]] or comment here.)
+
+
+
+
+====== Static Generics ======
+
+ES1-3 define many explicitly generic methods on ''Array.prototype'' and ''String.prototype'', and ES3 defines two seemingly-generic methods on ''Function.prototype'' that could be generic. "Generic" here means that the method's ''this'' parameter can be any object that has a ''length'' property and indexed elements for the ''Array'' and ''String'' methods; or a callable object for the ''Function'' methods ''apply'' and ''call''.
+
+The problem is that to invoke such a generic prototype method on an object of a different class, one must use ''Function.prototype.apply'' or ''call''!
+
+This proposal adds a static method of the same name for each prototype generic method, taking an explicit leading ''obj'' parameter that binds to ''this'' in the callee.  Thus ''Array.prototype.slice(begin, end)'' can be called ''Array.slice(arraylike, begin, end)''.  The ''length'' property of the static method is one greater than the ''length'' property of the prototype method (in this example, ''Array.slice.length'' is ''3'').
+
+
+
+
+
+===== Array Generics =====
+
+  * ES3: ''concat join pop push reverse shift slice sort splice unshift''
+  * JS1.6: ''every filter forEach indexOf lastIndexOf map some''
+  * JS1.8: ''reduce reduceRight setSlice''
+
+See builtins/Array.es for implementations.
+
+
+===== String Generics =====
+
+  substring charAt charCodeAt indexOf lastIndexOf
+  toLowerCase toUpperCase toLocaleLowerCase toLocaleUpperCase localeCompare
+  match search replace split substr concat slice
+
+See builtins/String.es for implementations.
+
+
+===== Function Generics =====
+
+  apply call
+
+See builtins/Function.es for implementations.
+
+We have talked about ''applyNew'' or ''applyAsConstructor''.  The committee resolved at the January 2007 meeting that a "construct" method is installed on the class object when it is created, so that client code can do one of
+
+<code javascript>
+  C.construct(...)
+  C.construct.apply(null,...)
+</code>
+
+on some class object C.
+
+''Function.bind'' / ''Function.prototype.bind'' also springs to mind, since every Ajax library in the universe has to roll its own in ES3.  Here is [[http://prototype.conio.net/ Prototype]]'s:
+
+<code javascript>
+Function.prototype.bind = function() {
+  var __method = this, args = $A(arguments), object = args.shift();
+  return function() {
+    return __method.apply(object, args.concat($A(arguments)));
+  }
+}
+</code>
+
+where ''$A'' makes an array from its arraylike or iterable parameter.  If we do this, we should emulate Prototype, including its "pre-args" feature, since it actually hacks on ''Function.prototype'' and it's a de-facto standard.

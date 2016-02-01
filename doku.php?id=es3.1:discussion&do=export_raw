@@ -1,0 +1,73 @@
+This is the discussion for the proposal to refocus TC39-TG1 on the [[es3.1:es3.1|maintenance of ES3]].
+ --- //[[pratapl@microsoft.com|Pratap Lakshman]] 2007/03/16 15:27//
+
+----
+
+See also [[discussion:browser profile]]. Here is a response to the PDF linked from [[es3.1:es3.1]] that I sent in reply to mail to the e-tc39-tg1 list:
+
+On Mar 16, 2007, at 4:22 PM, Brendan Eich wrote:
+
+> I'll look to see whether you addressed the questions I raised re: Pratap's write-up. Namely, that JS (ES3) as it is, or even with a few "corrections", cannot scale in runtime, memory space, or programming-in-the-large feature dimensions to match its current Ajax workload. 
+
+I've read the PDF now and see nothing addressing the points i've raised repeatedly. Instead I see what Wikipedia calls "weasel words":
+
+> Work item 3 – Creation of a new next generation browser programming language 
+> (this item could possibly be merged with work item 2) 
+
+> Some members of TC39-TG1 favor the creation of a new, less scripting focused, programming language 
+> that could not only ultimately replace ECMAScript 3rd Edition as a webpage scripting language but could 
+> also be used as a web browser implementation and extension language. This desire has been a 
+> significant driver in the creation of the new “ECMAScript 4” language currently being designed in the 
+> context of TC39-TG1.
+
+Who are these (multiple) "Some members" favoring "a new next generation browser programming language" for "web browser implementation and extension"? More honest language would have identified Mozilla, which is clearly the member you mean -- but your weasel-worded assertion is false.
+
+Nowhere in our requirements and rationales have we ever cited XUL scripting as a reason for any feature. Repeatedly we have cited the problems evident on the web with Ajax and DHTML apps at scale: performance and programming in the large. Never has a use-case from Mozilla application code, e.g. the Firefox front end, been cited to justify anything. Nor were motivations presented by Mozilla people couched in terms abstracted from XUL requirements.
+
+See [[https://intranet.mozilla.org/ECMA/wiki/doku.php?id=discussion:versioning&s=xul]] for the only hit searching for XUL finds in the wiki.
+
+Here are the hits for "Firefox": [[https://intranet.mozilla.org/ECMA/wiki/doku.php?do=search&id=Firefox]]
+
+Of course, backward compatibility is important not only to allow an ES4 implementation to support ES3, for acceptable browser code size and download footprint. It's important for low-cost code migration, as we've argued repeatedly in the wiki.
+
+It's hard to take this Work item 3 seriously, given the weasel words, the false charges, and the false dilemma between backward compatibility and acceptably clean language design.
+
+Work item 1, cynically read, consists of asking Firefox to "hold still at JS1.7" while Microsoft catches up. But as noted in the [[discussion:versioning]] page linked above, we have never proposed JS1.7 for standardization or usage on the web, and web authors know not to rely on it in cross-browser content. It's a non-issue.
+
+Work item 2 seems to be based on the belief that an ECMA member wishing to standardize a variant of the ES4 proposals Waldemar and others developed in TG1 years ago should be approached as an exercise **for that member only**, without reference to other members who want to collaborate on the same kind of language (which indeed Microsoft JScript.NET in addition to Adobe ActionScript 3 implements), or to **developers** targeting programmed content at the Flash Player and the browsers, who would benefit from such an improved, common ECMAScript standard, which would facilitate code and knowledge sharing.
+
+I reject this constraint on standardization. It seems to be selectively applied. It was not used during the evolution of C# to argue that major new editions of ECMA-335 should be separate specifications, even though only one vendor implemented such editions before adoption by ECMA, and such evolution changed the character of the language significantly
+
+Even given such a false constraint on standardization, I can say, speaking for Mozilla, that we wish to collaborate with Adobe in ECMA TG1 on the successor to ES3 that we've been working on lo these many years, with Microsoft's apparent participation.
+
+Let's address the one technical and quantifiable objection from your paper.
+
+Objecting that the change from ES3 to ES4 is "too big" without saying why size is an inherent problem begs all the questions I keep raising:
+
+  * how to address time, space, and programming-at-scale problems developers face every day writing JS for web browsers;
+  * how other than by preserving compatibility to solve these problems without creating a new incompatible programming language that doubles the browser footprint hit and raises the migration cost to a rewrite tax;
+  * the conflict of interest evident among the objecting members, who make or may endorse/consume, runtimes implementing languages with very similar features to the ones in draft ES4.
+
+In order to avoid broken consensus and hard feelings, we would do better to talk about concrete costs and benefits of evolving ES3 in a larger step, vs. smaller steps.
+
+Work item 1 says something about performance, but it's extremely vague. **What** would it do, concretely, to address the problems with performance encountered when scaling web apps:
+
+  * object allocation overhead, both time and space
+  * ~3x worse overhead using closures for information hiding compared to no closures and no hiding, or AS3-compiled private fields
+  * 10x or worse performance compared to easily-jitted statically typed languages that are mooted against ES3 (e.g. C#) or  improved from it (AS3 under strict mode).
+
+How would small changes allowed by work item 1 address the programming-in-the-large problems encountered building web apps?
+
+  * Non-existent control over type name mutability
+  * Weak, cooperative conventions for sharing a single namespace
+  * Objects as namespaces without visibility and access controls
+  * Enforcing type and value constraints at API boundaries without type annotations
+  * Migrating old code to new, mixing old and new during migration, with partial type and value constraint enforcement
+
+I'm willing to spend some time arguing based on specific solutions to these problems, but I strongly suspect that a genuine attempt to solve these problems would end up reinventing large parts of ES4.
+
+I'm more than a little cynical about spending too much time arguing with the contention that the bulleted items listed above aren't really problems on the web, when my interlocuters work for vendors producing and/or consuming alternative web-browser-like runtimes that support, or will support, languages that take these problems seriously, and which out-perform ES3 by an order of magnitude.
+
+But try me, for a little while. Make specific, testable claims. Just don't repeat vague or specious reasons from that PDF.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/03/17 11:09//

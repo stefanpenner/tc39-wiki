@@ -1,0 +1,532 @@
+====== Strawman: Object Literal Extensions ======
+Allen Wirfs-Brock
+Original Proposal August 10, 2009 \\
+[[strawman:object_initialiser_extensions|Revised Proposal March 2011]]  \\
+Simplified Proposal May 2011
+
+Abstraction creation is a central theme of object-based programming and ECMAScript provides many mechanisms  that support patterns for creating object based abstractions.  However, most of these patterns are constructive in nature using procedural code to create the abstractions.  This approach is  powerful in that it allows a wide variety of different technical mechanism to be  used to construct various abstractions. It also allows for programmer defined abstractions with application specific construction semantics. However, this variety can also be problematic. It creates complexity for both readers and writers of ECMAScript program and making it difficult to ECMAScript implementations to recognize common abstraction patterns so they can be optimized.  Most other programming language solve these issues by providing a straightforward declarative mechanism for defining object abstractions based upon a standardize semantics.
+
+ECMAScript does provided a basic declarative mechanism for defining object-based abstractions.  Object initialisers provide a declarative mechanism for defining objects that in most situations is more concise, readable, and maintainable  than programmatic object creation using constructor functions and dynamic property insertion. The declarative nature of object initialisers  also makes it easier for implementations to perform various object representation optimization. However, existing ECMAScript object initialisers do not provide declarative solutions for a number of abstraction capabilities that are common used with ECMAScript objects.
+
+This strawman proposed ways in which ECMAScript object initialisers  can be extended to make them more useful for building complete object abstractions.  A number of individual extensions are identified. This page summarized the extensions and links to proposals for the specific extensions.
+
+===== Individual Extensions =====
+  * [[proto operator|Set Literal Prototype Operator]]
+  * [[Concise Object Literal Extensions]]
+  * [[strawman:object initialiser shorthand|Implicit property initialization expressions]]
+  * [[Object Initialiser super]]
+
+
+===== Summary Examples =====
+
+Under ES5 creating a literal object with an explicitly specified prototype, a complex combination of property attributes and conventions, and integrity constraints might be code as:
+<code javascript>
+var obj = Object.seal(Object.create(theProtoObj, {
+          konst: {value: f(), enumerable: false, writable: false},
+          handler: {value: defaultHandler, writable: true, enumerable: true},
+          name: {get: function () {return theProtoObj.name.call(this)},
+                   enumerable: false},
+                 set: function(v) {throw Error("some message")},
+                   enumberable: false},
+         source: {value: function() {throw Error("another message")},
+                  enumerable: false, writable: true},
+         toString: {value: function() {return "d "+theProtoObj.toString.call(this)},
+                  enumerabe: false, writable: true, configurable: false}
+}));
+</code>
+
+can be more clearly and concisely expressed as:
+<code javascript>
+var obj = theProtoObj <| {.seal,
+          ~konst:= f(), 
+          handler: defaultHandler, 
+          ~get super set name(v) {throw Error("some message")},
+          source() {throw Error("another message")},
+          toString() {return "d "+super.toString()}
+];
+</code>
+----
+Also supported is explicitly setting the %%[[%%Prototype%%]]%% for array literals and other literal forms:
+<code javascript>
+  var enhancedArrayProto = Array.prototype <| {
+      do (func) {return this.foreach(func)},
+      search (key {return this.indexOf(key) >= 0}
+  };
+  var myArray = enhancedArrayProto <| [0,1,2,3,4,5];
+
+  setCallback(callbackFuncExtras <| function (...arg) {/* handle call back */});
+</code>.
+This kinds of "subtyping" of built-in object kinds is not supported by ES5 but has been frequently requested.
+ 
+
+===== Individual Extension Summary =====
+
+==== Set Literal [[Prototype]] Operator ====
+
+The ''<|'' operator (pronounced "prototype for") is used in conjunction with a literal to create a new object whose %%[[%%Prototype%%]]%% is set to an explicitly specified value.  It can be used to address several distinct use cases for which separate solutions have been proposed.  Use cases include:
+  *  Specifying an explicit %%[[%%Prototype%%]]%% for object literals
+  *  Specifying an explicit %%[[%%Prototype%%]]%% for array literals
+  *  "Subclassing" arrays
+  *  Setting the prototype of a function to something other than Function.prototype
+  *  Setting the prototype of RegExp and other built-in objects.
+  *  Replace the most common uses of the mutable %%__%%proto%%__%% extension
+
+Specifying an explicit %%[[%%Prototype%%]]%% for object literals
+<code javascript>
+  MyObject.prototype <| {a:1,b:2}
+</code>
+Specifying an explicit %%[[%%Prototype%%]]%% for array literals
+<code javascript>
+  appBehavior <| [0,1,2,3,4,5]
+</code>
+
+See [[proto operator|Set Literal Prototype Operator]] for full proposal.
+
+
+
+==== Object Literal Attribute and Method Shorthand ====
+
+This proposal extnds object literals in these four ways:
+  - If a property definition (a //PropertyAssignment// in the ES grammar) is prefixed with **''~''** the property is non-enumerable
+  - If a property definition is prefixed with **''!''** the property is non-configurable
+  - If a data property definition uses **'':=''** in place of **'':''** the property is non-writable
+  - If a property definition has the form of a //FunctionDeclaration// without the keyword ''function'' it is a non-enumerable,data property definition whose name is the function name
+
+ES5 permits constructions of objects with arbitrary property attribute setting using the ''Object.create'' function. However, this form is verbose and its usage is complicated by the fact that the default attribute values are different than what is used for object literals. This can be see as follow starting with a standard ES5 object literal:
+
+<code javascript>
+var obj = {
+   a: x,
+   k: 0.5,
+   m: function(z) {return z+this.a+this.k}};
+</code>
+
+If the programmer desires for the property ''k'' to be non-writable, non-configurable, and non-enumerable and for the method property  ''m''to be a non-enumerable method, they would express like this using ''Object.create'':
+
+<code javascript>
+var obj = Object.create(Object.prototype,{
+   a: {value: x, writable: true, enumerable: true, configurable: true},
+   k: {value: 0.5},  //use default false values for all attributes
+   m: {value: function(z) {return z+this.a+this.k}, writable: true, configurable: true}
+};
+</code>
+
+Using the extensions in this proposal the above could be directly expressed using an object literal as:
+<code javascript>
+var obj = {
+   a: x,
+   ~!k:= 0.5,
+   m(z) {return z+this.a+this.k}
+};
+</code>
+ 
+See [[Concise Object Literal Extensions]] for full proposal
+
+
+
+
+==== Object Literal Freeze and Seal ====
+
+This proposal extends object literals to permit the literal to expression whether the object should be sealed or frozen immediately upon creation.
+
+In ES5, an object created using an object literal can only be sealed or frozen by making a call to the appropriate Object function:
+
+<code javascript>
+var origin = Object.freeze({x: 0,y: 0});  //a frozen object(read-only, non-configurable, non-extensible)
+var record = Object.seal({f1: 'a', f2:2});//a sealed (read-only, non-configurable, non-extensible)
+</code>
+
+This extension permit such objects to be defined in a more concise manner without invoking a function:
+<code javascript>
+var origin = {.freeze, x: 0,y: 0};  //a frozen object(read-only, non-configurable, non-extensible)
+var record = {.seal, f1: 'a', f2:2};//a sealed (non-configurable, non-extensible) 
+</code>
+
+The . item must be the first item in the object literal and is intended to be suggestive of apply the Object.freeze or Object.seal properties to the object defined by the literal.
+
+A .item isn't provided that is equivalent to Object.preventExtensions because of its infrequent usage. If it was found to have sufficient  usage to warrent a more concise form then one could be easily added.
+
+
+
+==== Object Literal Property Value Shorthand ====
+
+This proposal provide a shorthand for object initialisers whose property keys are initialized by variables of the same name.
+
+This extension provides Reversibility or symmetry with the [[harmony:destructuring]] shorthand object patterns.
+
+For example, instead of:
+
+<code javascript>
+function f(x, y) { return {x: x, y: y}; }
+</code>
+you can say:
+<code javascript>
+function f(x, y) { return {x, y}; }
+</code>
+Attribute prefixes can be used with this short hand:
+<code javascript>
+function f(x, y) { return {!x, ~y}; }
+</code>
+but creating non-writable properties is not supported by the shorthand.
+<code javascript>
+function f(x, y) { return {!x, ~y:=y}; }
+</code>
+
+See [[strawman:object initialiser shorthand|Implicit property initialization expressions]] for full proposal
+
+==== Object Initialiser super References ====
+
+''super'' can be used within object literals to access prototype properties that are over-ridden by the object created by by object literal.  There are two ways that ''super'' can be used.
+  - When used within a //FunctionBody// contained within an object literal, ''super'' has the same value as ''this'' but causes a property lookup to start at the %%[[%%Prototype%%]]%% of the object defined by the literal.
+  - ''super'' can be used in the definition of an accessor property **get** or **set** function to indicate that the corresponding **set** or **get** function should not be reset to the default value and instead should be defined so as to invoke the corresponding **set** or **get** function that would be the result of a property lookup that started at the %%[[%%Prototype%%]]%% of the object defined by the literal 
+
+Here is an example of the first use.  Instead of coding:
+<code javascript>
+var sub = sup <| {
+   validate() {
+       sup.validate.call(this); /* validate invariants imposed by prototype */
+       /* validate instance specific invariants */
+   }
+}
+</code>
+
+You can just code:
+<code javascript>
+var sub = sup <| {
+   validate(...args) {
+       super.validate(); /* validate invariants imposed by prototype */
+       /* validate instance specific invariants */
+   }
+}
+</code>
+
+For the second use case, instead of coding:
+
+<code javascript>
+var sub = sup <| {
+   set f(v) {f=v},
+   get f() {return super.f} //explicitly delegate to prototype's getter because we don't want to over-ride it
+};
+</code>
+
+We can just code:
+<code javascript>
+var sub = sup <| {
+   get super set f(v) {f=v},
+};
+</code>
+
+
+See [[Object Initialiser super]] for full proposal
+
+
+
+
+
+
+===== Combined Syntax =====
+The following provides an integrated syntax definition for all of the individual extensions combined with the ES5 Object initialiser syntax:
+
+**//MemberExpression// : ...**\\
+ //MemberExpression// **<|** //ProtoLiteral//
+
+**//ProtoLiteral// : **\\
+//LiteralObject//  \\
+//LiteralValue// \\
+\\
+**//LiteralObject// : **\\
+//RegularExpressionLiteral// \\
+//ArrayLiteral// \\
+//ObjectLiteral// \\
+//FunctionExpression// \\
+\\
+**//LiteralValue// : **\\
+//NumberLiteral// \\
+//StringLiteral// \\
+//BooleanLiteral// \\
+\\
+**//ObjectLiteral// : **\\
+**{**//ObjLitMeta//<sub>opt</sub> **}** \\
+**{**//ObjLitMeta//<sub>opt</sub> **,** //PropertyNameAndValueList// **}**\\
+**{**//ObjLitMeta//<sub>opt</sub> **,**  //PropertyNameAndValueList// **, }**\\
+\\
+**//ObjLitMeta// : **\\
+**.freeze** \\
+**.seal** \\
+\\
+**//PropertyNameAndValueList// :**\\
+//PrefixedPropertyAssignment// \\
+//PropertyNameAndValueList// **,** //PrefixedPropertyAssignment// \\
+\\
+**//PrefixedPropertyAssignment//:** \\
+//PropertyPrefix//<sub>opt</sub> //PropertyAssignment// \\
+\\
+**//PropertyPrefix// :** \\
+**!**\\
+**~**\\
+**~!**\\
+**!~**\\
+\\
+**//PropertyAssignment// :**\\
+//Identifier//\\
+//PropertyName// **:** //AssignmentStatement//  \\
+//PropertyName// **:=** //AssignmentStatement//  \\
+**get**  //PropertyName// **(** **)** **{** //FunctionBody//  **}**  \\
+**set**  //PropertyName// **(** //PropertySetParameterList// **)** **{** //FunctionBody//  **}**  \\
+**set super get** //PropertyName// **(** **)** **{** //FunctionBody//  **}**  \\
+**get super set**  //PropertyName// **(** //PropertySetParameterList// **)** **{** //FunctionBody//  **}**  \\
+//PropertyName// **(** //FormalParameterList//<sub>opt</sub> **)** **{** //FunctionBody//  **}**  \\
+
+\\
+**//PropertyName// :**\\
+//IdentifierName//\\
+//StringLiteral//\\
+//NumericLiteral//\\
+\\
+**//PropertySetParameterList// :**\\
+//Identifier//
+
+**//PrimaryExpression// :** ...\\
+**''super''** \\
+
+===== Code Sample =====
+The followings shows an example of some actual ES5 code and how the same code can be express used some of these extensions:
+
+==== Original Code ====
+<code javascript>
+ var objMirrorProto = Object.create(objBasicMirrorProto, {
+      //Implements objectMirrorInterface
+      prototype: {get: function  () {return this.__createObjMirrorOn(Object.getPrototypeOf(this.__obj))}, configurable: true},
+      extensible: {get: function () {return Object.isExtensible(this.__obj)}, configurable: true},
+      ownProperties: {get: function () {
+         return this.ownPropertyNames.map(function(key) {return this.prop(key)}.bind(this));
+      }, configurable: true},
+      ownPropertyNames: {get: function () {return Object.getOwnPropertyNames(this.__obj)}, configurable: true},
+      keys: {get: function  () {return Object.keys(this.__obj)}, configurable: true},
+      enumerationOrder: {get: function () {
+         var names = this.keys;
+         var seen = Object.create(null);
+         names.forEach(function(n){ seen[n]=n});
+         var obj=this.prototype;
+         while(obj) {
+            obj.keys.forEach(function(n) {if (!seen[n]) names.push(seen[n]=n)});
+            obj=obj.prototype;
+         }
+         return names;
+       }},
+      prop: {value: function(name) {
+         var obj = this.__obj;
+         var desc = Object.getOwnPropertyDescriptor(obj,name);
+         if (desc===undefined) return undefined;
+         return this.__createPropMirrorOn(this,name);
+      }, configurable: true},
+      lookup: {value: function(name) {
+         var p=this.prop(name);
+         if (p) return p;
+         var parent = this.prototype;
+         if (parent) return parent.lookup(name);
+         return undefined;
+      }, configurable: true},
+      has: {value: function(name) {return this.lookup(name) !==undefined}, configurable: true},
+      hasOwn: {value: function(name) {return this.prop(name) !==undefined}, configurable: true},
+      specialClass: {get: function() {return {}.toString.call(this.__obj).split(/\s|]/)[1]}, configurable: true},
+      toString: {value: function() {return "Object Introspection Mirror #"+this.__id}, configurable: true}
+   });
+
+   function mixinFunctionLocalMirror(proto) {
+      return Object.create(proto,{
+         //Implements functionMirrorInterface
+         name: {get: function() {return this.__obj.name}, configurable: true},
+         source: {get: function() {return this.__obj.toString()}, configurable: true},
+         isBuiltin: {get: function() {return this.__obj.toString().match(/\)\s*\{\s*\[native code\]\s*\}/)!==null}, configurable: true},
+         toString: {value: function() {return "Function Introspection Mirror #"+this.__id}, configurable: true}
+       });
+    };
+   
+   var functionMirrorProto = mixinFunctionLocalMirror(objMirrorProto);
+</code>
+
+==== Code Rewritten using Extensions ====
+<code javascript>
+ var objMirrorProto = objBasicMirrorProto <| {
+      //Implements objectMirrorInterface
+      ~get prototype() {return this.__createObjMirrorOn(Object.getPrototypeOf(this.__obj))},
+      ~get extensible () {return Object.isExtensible(this.__obj)},
+      ~get ownProperties () {
+         return this.ownPropertyNames.map(function(key) {return this.prop(key)}.bind(this));
+      },
+      ~get ownPropertyNames () {return Object.getOwnPropertyNames(this.__obj)},
+      ~get keys  () {return Object.keys(this.__obj)},
+      ~get enumerationOrder () {
+         const names = this.keys;
+         const seen = null <| {};
+         names.forEach(function(n){ seen[n]=n});
+         var obj=this.prototype;
+         while(obj) {
+            obj.keys.forEach(function(n) {if (!seen[n]) names.push(seen[n]=n)});
+            obj=obj.prototype;
+         }
+         return names;
+      },
+      prop(name) {
+         const obj = this.__obj;
+         const desc = Object.getOwnPropertyDescriptor(obj,name);
+         if (desc===undefined) return undefined;
+         return this.__createPropMirrorOn(this,name);
+      },
+      lookup(name) {
+         const p=this.prop(name);
+         if (p) return p;
+         const parent = this.prototype;
+         if (parent) return parent.lookup(name);
+         return undefined;
+      },
+      has(name) {return this.lookup(name) !==undefined},
+      hasOwn(name) {return this.prop(name) !==undefined},
+      specialClass() {return {}.toString.call(this.__obj).split(/\s|]/)[1]},
+      toString() {return "Object Introspection Mirror #"+this.__id}
+
+   });
+
+   function mixinFunctionLocalMirror(proto) {
+      return proto <| {
+         //Implements functionMirrorInterface
+         ~get name() {return this.__obj.name},
+         ~get source() {return this.__obj.toString()},
+         ~get isBuiltin() {return this.__obj.toString().match(/\)\s*\{\s*\[native code\]\s*\}/)!==null},
+         toString function() {return "Function Introspection Mirror #"+this.__id}
+       };
+    };
+   
+   var functionMirrorProto = mixinFunctionLocalMirror(objMirrorProto);
+</code>
+
+==== Original Code ====
+<code javascript>
+   var objMutableMirrorProto = Object.create(objMirrorProto, {
+      //implements objectMirrorInterface + objectMutableMirrorInterface
+      prototype: {
+         get: inheritedGetter(objMirrorProto,"prototype"),
+         set: function (p) {
+            if (has__proto__) this.__obj.__proto__=reflectedValue(p);
+            else throw new Error("Changing an object's prototype is not allowed");},
+         configurable: true},
+      extensible:{
+         get: inheritedGetter(objMirrorProto,"extensible"),
+         set: function (b) {
+            if (!this.extensible && b) throw Error("A non-extensible object cannot be made extensible");
+            if (!b) Object.preventExtensions(this.__obj)},
+         configurable: true},
+      seal: {value: function () {Object.seal(this.__obj); return this;}, configurable: true},
+      freeze: {value: function () {Object.freeze(this.__obj); return this;}},
+      addProperty: {value: function(name, descriptor) {
+         if (this.hasOwn(name)) throw Error('Property "'+name+'" already exists');
+         if (!this.extensible ) throw Error("Can't add property to a non-extensible object");
+         var desc = { };
+         for (var p in descriptor) desc[p]=reflectedValue(descriptor[p]);        
+         Object.defineProperty(this.__obj,name,desc);
+         return this.__createPropMirrorOn(this,name);
+      }, configurable: true},
+      toString: {value:function() {return "Object Introspection+Mutation Mirror #"+this.__id}, configurable: true}
+   });
+   
+   function mixinFunctionLocalMutableMirror(proto) {
+      return Obj.create(proto,{
+         //Implements functionMutableMirrorInterface
+         name: {get: inheritedGetter(proto,"name"),
+                set: function() {throw Error("The name of a local function is immutable")},
+                configurable: true},
+         source: {get: inheritedGetter(proto,"source"),
+                  set: function() {throw Error("The source code of a local function is immutable")},
+         configurable: true},
+         toString: {value: function() {return "Function Introspection+Mutation Mirror #"+this.__id}, configurable: true}
+       });
+    };
+</code>
+==== Code Rewritten using Extensions ====
+<code javascript>
+   var objMutableMirrorProto = objMirrorProto <| {
+      //implements objectMirrorInterface + objectMutableMirrorInterface
+      ~get super set prototype (p) {
+         if (has__proto__) this.__obj.__proto__=reflectedValue(p);
+         else throw new Error("Changing an object's prototype is not allowed");},
+      ~get super set extensible (b) {
+         if (!this.extensible && b) throw Error("A non-extensible object cannot be made extensible");
+         if (!b) Object.preventExtensions(this.__obj)},
+      seal () {Object.seal(this.__obj); return this;},
+      freeze () {Object.freeze(this.__obj); return this;},
+      addProperty(name, descriptor) {
+         if (this.hasOwn(name)) throw Error('Property "'+name+'" already exists');
+         if (!this.extensible ) throw Error("Can't add property to a non-extensible object");
+         var desc = { };
+         for (var p in descriptor) desc[p]=reflectedValue(descriptor[p]);        
+         Object.defineProperty(this.__obj,name,desc);
+         return this.__createPropMirrorOn(this,name);
+      },
+      toString() {return "Object Introspection+Mutation Mirror #"+this.__id}
+   };
+   
+   function mixinFunctionLocalMutableMirror(proto) {
+      return proto <| {
+         //Implements functionMutableMirrorInterface
+         ~get super set name(v) {throw Error("The name of a local function is immutable")},
+         ~get super set source(v) {throw Error("The source code of a local function is immutable")},
+         toString() {return "Function Introspection+Mutation Mirror #"+this.__id}
+       };
+    };
+</code>
+==== Original Code ====
+<code javascript>
+    var mutableFactoryDescriptor = {
+          __createObjMirrorOn: {value: createMutationMirrorOn},
+          __createPropMirrorOn: {value: createPropertyMutationMirrorOn}
+          };
+          
+    var mutableLocalMirrorProto = Object.create(objMutableMirrorProto,mutableFactoryDescriptor); 
+    var mutableLocalFunctionMirrorProto = Object.create(
+       mixinFunctionLocalMutableMirror(mixinFunctionLocalMirror(objMutableMirrorProto)),
+       mutableFactoryDescriptor);
+    
+    function createMutationMirrorOn(obj) {
+       return createObjectMirrorOn(obj,mutableLocalMirrorProto,mutableLocalFunctionMirrorProto);
+    };
+
+    function createPropertyMutationMirrorOn(objMirror,name) {
+      var obj = objMirror.__obj;
+      var proto = has(Object.getOwnPropertyDescriptor(obj,name),'value')?dataPropertyMutableMirrorProto:accessorPropertyMutableMirrorProto;
+      return Object.create(proto,{
+         __in: {value: objMirror},
+         __key: {value: name},
+         __obj: {value:obj},
+         __id: {value: serialNumber++}
+         });
+    };
+</code>
+
+==== Code Rewritten using Extensions ====
+<code javascript>
+    var mutableLocalMirrorProto = objMutableMirrorProto <| {
+          ~!__createObjMirrorOn:= createMutationMirrorOn,
+          ~!__createPropMirrorOn:= createPropertyMutationMirrorOn
+    };
+    var mutableLocalFunctionMirrorProto = 
+       mixinFunctionLocalMutableMirror(mixinFunctionLocalMirror(objMutableMirrorProto)) <| {
+          ~!__createObjMirrorOn:= createMutationMirrorOn,
+          ~!__createPropMirrorOn:= createPropertyMutationMirrorOn
+    };
+    
+    function createMutationMirrorOn(obj) {
+       return createObjectMirrorOn(obj,mutableLocalMirrorProto,mutableLocalFunctionMirrorProto);
+    };
+
+    function createPropertyMutationMirrorOn(objMirror,name) {
+      var obj = objMirror.__obj;
+      var proto = has(Object.getOwnPropertyDescriptor(obj,name),'value')?dataPropertyMutableMirrorProto:accessorPropertyMutableMirrorProto;
+      return proto <| {
+         ~!__in:= objMirror},
+         ~!__key:= name,
+         ~!__obj:= obj,
+         ~!__id:= serialNumber++
+      };
+    };
+</code>

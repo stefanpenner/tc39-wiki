@@ -1,0 +1,78 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:reformed_with&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:reformed_with&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:reformed_with&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="reformed_with_statement"></a><h1>Reformed with statement</h1>
+<div class="level1">
+
+<p>
+(Also see the <a href="doku.php%3Fid=discussion:reformed_with.html" class="wikilink1" title="discussion:reformed_with" onclick="return svchk()" onkeypress="return svchk()">discussion page</a> for this proposal)
+</p>
+
+<p>
+This is an attempt to restore lexical scope to the <code>with</code> statement, using <a href="doku.php%3Fid=proposals:is_as_to.html" class="wikilink1" title="proposals:is_as_to" onclick="return svchk()" onkeypress="return svchk()">type annotation syntax</a>, with help from <a href="doku.php%3Fid=clarification:type_system.html" class="wikilink1" title="clarification:type_system" onclick="return svchk()" onkeypress="return svchk()">structural types</a> and the <a href="doku.php%3Fid=proposals:syntax_for_type_expressions.html" class="wikilink1" title="proposals:syntax_for_type_expressions" onclick="return svchk()" onkeypress="return svchk()">syntax for type expressions</a>.  In addition to backward-compatible <code>with</code>, ES4 shall support the following syntax:
+</p>
+<pre class="code">
+WithStatement ::= &quot;with&quot; &quot;(&quot; Expression &quot;:&quot; TypeExpression &quot;)&quot; Statement
+</pre>
+
+<p>
+The <code>TypeExpression</code> is evaluated at compile time to an <code>Object!</code> subtype, structural or nominal.  Call this type <code>T</code>.
+</p>
+
+<p>
+The lexical scope chain for <code>Statement</code> is extended to include a block containing the names of direct public members of <code>T</code>.  Let <code>O</code> denote the object resulting from evaluating <code>Expression</code> to a value that satisfies <code>T</code>.  For each direct public member named <code>N</code> in <code>T</code>, translate all lexical references <code>N</code> in <code>Statement</code> to <code>O.N</code>.
+</p>
+
+<p>
+At execution time, <code>Expression</code> is evaluated (it may be a comma expression, for backward compatibility) to value <code>O</code>.  If <code>O</code> is <code>null</code> or <code>undefined</code>, or else if <code>O</code> does not contain all of the members of <code>T</code> with exactly the same member types, then a <code>TypeError</code> exception is thrown.
+</p>
+
+<p>
+Then <code>Statement</code> is evaluated.
+</p>
+
+<p>
+If <code>Statement</code> contains an <code>eval</code> invocation or a <code>with</code> statement, the lexical scope chain must reflect at run-time so that the evaluated program or the nested <code>with</code> body sees the same set of unshadowed names for direct public members of <code>T</code> that were visible to the compiler.
+</p>
+
+<p>
+For example, to use fields <code>f1</code> and <code>f2</code> of the given types from an object denoted by <code>obj</code>:
+</p>
+<pre class="code javascript"><span class="kw1">with</span> <span class="br0">&#40;</span>obj : <span class="br0">&#123;</span>f1: T1, f2: T2<span class="br0">&#125;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+     <span class="co1">// f1 and f2 are unambiguous here ...</span>
+<span class="br0">&#125;</span></pre>
+<p>
+It is required that <code>obj</code> have fields of the given names and exact types.  The actual field <code>obj.f1</code> must not be of a subtype of <code>T1</code>, e.g., because assignments to <code>f1</code> in the <code>with</code> body could break the narrower type constraint on <code>obj.f1</code>. And <code>obj.f1</code> must not be of a supertype of <code>T1</code>, because it could hold a value that is not of that subtype.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/05/09 16:40</em> 
+</p>
+
+</div>
+
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/e/ecef814cc26aa26807b104d6ccad1c9c.xhtml used -->
+</body>
+</html>

@@ -1,0 +1,36 @@
+====== ES3.1-WG Phone Conference, 11 Nov 2008 ======
+===== Dial-in =====
+Time: 8:00 - 9:00 (PST):
+
+Tel: 866 500 6738 (US); 203 480 8000 (int’l)
+
+Passcode: 885535
+
+===== Attendees =====
+  * Doug Crockford (Yahoo!)
+  * Mark Miller (Google)
+  * Allen Wirfs-Brock (Microsoft)
+  * Pratap Lakshman (Microsoft)
+
+===== Agenda =====
+  * Not circulated ahead of time.
+
+===== Minutes =====
+What should we do regarding Statement and SubStatement? - what is in Statement that is not there in SubStatement? VariableStatement - FunctionDeclaration is in neither.
+
+In ES3 we have a single grammar production Statement that specifies what can occur in nested statement contexts such as in "then" and "else" clauses of an if statement - ES3.1 drafts have split that into separate Statement and SubStatement productions - SubStatement excludes VariableStatement and FunctionDeclaration (and ConstantStatement, while we had them) and is used in most nested contexts - in the revised grammar, nested Statement productions only occur as the body of blocks and as function bodies - this is to support blocks introducing nested lexical declaration environments - should nested declarations without the brace brackets (nested naked blocks) be considered to be an implicit lexical block? - they should be useless or illegal - prefer it to be illegal - and the introduction of SubStatement enables it to be flagged as illegal - from a hygiene perspective too we don't want VariableStatement in nested blocks.
+
+But, such exclusion of VariableStatement from SubStatement is a breaking change - perhaps we should just leave this one alone for ES3.1 - migration tax argument from Brendan - can we introduce the restriction only in strict mode? 
+
+What about VariableStatement appearing as a Statement of a LabelledStatement? - that seems a secondary issue -  in ES3 any statement can have a label including function declarations - indeed, and ES3 programs have been known to use labels as annotations! 
+
+How about the following:
+
+  * Remove any distinction between Statement and SubStatement
+  * in non strict mode - VariableStatement can appear anywhere
+  * in strict mode - VariableStatement is prohibited in nested blocks and nested naked blocks
+  * no restriction on VariableStatement occurring as a Statement of a LabelledStatement
+
+Ok, lets float this on the discuss lists.
+
+Meeting adjourned.

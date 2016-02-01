@@ -1,0 +1,136 @@
+====== Decimal arithmetic ======
+
+(See also the [[discussion:decimal|discussion page]] for this proposal)
+
+(See also the [[numbers]] proposal, which ties together the various number representations and their interactions.)
+
+  * A new non-normalizing ''decimal'' type, corresponding to the 128-bit decimal type described in the forthcoming IEEE754r document, and providing the arithmetic operations and rules set forth in that document.
+  * The potential to promote ''double'' (64-bit binary fp) and integral operands to ''decimal'' in some contexts; see the [[numbers]] proposal for precise contextual rules.
+    * A note that a very small amount of precision which may be present in a double-precision binary fp number is lost during a double -> decimal promotion, but that:
+      * No precision is lost in an integral -> decimal promotion.
+      * Reading a numeric lexeme as a decimal preserves //more// precision than reading it as a double.
+  * A new decimal literal lexeme ending with ''m'', which produces a decimal constant in every context.
+  * Operator-''to'' functions for converting decimal to double, double to int, and decimal to int.
+  * A ''decimal'' pragma item, for setting the default interpretation of floating point literals //and// the standard arithmetic operators to "decimal semantics". See the [[numbers]] proposal for the meaning of the pragma.
+  * A ''decimal_rounding MODE'' pragma item for controlling [[http://www2.hursley.ibm.com/decimal/dncont.html|rounding mode]] in any decimal arithmetic which //may// occur in scope; orthogonal to the ''use decimal'' pragma. MODE may be one of:
+    * CEILING
+    * FLOOR
+    * UP
+    * DOWN
+    * HALF_UP
+    * HALF_DOWN
+    * HALF_EVEN
+  * A ''decimal_precision N'' pragma item for controlling the number of decimal digits in the coefficient fields of decimal arithmetic operands and results. N may be any positive integer between 1 and 34 inclusive. Coefficient results will be rounded to N decimal digits; decimal exponents range over [-6143,6144]. 
+  * Some suggestive language shall be included about possible consequences of low precision, such as the following suggested by Mike Cowlishaw: 
+    * **Note** that small values of N (for example, values less than 6) are generally only useful for very specialized applications. The setting of N affects all decimal computations, so even the operation of loops may be affected by rounding if small values are used.
+
+===== Examples =====
+
+==== Basic declarations ====
+<code>
+var a = 1m;                  // a: decimal
+var b = 1.0m                 // b: decimal
+var c : decimal = 1;         // widens int -> decimal
+var d : decimal = 1.0;       // widens double -> decimal
+</code>
+
+==== Interactions ====
+<code>
+var a = 1.0;                 // a: double
+var b = 1;                   // b: int
+var c = 1m;                  // c: decimal
+var d = a + b;               // widens operands to double, then adds
+var e = a + c;               // widens operands to decimal, then adds
+var f: decimal = a + b;      // widens operands to double, then adds, 
+                             // then widens to decimal.
+</code>
+
+==== Pragmas ====
+<code>
+var a = 1.0;                 // a: double
+var b = 2;                   // b: int
+{
+  use decimal;
+  var c = 1.0;               // c: decimal
+  var d = 1;                 // d: decimal
+  var e = a / b;             // e: decimal, a and b widened to decimal, then divided. 
+}
+var f = 1.0;                 // f: double
+var g = 1;                   // g: int
+</code>
+
+==== Rounding pragma ====
+<code>
+{
+  use decimal_rounding CEILING;        // round towards +inf
+  var u =  2/3;                        // u:decimal =  0.666...6667
+  var v =  5/9;                        // v:decimal =  0.555...5556
+  var w =  4/9;                        // w:decimal =  0.444...4445
+  var x = -4/9;                        // x:decimal = -0.444...4444
+  var y = -5/9;                        // y:decimal = -0.555...5555
+  var z = -2/3;                        // z:decimal = -0.666...6666
+}
+{
+  use decimal_rounding DOWN;           // round towards 0
+  var u =  2/3;                        // u:decimal =  0.666...6666
+  var v =  5/9;                        // v:decimal =  0.555...5555
+  var w =  4/9;                        // w:decimal =  0.444...4444
+  var x = -4/9;                        // x:decimal = -0.444...4444
+  var y = -5/9;                        // y:decimal = -0.555...5555
+  var z = -2/3;                        // z:decimal = -0.666...6666
+}
+{
+  use decimal_rounding FLOOR;          // round towards -inf
+  var u =  2/3;                        // u:decimal =  0.666...6666
+  var v =  5/9;                        // v:decimal =  0.555...5555
+  var w =  4/9;                        // w:decimal =  0.444...4444
+  var x = -4/9;                        // x:decimal = -0.444...4445
+  var y = -5/9;                        // y:decimal = -0.555...5556
+  var z = -2/3;                        // z:decimal = -0.666...6667
+}
+{
+  use decimal_rounding HALF_DOWN;      // round to nearest, or down if tie
+  var u =  2/3;                        // u:decimal =  0.666...6667
+  var v =  5/9;                        // v:decimal =  0.555...5556
+  var w =  4/9;                        // w:decimal =  0.444...4444
+  var x = -4/9;                        // x:decimal = -0.444...4444
+  var y = -5/9;                        // y:decimal = -0.555...5556
+  var z = -2/3;                        // z:decimal = -0.666...6667
+}
+{
+  use decimal_rounding HALF_EVEN;      // round to nearest, or to even if tie
+  var u =  2/3;                        // u:decimal =  0.666...6667
+  var v =  5/9;                        // v:decimal =  0.555...5556
+  var w =  4/9;                        // w:decimal =  0.444...4444
+  var x = -4/9;                        // x:decimal = -0.444...4444
+  var y = -5/9;                        // y:decimal = -0.555...5556
+  var z = -2/3;                        // z:decimal = -0.666...6667
+
+  // These two do not demonstrate the difference between HALF_UP and 
+  // HALF_EVEN; as both round up (the exact answer is not ...50000...)
+  var p =  5/11;                       // p:decimal =  0.454...5455
+  var q = -5/11;                       // q:decimal = -0.454...5455
+}
+{
+  use decimal_rounding HALF_UP;        // round to nearest, or up if tie
+  var u =  2/3;                        // u:decimal =  0.666...6667
+  var v =  5/9;                        // v:decimal =  0.555...5556
+  var w =  4/9;                        // w:decimal =  0.444...4444
+  var x = -4/9;                        // x:decimal = -0.444...4444
+  var y = -5/9;                        // y:decimal = -0.555...5556
+  var z = -2/3;                        // z:decimal = -0.666...6667
+
+  // These two demonstrate the difference between HALF_UP and HALF_EVEN
+  var p =  5/11;                       // p:decimal =  0.454...5455
+  var q = -5/11;                       // q:decimal = -0.454...5455
+}
+{
+  use decimal_rounding UP;             // round away from 0
+  var u =  2/3;                        // u:decimal =  0.666...6667
+  var v =  5/9;                        // v:decimal =  0.555...5556
+  var w =  4/9;                        // w:decimal =  0.444...4445
+  var x = -4/9;                        // x:decimal = -0.444...4445
+  var y = -5/9;                        // y:decimal = -0.555...5556
+  var z = -2/3;                        // z:decimal = -0.666...6667
+}
+</code>

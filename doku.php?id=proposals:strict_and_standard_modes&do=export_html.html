@@ -1,0 +1,373 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:strict_and_standard_modes&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:strict_and_standard_modes&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:strict_and_standard_modes&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:strict_and_standard_modes&amp;do=export_html.html#motivation" class="toc">Motivation</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:strict_and_standard_modes&amp;do=export_html.html#strict_and_standard_compilation_modes" class="toc">Strict and Standard compilation modes</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:strict_and_standard_modes&amp;do=export_html.html#clarification_of_phases" class="toc">Clarification of phases</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:strict_and_standard_modes&amp;do=export_html.html#ease_of_dynamic_compilation" class="toc">Ease of dynamic compilation</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:strict_and_standard_modes&amp;do=export_html.html#phases_of_execution" class="toc">Phases of execution</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:strict_and_standard_modes&amp;do=export_html.html#parsing" class="toc">Parsing</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:strict_and_standard_modes&amp;do=export_html.html#definition_phase" class="toc">Definition phase</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:strict_and_standard_modes&amp;do=export_html.html#computing_known_values" class="toc">Computing known values</a></span><ul class="toc">
+<li class="level4"><span class="li"><a href="doku.php%3Fid=proposals:strict_and_standard_modes&amp;do=export_html.html#the_meaning_of_dominate" class="toc">The meaning of &quot;dominate&quot;</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=proposals:strict_and_standard_modes&amp;do=export_html.html#syntactic_context_of_class_interface_type_and_namespace_definitions" class="toc">Syntactic context of class, interface, type and namespace definitions</a></span></li>
+</ul>
+</li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:strict_and_standard_modes&amp;do=export_html.html#issueerasing_const_var_values_before_evaluation" class="toc">Issue: erasing const var values before evaluation</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:strict_and_standard_modes&amp;do=export_html.html#verification_phase_strict_only" class="toc">Verification phase [strict only]</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:strict_and_standard_modes&amp;do=export_html.html#evaluation" class="toc">Evaluation</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:strict_and_standard_modes&amp;do=export_html.html#pragmas_for_switching_modes" class="toc">Pragmas for switching modes</a></span></li>
+</ul>
+</div>
+</div>
+
+<p>
+(Also see the <a href="doku.php%3Fid=discussion:strict_and_standard_modes.html" class="wikilink1" title="discussion:strict_and_standard_modes" onclick="return svchk()" onkeypress="return svchk()">discussion page</a> for this proposal)
+</p>
+
+<a name="motivation"></a><h1>Motivation</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [92-117] -->
+<a name="strict_and_standard_compilation_modes"></a><h2>Strict and Standard compilation modes</h2>
+<div class="level2">
+
+<p>
+ Following ActionScript 3&rsquo;s lead, we propose two &ldquo;modes&rdquo; for ECMAScript, one which is necessarily statically typed and one which is not. The two modes&rsquo; behaviors should be consistent, but the static mode should reject programs statically that it conservatively predicts may exhibit type-related errors. The standard mode should strive for compatibility with edition 3 and provide maximum flexibility without compromising runtime type safety.
+</p>
+
+<p>
+We would like to allow all ECMAScript programmers to express invariants and detect errors as early as possible, regardless of which compilation mode they choose. In the statically typed (strict) mode, some of these errors should be detectable before runtime, but in the dynamically typed (standard) mode, the errors should at least generate runtime errors as soon as possible. 
+</p>
+
+<p>
+In order to specify the two modes&rsquo; runtime behavior consistently, we specify the dynamic semantics of ECMAScript in a single, unified, dynamically typed language. In other words, the choice of strict or standard mode does not affect the meaning of a legal program; it only affects the definition of &ldquo;legality&rdquo;. Some programs that are legal in standard mode &ndash; and might even make perfect sense &ndash; cannot be proven safe in strict mode, so are rejected. In addition to static type checking, the strict mode also statically detects and rejects certain programming errors common in ECMAScript 3 programs (e.g. calling functions with the wrong number of arguments and assigning to nonexistent variables.)
+</p>
+
+<p>
+Optimizing compilers may prove some amount of the required dynamic checks redundant, and elide them. Some such optimizations may become easier or more pervasive on programs that are legal in strict mode. This specification does not describe any such optimizations, though it introduces opportunities for them. Strict mode is not intended as a way to alter or improve performance. On a purely dynamic implementation, strict mode may even run <em>slower</em> due to the extra static analysis phase. Strict mode is only meant as a way for programmers to indicate their desire for more extensive and conservative error analysis. All programs, regardless of mode, must execute as though they were performing all dynamic checks. 
+</p>
+
+</div>
+<!-- SECTION [118-2410] -->
+<a name="clarification_of_phases"></a><h2>Clarification of phases</h2>
+<div class="level2">
+
+<p>
+ Furthermore, we propose we clarify the phases of execution, i.e., what meta-operations (such as type checking) occur when and which expressions are evaluated when. We expect the formalization will help out here.
+</p>
+
+</div>
+<!-- SECTION [2411-2660] -->
+<a name="ease_of_dynamic_compilation"></a><h2>Ease of dynamic compilation</h2>
+<div class="level2">
+
+<p>
+ As one important application area for the standard mode is small systems, we would like the mode to address needs of those systems.  In particular: 
+</p>
+<ul>
+<li class="level1"><div class="li"> The standard mode should be compilable in a single forward pass without building syntax trees for statements (though not necessarily without using a little cleverness)</div>
+</li>
+<li class="level1"><div class="li"> In the standard mode it should ideally be possible to ignore <strong>all</strong> type annotations and apply type checking only in operators, just as in 3rd Edition.  Such a constraint requires that assignments be rewritten with <code>to</code> conversions inserted on the right side of the assignment when it cannot be proven that such conversion operations would have no effect.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [2661-3387] -->
+<a name="phases_of_execution"></a><h1>Phases of execution</h1>
+<div class="level1">
+<ul>
+<li class="level1"><div class="li"> Parsing – translate source text into syntax trees</div>
+</li>
+<li class="level1"><div class="li"> Definition – compute necessarily constant values including class, interface, type, namespace initialisers and use namespace arguments</div>
+</li>
+<li class="level1"><div class="li"> Verification [optional] – check the program for potential semantic errors</div>
+</li>
+<li class="level1"><div class="li"> Evaluation – compute side effects and values</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [3388-3754] -->
+<a name="parsing"></a><h2>Parsing</h2>
+<div class="level2">
+
+<p>
+ Verify syntax of source text and hoist definitions, but not their initialisers (except functions), to the beginning of their scope defining blocks. Insert a <code>to</code> operator to convert the value of an assignment to the type of the destination slot. Since the destination slot is not always known at compile time, this transformation sometimes requires that the type be expressed in terms of a reference to the slot type, known here as a <strong>type reference</strong>.
+</p>
+
+<p>
+Thus,
+</p>
+<pre class="code">
+x = y
+</pre>
+
+<p>
+Can be rewritten as,
+</p>
+<pre class="code">
+x = y to TYPEREF(x)
+</pre>
+
+<p>
+where TYPEREF(x) is a meta notation that means &ldquo;the value of the type annotation of slot x&rdquo;
+</p>
+
+<p>
+ Check that: 
+</p>
+<ul>
+<li class="level1"><div class="li"> the program is correct according to the context-free grammar (see <a href="doku.php%3Fid=proposals:normative_grammar.html" class="wikilink1" title="proposals:normative_grammar" onclick="return svchk()" onkeypress="return svchk()">normative grammar</a>)</div>
+</li>
+<li class="level1"><div class="li"> no use of the &lsquo;super&rsquo; statement outside a constructor</div>
+</li>
+<li class="level1"><div class="li"> no use of the &lsquo;super&rsquo; expression outside an instance method</div>
+</li>
+<li class="level1"><div class="li"> no use of the &lsquo;this&rsquo; expression outside an instance method, function closure, or global code</div>
+</li>
+<li class="level1"><div class="li"> no duplicate labels in a statement nest</div>
+</li>
+<li class="level1"><div class="li"> an imported package has been parsed</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [3755-4834] -->
+<a name="definition_phase"></a><h2>Definition phase</h2>
+<div class="level2">
+
+<p>
+ Compute the values of constant definitions: namespace, class, interface, type and use namespace and import pragma arguments. These values might depend on const variables whose values are known during this phase (see &ldquo;Computing known values&rdquo; below). Evaluating constant definitions before their uses are computed in later phases allows for forward references during those later phases.
+</p>
+
+<p>
+A reference to a type definition is evaluated during the definition phase and the resulting type value replaces that reference.
+</p>
+
+<p>
+Check that: 
+</p>
+<ul>
+<li class="level1"><div class="li"> expressions used to initialise constant definitions have known values</div>
+</li>
+<li class="level1"><div class="li"> duplicate incompatible definitions (including in interfaces and class overrides) do not exist</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [4835-5569] -->
+<a name="computing_known_values"></a><h3>Computing known values</h3>
+<div class="level3">
+
+<p>
+ During the defintion phase known values are computed using a subset of the normal runtime evaluation steps. Only the intiailisers of constant definitions are evaluated, and only references to constant definitions that dominate a use can contribute a known value. Known values are computed from other known values using the expression semantics of the Evaluation phase.
+</p>
+
+</div>
+<!-- SECTION [5570-5973] -->
+<a name="the_meaning_of_dominate"></a><h4>The meaning of &quot;dominate&quot;</h4>
+<div class="level4">
+
+<p>
+ <em>[from the Netscape proposal]</em>
+</p>
+
+<p>
+A statement A dominates statement B if any of the following conditions are met: 
+</p>
+<ul>
+<li class="level1"><div class="li"> A and B are the same statement.</div>
+</li>
+<li class="level2"><div class="li"> A and B are in the same block, with A before B and no case or default labels between them.</div>
+</li>
+<li class="level2"><div class="li"> Statement B is enclosed inside statement C and A dominates C.</div>
+</li>
+<li class="level2"><div class="li"> Statement A is enclosed inside a block C and C dominates B.</div>
+</li>
+</ul>
+
+<p>
+ Note that the above definition is conservative. If statement A dominates statement B, then it is guaranteed that, if B is executed then A must have been executed earlier; however, there may be some other statements A&rsquo; that also are guaranteed to have been executed before B but which do not dominate B by the above definition.
+</p>
+
+</div>
+<!-- SECTION [5974-6721] -->
+<a name="syntactic_context_of_class_interface_type_and_namespace_definitions"></a><h4>Syntactic context of class, interface, type and namespace definitions</h4>
+<div class="level4">
+
+<p>
+ The following constraints simplify the computation of known values involving classes, interfaces, types and namespaces 
+</p>
+<ul>
+<li class="level1"><div class="li"> Class, interface and type definitions must dominate the end of the program. This means they shall appear at the top level in package or global code</div>
+</li>
+<li class="level1"><div class="li"> Namespace definitions must dominate the end of the program or the end of a class. A namespace definition inside of a class introduces a slot into the class object by default as though it was declared with the <code>static</code> attribute</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [6722-7309] -->
+<a name="issueerasing_const_var_values_before_evaluation"></a><h3>Issue: erasing const var values before evaluation</h3>
+<div class="level3">
+
+<p>
+ The value of <code>const</code> slots need to be erased and recomputed at evaluation time to avoid the appearance that their values are computed before they should be. One could argue that <code>const</code> values may be computed ahead of time. The problem is that it is difficult to know when they are an when they aren&rsquo;t, so a forward reference may or may not have the value undefined.
+</p>
+
+<p>
+This complication tempts me to propose that the values of const vars are not computed during the definition phase and therefore cannot be used in computing the values of constant definitions.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6a%3B%26%23x6f%3B%26%23x64%3B%26%23x79%3B%26%23x65%3B%26%23x72%3B%26%23x40%3B%26%23x61%3B%26%23x64%3B%26%23x6f%3B%26%23x62%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6a;&#x6f;&#x64;&#x79;&#x65;&#x72;&#x40;&#x61;&#x64;&#x6f;&#x62;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Jeff Dyer</a> 2006/06/07 15:28</em>
+</p>
+
+</div>
+<!-- SECTION [7310-7993] -->
+<a name="verification_phase_strict_only"></a><h2>Verification phase [strict only]</h2>
+<div class="level2">
+
+<p>
+ This phase is only implemented in the strict mode. Any errors that are reported in strict mode must be reported before any part of the program is evaluated. Implementations that choose not to support strict mode are not required to report strict errors even in the presence of the <code>use strict</code> pragma.
+</p>
+
+<p>
+Steps: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Evaluate type annotations</div>
+</li>
+<li class="level1"><div class="li"> Evaluate default parameter values</div>
+</li>
+<li class="level1"><div class="li"> Replace type references (see above) with type values when possible</div>
+</li>
+<li class="level1"><div class="li"> Compute the static type of expressions</div>
+</li>
+<li class="level1"><div class="li"> (optionally) Erase type conversions and casts that are proven to have no effect</div>
+</li>
+<li class="level1"><div class="li"> (optionally) Erase type annotations that can be proven to be un-referenced by a type reference</div>
+</li>
+<li class="level1"><div class="li"> Check the program for possible semantic errors that are either type errors or common programming errors.</div>
+<ul>
+<li class="level2"><div class="li"> Type errors – a static type error is reported if it is possible for an expression to produce a value that is incompatible with its use. Type compatibility is determined by:</div>
+<ul>
+<li class="level3"><div class="li">	input type of the ‘to’ operator</div>
+</li>
+<li class="level3"><div class="li">	nominal type relationships</div>
+</li>
+<li class="level3"><div class="li">	structural type compatibility</div>
+</li>
+</ul>
+</li>
+<li class="level2"><div class="li"> Strict errors</div>
+<ul>
+<li class="level3"><div class="li">	function call signature matching</div>
+</li>
+<li class="level3"><div class="li">	unresolved lexical references, except in the presence of unreformed ‘with’ and ‘eval’</div>
+</li>
+<li class="level3"><div class="li">	unresolved object references through sealed (not dynamic) fixed objects</div>
+</li>
+<li class="level3"><div class="li">	dynamic addition of properties on sealed objects</div>
+</li>
+<li class="level3"><div class="li">	writing to const variables</div>
+</li>
+<li class="level3"><div class="li">	deleting fixed properties</div>
+</li>
+<li class="level3"><div class="li">	comparison expressions with incompatible types</div>
+</li>
+<li class="level3"><div class="li">	unfound packages</div>
+</li>
+<li class="level3"><div class="li"> assignment to:</div>
+<ul>
+<li class="level4"><div class="li"> String from type other than String other than *</div>
+</li>
+<li class="level4"><div class="li"> Number, int, uint and decimal from type other than Number and *</div>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ Three kinds of strict type errors that are supressed: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Assignment from an expression of type * </div>
+</li>
+<li class="level1"><div class="li"> Assignment to a slot of type Boolean</div>
+</li>
+<li class="level1"><div class="li"> Assignment from an expression of type Number to a slot of type Number</div>
+</li>
+</ul>
+
+<p>
+ Note: unresolved type references have the static type *. Many, but not all, of these cases will result in strict unresolved reference errors.
+</p>
+
+</div>
+<!-- SECTION [7994-10088] -->
+<a name="evaluation"></a><h2>Evaluation</h2>
+<div class="level2">
+
+<p>
+ Evaluate the program in the same way whether it was compiled in strict or standard mode. If compiled in standard mode it is possible for a program to have type annotations and default parameter values that are unknown or not constant. It is a runtime type error the first time an annotation with an unknown or not constant value is used by a type reference. It is a runtime error the first time a function with an unknown or not-constant default parameter value is called.
+</p>
+
+</div>
+<!-- SECTION [10089-10586] -->
+<a name="pragmas_for_switching_modes"></a><h1>Pragmas for switching modes</h1>
+<div class="level1">
+
+<p>
+ The pragmas
+</p>
+<pre class="code javascript">   <span class="kw2">use</span> strict</pre>
+<p>
+and
+</p>
+<pre class="code javascript">   <span class="kw2">use</span> standard</pre>
+<p>
+declare, respectively, that the component should be compiled in strict mode or standard mode, regardless of compiler settings.  If no declaration is used then compiler settings apply. Implementations that don&rsquo;t support the strict mode may ignore the <code>use strict</code> pragma.
+</p>
+
+</div>
+<!-- SECTION [10587-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/5/5d116200ee51b9adf3e9cb5f8fceee2d.xhtml used -->
+</body>
+</html>

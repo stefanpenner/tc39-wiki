@@ -1,0 +1,196 @@
+====== THIS PAGE IS NO LONGER CURRENT ======
+
+{{harmony:warning.png?100}} **WARNING:** This page is **out of date**. Please see the ES6 [[specification drafts]] for up-to-date information. This page is here only as an archive.
+
+
+
+===== Modules =====
+
+This proposal describes a module system for ECMAScript. It describes the semantics of the core module system. See the [[module loaders]] spec for the companion proposal to provide a dynamic, reflective API for loading modules.
+
+See the [[modules examples]] page for highlights of the module system.
+
+See the [[modules rationale]] page for a description of the design rationale.
+
+See the [[modules semantics]] page for a more detailed description of the semantics.
+
+See [[https://gist.github.com/wycats/51c96e3adcdb3a68cbc3|Yehuda Katz's essay]] for a discussion of common use cases and interoperability with existing module systems.
+
+===== Goals =====
+
+  * Obviate need for globals
+  * Orthogonality from existing features
+  * Smooth refactoring from global code to modular code
+  * Smooth interoperability with existing JS module systems like AMD, CommonJS, and Node.js
+  * Fast compilation
+  * Simplicity and usability
+  * Standardized protocol for sharing libraries
+  * Compatibility with browser and non-browser environments
+  * Easy asynchronous external loading
+
+===== Terminology =====
+
+  * //Module//: A unit of source contained within a module declaration or within an externally-loaded file.
+  * //Module instance//: An evaluated module, linked to other modules and containing lexically encapsulated data/state as well as exported bindings.
+  * //Module instance object//: A first-class object that reflects the exported bindings of a module instance.
+  * //Module binding//: A binding in a scope chain record that maps to a statically loaded module.
+
+
+
+
+===== Syntax =====
+
+The basic syntax of ES programs is extended as follows (the ''Script'' and ''ScriptElement'' non-terminals replace the ES5 ''Program'' and ''ProgramElement''):
+
+<code>
+Script         ::= ScriptElement*                                                 // script
+
+ScriptElement  ::= Statement                                                      // statement
+                |  VariableDeclaration                                            // var/let/const declaration
+                |  FunctionDeclaration                                            // function declaration
+                |  ClassDeclaration                                               // class declaration
+                |  ImportDeclaration                                              // import declaration
+                |  ModuleDeclaration                                              // module declaration
+
+ModuleDeclaration ::= "module" [NoNewline] StringLiteral "{" ModuleBody "}"       // module declaration
+                   |  "module" Identifier "from" StringLiteral ";"                // local module binding
+
+ModuleBody    ::= ModuleElement*                                                  // module body
+
+ModuleElement ::= ScriptElement                                                   // statements, declarations
+               |  ExportDeclaration                                               // export declarations
+
+ExportDeclaration  ::=  "export" ExportSpecifierSet ("from" ModuleSpecifier)? ";" // named exports
+                    |   "export" "default" AssignmentExpression ";"               // default export
+                    |   "export" VariableDeclaration                              // exported var/let/const declaration
+                    |   "export" FunctionDeclaration                              // exported function declaration
+                    |   "export" ClassDeclaration                                 // exported class declaration
+
+ExportSpecifierSet ::=  "{" (ExportSpecifier ("," ExportSpecifier)* ","?)? "}"    // named exports
+                    |   "*"                                                       // batch export
+
+ExportSpecifier    ::=  Identifier ("as" IdentifierName)?                         // exported name
+
+ModuleSpecifier ::= StringLiteral                                                 // module name reference
+
+ImportDeclaration ::= "import" ImportSpecifierSet "from" ModuleSpecifier ";"      // explicit import declaration
+                   |  "import" ModuleSpecifier ";"                                // depend on the named module but don't import any bindings
+
+ImportSpecifierSet ::=   Identifier                                               // default import
+                    |    "{" (ImportSpecifier ("," ImportSpecifier)* ","?)? "}"   // named imports
+
+ImportSpecifier    ::=   Identifier ("as" Identifier)?                            // named import
+                    |    ReservedWord "as" Identifier                             // keyword-named import
+</code>
+
+The two important entry points for the grammar are ''Script'' and ''ModuleBody''. A top-level program, such as a ''script'' tag in HTML, will contain a ''Script''. An external module file, such as one imported with the ''import'' declaration, will contain a ''ModuleBody''. That is, when writing a module in an individual file, the file contents are treated as if they were within an implicit ''module'' declaration.
+
+
+===== Quick examples =====
+
+<code javascript>
+import $ from "jquery";                    // import the default export of a module
+module crypto from "crypto";               // binding an external module to a variable
+import { encrypt, decrypt } from "crypto"; // binding a module's exports to variables
+import { encrypt as enc } from "crypto";   // binding and renaming one of a module's exports
+export * from "crypto";                    // re-exporting another module's exports
+export { foo, bar } from "crypto";         // re-exporting specified exports from another module
+</code>
+
+
+===== Module declarations =====
+
+Module declarations can only appear at the top level of a program or module body. They are compiled and linked during the compilation of their containing program or module.
+
+===== Inline module declarations =====
+
+Modules can be declared inline:
+<code javascript>
+module "foo" {
+    export let x = 42;
+}
+</code>
+
+
+===== External module load =====
+
+Modules can be loaded from external resources:
+
+<code javascript>
+import { y } from "foo";
+</code>
+
+The external module is fetched and compiled during the compilation of the loading module. (Depending on the current module loader, this may trigger user-defined compilation hooks. See [[module loaders]] for more information.)
+
+External modules do not name themselves; rather, their files simply contain the contents of the module. This prevents wasteful indentation and allows clients to determine the most appropriate local name for the third-party libraries they load.
+
+An external module is compiled and executed in a fresh scope chain that extends only the global scope. This means that external modules have access to standard bindings, but their own bindings do not modify the global scope (i.e., their top-level variables are local to the module.)
+
+Depending on the [[module loaders|module loader]], multiple module URL references may resolve to a shared, single module instance. In this case, the first reference that is evaluated executes the module body, and subsequent references simply produce the same instance without re-executing the body.
+
+A module can declare a dependency on another module without actually forcing the dependent module to be executed. In particular, this ensures that at runtime a synchronous to ''System.get'' will succeed.
+
+<code javascript>
+import "foo";                // fetches "foo" at compile time
+
+let foo = System.get("foo"); // succeeds at runtime
+</code>
+
+
+===== Import declarations =====
+
+Import declarations bind another module's exports as local variables. Imported variables may be locally renamed to avoid conflicts.
+
+If a module defines a default export:
+
+<code javascript>
+module "foo" {
+    export default function() { console.log("hello!") }
+}
+</code>
+
+then you can import that default export by omitting the curly braces:
+
+<code javascript>
+import foo from "foo";
+foo(); // hello!
+</code>
+
+The static variable resolution and linking pass checks for conflicts in imported variable names. If there is a conflict between two imported names, or an imported name and another local binding, then it is a compile-time error.
+
+
+===== Export declarations =====
+
+Export declarations declare that a top-level declaration in a module is visible externally to the module. The set of exports of a module is fixed at the module's compile-time. Other modules can read (get) the module exports but cannot modify (set) them. Exports can be renamed so that their external name is different from their local name.
+
+
+
+===== Compile-time resolution and linking =====
+
+Compilation resolves and validates all variable definitions and references. Linking also happens at compile-time; linking resolves and validates all module imports and exports.
+
+===== Run-time execution =====
+
+At run-time, the program is evaluated top-down. Before the program body begins executing, all child modules are instantiated, which is a recursive operation that transitively instantiates all descendent modules. Module instantiation initializes all module top-level ''function'' bindings, and initializes all variable bindings to the undefined value. Each externally-required module is executed the first time a module binding requires it.
+
+===== First-class module references =====
+
+Modules bound to variables with the ''module'' keyword are bound in the same scope chain as other bindings. At run-time, a reference to a module returns a module instance object, which is a run-time reflection of the module instance.
+
+===== Module instance objects =====
+
+A module instance object is a prototype-less object that provides read-only access to the exports of the module. All of the exports are provided as getters without setters.
+
+
+===== Reflective evaluation =====
+
+Reflective evaluation, via ''eval'' or the [[module loaders|module loading API]] starts a new compilation and linking phase for the dynamically evaluated code. As in ES5, the direct ''eval'' operator inherits its caller's scope chain.
+
+The ''eval'' operator is a blocking API, so a host environment is permitted to reject programs passed to ''eval'' which require fetching code from external resources (see the [[module loaders|module loading API]] for a definition of when code is fetched). This prevents the evaluated code from blocking on reads from external resources. (Host environments like node.js may instead choose to allow site-local URL's, but browsers would not.)
+
+
+===== This =====
+
+The initial binding of ''this'' is the global object.
+
+

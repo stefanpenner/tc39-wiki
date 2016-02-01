@@ -1,0 +1,86 @@
+**This proposal has progressed to the Draft ECMAScript 6 Specification, which is available for review here: [[harmony:specification_drafts]]. Any new issues relating to them should be filed as bugs at [[http://bugs.ecmascript.org]]. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.**
+===== Background =====
+
+  * AKA "optional parameters" and "optional arguments", but without arity checking, all trailing arguments are optional in a real sense
+  * Waldemar's [[http://www.mozilla.org/js/language/js20-2002-04/core/functions.html#parameters|original JS2 optional parameters]]
+  * ES4 default parameters, gleaned from the [[proposals:normative grammar]] and the [[http://hg.ecmascript.org/es4|reference implementation]]
+  * ''var foo = arg || defaultFoo'' idiom for a function taking an optional parameter ''arg'' motivates one or both of
+    * ''||='', or perhaps ''??='' (a more precise operator inspired by C#)
+    * default parameter values (these may abate the need for ''||='')
+
+===== Goals =====
+
+  * Allow trailing formal parameters to receive default values if no corresponding actual parameters are passed
+  * The default values should be computed in the scope of the callee, thus enabling use of
+    * any parameters to the left of the one being given its default value, and of
+    * any lexical and free (global) variables in enclosing functions and the top level
+
+
+
+
+===== Syntax =====
+
+  * The ES5 //FormalParameterList// production changes from:
+<code ebnf>
+  FormalParameterList ::=
+    Identifier
+  | FormalParameterList , Identifier
+</code>
+  * to this pair of productions:
+<code ebnf>
+  FormalParameterList ::=
+    FormalParameter
+  | FormalParameterList , FormalParameter
+
+  FormalParameter ::=
+    Identifier Initialiser?
+  | Pattern Initialiser?
+</code>
+  * Added restriction not expressed by this grammar: only trailing formal parameters may have default values specified by ''= ''//AssignmentExpression//
+
+===== Semantics =====
+
+  * When binding actual to formal parameters (see ES5 10.6 steps under 3(d)), for each formal parameter //P// from left to right:
+    * If no actual parameter was passed for //P//, **and**
+    * ''= ''//AssignmentExpression// was given to supply //P// with a default value, then:
+      * Evaluate that //AssignmentExpression// in the scope of the fresh activation (//localEnv// in ES5 10.4.3) for the current function
+      * Assign the result of evaluating the //AssignmentExpression// to //P//
+
+
+
+
+
+===== Issues =====
+
+  * It's easy enough to elaborate the grammar to require that only trailing formal parameters may be given default values. Worth doing?
+  * Clearly ES5's 10.6 steps under 3(d) could be adapted, but I'm both (a) lazy and (b) hopeful that we'll switch from pseudocode to a testable spec
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2009/05/05 06:06//
+
+The length property of a function should be updated to not include optional parameters.
+
+ --- //[[arv@google.com|Erik Arvidsson]] 2010/11/05 22:37//
+
+Right now this works as if ''arguments.length'' is checked. However, sometimes when chaining functions with optional parameters this will lead to problems since the optional parameter will be passed as ''undefined''. Would it make sense to also allow ''undefined'' in the tail of the parameter list?
+
+This example is pretty contrived and it can easily be fixed but I think it points out the issue clearly:
+
+<code javascript>
+function add(x = 0, y = 0) {
+  return x + y;
+}
+function inc(opt_x) {
+  return add(1, opt_x);
+}
+assert(1, inc());
+</code>
+
+ --- //[[arv@google.com|Erik Arvidsson]] 2011/05/03 16:52//
+
+We could treat trailing ''undefined'' as missing. CoffeeScript (after ''apply'' and ''call'' in their first parameter handling, and after ''=='') equate ''null'' and ''undefined'' in this way. You can't therefore pass an explicit ''null'' or ''undefined'', and I expect that will be a sticking point.
+
+The scenario you describe above could be handled by passing a "magic ''undefined''" to ''inc'' when it is called via ''inc()'', and propagating that through to ''add'' to trigger defaulting.
+
+This is doable but a hassle for implementors (not terrible from where I sit, but other implementors should weigh in; JavaScriptCore already lets objects and/or strings masquerade as ''undefined'', IIRC).
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/05/03 18:34//

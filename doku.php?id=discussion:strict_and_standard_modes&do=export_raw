@@ -1,0 +1,425 @@
+====== Rejected modification --- Pragma for limiting type compatibility of assignment ======
+
+[Since the purpose of this pragma is limited to fixing some quirks in the builtin conversions, we decided to write the rules direclty into the definition of strict verification  --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/06/07 11:10//]
+
+What is the ideal pragma identifier for restricting type compatiblity of assignment?
+
+The pragma mentioned in passing is ''strict to'', as in
+
+<code javascript>
+   use strict to Number
+</code>
+
+The problem with ''strict to'' is that the pragma doesn't actually affect the behavior of the ''to'' operator, but only the behavior of assignment.
+
+I don't know the answer to the above question but here is a simple //gedanken// experiment that the right person might use to come up with it:
+
+  * what does the pragma mean?
+
+<code>
+    allow strict assignment from Number
+</code>
+
+  * write it in pragma form
+
+<code>
+    use allow strict assignment from Number
+</code>
+
+  * drop ''allow'' because we already have a required verb, ''use''
+  * drop ''strict'' because it is true in standard mode too
+
+<code>
+    use assignment from Number  
+</code>
+
+  * shorten words where possible (e.g. assignment to assign)
+
+<code>
+    use assign from Number
+</code>
+
+  * make non-essential words optional
+
+<code>
+    use from Number
+    use assign from Number, from String
+</code>
+
+Anyone get a different result?
+
+----
+
+I don't understand that this is an issue of assignment.  IIRC the situation we are discussing is this:
+
+    var s : String = 10
+
+and we agreed after much discussion that this is entirely equivalent in both standard and strict languages to:
+
+    var s : String;
+    s = 10;
+
+which can be phrased in terms of an explicit "to" operator use: ''var s; s = 10 to String''.
+
+Here the "to" refers to any conversion defined on String objects to coerce a value to String (since the entire language is expressible in the language).
+
+My point is that that the assignment is irrelevant now, everything centers on the conversion ''10 to String''.
+
+String must have a "to" operator whose argument type is "*".  This is required for compatibility.  But in the strict subset this is too permissive.  Therefore we want to say that the "to" operator on String is more restrictive in strict mode.
+
+Thus what we are looking for is perhaps
+
+    restrict the to operator on String to input type String
+
+but since this annotation is on the String class it's more easily written as
+
+    restrict the to operator to input type String
+
+which can be shortened as an imperative 
+
+    use restricted to (String)
+
+??
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/06/05 05:23//
+
+It was not clear to me that we wanted to also restrict the explicit use of the ''to'' operator in strict mode. If that is the case, then I withdraw my complaint about ''strict to''. Is that the case?
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/06/06 15:01//
+
+I think that if the meaning of ''var x : String = y'' is defined as ''var x = y to String'' (as [[proposals:is as to]] has it) then we shouldn't have a contextual meaning of ''to'' so that the meaning of that phrase is different from ''var x; x = y to String''.  I think ''to'' needs to mean the same everywhere.  If there is a restriction operator on ''to'' then that should apply to all uses in strict mode.
+
+It's possible that the meaning of ''var x : String = y'' is really something else, though, like ''var x = y restricted_to String'' or something like that, ie, we're being confused by ''to'' semantics.  
+
+Once again we should also remember that the ''strict''/''restrict''/''allow'' pragma is useful almost exclusively for the built-in classes, in order to fix certain bugs in the 3rd Edition.  I think you are trying to capture ActionScript's behavior where only certain conversions are illegal, and I suspect that does not mesh well with rewriting the phrase using a general operator in the language.   
+
+Need to think some more about this, but I'm starting to think that it's the rule in [[proposals:is as to]] that is wrong.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/06/07 00:16//
+
+I think the [[proposals:is as to]] rule is correct. Operator ''to'''s primary purpose is to allow the E3 auto conversion semantics to be expressed in the language. The proposed strict mode restriction on assignment is independent of the type system (''var i : int = "hello"'' is just as safe as ''var i = "hello" to int''). It is simply an extra check to avoid stupid programming errors. We could let this strict mode restriction apply to ''to'' in general, but that would make some explicit conversions harder to express.
+
+I just wish it wasn't so hard to say all this in a pragma :-)
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/06/07 09:36//
+
+====== Earlier Discussion --- Strawman: Notes on compilation phases ======
+
+Here I am trying to separate and order the phases a program goes through
+as it is being evaluated.  This has several purposes:
+
+  * The language spec talks about "compile-time constants".  We need to know which these are and when they are computed
+  * We need to know exactly how computation depends on type checking, type checking on constant evaluation, and constant evaluation on parsing
+  * Forward references are allowed from some phrases to entities defined "below" those phrases in some contexts.  Forward references are easily understood as references to values computed in an evaluation phase preceding the phase evaluating the reference.
+
+There are four phases: parsing, constant computation, type checking, and evaluation.  
+(It is possible that evaluation should be broken down into two phases, "loading"
+and "execution".)  The succession of phases is seen as building, interpreting, and
+refining a data structure representing the program, adding information to it and 
+asserting new invariants in each phase.
+
+Once we have separated and specified the phases we will also understand 
+to which extent it is possible to merge phases for optimization purposes.
+
+According to the following (still very informal) spec I believe it is possible 
+to merge constant computation, type checking, and evaluation, if one is careful.
+This would allow for a fully "dynamic" implementation that pretty much consists
+of parsing and fully dynamically typed execution.
+
+
+===== Parsing =====
+
+Parsing: Parse the program into an abstract representation.  
+
+  * Input: Source text.
+  * Output: Abstract syntax tree
+  * Definition: Grammar plus processing rules mapping source into AST.  
+  * Output invariants:
+    * the program is correct according to the context-free grammar (obviously)
+    * no duplicate class or interface names in a package
+    * no use of the 'super' statement outside a constructor
+    * no use of the 'super' expression outside an instance method
+    * no duplicate labels in a statement nest
+    * every referenced package is known to exist
+    * (probably many more)
+
+The AST probably does not represent the source text directly but will 
+contain collections of related phrases; for example, the representation 
+of a function will contain all hoisted variables and constants (though
+initialization of these hoisted variables can only occur in their
+original positions).
+
+===== Constant computation =====
+
+Constant computation phase: Compute the values of all "constant expressions".
+
+  * Input: Abstract syntax tree
+  * Output: Same tree, with constant-defining phrases annotated with their constant values
+  * Definition: Computation (abstract interpretation) on the AST
+  * Output invariants:
+    * every name defining a compile-time constant value holds that value
+    * every name that //must// have a compile-time constant value is checked to ensure that it has one, this includes classes, interfaces, types, namespaces
+    * there are no ambiguous references (eg no definitions of a::x and b::x in a scope
+      where a and b are both open and there is a plain reference to x)
+
+Make a pass over the program simulating its execution in 
+terms of evaluating constant expressions for directives and definitions 
+that create named constants, at least these:
+
+  * ''const x = v''
+  * ''let const x=v''
+  * ''namespace x'' and ''namespace x = y''
+  * ''class C { ... }'' (with ''extends'' and ''implements'')
+  * ''interface N { ... }'' (with ''extends'')
+  * ''type t = T''
+
+==== Constraints ====
+
+Expressions in the following contexts must have a known value as computed by constant evaluation:
+
+   * namespace initialiser
+   * class and interface inheritance clause
+   * namespace attribute
+   * ''use namespace'' pragma
+
+
+Expressions that have a known value are:
+
+   * Literal expressions
+   * Expressions that depend on a constant definition that has a known value and dominates (see below) the current expression
+
+
+Notes:
+
+   * Class and interface definitions must dominate the end of the program
+   * Namespace definitions must dominate the end of the program or the end of a class. A namespace definition inside of a class introduces a slot into the class object by default as though it was declared with the ''static'' attribute
+
+**Dominates**
+
+//[from the Netscape proposal]//
+
+A statement A dominates statement B if any of the following conditions are met:
+
+    * A and B are the same statement.
+    * A and B are in the same block, with A before B and no case or default labels between them.
+    * Statement B is enclosed inside statement C and A dominates C.
+    * Statement A is enclosed inside a block C, C is not prefixed by an attribute that evaluates to false, and C dominates B.
+
+Note that the above definition is conservative. If statement A dominates statement B, then it is guaranteed that, if B is executed then A must have been executed earlier; however, there may be some other statements A' that also are guaranteed to have been executed before B but which do not dominate B by the above definition.
+
+==== Algorithm sketch ====
+
+A precise spec of the abstract interpretation remains to be written, but
+the purpose can be stated as computing the values of those constants
+that always have values, and to keep track of what those values are at a given point
+in the program.
+
+Here are some of the steps taken by the computation.
+
+Package content must be known when doing constant computation, so referenced packages 
+must be loaded into the evaluation environment for the constant computation.
+
+When processing a class definition, any name referenced from ''extends'' or ''implements'' 
+clauses must already have its compile-time constant value, or the program is in error.
+
+Names introduced by other binding constructs than the ones listed above (''var'', 
+''function'', ''let'', or ''const'' where the value is not defined in the 
+binding statement itself) are assigned a value ''<unknown>''.
+
+For a given constant-defining expression, substitute known values for names.  Use
+''<unknown>'' for unknown names.  If a value ''v'' comes from a ''T''-typed ''const''
+binding then represent it as ''cast T(v)'' in the expression.  Evaluate the resulting
+expression: Any ''<unknown>'' value is propagated through all operators.  
+Type mismatches during evaluation (whether in ''cast'' or in the application of the
+operators themselves) are detected by the normal run-time typing mechanisms in expression
+evaluation and result in ''<unknown>'' values.  ''to'' operators are never consulted.
+This results in either a value of the correct type or ''<unknown>''.
+
+===== Type checking =====
+
+Type checking phase: test that the program is well typed.
+
+  * Input: Abstract syntax tree
+  * Output: Same tree, annotated and updated
+  * Definition: Computation (abstract interpretation) on the AST
+  * Output invariants:
+    * The program is well-typed, modulo certain classes of run-time errors
+    * ''const'' fields of an instance must all be guaranteed to be initialized when the constructor returns normally
+
+(I note that my understanding of some of the mechanics of this phase are not yet 
+good, so there may be misunderstandings here.)
+
+This phase does several things:
+
+  * computes expression types
+  * introduces type conversions as allowed by the language where necessary to make the program well-typed
+  * introduces type "Dynamic" where allowed (see below)
+  * determines whether the program is actually well-typed
+
+==== Standard language ====
+
+In the Standard language, the following occur:
+
+  * a "Dynamic" type can be introduced in certain contexts to allow the program to type check
+  * references to undefined variables are not errors, but merely assume that those variables have type "*"
+  * ''with'' (except [[reformed with]]) introduces a scope in which nothing is known about variables bound outside that scope
+  * (other things?)
+
+==== Strict language ====
+
+In the Strict language there should not be any use of "Dynamic"; any uses 
+of the type "*" will be allowed only where expressions of that type
+match the receiver type, or where the language allows for checked conversion
+from "*" to the receiver type.  ''with'' (except [[reformed with]]) and ''eval'' are illegal
+except in scopes that contain ''use standard''.
+
+===== Evaluation =====
+
+Evaluation phase: Run the program.
+
+  * Input: Abstract syntax tree
+  * Output: Values and effects on the environment
+  * Defininition: Computation (concrete interpretation) on the AST
+
+Some implementations will wish to split this into code generation and later
+execution; to each his own.
+
+
+====== Discussion ======
+
+As one important application area for the dynamic dialect is small systems, I would like the dialect to address needs of those systems.  In particular:
+
+  * The dynamic dialect should be compilable in a single forward pass without building syntax trees for statements (though not necessarily without using a little cleverness)
+  * In the dynamic dialect it should ideally be possible to ignore **all** type annotations and apply type checking only in operators, just as in 3rd Edition.  Such a constraint precludes type-directed conversions at assignment time (notably Number -> int).
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/03/10 11:12//
+
+
+===== Notes =====
+
+  * ''use strict'' is a hint. browsers can ignore it
+  * need to define constant evaluation
+  * need to define type compatibility rules
+  * need to specify the semantics of ''use strict to'' pragma
+  * rename to "standard and strict"
+
+
+
+===== Interaction with Scoping =====
+What should the interpretation of the following function be?
+
+<code>
+function foo(a)
+{
+  if (a)
+  {
+    var b:String = bar();
+  }
+  else
+  {
+    var b:Number = 11;
+  }
+}
+</code>
+
+If b is hoisted it would end up with two different types!:
+
+<code>
+function foo(a)
+{
+  var b:String;
+  var b:Number;
+  if (a)
+  {
+    b = bar();
+  }
+  else
+  {
+    b = 11;
+  }
+}
+</code>
+
+[Since the two hoisted definitions of ''var b'' are incompatible, this is a compile-time error --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/11/28 11:13// ]
+
+What about consts?
+
+<code>
+function foo(a)
+{
+  if (a)
+  {
+    const b = 5;
+  }
+  else
+  {
+    const b = 11;
+  }
+}
+</code>
+
+should not become:
+
+<code>
+function foo(a)
+{
+  const b;
+  if (a)
+  {
+    b = 5;
+  }
+  else
+  {
+    b = 11;
+  }
+}
+</code>
+
+Proposed rules:
+  * var declarations without a type and in standard mode should be hoisted to the top of a function. [jd: agreed]
+  * var declarations with a type should not be hoisted. [jd: incompatible with AS3]
+  * const declarations should not be hoisted. [jd: ditto]
+  * declarations in strict mode should not be hoisted. [jd: strict mode should not change the standard mode meaning of programs that compile]
+  * a block nested inside another block within a function should redeclare a local variable. [jd: i don't understand; can you restate this assertion? maybe give an example]
+  * If a block declares a local variable named x, then an outer block in the same function should not refer to a global variable named x. Thus, the following code should be rejected because the return statement is not permitted to refer to the global x:
+
+<code>
+var x = 3;
+function foo(a)
+{
+  if (a)
+  {
+    var x:Number = 5;
+  }
+  return x;
+}
+</code>
+
+[''const'' and ''var'' hoist for backward compatibility with ES3 and AS3. ''let'' and ''let const'' are scoped to the current block. If ''let'' was used instead of ''var'' in this example, then ''return x'' would refer to the global ''var x'', since it has no visibility to the inner ''let x''. Are you suggesting that unhoisted bindings should have a hoisted shadow self that cause errors when referenced? What about this case
+
+<code>
+
+function f() 
+{
+    var x = 10
+    {
+       {
+          let x = 20
+       }
+       return x
+    }
+}
+
+</code>
+
+Error, or no?
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/11/28 11:30//
+
+No error, the preceding function f() should return 10. --- //[[fcheng@adobe.com|Francis Cheng]] 2007/05/17 15:23//
+
+
+]
+
+
+ --- //[[pratapl@microsoft.com|Pratap Lakshman]] 2006/11/28 10:13//

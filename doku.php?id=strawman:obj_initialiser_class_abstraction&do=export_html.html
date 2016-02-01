@@ -1,0 +1,562 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:obj_initialiser_class_abstraction&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:obj_initialiser_class_abstraction&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:obj_initialiser_class_abstraction&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:obj_initialiser_class_abstraction&amp;do=export_html.html#class_initialisersclass_declarations_based_on_object_initilisers" class="toc">Class Initialisers: Class Declarations Based On Object Initilisers</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:obj_initialiser_class_abstraction&amp;do=export_html.html#basic_concepts" class="toc">Basic Concepts</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:obj_initialiser_class_abstraction&amp;do=export_html.html#other_features" class="toc">Other Features</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:obj_initialiser_class_abstraction&amp;do=export_html.html#syntax" class="toc">SYNTAX</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:obj_initialiser_class_abstraction&amp;do=export_html.html#desugaring" class="toc">Desugaring</a></span><ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="level5"><span class="li"><a href="doku.php%3Fid=strawman:obj_initialiser_class_abstraction&amp;do=export_html.html#basic_constructor" class="toc">Basic constructor</a></span></li>
+<li class="level5"><span class="li"><a href="doku.php%3Fid=strawman:obj_initialiser_class_abstraction&amp;do=export_html.html#constructor_bodyinstance_initialization" class="toc">Constructor body/Instance initialization</a></span></li>
+<li class="level5"><span class="li"><a href="doku.php%3Fid=strawman:obj_initialiser_class_abstraction&amp;do=export_html.html#prototype_inheritance" class="toc">Prototype Inheritance</a></span></li>
+<li class="level5"><span class="li"><a href="doku.php%3Fid=strawman:obj_initialiser_class_abstraction&amp;do=export_html.html#prototype_properties" class="toc">Prototype Properties</a></span></li>
+<li class="level5"><span class="li"><a href="doku.php%3Fid=strawman:obj_initialiser_class_abstraction&amp;do=export_html.html#constructor_properties" class="toc">Constructor Properties</a></span></li>
+<li class="level5"><span class="li"><a href="doku.php%3Fid=strawman:obj_initialiser_class_abstraction&amp;do=export_html.html#sealing_freezing_closing" class="toc">Sealing,Freezing,Closing</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:obj_initialiser_class_abstraction&amp;do=export_html.html#history" class="toc">History</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="class_initialisersclass_declarations_based_on_object_initilisers"></a><h1>Class Initialisers: Class Declarations Based On Object Initilisers</h1>
+<div class="level1">
+
+<p>
+ <em>This is a revised proposal that is based upon discussions at the Sept. 2010 TC39 meeting.</em> 
+</p>
+
+<p>
+<em>This is one of several related <a href="doku.php%3Fid=strawman:object_initialiser_extensions.html" class="wikilink1" title="strawman:object_initialiser_extensions" onclick="return svchk()" onkeypress="return svchk()">Object Initialiser Extensions</a>.</em> <br/>
+ <em>This extension builds upon concepts introduced in <a href="doku.php%3Fid=strawman:obj_initialiser_meta.html" class="wikilink1" title="strawman:obj_initialiser_meta" onclick="return svchk()" onkeypress="return svchk()">Object Initialiser Meta Properties</a>, <a href="doku.php%3Fid=strawman:object_initialiser_initialization_blocks.html" class="wikilink1" title="strawman:object_initialiser_initialization_blocks" onclick="return svchk()" onkeypress="return svchk()">Object Initialiser Initialization Blocks</a>, <a href="doku.php%3Fid=strawman:obj_initialiser_methods.html" class="wikilink1" title="strawman:obj_initialiser_methods" onclick="return svchk()" onkeypress="return svchk()">Method Properties</a>, and <a href="doku.php%3Fid=strawman:obj_initialiser_const.html" class="wikilink1" title="strawman:obj_initialiser_const" onclick="return svchk()" onkeypress="return svchk()">Other Object Initialiser Property Modifiers</a></em> <br/>
+ <em><a href="doku.php%3Fid=strawman:private_names_in_object_initialisers.html" class="wikilink1" title="strawman:private_names_in_object_initialisers" onclick="return svchk()" onkeypress="return svchk()">Private Names in Object Initialisers</a> and <a href="doku.php%3Fid=strawman:super_in_object_initialisers.html" class="wikilink1" title="strawman:super_in_object_initialisers" onclick="return svchk()" onkeypress="return svchk()">super in Object Initialisers</a> add additional features to Class Initialisers</em>
+</p>
+
+<p>
+Enhanced object initialisers  provide a self contained declarative construct for defining discrete objects. Such initialiser actually define object abstractions that often will be instantiated multiple times. For both engineering and cognitive reasons is usually desirable to name such abstractions. One way to name an object literal based abstraction is to wrap it in a factory function that is used to create instances of the abstraction. However, that pattern has the disadvantage it requires two distinct constructs (a function declaration containing an object initialiser) to represent the named abstraction and the name is most closely associated with the factory function rather than the object abstraction.
+</p>
+
+<p>
+The ECMAScript specification itself uses class-like abstractions to describe the behaviors of built-in ECMAScript objects. The  abstraction model used within the specification is based upon the core prototypical object model of ECMAScript and does not depend upon any semantic extensions to that core object model. It really is just the consistent application of a set of conventions for relating the objects (the constructor, the prototype, and instance objects) that are being abstracted. However, the consistent use of such conventions is important to the understandability of complex ECMAScript programs. Unfortunately,  ECMAScript has not had a declarative syntax for  defining object-abstractions that follow the same basic class-like model used in the specification.  The only way to duplicate it has been via imperative code that must explicitly construct the appropriate relationships among the relevant objects. This has led to subtle variations among the &ldquo;class&rdquo; conventions used in different programs and a proliferation of often incomparable libraries that exposing reflection based pseudo-declarative interfaces for creating class-like abstractions.
+</p>
+
+<p>
+This proposal show how ECMAScript existing declarative Object Literal notation can be extended to provide a declarative syntax for class-like abstractions that follow the same conventions used for the ECMAScript built-in objects. This extended syntax is called <em>Class Initialisers</em>.
+</p>
+
+</div>
+<!-- SECTION [1-2900] -->
+<a name="basic_concepts"></a><h2>Basic Concepts</h2>
+<div class="level2">
+
+<p>
+ The basic syntax of a Class Initialiser is just an object literal immediately preceded by the <strong>class</strong> reserved word.
+</p>
+<pre class="code javascript"><span class="kw2">class</span> <span class="br0">&#123;</span> <span class="br0">&#125;</span></pre>
+<p>
+ This is a <em>PrimaryExpression</em>. Like any expression element, its value can be named using a <strong>const</strong> declaration: 
+</p>
+<pre class="code javascript"><span class="kw2">const</span> Point = <span class="kw2">class</span> <span class="br0">&#123;</span> <span class="br0">&#125;</span>;</pre>
+<p>
+ However, the above definition of Point would probably be more commonly written like:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Point <span class="br0">&#123;</span> <span class="br0">&#125;</span>;</pre>
+<p>
+Evaluation of a class initialiser always produces a pair of objects: a &ldquo;constructor&rdquo; function and a &ldquo;prototype&rdquo; object. The above class declaration is nearly semantically  equivalent to:
+</p>
+<pre class="code javascript"><span class="kw2">function</span> Point<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="br0">&#125;</span>;</pre>
+<p>
+The value a class initialiser is a new function object.  It has a &ldquo;prototype&rdquo; property whose value is also a new object. For  brevity, the rest of this proposal will use the term &ldquo;constructor&rdquo; to refer to the the function object created by such a declaration and the term &ldquo;prototype&rdquo; to refer to the object that is created as the value of the function&rsquo;s &ldquo;prototype&rdquo; property. The prototype has a property named &ldquo;constructor&rdquo; whose value is the constructor. Both the prototype property and the constructor property have the attributes {writable: false, enumerable: false, configurable: false}. The only real variance from a function expression is the that these properties are non-configurable and that the &ldquo;prototype attribute is not writable. 
+</p>
+
+<p>
+<em>Rationale</em>:  {writable: false, enumerable: false, configurable: false} is the attribute settings used for built-in &ldquo;prototype&rdquo; properties. The same attributes are used for &ldquo;constructor&rdquo; as a reflection of the declarative manner in which it was constructed. Class initialiser establish immutable relationships between a constructor and it prototype. If mutable relationships are needed, existing ECMAScript constructs and conventions should be used to define such objects.
+</p>
+
+<p>
+A class initialiser is similar to a function definition in that it may be used as either an expression element or as a declarative statement. An identifier may occur immediately following the <strong>class</strong> keyword and can be consider to be the class name.  When occurring in the declarative statement form,  the identifier is is bound in the enclosing scope to the value of the object initialiser&rsquo;s constructor. This form is called a <em>class declaration</em>. In terms of declaration instantiations, such a class declaration is hoisted similarly to a <em>FunctionDeclaration</em> but evaluation of its property assignments take place in statement order similarly to <code>let</code> or <code>const</code> statements.
+</p>
+
+<p>
+Similar to function expressions, when a class initialiser is used as an expression element, the class name identifier is optional and if it is present is only bound within the body of the object initialiser. A class initialiser used as an expression element is called a <em>class expression</em>. Class expressions are evaluated at their point of the enclosing expression.  They are not hoisted and the class name is not included in the scope of the containing block.
+</p>
+
+<p>
+<em>Rationale:</em> It is the constructor function of a class declaration that is hoisted as if it was a function declaration. The actual initialization of of the properties of the constructor and prototype take place at the point of occurrence of the declaration, similarly to a regular object initialiser. The hoisting permits circular constructor references to occur among the class declaration within a block while the initialization order maintains consistency with other declaration initialisers.
+</p>
+
+<p>
+ The body of a class initialiser is quite different from that of a function. The bracketed body of a Class Initializer is essentially an extended object initialiser rather than a function body. Except as elaborated below, <em>the properties defined in the object initiliser are created as properties of the prototype</em>. For example:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Point  <span class="br0">&#123;</span> 
+   <span class="kw2">var</span> x: <span class="nu0">0</span>,  <span class="co1">//data properties of the prototype</span>
+   <span class="kw2">var</span> y: <span class="nu0">0</span>,
+   method distanceFromOrigin<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">return</span> Math.<span class="me1">sqrt</span><span class="br0">&#40;</span><span class="kw1">this</span>.<span class="me1">x</span>*<span class="kw1">this</span>.<span class="me1">x</span> + <span class="kw1">this</span>.<span class="me1">y</span>*<span class="kw1">this</span>.<span class="me1">y</span><span class="br0">&#41;</span>
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;</pre>
+<p>
+The prototype properties are created when a class initialiser is evaluated. The property attributes are generally the same as are used for the same property keywords in an object initialiser.
+</p>
+
+<p>
+The constructor created by a class initialiser can be instantiated using the <strong>new</strong> operator.  This creates a new instance whose [[Prototype]] is the prototype created by the class initialiser:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Point <span class="br0">&#123;</span> 
+   <span class="kw2">var</span> x: <span class="nu0">0</span>,  <span class="co1">//data properties of the prototype</span>
+   <span class="kw2">var</span> y: <span class="nu0">0</span>,
+   method distanceFromOrigin<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">return</span> Math.<span class="me1">sqrt</span><span class="br0">&#40;</span><span class="kw1">this</span>.<span class="me1">x</span>*<span class="kw1">this</span>.<span class="me1">x</span> + <span class="kw1">this</span>.<span class="me1">y</span>*<span class="kw1">this</span>.<span class="me1">y</span><span class="br0">&#41;</span>
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;
+&nbsp;
+let pt = <span class="kw2">new</span> Point;
+console.<span class="me1">log</span><span class="br0">&#40;</span>pt.<span class="me1">x</span> + <span class="st0">" "</span> + pt.<span class="me1">y</span><span class="br0">&#41;</span>;  <span class="co1">// 0 0</span>
+console.<span class="me1">log</span><span class="br0">&#40;</span>pt.<span class="me1">hasOwnProperty</span><span class="br0">&#40;</span><span class="st0">"x"</span><span class="br0">&#41;</span>+<span class="st0">" "</span>+ pt.<span class="me1">hasOwnProperty</span><span class="br0">&#40;</span><span class="st0">"y"</span><span class="br0">&#41;</span><span class="br0">&#41;</span>; <span class="co1">// false false</span>
+pt.<span class="me1">x</span>= = <span class="nu0">10</span>;
+console.<span class="me1">log</span><span class="br0">&#40;</span>pt.<span class="me1">x</span> + <span class="st0">" "</span> + pt.<span class="me1">y</span><span class="br0">&#41;</span>;  <span class="co1">// 10 0</span>
+console.<span class="me1">log</span><span class="br0">&#40;</span>pt.<span class="me1">hasOwnProperty</span><span class="br0">&#40;</span><span class="st0">"x"</span><span class="br0">&#41;</span>+<span class="st0">" "</span>+ pt.<span class="me1">hasOwnProperty</span><span class="br0">&#40;</span><span class="st0">"y"</span><span class="br0">&#41;</span><span class="br0">&#41;</span>; <span class="co1">// true false</span>
+console.<span class="me1">log</span><span class="br0">&#40;</span>pt.<span class="me1">distanceFromOrigin</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>; <span class="co1">//10</span></pre>
+<p>
+The above example illustrates that new instances initially inherit all their properties from the prototype and have no own properties.  However, own properties can be added to such instances by assignment or any other normal means. However, in many cases it is desirable to include instance specific initialization behavior directly in a class initialiser. This can be accomplished using the <strong>new</strong> keyword:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Point  <span class="br0">&#123;</span> 
+   <span class="kw2">var</span> x: <span class="nu0">0</span>,  <span class="co1">//data properties of the prototype</span>
+   <span class="kw2">var</span> y: <span class="nu0">0</span>,
+   method distanceFromOrigin<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">return</span> Math.<span class="me1">sqrt</span><span class="br0">&#40;</span><span class="kw1">this</span>.<span class="me1">x</span>*<span class="kw1">this</span>.<span class="me1">x</span> + <span class="kw1">this</span>.<span class="me1">y</span>*<span class="kw1">this</span>.<span class="me1">y</span><span class="br0">&#41;</span>
+   <span class="br0">&#125;</span>,
+   <span class="kw2">new</span> <span class="br0">&#40;</span>x,y<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw2">var</span> x: +x,
+      <span class="kw2">var</span> y: +y
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;
+&nbsp;
+let pt1 =  <span class="kw2">new</span> Point<span class="br0">&#40;</span><span class="nu0">10</span>,<span class="nu0">10</span><span class="br0">&#41;</span>;
+console.<span class="me1">log</span><span class="br0">&#40;</span>pt1.<span class="me1">x</span> + <span class="st0">" "</span> + pt1.<span class="me1">y</span><span class="br0">&#41;</span>;  <span class="co1">// 10 10</span>
+console.<span class="me1">log</span><span class="br0">&#40;</span>pt1.<span class="me1">hasOwnProperty</span><span class="br0">&#40;</span><span class="st0">"x"</span><span class="br0">&#41;</span>+<span class="st0">" "</span>+ p1.<span class="me1">hasOwnProperty</span><span class="br0">&#40;</span><span class="st0">"y"</span><span class="br0">&#41;</span><span class="br0">&#41;</span>; <span class="co1">// true true</span></pre>
+<p>
+The <code><strong>new</strong></code> keyword introduces the portion of a class initialisier that defines the parameters and body of the constructor.  The <em>FormalParameterList</em> following the <strong><code>new</code></strong> is the formal parameter list of the constructor.  This is called by <em>ObjectLiteral</em>. This object literal declaratively defines the own properties of instance objects created by the constructor. When the constructor is invoked, the <strong>this</strong> binding within the <strong><code>new</code></strong> <em>ObjectLiteral</em> is the newly instantiated object that is being initialized. Free variables in the <em>ObjectLiteral</em>, like all free variables in a class initialiser are closed over the environment that contains the class initialiser. If <em>ObjectLiteral</em> may include a <em>MetaProperties</em> part, but it may not contain a <strong>proto:</strong> meta property. All other meta properties that occur apply to all instance objects that are created by the constructor.
+</p>
+
+<p>
+Occasionally, complex imperative code is need to full initialize object instances.  In such situations, an <a href="doku.php%3Fid=strawman:object_initialiser_initialization_blocks.html" class="wikilink1" title="strawman:object_initialiser_initialization_blocks" onclick="return svchk()" onkeypress="return svchk()">Object Initialiser Initialization Blocks</a> can be used within the <em>ObjectLiteral</em> to perform the initialization.  For example:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Point  <span class="br0">&#123;</span> 
+   <span class="kw2">var</span> x: <span class="nu0">0</span>,  <span class="co1">//data properties of the prototype</span>
+   <span class="kw2">var</span> y: <span class="nu0">0</span>,
+   method distanceFromOrigin<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">return</span> Math.<span class="me1">sqrt</span><span class="br0">&#40;</span><span class="kw1">this</span>.<span class="me1">x</span>*<span class="kw1">this</span>.<span class="me1">x</span> + <span class="kw1">this</span>.<span class="me1">y</span>*<span class="kw1">this</span>.<span class="me1">y</span><span class="br0">&#41;</span>
+   <span class="br0">&#125;</span>,
+   <span class="kw2">new</span> <span class="br0">&#40;</span>xOrPoint,y<span class="br0">&#41;</span> <span class="br0">&#123;</span>        <span class="co1">// call with either a single Point or two numbers</span>
+      <span class="kw2">var</span> x: undefined,      <span class="co1">// define non-enumerable own properties for x and y </span>
+      <span class="kw2">var</span> y: undefined, 
+      <span class="br0">&#123;</span>
+         <span class="kw1">if</span> <span class="br0">&#40;</span>xOrPoint <span class="kw1">instanceof</span> Point<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+            <span class="kw1">this</span>.<span class="me1">x</span> = xOrPoint.<span class="me1">x</span>;
+            <span class="kw1">this</span>.<span class="me1">y</span> = xOrPoint.<span class="me1">y</span>;
+         <span class="kw1">else</span> <span class="br0">&#123;</span>
+            <span class="kw1">this</span>.<span class="me1">x</span> = +xOrPoint;
+            <span class="kw1">this</span>.<span class="me1">y</span> = +y;
+         <span class="br0">&#125;</span>
+      <span class="br0">&#125;</span>
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;</pre>
+<p>
+<em>Rationale:</em> It may appear odd that an <em>ObjectLiteral</em> appears in position where a function body might be expected and is parameterized with a <em>FormalParameterList</em>.  However, a major motivation for class initialisers is to make available a declarative syntax for describing the structure of objects. The own properties of instance objects is an important part of the structure that is defined by a class initialiser so a declarative definition of the own properties is needed.  An <em>ObjectLiteral</em> is a natural way to do this, but needs to be identified as such (hence the <code>new</code> keyword) and needs to be parameterized by the constructor call (hence the <em>FormalParameterList</em>).  Earlier versions of this proposal used just used a function body after <strong><code>new</code></strong> but this result in a highly imperative instance construction style of the sort this feature was intended to generally eliminate.
+</p>
+
+<p>
+Properties of the constructor may also be defined within a class initialiser:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Point  <span class="br0">&#123;</span>
+   <span class="kw2">var</span> x: <span class="nu0">0</span>,  <span class="co1">//data properties of the prototype</span>
+   <span class="kw2">var</span> y: <span class="nu0">0</span>,
+   method distanceFromOrigin<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">return</span> Math.<span class="me1">sqrt</span><span class="br0">&#40;</span><span class="kw1">this</span>.<span class="me1">x</span>*<span class="kw1">this</span>.<span class="me1">x</span> + <span class="kw1">this</span>.<span class="me1">y</span>*<span class="kw1">this</span>.<span class="me1">y</span><span class="br0">&#41;</span>
+   <span class="br0">&#125;</span>,
+   <span class="kw2">new</span> <span class="br0">&#40;</span>xOrPoint,y<span class="br0">&#41;</span> <span class="br0">&#123;</span>        <span class="co1">// call with either a single Point or two numbers</span>
+      <span class="kw2">var</span> x: undefined,      <span class="co1">// define non-enumerable own properties for x and y </span>
+      <span class="kw2">var</span> y: undefined, 
+      <span class="br0">&#123;</span>
+         <span class="kw1">if</span> <span class="br0">&#40;</span>xOrPoint <span class="kw1">instanceof</span> Point<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+            <span class="kw1">this</span>.<span class="me1">x</span> = xOrPoint.<span class="me1">x</span>;
+            <span class="kw1">this</span>.<span class="me1">y</span> = xOrPoint.<span class="me1">y</span>;
+         <span class="kw1">else</span> <span class="br0">&#123;</span>
+            <span class="kw1">this</span>.<span class="me1">x</span> = +xOrPoint;
+            <span class="kw1">this</span>.<span class="me1">y</span> = +y;
+         <span class="br0">&#125;</span>
+      <span class="br0">&#125;</span>
+   <span class="br0">&#125;</span>,
+   <span class="co1">//constructor properties</span>
+   <span class="kw2">class</span> method fromString<span class="br0">&#40;</span>s<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="co1">//parse a string of the format number@number and construct a point from the two numbers</span>
+      let <span class="br0">&#91;</span>x,y<span class="br0">&#93;</span> = s.<span class="me1">split</span><span class="br0">&#40;</span><span class="st0">"@"</span><span class="br0">&#41;</span>;
+      <span class="kw1">return</span> <span class="kw2">new</span> Point<span class="br0">&#40;</span>x,y<span class="br0">&#41;</span>;
+   <span class="br0">&#125;</span>,
+   <span class="kw2">class</span> <span class="kw2">var</span> origin = <span class="kw2">const</span> <span class="kw2">new</span> Point<span class="br0">&#40;</span><span class="nu0">0</span>,<span class="nu0">0</span><span class="br0">&#41;</span>
+<span class="br0">&#125;</span>;</pre>
+</div>
+<!-- SECTION [2901-12347] -->
+<a name="other_features"></a><h2>Other Features</h2>
+<div class="level2">
+
+<p>
+ By default, the prototype created by a class initialiser has <code>Object.prototype</code> as its [[Prototype]] value. If the body contains a <strong>proto</strong> metaProperty then it explicitly specifies the  [[Prototype]] value of the prototype crated by the class initialiser:
+</p>
+<pre class="code javascript"><span class="co1">//Define an abstract class</span>
+<span class="kw2">class</span> GeometricObject  <span class="br0">&#123;</span>
+   sealed <span class="kw2">var</span> isGeoObj: <span class="kw2">const</span> <span class="kw2">true</span>,
+   <span class="kw2">new</span> <span class="br0">&#123;</span><span class="br0">&#123;</span><span class="kw1">throw</span> TypeError<span class="br0">&#40;</span><span class="st0">"Attempt to instantiate an abstract class"</span><span class="br0">&#41;</span><span class="br0">&#125;</span><span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">class</span> Point <span class="br0">&#123;</span>
+   &lt;proto: GeometricObject.<span class="me1">prototype</span>&gt;,
+   <span class="kw2">var</span> x: <span class="nu0">0</span>,
+   <span class="kw2">var</span> y: <span class="nu0">0</span>,
+   ...
+<span class="br0">&#125;</span>;</pre>
+<p>
+Having to say &ldquo;.prototype&rdquo; in value of the proto metaProperty seems awkward when we are dealing with class declarations.  As an alternative, the <em>superclass</em> meta Property and be used to designate a constructor object that serves the role of super class&rdquo; to a class initialiser. This causes the  [[Prototype]] value of the new class&rsquo; prototype to be set to the prototype property value of the designated constructor function: 
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Point <span class="br0">&#123;</span>
+   &lt;superclass: GeometricObject&gt;,
+   <span class="kw2">var</span> x: <span class="nu0">0</span>,
+   <span class="kw2">var</span> y: <span class="nu0">0</span>,
+   ...
+<span class="br0">&#125;</span>;</pre>
+<p>
+A <code>TypeError</code> exception is thrown if the object specified as the value of a <code>superclass</code> meta property does not have a prototype property when the class initialiser is instantiated 
+</p>
+
+<p>
+If the constructor specified as the value of the <code>superclass</code> meta properties is the standard built-in constructors Array then both the prototype object and all instances created by the constructor have the same special [[DefineOwnProperty]] behavior as built-in array instances. If it is desired to define a class whose prototype  inherits from <code>Array.prototype</code> but which does not have special Array behavior, the <code>proto</code> meta property should be used for that class instead of the <code>superclass</code> meta property.
+</p>
+
+<p>
+<em>Rationale:</em>  The most common use case for creating new classes that &ldquo;inherit&rdquo; specialized object semantics behavior.  This proposal supports that specific use case. It is probably possible to extend this special case to include RegExp and String but it isn&rsquo;t clear that they have compelling use cases.  A more interesting scenario would be using a Proxy function as a &ldquo;superclass&rdquo; and inheriting the Proxy handler behavior.  However, that is not part of this current proposal because its design details have not been worked out.
+</p>
+
+<p>
+The [[Prototype]] of the constructor is created by a class initialiser Function.prototype. There is no way to set it to something else.
+</p>
+
+<p>
+<em>Rationale:</em> &ldquo;class side&rdquo; inheritance seems to have too few use cases in ECMASScript to warrant adding an additional mechanism for setting the constructor&rsquo;s [[Prototype]].  If this proves to be a problem it could be addressed by a future extensions.
+</p>
+
+<p>
+The constructor object created by an class initialiser has identical behavior for its [[Call]] and [[Construct]] internal methods.  They both instantiate a new object and then invoke the function (the <strong>new</strong> body) with the new object as the <strong><code>this</code></strong> value.
+</p>
+
+<p>
+If the meta properties include <strong><code>sealed</code></strong>, <strong><code>frozen</code></strong>, or <code><strong>closed</strong></code> then both the constructor and prototype created from the class initialiser are placed in that state.  Meta properties on the instance initializer <em>ObjectLiteral</em> apply only to instance objects.   For example: 
+</p>
+<pre class="code javascript"><span class="kw2">class</span> Stable <span class="br0">&#123;</span>
+   &lt;frozen&gt;,
+   <span class="kw2">var</span> isStable:  <span class="kw2">const</span> <span class="kw2">true</span>,
+   <span class="kw2">new</span> <span class="br0">&#40;</span>prop<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      &lt;closed&gt;,
+      prop: prop
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+ will have a closed (meaning non-extensible) constructor and prototype, and instances that are not extensible have writable/configurable properties.
+</p>
+
+<p>
+The property attributes implied by these meta properties are set on individual constructor and prototype properties when each such property is initialized. The [[extensible]] internal property of the constructor and prototype objects are set after all of their properties have been initialized. Meta properties of instance objects are automatically set to the appropriate state after evaluation of the constructor body.
+</p>
+
+<p>
+It is a syntax error to include redundant meta properties.
+</p>
+
+<p>
+<img src="lib/images/smileys/icon_exclaim.gif" align="middle" alt=":!:" /> <em>Open Issue</em>: Method properties and <strong>new</strong> definitions need to take lexical scoped <strong><code>this</code></strong> into account.  It may make sense for class initialiser methods to always have a lexical <strong><code>this</code></strong> binding.
+</p>
+
+</div>
+<!-- SECTION [12348-16679] -->
+<a name="syntax"></a><h2>SYNTAX</h2>
+<div class="level2">
+
+<p>
+<em>ClassDeclaration</em> :<br/>
+ <strong><code>class</code></strong> <em>Identifier</em> <em>ClassBody</em>
+</p>
+
+<p>
+<em>ClassExpression</em> :<br/>
+ <strong><code>class</code></strong> <em>Identifier<sub>opt</sub></em> <em>ClassBody</em>
+</p>
+
+<p>
+<em>ClassBody</em><br/>
+ <strong>{ }</strong><br/>
+ <strong>{</strong> <em>ClassMetaProperties</em> <strong>}</strong><br/>
+ <strong>{</strong> <em>ClassMetaProperties</em> <strong>, }</strong><br/>
+ <strong>{</strong> <em>ClassMetaProperties</em> <strong>,</strong>    <em>ClassPropertyNameAndValueList</em> <strong>}</strong><br/>
+ <strong>{</strong> <em>ClassMetaProperties</em> <strong>,</strong>    <em>ClassPropertyNameAndValueList</em> <strong>, }</strong><br/>
+ <strong>{</strong> <em>ClassPropertyNameAndValueList</em> <strong>}</strong><br/>
+ <strong>{</strong> <em>ClassPropertyNameAndValueList</em> <strong>, }</strong><br/>
+
+</p>
+
+<p>
+<em>ClassMetaProperties</em> :<br/>
+ <strong>&lt;</strong> ClassMetaPropertyList <strong>&gt;</strong><br/>
+
+</p>
+
+<p>
+<em>ClassMetaPropertyList</em> :<br/>
+ <em>ClassMetaProperty</em><br/>
+ <em>ClassMetaPropertyList</em> <strong>,</strong> <em>MetaProperty</em><br/>
+
+</p>
+
+<p>
+<em>ClassMetaProperty</em> :<br/>
+ <strong><code>proto</code></strong> <strong>:</strong> <em>AssignmentExpression</em><br/>
+ <strong><code>superclass</code></strong> <strong>:</strong> <em>AssignmentExpression</em><br/>
+ <strong><code>sealed</code></strong> <br/>
+ <strong><code>frozen</code></strong> <br/>
+ <strong><code>closed</code></strong> <br/>
+
+</p>
+
+<p>
+<em>ClassPropertyNameAndValueList</em> :<br/>
+ <em>ClassPropertyAssignment</em><br/>
+ <em>ClassPropertyNameAndValueList</em> <strong>,</strong> <em>ClassPropertyAssignment</em><br/>
+
+</p>
+
+<p>
+<em>ClassPropertyAssignment</em> : <br/>
+ <strong><code>class</code></strong> <em>PropertyAssignment</em> <br/>
+ <em>ConstrutorBody</em> <br/>
+ <em>PropertyAssignment</em>
+</p>
+
+<p>
+<em>ConstrutorBody</em> : <br/>
+ <strong><code>new</code></strong> <em>ObjectLiteral</em> <br/>
+ <strong><code>new</code></strong> <strong>(</strong> <em>FormalParameterList&lt;sub&gt;opt&lt;/sub?</em> <strong>)</strong> <em>ObjectLiteral</em> <br/>
+
+</p>
+
+<p>
+Note: A <em>ConstructorBody</em> may appear at most once in <em>ClassPropertyNameAndValueList</em>.
+</p>
+
+</div>
+<!-- SECTION [16680-18068] -->
+<a name="desugaring"></a><h2>Desugaring</h2>
+<div class="level2">
+
+<p>
+ In order to avoid tweaks that will be necessary to the Declaration Instantiation Specification,  the following should be interpreted as class expressions rather than class declaration.
+</p>
+
+</div>
+<!-- SECTION [18069-18279] -->
+<a name="basic_constructor"></a><h5>Basic constructor</h5>
+<div class="level5">
+<pre class="code javascript"><span class="kw2">class</span> c <span class="br0">&#123;</span><span class="br0">&#125;</span>;</pre>
+<p>
+desugars to 
+</p>
+<pre class="code javascript"><span class="kw2">function</span> c<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c,<span class="st0">'prototype'</span>,<span class="br0">&#123;</span>writable: <span class="kw2">false</span>, configurable: <span class="kw2">false</span><span class="br0">&#125;</span><span class="br0">&#125;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c.<span class="me1">prototype</span>,<span class="st0">'constructor'</span>,<span class="br0">&#123;</span>writable: <span class="kw2">false</span>, configurable: <span class="kw2">false</span><span class="br0">&#125;</span><span class="br0">&#125;</span>;</pre>
+</div>
+<!-- SECTION [18280-18572] -->
+<a name="constructor_bodyinstance_initialization"></a><h5>Constructor body/Instance initialization</h5>
+<div class="level5">
+<pre class="code javascript"><span class="kw2">class</span> c <span class="br0">&#123;</span>
+   <span class="kw2">new</span> <span class="br0">&#40;</span>a,b<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+     a : a,
+     b : b,
+     <span class="br0">&#123;</span><span class="kw1">this</span>.<span class="me1">x</span> = somebody<span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span><span class="br0">&#125;</span>
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;</pre>
+<p>
+desugars to 
+</p>
+<pre class="code javascript"><span class="kw2">function</span> c<span class="br0">&#40;</span>a,b<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span><span class="kw1">this</span>,<span class="st0">"a"</span>,<span class="br0">&#123;</span>value: a,enumerable: <span class="kw2">true</span>, writable: <span class="kw2">true</span>, configurable: <span class="kw2">true</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;
+    Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span><span class="kw1">this</span>,<span class="st0">"b"</span>,<span class="br0">&#123;</span>value: a,enumerable: <span class="kw2">true</span>, writable: <span class="kw2">true</span>, configurable: <span class="kw2">true</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;
+    <span class="br0">&#123;</span><span class="kw1">this</span>.<span class="me1">x</span> = somebody<span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span><span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c,<span class="st0">'prototype'</span>,<span class="br0">&#123;</span>writable: <span class="kw2">false</span>, configurable: <span class="kw2">false</span><span class="br0">&#125;</span><span class="br0">&#125;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c.<span class="me1">prototype</span>,<span class="st0">'constructor'</span>,<span class="br0">&#123;</span>writable: <span class="kw2">false</span>, configurable: <span class="kw2">false</span><span class="br0">&#125;</span><span class="br0">&#125;</span>;</pre>
+</div>
+<!-- SECTION [18573-19197] -->
+<a name="prototype_inheritance"></a><h5>Prototype Inheritance</h5>
+<div class="level5">
+<pre class="code javascript"><span class="kw2">class</span> c <span class="br0">&#123;</span>
+   &lt;prototype: p&gt;
+<span class="br0">&#125;</span>;
+&nbsp;
+<span class="kw2">class</span> d <span class="br0">&#123;</span>
+   &lt;superclass: c&gt;
+<span class="br0">&#125;</span>;
+&nbsp;</pre>
+<p>
+desugars to 
+</p>
+<pre class="code javascript"><span class="kw2">function</span> c<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c,<span class="st0">'prototype'</span>,<span class="br0">&#123;</span>value: Object.<span class="me1">create</span><span class="br0">&#40;</span>p<span class="br0">&#41;</span>, enumerable: <span class="kw2">false</span>, writable: <span class="kw2">false</span>, configurable: <span class="kw2">false</span><span class="br0">&#125;</span><span class="br0">&#125;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c.<span class="me1">prototype</span>,<span class="st0">'constructor'</span>,<span class="br0">&#123;</span>writable: <span class="kw2">false</span>, configurable: <span class="kw2">false</span><span class="br0">&#125;</span><span class="br0">&#125;</span>;
+&nbsp;
+<span class="kw2">function</span> d<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>d,<span class="st0">'prototype'</span>,<span class="br0">&#123;</span>value: Object.<span class="me1">create</span><span class="br0">&#40;</span>c.<span class="me1">prototype</span><span class="br0">&#41;</span>, enumerable: <span class="kw2">false</span>, writable: <span class="kw2">false</span>, configurable: <span class="kw2">false</span><span class="br0">&#125;</span><span class="br0">&#125;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>d.<span class="me1">prototype</span>,<span class="st0">'constructor'</span>,<span class="br0">&#123;</span>value: d, enumerable: <span class="kw2">false</span>, writable: <span class="kw2">false</span>, configurable: <span class="kw2">false</span><span class="br0">&#125;</span><span class="br0">&#125;</span>;</pre>
+</div>
+<!-- SECTION [19198-19853] -->
+<a name="prototype_properties"></a><h5>Prototype Properties</h5>
+<div class="level5">
+<pre class="code javascript"><span class="kw2">class</span> c <span class="br0">&#123;</span>
+   &lt;prototype: p&gt;,
+   a: initial,
+   method m<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>,
+   <span class="kw2">var</span> k: <span class="kw2">const</span> <span class="nu0">2</span>
+<span class="br0">&#125;</span>;</pre>
+<p>
+desugars to 
+</p>
+<pre class="code javascript"><span class="kw2">function</span> c<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c,<span class="st0">'prototype'</span>,<span class="br0">&#123;</span>value: Object.<span class="me1">create</span><span class="br0">&#40;</span>p<span class="br0">&#41;</span>, enumerable: <span class="kw2">false</span>, writable: <span class="kw2">false</span>, configurable: <span class="kw2">false</span><span class="br0">&#125;</span><span class="br0">&#125;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c.<span class="me1">prototype</span>,<span class="st0">'constructor'</span>,<span class="br0">&#123;</span>writable: <span class="kw2">false</span>, configurable: <span class="kw2">false</span><span class="br0">&#125;</span><span class="br0">&#125;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c.<span class="me1">prototype</span>,<span class="st0">'a'</span>, <span class="br0">&#123;</span>value: initial, writable: <span class="kw2">true</span>, enumerable: <span class="kw2">true</span>, configurable: <span class="kw2">true</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c.<span class="me1">prototype</span>,<span class="st0">'m'</span>, <span class="br0">&#123;</span>value: <span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>, writable: <span class="kw2">false</span>, enumerable: <span class="kw2">false</span>, configurable: <span class="kw2">true</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c.<span class="me1">prototype</span>,<span class="st0">'k'</span>, <span class="br0">&#123;</span>value: <span class="nu0">2</span>, writable: <span class="kw2">false</span>, enumerable: <span class="kw2">false</span>, configurable: <span class="kw2">true</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;</pre>
+<p>
+Note that individual calls to <code>Object.defineProperty</code> are shown instead of <code>Object.defineProperties</code> or including them in <code>Object.create</code> because of initialization ordering issues that show up for more complex class initialisers.
+</p>
+
+</div>
+<!-- SECTION [19854-20838] -->
+<a name="constructor_properties"></a><h5>Constructor Properties</h5>
+<div class="level5">
+<pre class="code javascript"><span class="kw2">class</span> c <span class="br0">&#123;</span>
+   &lt;prototype: p&gt;,
+   a: initial,
+   <span class="kw2">class</span> method isC<span class="br0">&#40;</span>obj<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> obj <span class="kw1">instanceof</span> c<span class="br0">&#125;</span>,
+   method m<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>,
+   <span class="kw2">class</span> method another<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span><span class="br0">&#125;</span>,
+   <span class="kw2">var</span> k: <span class="kw2">const</span> <span class="nu0">2</span>
+<span class="br0">&#125;</span>;</pre>
+<p>
+desugars to 
+</p>
+<pre class="code javascript"><span class="kw2">function</span> c<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c,<span class="st0">'prototype'</span>,<span class="br0">&#123;</span>value: Object.<span class="me1">create</span><span class="br0">&#40;</span>p<span class="br0">&#41;</span>, enumerable: <span class="kw2">false</span>, writable: <span class="kw2">false</span>, configurable: <span class="kw2">false</span><span class="br0">&#125;</span><span class="br0">&#125;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c.<span class="me1">prototype</span>,<span class="st0">'constructor'</span>,<span class="br0">&#123;</span>writable: <span class="kw2">false</span>, configurable: <span class="kw2">false</span><span class="br0">&#125;</span><span class="br0">&#125;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c.<span class="me1">prototype</span>,<span class="st0">'a'</span>, <span class="br0">&#123;</span>value: initial, writable: <span class="kw2">true</span>, enumerable: <span class="kw2">true</span>, configurable: <span class="kw2">true</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c,<span class="st0">'isC'</span>, <span class="br0">&#123;</span>value: <span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> obj <span class="kw1">instanceof</span> c<span class="br0">&#125;</span>, writable: <span class="kw2">false</span>, enumerable: <span class="kw2">false</span>, configurable: <span class="kw2">true</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c.<span class="me1">prototype</span>,<span class="st0">'m'</span>, <span class="br0">&#123;</span>value: <span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>, writable: <span class="kw2">false</span>, enumerable: <span class="kw2">false</span>, configurable: <span class="kw2">true</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c,<span class="st0">'another'</span>, <span class="br0">&#123;</span>value: <span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>, writable: <span class="kw2">false</span>, enumerable: <span class="kw2">false</span>, configurable: <span class="kw2">true</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c.<span class="me1">prototype</span>,<span class="st0">'k'</span>, <span class="br0">&#123;</span>value: <span class="nu0">2</span>, writable: <span class="kw2">false</span>, enumerable: <span class="kw2">false</span>, configurable: <span class="kw2">true</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;</pre>
+</div>
+<!-- SECTION [20839-21923] -->
+<a name="sealing_freezing_closing"></a><h5>Sealing,Freezing,Closing</h5>
+<div class="level5">
+<pre class="code javascript"><span class="kw2">class</span> c <span class="br0">&#123;</span>
+   &lt;prototype: p, sealed&gt;,
+   <span class="kw2">new</span> <span class="br0">&#40;</span>a,b<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+     a : a,
+     b : b,
+     <span class="br0">&#123;</span><span class="kw1">this</span>.<span class="me1">x</span> = somebody<span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span><span class="br0">&#125;</span>
+   <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>;</pre>
+<p>
+desugars to 
+</p>
+<pre class="code javascript"><span class="kw2">function</span> c<span class="br0">&#40;</span>a,b<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span><span class="kw1">this</span>,<span class="st0">"a"</span>,<span class="br0">&#123;</span>value: a,enumerable: <span class="kw2">true</span>, writable: <span class="kw2">true</span>, configurable: <span class="kw2">true</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;
+    Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span><span class="kw1">this</span>,<span class="st0">"b"</span>,<span class="br0">&#123;</span>value: a,enumerable: <span class="kw2">true</span>, writable: <span class="kw2">true</span>, configurable: <span class="kw2">true</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;
+    <span class="br0">&#123;</span><span class="kw1">this</span>.<span class="me1">x</span> = somebody<span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span><span class="br0">&#125;</span>;
+<span class="br0">&#125;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c,<span class="st0">'prototype'</span>,<span class="br0">&#123;</span>value: Object.<span class="me1">create</span><span class="br0">&#40;</span>p<span class="br0">&#41;</span>, enumerable: <span class="kw2">false</span>, writable: <span class="kw2">false</span>, configurable: <span class="kw2">false</span><span class="br0">&#125;</span><span class="br0">&#125;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c.<span class="me1">prototype</span>,<span class="st0">'constructor'</span>,<span class="br0">&#123;</span>writable: <span class="kw2">false</span>, configurable: <span class="kw2">false</span><span class="br0">&#125;</span><span class="br0">&#125;</span>;
+Object.<span class="me1">seal</span><span class="br0">&#40;</span>c<span class="br0">&#41;</span>;
+Object.<span class="me1">seal</span><span class="br0">&#40;</span>c.<span class="me1">prototype</span><span class="br0">&#41;</span>;</pre><pre class="code javascript"><span class="kw2">class</span> c <span class="br0">&#123;</span>
+   &lt;prototype: p, sealed&gt;,
+   <span class="kw2">new</span> <span class="br0">&#40;</span>a,b<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+     &lt;closed&gt;,
+     a : a,
+     b : b,
+     <span class="br0">&#123;</span><span class="kw1">this</span>.<span class="me1">x</span> = somebody<span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span><span class="br0">&#125;</span>
+   <span class="br0">&#125;</span>,
+   <span class="kw2">class</span> method isC<span class="br0">&#40;</span>obj<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> obj <span class="kw1">instanceof</span> c<span class="br0">&#125;</span>,
+   method m<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>   
+<span class="br0">&#125;</span>;</pre>
+<p>
+desugars to 
+</p>
+<pre class="code javascript"><span class="kw2">function</span> c<span class="br0">&#40;</span>a,b<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span><span class="kw1">this</span>,<span class="st0">"a"</span>,<span class="br0">&#123;</span>value: a,enumerable: <span class="kw2">true</span>, writable: <span class="kw2">true</span>, configurable: <span class="kw2">true</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;
+    Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span><span class="kw1">this</span>,<span class="st0">"b"</span>,<span class="br0">&#123;</span>value: a,enumerable: <span class="kw2">true</span>, writable: <span class="kw2">true</span>, configurable: <span class="kw2">true</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;
+    <span class="br0">&#123;</span><span class="kw1">this</span>.<span class="me1">x</span> = somebody<span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span><span class="br0">&#125;</span>;
+    Object.<span class="me1">preventExtensions</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>;
+<span class="br0">&#125;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c,<span class="st0">'prototype'</span>,<span class="br0">&#123;</span>value: Object.<span class="me1">create</span><span class="br0">&#40;</span>p<span class="br0">&#41;</span>, enumerable: <span class="kw2">false</span>, writable: <span class="kw2">false</span>, configurable: <span class="kw2">false</span><span class="br0">&#125;</span><span class="br0">&#125;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c.<span class="me1">prototype</span>,<span class="st0">'constructor'</span>,<span class="br0">&#123;</span>writable: <span class="kw2">false</span>, configurable: <span class="kw2">false</span><span class="br0">&#125;</span><span class="br0">&#125;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c,<span class="st0">'isC'</span>, <span class="br0">&#123;</span>value: <span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> obj <span class="kw1">instanceof</span> c<span class="br0">&#125;</span>, writable: <span class="kw2">false</span>, enumerable: <span class="kw2">false</span>, configurable: <span class="kw2">true</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;
+Object.<span class="me1">defineProperty</span><span class="br0">&#40;</span>c.<span class="me1">prototype</span>,<span class="st0">'m'</span>, <span class="br0">&#123;</span>value: <span class="kw2">function</span> <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>, writable: <span class="kw2">false</span>, enumerable: <span class="kw2">false</span>, configurable: <span class="kw2">true</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;
+Object.<span class="me1">seal</span><span class="br0">&#40;</span>c<span class="br0">&#41;</span>;
+Object.<span class="me1">seal</span><span class="br0">&#40;</span>c.<span class="me1">prototype</span><span class="br0">&#41;</span>;</pre>
+</div>
+<!-- SECTION [21924-23715] -->
+<a name="history"></a><h2>History</h2>
+<div class="level2">
+
+<p>
+An earlier design for object literal based constructors is <a href="doku.php%3Fid=strawman:obj_initialiser_constructors.html" class="wikilink1" title="strawman:obj_initialiser_constructors" onclick="return svchk()" onkeypress="return svchk()">Constructor Declarations</a>.  This proposal supersedes that one. 
+</p>
+
+<p>
+Revised to make constructor bodies <em>ObjectLiteral </em> instead of <em>FunctionBody</em>  &mdash; <em><a href="mailto:%26%23x41%3B%26%23x6c%3B%26%23x6c%3B%26%23x65%3B%26%23x6e%3B%26%23x40%3B%26%23x57%3B%26%23x69%3B%26%23x72%3B%26%23x66%3B%26%23x73%3B%26%23x2d%3B%26%23x42%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x41;&#x6c;&#x6c;&#x65;&#x6e;&#x40;&#x57;&#x69;&#x72;&#x66;&#x73;&#x2d;&#x42;&#x72;&#x6f;&#x63;&#x6b;&#x2e;&#x63;&#x6f;&#x6d;">Allen Wirfs-Brock</a> 2011/03/19 21:59</em> 
+</p>
+
+</div>
+<!-- SECTION [23716-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/d/d7c081c121a1863869e5b56fb9203d9f.xhtml used -->
+</body>
+</html>

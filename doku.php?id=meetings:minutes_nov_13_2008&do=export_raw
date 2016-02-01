@@ -1,0 +1,39 @@
+====== ES3.1-WG Phone Conference, 13 Nov 2008 ======
+===== Dial-in =====
+Time: 8:00 - 9:00 (PST):
+
+Tel: 866 500 6738 (US); 203 480 8000 (int’l)
+
+Passcode: 885535
+
+===== Attendees =====
+  * Allen Wirfs-Brock (Microsoft)
+  * Pratap Lakshman (Microsoft)
+
+===== Agenda =====
+  * Not circulated ahead of time.
+
+===== Minutes =====
+**open technical issues**
+
+Need to get organized about how we track issues and drive them to closure - the goal of the Kona meeting is to raise and resolve all outstanding technical issues - all issues are currently part of the spec drafts as comments - prepare and send me a list of list of the issues.
+
+**trac database**
+
+we should use the trac database to record the issues and their resolutions - after the meeting file tickets for each issue - make sure all relevant folks have access to the database.
+
+**SameValue algorithm**
+
+What is the difference between the SameValue algorithm and the Strict Equality comparison algorithm? - SameValue can handle NaN comparisons; it will return true if handed two NaNs - we are using it primarily in the Array "extras"; we want to be able to look up the index within an Array where the value NaN is stored; the use of the strict equality comparison operator would not work for this case - specifically, we are using it in indexOf and lastIndexOf - in ES3 how do you check if something is a NaN? We can use isNan available from the global object.
+
+Rather than duplicating SameValue, define it in terms of the strict equality comparison operator with an additional predicate to handle the NaN distinction
+
+Also, as defined currently it breaks %%[[DefineOwnProperty%%]] - SameValue does not test for the exact same value; its use in %%[[DefineOwnProperty%%]] would, for e.g., let a readOnly +0 be replaced with a -0, or replace a NaN in one implementation dependent encoding with a NaN in another encoding - in the context of %%[[DefineOwnProperty%%]] we are looking for exactly the same identical value.
+
+The SameValue name is misleading as it is really just a stricter equality test and not a identical value test - this name confusion is probably what caused it to be edited into %%[[DefineOwnProperty%%]] - consider renaming it - Ok, lets raise this on the discuss lists.
+
+**create wiki page for the kona meeting**
+
+not sure if John would be creating the page - lets create a wiki page for the Kona meeting, then.
+
+Meeting adjourned.

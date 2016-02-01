@@ -1,0 +1,145 @@
+====== "Subclassing" Built-in Constructors ======
+
+A historic limitation of ECMAScript has been the inability to create fully functional "subclasses" of the abstractions defined by most of the built-in constructors in Chapter 15.  While this is commonly referred to as a "subclassing" problem it is really about how prototypal inheritance works and how built-in ECMAScript objects are specified and constructed.
+
+Examples of the problem:
+
+ES programmers probably most frequently encounter this problem with ES Arrays (see [[http://perfectionkills.com/how-ecmascript-5-still-does-not-allow-to-subclass-an-array/]] ).  For example, consider the following console session:
+
+<code javascript>
+>function MyArray() {}
+>MyArray.prototype.__proto__ = Array.prototype;
+>var ma = new MyArray;
+>ma[0]=0;
+0
+>ma[1]=1;
+1
+>ma.length
+0
+>ma.hasOwnProperty("length")
+false
+>ma.forEach(function(v) {console.log(v)});
+---no console output
+>ma.forEach
+function forEach() { [native code] }
+</code>
+
+This example, defines a constructor that creates objects that inherit form Array.prototype.  But those objects don't automatically get their own length property, like built-in array objects.  Array index properties can be added, but doing so does not also add or update the length properties.  Array methods such as toString and forEach can be called but because they depend upon the length property, they don't produce the same result as for a built-in array.
+
+You can see a similar problem with other built-ins, such as Date.
+
+<code javascript>
+>function MyDate(timeValue) { this.setTime(timeValue); }
+>MyDate.prototype.__proto__ = Date.prototype;
+>var md = new MyDate(Date.now());
+TypeError on line 3: Date.prototype.setTime called on incompatible Object
+</code>
+
+
+===== Private Internal Data Properties =====
+
+
+A //internal property// is defined by  [[http://ecma-international.org/ecma-262/5.1/#sec-8.6|ES5.1, 8.6]]: "An internal property has no name and is not directly accessible via ECMAScript language operators. Internal properties exist purely for specification purposes."  In other words, an internal property is not a property at all.  Instead it is a way for specifying that some additional state (that is not directly accessible as a property) is encapsulated by an object.  It is left up to ECMAScript implementations to determine how to actually represent and access that state. Internal properties have none of the regular characteristics of ECMAScript object properties.  In particular, they are not accessible using %%[[%%Get]] and they are not inherited using the %%[[%%Prototype]] chain. Internal data properties give implementation flexibility in how they represent the corresponding internal state of built-in object instances.  For example, a specific internal property might be represented as a field in a C++ struct that is the runtime representation of a specific kind of built-in object.  In that case, built-in methods would probably access the state corresponding to the internal property via direct C++ field access instead of the generalized ECMAScript property access mechanism. However, such a choice creates a direct coupling between the object representation (the shape of the struct) and the methods that access the internal properties.  If a method that expects some internal property to exist as a specific struct field was applied to an object that was represented using a differently shaped struct a unsafe memory access might occur.  In order to avoid this possibility all such methods need to ensure that they being applied to only the exact kind of object that they designed to operate upon. 
+
+Such checks are explicit in the ES specification in many places where internal data properties are used. For example, he Date sample above throws a TypeError because of specification requirements given in [[http://ecma-international.org/ecma-262/5.1/#sec-15.9.5|ES5.1 15.9.5 Properties of the Date Prototype Object]]:
+
+>"...properties of the Date prototype object... none of these functions are generic; A TypeError exception is thrown if the this value is not an object for which the value of the %%[[%%Class]] internal properties is "Date". Also, the phrase "this time value" refers to ...the value of the %%[[%%PrimitiveValue]] internal property of this Date object."
+
+All ECMAScript objects are required to have a %%[[%%Class]] internal property, but all user defined constructors, such as MyDate in the sample, create objects  whose %%[[%%Class]] internal property has the value "Object".  So, by specification, all of the built-in methods of the Date prototype object must throw if invoked as methods (via inheritance, using call/apply functios, or by direct assignment to a property value)  on any user defined object.  Hence,  the first step to making Date "subclassable" must be to remove this %%[[%%Class]]=="Date" requirement from the specification of the Date prototype methods  (or alternatively allow user defined constructors to set an object's %%[[%%Class]] internal value, but that would be unsafe).  Before we can safely do this, we need to look closely at the real intent of the requirement.  What the %%[[%%Class]] test is doing is making sure that the **this** object of a method call is an object that was created by the built-in Date constructor.  What is it that is unique about such objects?  The answer is given in the last sentence of the above quote from 15.9.5.  Objects created by the Date constructor all have a %%[[%%DatePrimitiveValue]]((The ES5.1 specification actually names this %%[[%%PrimitiveValue]] but the specification also uses that same name for other unrelated internal properties of other built-in objects. We add "Date" to the name to make it clear that we are specifically talking about the Date %%[%%PrimitiveValue]] property.)) internal property that contains the "time value" of the date and all of the Date prototype methods access and/or set the %%[[%%DatePrimitiveValue]] of the **this** objects that the methods are invoked upon.  The %%[[%%DatePrimitiveValue]] property containing a time value is the only thing that is fundamentally different between Date instance objects and any normal user constructed object. 
+
+So, the real purpose of the %%[[%%Class]]=="Date" precondition is to make sure that methods that reference the %%[[%%DatePrimitiveValue]] internal property are only applied to object that actually have that internal property.  The 15.9.5 requirement could be restated as: A TypeError is thrown if the this value is not an object that has a %%[[%%DatePrimitiveValue]] internal property.  If such a change was make to the ES5.1 specification it would have no impact upon current ECMAScript implementations or any existing ECMAScript code.  However, even with such a change Date objects would still not be subclassable because the subclass objects still would not have a %%[[%%DatePrimitiveValue]] internal property.  For Date to be subclassable, it must be possible for the subclasses to acquire the %%[[%%DatePrimtiiveValue]] internal property that inherited Data prototype methods depend up.
+
+==== Initializing Subclass Internal Data Properties. ====
+
+
+In a c-style class-based language, subclass instance initialization often includes the initialization of superclass defined instance invariants. This is usually accomplished by having the subclass constructor invoke a superclass constructor on the subclass instance. Hoswever, because of the static natures of such languages the complete "shape" of an instance, including private superclass fields can be determined prior to instance allocation.
+
+Subclass initialization might be expressed in a similar manner for ECMAScript. For example, using the proposed ECMAScript [[strawman:maximally minimal classes]] syntax you might expect to see something like:
+
+<code javascript>
+class MyDate extends Date {
+   constructor(...args) {
+      super();
+      //process args to further initialize the MyDate instance
+   }
+}
+</code>
+In this example, the ''**super**()'' call invokes the ''Date'' constructor as a function with the the ''new MyDate'' instance as its **this** value.  The ''Date'' constructor presumably should establish all invariants that are needed to invoke inherited ''Date.prototype'' methods on the ''MyDate'' instance. 
+
+In traditional ECMAScript, the same idea might be expressed by code that looks like this:
+
+<code javascript>
+function MyDate() {
+   Date.call(this);
+   //process the arguments object to further initialize the MyDate instance
+}
+MyDate.prototype.__proto__ = Date.prototype;
+</code>
+
+This should accomplish exactly the same thing, if it worked at all.  However, the current ES5.1 specification of the Date constructor prevents either of these formulations from work.  The constructor specification has several issue in this regard.
+
+The first issue is that under the current specification, calling the ''Date'' constructor as a function doesn't initialize its **this** object as a ''Date'' instance in the same manner that the Date constructor does when invoked as part of a ''new'' expression.  Instead, it does something completely different, it returns a string representation of a date!  This is a general problem with several of the current built-in ECMAScript constructors, when called as functions some of then do things that are unrelated to instance initialization. However, at least for the ''Date'' constructor, there appears to be a way to correct this problem.  Under the current specification the Date constructor, when called as a function completely ignores the **this** value that is passed to it.  In practice the ''Date'' function is seldom, if ever, called as a method on some other object.  So, in current applications the **this** value is normally the value **undefined** when ''Date'' is called as a function.  This fact can be used to obtain the required initialization behavior while still maintaining backwards compatibility with code that calls ''Date'' as a function.  Its specification can be changed such that the behavior remains as specified in ES5.1 if the **this** object is **undefined** or **null** but otherwise it performs new ''Date'' instance initialization on the this object.
+
+The other issue is relatively minor and relates to how %%[[%%DatePrimiitveValue]] initialization is currently specified.  The ES5.1 spec. ([[http://ecma-international.org/ecma-262/5.1/#sec-15.9.3|15.9.3.1-15.9.3.3]]) simply says "Set the %%[[%%DatePrimtiveValue]] internal property of the new constructed object to ...".  This statement might reasonably be interpreter as assuming that an (uninitialized) %%[[%%DatePrimitiveValue]] internal property already exits for the instance in light of the fact [[http://ecma-international.org/ecma-262/5.1/#sec-15.9.6|15.9.6]] says that all ''Date'' instance have that internal property. It the case of the **super** constructor call pattern, the %%[[%%DatePrimitiveValue]] internal property cannot be assumed to exist on the instance.  In the specification, this problem can be fixed simply by saying "If a %%[[%%DatePrimitiveValue]] internal property does not exist create it" prior to setting its value.  With these considerations, here is how the ''Date'' constructor called as a function ([[http://ecma-international.org/ecma-262/5.1/#sec-15.9.2|15.9.2.1]]) might be respecified  to  support subclassing:
+
+  - If the **this** value is **undefined**, **null**, or the global object, then
+    - NOTE This is the current ES5.1 behavior
+    - NOTE The global object is there in case any existing code does says: this.Date() at the global level to access Date
+    - A String is created and returned as-if by the expression: ''(new Date).toString();''
+  - Let //obj// be ToObject(**this** value).
+  - If the %%[[%%Extensible]] internal property of //obj// is **false**, throw a TypeError exception. 
+  - If //obj// already has a %%[[%%DatePrimitiveValue]] internal property, then return //obj//.  NOTE or maybe throw?
+  - Add a %%[[%%DatePrimitiveValue]] internal property to //obj//.
+  - Set the %%[[%%DatePrimitiveValue]] internal property of //obj// to the time value (UTC) identifying the current time.
+  - Return //obj//.
+
+
+A technique similar to  the above is being used in the [[globalization:specification_drafts|ECMAScript Internationalization API]] to specify that the built-in objects defined by that specification are subclassable.
+
+Lazy initialization is another alternative approach that can use for initializing subclass internal properties.  For example, the first reference to %%[[%%DatePrimitiveValue]] in each Date prototype method specification could be prefixed with a check that adds the %%[[%%DatePrimitiveValue]] internal property if it does not already exist.  For example,
+Date.prototype.setTime (time)  (15.9.5.27) might be respecified as:
+
+  - Let //obj// be ToObject(**this** value).
+  - Let //v// be TimeClips(ToNumber(//time//)).
+  - If //obj// does not have a %%[[%%DatePrimitiveValue]] internal property, then
+    - If the %%[[%%Extensible]] internal property of //obj// is **false**, throw a TypeError exception. 
+    - Add a %%[[%%DatePrimitiveValue]] internal property to //obj//.
+  - Set the %%[[%%DatePrimitiveValue]] internal property of //obj// to //v//.
+  - Return //v//.
+
+ 
+This eliminates the user requirement of having to invoke the superclass constructor on the subclass instance but at the apparent cost of having to explicitly check for the existence of %%[[%%DatePrimtivieValue]] in every method that accesses that internal property.  However, that test (or its equivalent) is needed regardless in order to ensure that such methods are not invoked on objects that that do not have that internal property.  
+
+====  Implementation Considerations for Internal Data Properties ====
+
+
+Both the super constructor invocation and the lazy initialization approach have a potentially significant impact upon implementations.  Both approaches assume that internal data properties such as %%[[%%DatePrimtiveValue]] can be dynamically added to an object at some arbitrary point in time after its initial creation.  This has not historically been a characteristic of ECMAScript internal properties.  For example, if an implementation has used a specific C++ object or struct type that includes a %%[[%%DatePrimtiiveValue]] field to represent Date objects, that implementation type probably needs to be identified at the time the object is actually created.  It may not be possible to dynamically change the object representation to a different struct because of size or other differences between object representations. 
+
+Fortunately there is a way to represent internal data properties that can easily support their dynamic attachment to pre-existing objects.  All ECMAScript object are fundamentally capable of dynamically adding normal object properties.  A [[harmony:private_name_objects|Private Name]] is a unforgeable value that can be used as a property name.  Only code that knows a specific private name can access a normal object property whose key is that private name.  This suggests that a straightforward way to support dynamic addition of ECMAScript internal properties is to represent them as normal object properties that have Private Name keys. If the Private Names of such properties are only know to the implementations of built-in methods that reference the corresponding internal property then the Private Named properties will be invisible outside of those built-in methods, just as they would be if the internal property was represent using any other custom mechanism.
+
+The potential of using Private Named properties as an implementation technique for internal properties raises the question of whether private named data properties could be completely eliminated from the ES specification and simply replaced with Private Named properties. This probably could be done.  But it isn't clear if there is any advantage of doing so, once it is understood that Private Name properties are a valid way for an implementation to represent internal properties.   Explicitly keeping internal properties of a specification device allows the Private Name implementation but also leaves open the possibility of implementations choosing other way of representing internal properties that don't depend upon conventional object property mechanisms. At the specification level, the key idea is that subclassing is enabled by treating internal data properties as "expando" properties, that is properties that can be dynamically added to instances. 
+ 
+
+===== Internal Methods =====
+
+
+In addition to internal data properties such as %%[[%%DatePrimitiveValue]] the ECMAScript specification also makes use of //internal method// properties. An internal method method is a procedure  that is internal to an object's implementation and which is only indirectly accessible from ECMAScript code.  An internal method can not be directly called. There a really two kinds of internal methods used within the ES5 specification. Some internal methods, such as the %%[[%%Match]] internal expression of RegExp objects are only referenced by other built-in methods of the same kind or closely related kinds of objects. We will call internal methods of this kind //private internal methods//. Core language features generally don't have any dependencies upon private internal methods. For this reason, they can be treated very similarly to internal data properties, they are simply internal state and can be represented as such.  In order for built-in objects that have //private internal methods// to be "subclassable" the private internal methods need to be represented as "expando" properties just as was described for internal data properties. They must be dynamically initialized, either by a super constructor invocation or lazily. They might be represented either using private name keyed properties or via an implementation level expando mechanism.  
+
+The other kind of internal method properties are implementations of the nine "common to all objects" methods defined in Table 8 of the ES5 specification. These methods are directly tied to the semantics of core language features. For example, Array objects provide a unique %%[[%%DefineOwnProperty]] internal method that automatically updates the array's length property when new array elements are added beyond the current length. It also automatically deletes array elements  when the length property is decreased.
+
+We call these nine internal methods the //essential internal methods//.  Every object must internally expose an implementation of the essential internal methods but not necessarily the same implementation.  It is the use of a non-inheritable essential internal methods that currently prevents the ES5 built-in Array "class" from being subclassed. This issue conceptually can be address in the same manner as internal data properties and private internal methods.  However, the dynamic attachment of specialized  essential internal methods probably has to be done via super constructor invocation rather than lazily.  The reason is because essential internal method innovation is triggered by the semantics of core language features so there is no place to trigger their delayed lazy initialization.  Also, because the implementation level mechanisms of the dynamic attachment for essential internal methods are likely to differ from  the "expando" mechanisms used for internal data properties and internal private method properties. Finally and particularly for the built-in Array "class", implementations frequently apply various representation level optimizations to Array objects.  Depending upon the implementation, subclasses of Array might not share those optimizations and super constructor dynamic installation of essential internal methods might actually need to install different versions of those methods other than the ones that are used for optimized array representations.
+
+
+==== Function Subclasses ====
+
+
+The other basic usage of internal methods and data properties is for Function objects. Such function objects are exception because of their direct connect to the execution mechanisms of the language.  Some of the Function internal properties are relatively routine internal data properties.  However, %%[[%%Call]] and %%[[%%Constructor]] are more similar to the essential internal methods.  From a usage perspective, the value of subclassing Function seems small if the only way to create a callable subclass instance is via a source code string passed to a constructor.  It may be that for ES6, we can reasonably defer addressing the issues of making Function subclassable.
+
+
+===== Making Subclassed Built-ins Useful =====
+
+This strawman only addresses how to make it technically possible to subclass built-in ECMAScript library objects.  Even after this is done, there remains a number of legacy specification issues that would limit the utility of such subclasses. For example, the ''concat'' method of Arrays is currently specified to always create a new instance of the built-in Array constructor.  So, use of it by a subclass of Array would yield an Array instance rather than a subclass instance. If subclassing of built-in is going to actually be useful, these sorts of issues also need to be addressed in the specifications.
+
+A separate strawman addresses what has to be done in this regard:[[strawman:es5 internal nominal typing|Cleanup/Generalize ES5 Internal Nominal Object Typing]].
+
+

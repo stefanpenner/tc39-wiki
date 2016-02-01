@@ -1,0 +1,80 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=conventions:atleastes5&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=conventions" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=conventions:atleastes5&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=conventions:atleastes5&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="the_atleastes5_patterns"></a><h1>The atLeastES5 Patterns</h1>
+<div class="level1">
+
+<p>
+ To ease the transition from ES3R (ES3 approximations as implemented on currently deployed major browsers) and ES5, we suggest these detection patterns. In order for these detection patterns to be useful, it is important that upcoming incremental deployments of ES5 implement strict mode last, so that these detection patterns do not yield false positives.
+</p>
+
+</div>
+<!-- SECTION [1-397] -->
+<a name="detecting_whether_the_platform_supports_at_least_es5"></a><h2>Detecting whether the platform supports at least ES5</h2>
+<div class="level2">
+<pre class="code javascript">  <span class="kw1">if</span> <span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span><span class="st0">"use strict"</span>;return <span class="kw1">this</span>;<span class="br0">&#125;</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="co1">//... pre ES5 code goes here</span>
+  <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="br0">&#123;</span>
+    <span class="co1">//... code here should be compatible with at least ES5 but still parse as ES3R</span>
+  <span class="br0">&#125;</span></pre>
+<p>
+Alternatively, if the code already appears within the scope of a <code>&ldquo;use strict&rdquo;</code> directive...
+</p>
+<pre class="code javascript">  <span class="st0">"use strict"</span>;
+  <span class="kw1">if</span> <span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw1">this</span>;<span class="br0">&#125;</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="co1">//... pre ES5 code goes here</span>
+  <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="br0">&#123;</span>
+    <span class="co1">//... code here should be compatible with at least ES5-strict but still parse as ES3R</span>
+  <span class="br0">&#125;</span></pre>
+<p>
+The above &ldquo;but still parse as ES3R&rdquo; constraints are necessary, so that this code does not cause a syntax error when parsed by an ES3R platform. Since ES5 introduces very few syntactic constructs beyond those that parse as ES3R, this constraint is rarely significant. When it is, the following variation should be used instead:
+</p>
+<pre class="code javascript">  <span class="kw1">if</span> <span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span><span class="st0">"use strict"</span>;return <span class="kw1">this</span>;<span class="br0">&#125;</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="co1">//... pre ES5 code goes here</span>
+  <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="br0">&#123;</span>
+    <span class="br0">&#40;</span><span class="nu0">1</span>,<span class="kw1">eval</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="st0">"//... code here should be compatible with at least ES5"</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span></pre>
+<p>
+Since the <code>else</code> clause is only executed on at least ES5 platforms, the <code>(1,eval)</code> ensures that the string argument is not executed by a direct-eval-operator, insulating the calling scope (and thereby unfortunately changing the meaning of the pattern). This is needed to ensure the scoping is stable whether or not <code>eval</code> still has its original binding or has been rebound to an evaluating function with similar behavior but distinct identity.
+</p>
+
+</div>
+<!-- SECTION [398-1958] -->
+<a name="detecting_whether_this_code_is_executing_as_at_least_es5-strict_code"></a><h2>Detecting whether this code is executing as at least ES5-strict code</h2>
+<div class="level2">
+
+<p>
+ On platforms supporting ES5, generally one knows statically whether a piece of code is strict or not. The rare exception is code appearing in text to be <code>eval()</code>ed which wishes to detect rather than simply declare itself to be strict. So it is unclear how useful the following pattern is. 
+</p>
+<pre class="code javascript">  <span class="kw1">if</span> <span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw1">this</span>;<span class="br0">&#125;</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="co1">//... pre ES5-strict code goes here</span>
+  <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="br0">&#123;</span>
+    <span class="co1">//... code here should be compatible with at least ES5-strict but still parse as ES3R</span>
+  <span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [1959-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/a/adf06376aa2cfbf5543d4c9bba2d9f75.xhtml used -->
+</body>
+</html>

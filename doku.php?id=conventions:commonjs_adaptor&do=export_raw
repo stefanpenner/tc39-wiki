@@ -1,0 +1,70 @@
+====== CommonJS Adaptor ======
+
+The following is a lighweight self-contained (infrastructure-free) pattern for writing files that can be
+    * used as [[http://wiki.commonjs.org/wiki/Modules/1.0|CommonJS modules (1.0)]],
+    * used as ES3R, ES5, ES5/strict, or [[http://code.google.com/p/es-lab/wiki/SecureEcmaScript|SES]] browser-side scripts, or
+    * losslessly concatenated together into larger scripts.
+
+**In file ''example/foo.js'':**
+<code javascript>
+  (function(require, exports) {
+    "use strict";
+    // ...
+    exports.x = 21;
+
+  }).apply({}, typeof require === 'function' ? [require, exports] :
+                 [function(g){return function(id){return g['/'+id];};}(this),
+                  this['/example/foo'] = {}]);
+</code>
+
+**In file ''example/bar.js'':**
+<code javascript>
+  (function(require, exports) {
+    "use strict";
+    var foo = require("example/foo");
+    // ...
+    exports.y = foo.x * 2;
+
+  }).apply({}, typeof require === 'function' ? [require, exports] :
+                 [function(g){return function(id){return g['/'+id];};}(this),
+                  this['/example/bar'] = {}]);
+</code>
+
+In a CommonJS environment, ''require'' and ''exports'' would be defined and
+''require'' would be a function, so the first branches of the ?:s above would
+be taken. In a browser-side environment, the above pattern assumes 
+''require'' wouldn't be defined, so the
+second branches would be taken. In a CommonJS environment, loading 
+''example/bar.js'' would cause the loading of ''example/foo.js''. 
+In a browser-side environment, the page
+would still have to manually include these scripts in bottom-up order as
+usual -- first ''foo'' and then ''bar''. This works whether ''example/foo.js''
+and ''example/bar.js'' are
+included as separate scripts or whether they are appended together. Fancier
+adapters like [[http://requirejs.org/]] do more but need more setup. When the
+simple pattern above is adequate, it works without any prelude or
+infrastructure.
+
+Everything above should work on old ES3 browsers. On ES5 browsers, each
+individual module is strict, without the strictness leaking when module
+sources are appended.
+
+The main limitation for browser-side use is that the concatenation of 
+"/" and a module id becomes a global variable name, and so potentially 
+conflicts with other global variable names beginning with "/".
+
+====== Acks ======
+
+The above pattern is MarkM's adaptation of a pattern by Isaac Schlueter and Kris Kowal, based on yet earlier patterns proposed by Peter Michaux. (And others? Let me know and I'll add.)
+
+====== See ======
+
+[[http://wiki.commonjs.org/wiki/Modules/1.0|CommonJS modules (1.0)]]
+
+Following [[http://wiki.commonjs.org/wiki/Modules/Secure|CommonJS Secure Modules recommendations]] should result in compatibility with [[http://code.google.com/p/es-lab/wiki/SecureEcmaScript|SES]].
+
+[[http://wiki.commonjs.org/wiki/Modules/ScriptModules|CommonJS ScriptModules]] More complete conventions for modules that can be run as browser-side scripts, but assuming some setup infrastructure.
+
+[[http://requirejs.org/]] Yet more complete support for browser-side use of CommonJS modules, requiring yet more setup.
+
+[[https://mail.mozilla.org/pipermail/es-discuss/2010-September/011801.html|es-discuss #011801]] first posting of approximately this proposal.

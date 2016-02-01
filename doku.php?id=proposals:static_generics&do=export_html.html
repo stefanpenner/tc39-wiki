@@ -1,0 +1,110 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:static_generics&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:static_generics&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:static_generics&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<p>
+(Split from <a href="doku.php%3Fid=proposals:bug_fixes.html" class="wikilink1" title="proposals:bug_fixes" onclick="return svchk()" onkeypress="return svchk()">bug fixes</a> &ndash; start a <a href="doku.php%3Fid=discussion:static_generics.html" class="wikilink1" title="discussion:static_generics" onclick="return svchk()" onkeypress="return svchk()">discussion page</a> or comment here.)
+</p>
+
+<a name="static_generics"></a><h1>Static Generics</h1>
+<div class="level1">
+
+<p>
+ ES1-3 define many explicitly generic methods on <code>Array.prototype</code> and <code>String.prototype</code>, and ES3 defines two seemingly-generic methods on <code>Function.prototype</code> that could be generic. &ldquo;Generic&rdquo; here means that the method&rsquo;s <code>this</code> parameter can be any object that has a <code>length</code> property and indexed elements for the <code>Array</code> and <code>String</code> methods; or a callable object for the <code>Function</code> methods <code>apply</code> and <code>call</code>.
+</p>
+
+<p>
+The problem is that to invoke such a generic prototype method on an object of a different class, one must use <code>Function.prototype.apply</code> or <code>call</code>!
+</p>
+
+<p>
+This proposal adds a static method of the same name for each prototype generic method, taking an explicit leading <code>obj</code> parameter that binds to <code>this</code> in the callee.  Thus <code>Array.prototype.slice(begin, end)</code> can be called <code>Array.slice(arraylike, begin, end)</code>.  The <code>length</code> property of the static method is one greater than the <code>length</code> property of the prototype method (in this example, <code>Array.slice.length</code> is <code>3</code>).
+</p>
+
+</div>
+<!-- SECTION [107-1163] -->
+<a name="array_generics"></a><h2>Array Generics</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> ES3: <code>concat join pop push reverse shift slice sort splice unshift</code></div>
+</li>
+<li class="level1"><div class="li"> JS1.6: <code>every filter forEach indexOf lastIndexOf map some</code></div>
+</li>
+<li class="level1"><div class="li"> JS1.8: <code>reduce reduceRight setSlice</code></div>
+</li>
+</ul>
+
+<p>
+ See builtins/Array.es for implementations.
+</p>
+
+</div>
+<!-- SECTION [1164-1419] -->
+<a name="string_generics"></a><h2>String Generics</h2>
+<div class="level2">
+<pre class="code">substring charAt charCodeAt indexOf lastIndexOf
+toLowerCase toUpperCase toLocaleLowerCase toLocaleUpperCase localeCompare
+match search replace split substr concat slice</pre>
+
+<p>
+ See builtins/String.es for implementations.
+</p>
+
+</div>
+<!-- SECTION [1420-1670] -->
+<a name="function_generics"></a><h2>Function Generics</h2>
+<div class="level2">
+<pre class="code">apply call</pre>
+
+<p>
+ See builtins/Function.es for implementations.
+</p>
+
+<p>
+We have talked about <code>applyNew</code> or <code>applyAsConstructor</code>.  The committee resolved at the January 2007 meeting that a &ldquo;construct&rdquo; method is installed on the class object when it is created, so that client code can do one of
+</p>
+<pre class="code javascript">  C.<span class="me1">construct</span><span class="br0">&#40;</span>...<span class="br0">&#41;</span>
+  C.<span class="me1">construct</span>.<span class="me1">apply</span><span class="br0">&#40;</span><span class="kw2">null</span>,...<span class="br0">&#41;</span></pre>
+<p>
+on some class object C.
+</p>
+
+<p>
+<code>Function.bind</code> / <code>Function.prototype.bind</code> also springs to mind, since every Ajax library in the universe has to roll its own in ES3.  Here is <a href="http://prototype.conio.net/ Prototype" class="urlextern" target="_blank" title="http://prototype.conio.net/ Prototype" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://prototype.conio.net/ Prototype</a>&lsquo;s:
+</p>
+<pre class="code javascript"><span class="kw2">Function</span>.<span class="me1">prototype</span>.<span class="me1">bind</span> = <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw2">var</span> __method = <span class="kw1">this</span>, args = $A<span class="br0">&#40;</span>arguments<span class="br0">&#41;</span>, object = args.<span class="me1">shift</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+  <span class="kw1">return</span> <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">return</span> __method.<span class="me1">apply</span><span class="br0">&#40;</span>object, args.<span class="me1">concat</span><span class="br0">&#40;</span>$A<span class="br0">&#40;</span>arguments<span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+where <code>$A</code> makes an array from its arraylike or iterable parameter.  If we do this, we should emulate Prototype, including its &ldquo;pre-args&rdquo; feature, since it actually hacks on <code>Function.prototype</code> and it&rsquo;s a de-facto standard.
+</p>
+
+</div>
+<!-- SECTION [1671-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/d/d787423b76a42bb29ae8ea6382d1e63d.xhtml used -->
+</body>
+</html>

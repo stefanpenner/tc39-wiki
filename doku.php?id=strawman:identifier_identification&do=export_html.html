@@ -1,0 +1,131 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:identifier_identification&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:identifier_identification&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:identifier_identification&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="identifier_identification"></a><h2>Identifier Identification</h2>
+<div class="level2">
+
+</div>
+<!-- SECTION [1-39] -->
+<a name="problem"></a><h3>Problem</h3>
+<div class="level3">
+
+<p>
+ ECMAScript is used to implement a variety of tools that check code for conformance with the ECMAScript specification, minimize it, perform other transformations, or generate ECMAScript code. These tools have to be able to check identifiers for conformance, taking the identifier specification and the underlying Unicode specification into consideration. This currently requires the tools to include large regular expressions or tables. When tools bring their own data, they likely will support only one ECMAScript/Unicode version, and there&rsquo;s no guarantee that their data will match the identifier definition of the runtime they&rsquo;re running, as implementations are free to support any Unicode version higher than the minimum version required by the ECMAScript specification.
+</p>
+
+<p>
+In general, Unicode character properties can be supported through code point classification functions or through regular expression patterns. In the case of ECMAScript parsers, it seems classification functions are more useful:
+</p>
+<ol>
+<li class="level1"><div class="li"> When looking at a number of parsers, I found that the majority already use code point classification functions, in particular functions to identify IdentifierPart and IdentifierStart characters. JSLint and CoffeeScript have the only parsers that detect tokens using regular expressions; neither of these two handle Unicode escape sequences, which are hard to integrate into this approach. Approaches are summarized below.</div>
+</li>
+<li class="level1"><div class="li"> Functions can easily accept additional parameters, such as the target ECMAScript version.</div>
+</li>
+</ol>
+<table class="inline">
+	<tr>
+		<th class="leftalign"> Parser (of)  </th><th class="leftalign"> Tokenizer  </th><th class="leftalign"> non-<acronym title="American Standard Code for Information Interchange">ASCII</acronym> characters  </th><th class="leftalign"> # of ES/Unicode versions  </th><th class="leftalign"> ES version  </th><th class="leftalign"> Unicode version  </th><th class="leftalign"> Unicode escapes  </th>
+	</tr>
+	<tr>
+		<th class="leftalign"><a href="https://github.com/douglascrockford/JSLint/blob/master/jslint.js" class="urlextern" target="_blank" title="https://github.com/douglascrockford/JSLint/blob/master/jslint.js" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">JSLint</a>  </th><td class="leftalign"> RegExp  </td><td class="leftalign"> no  </td><td class="leftalign"> —  </td><td class="centeralign">  ?  </td><td class="centeralign">  ?  </td><td class="leftalign"> no  </td>
+	</tr>
+	<tr>
+		<th class="leftalign"><a href="https://github.com/jshint/jshint/blob/master/src/lex.js" class="urlextern" target="_blank" title="https://github.com/jshint/jshint/blob/master/src/lex.js" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">JSHint</a>  </th><td class="leftalign"> Functions  </td><td class="leftalign"> yes  </td><td class="leftalign"> 1  </td><td class="centeralign">  5.1  </td><td class="centeralign">  6.3.0  </td><td class="leftalign"> yes  </td>
+	</tr>
+	<tr>
+		<th class="leftalign"><a href="https://github.com/jashkenas/coffee-script/blob/master/src/lexer.coffee" class="urlextern" target="_blank" title="https://github.com/jashkenas/coffee-script/blob/master/src/lexer.coffee" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">CoffeeScript</a>  </th><td class="leftalign"> RegExp  </td><td class="leftalign"> wrong - accepts 0x7F-0xFFFF  </td><td class="leftalign"> —  </td><td class="centeralign">  ?  </td><td class="centeralign">  ?  </td><td class="leftalign"> no  </td>
+	</tr>
+	<tr>
+		<th class="leftalign"><a href="https://github.com/ariya/esprima/blob/master/esprima.js" class="urlextern" target="_blank" title="https://github.com/ariya/esprima/blob/master/esprima.js" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Esprima</a>  </th><td class="leftalign"> Functions  </td><td class="leftalign"> yes  </td><td class="leftalign"> 1  </td><td class="centeralign">  5.1  </td><td class="centeralign">  6.3.0  </td><td class="leftalign"> yes  </td>
+	</tr>
+	<tr>
+		<th class="leftalign"><a href="http://marijnhaverbeke.nl/acorn/" class="urlextern" target="_blank" title="http://marijnhaverbeke.nl/acorn/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">acorn</a>  </th><td class="leftalign"> Functions  </td><td class="leftalign"> yes  </td><td class="leftalign"> 1  </td><td class="centeralign">  5.1  </td><td class="centeralign">  6.3.0  </td><td class="leftalign"> yes  </td>
+	</tr>
+	<tr>
+		<th class="leftalign"><a href="https://github.com/mishoo/UglifyJS2/blob/master/lib/parse.js" class="urlextern" target="_blank" title="https://github.com/mishoo/UglifyJS2/blob/master/lib/parse.js" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">UglifyJS2</a>  </th><td class="leftalign"> Functions  </td><td class="leftalign"> yes  </td><td class="leftalign"> 1  </td><td class="centeralign">  5.1  </td><td class="centeralign">  6.3.0  </td><td class="leftalign"> yes  </td>
+	</tr>
+</table>
+<br />
+
+</div>
+<!-- SECTION [40-2473] -->
+<a name="proposed_solution"></a><h3>Proposed Solution</h3>
+<div class="level3">
+
+<p>
+ Add the following functions, which detect identifier characters based on either the minimum Unicode version of a specified ECMAScript edition, or the Unicode version used by the implementation.
+</p>
+
+<p>
+<strong>String.isIdentifierStart(cp [, edition])</strong> 
+</p>
+<ol>
+<li class="level1"><div class="li"> If <em>cp</em> is a String value or String object, then let <em>cp</em> be the result of calling the standard built-in function String.prototype.codePointAt with <em>cp</em> as the <strong>this</strong> value and 0 as the <em>pos</em> argument.</div>
+</li>
+<li class="level1"><div class="li"> If <em>cp</em> is not a Number value or Number object, throw a TypeError exception.</div>
+</li>
+<li class="level1"><div class="li"> Let <em>cp</em> be ToNumber(<em>cp</em>).</div>
+</li>
+<li class="level1"><div class="li"> If <em>cp</em> is not finite, throw a RangeError exception.</div>
+</li>
+<li class="level1"><div class="li"> If ToInteger(<em>cp</em>) ≠ <em>cp</em>, throw a RangeError exception.</div>
+</li>
+<li class="level1"><div class="li"> If <em>cp</em> &lt; 0 or <em>cp</em> &gt; 0x10FFFF, throw a RangeError exception.</div>
+</li>
+<li class="level1"><div class="li"> If <em>edition</em> is provided and not undefined, then:</div>
+<ol>
+<li class="level2"><div class="li"> If <em>edition</em> is not a Number value, throw a TypeError exception.</div>
+</li>
+<li class="level2"><div class="li"> If <em>edition</em> is not 3, 5, or 6, throw a RangeError exception.</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> If <em>edition</em> is 3 or 5, let <em>unicode</em> be 3.0.</div>
+</li>
+<li class="level1"><div class="li"> Else if <em>edition</em> is 6, let <em>unicode</em> be 5.1.</div>
+</li>
+<li class="level1"><div class="li"> Else let <em>unicode</em> be the Unicode version supported by the implementation in ECMAScript identifiers.</div>
+</li>
+<li class="level1"><div class="li"> If <em>edition</em> is not provided or is undefined, then let <em>edition</em> be 6.</div>
+</li>
+<li class="level1"><div class="li"> If <em>cp</em> is matched by the IdentifierStart production in edition <em>edition</em> of the ECMAScript Language Specification using Unicode version <em>unicode</em>, then return true.</div>
+</li>
+<li class="level1"><div class="li"> Return false.</div>
+</li>
+</ol>
+
+<p>
+ <strong>String.isIdentifierPart(cp [, version])</strong>
+</p>
+
+<p>
+This function behaves in exactly the same way as String.isIdentifierStart, except that the return value is based on whether <em>cp</em> is matched by the IdentifierPart production. 
+</p>
+
+</div>
+<!-- SECTION [2474-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/a/a85522ab01c29e8f20db4f730d44029e.xhtml used -->
+</body>
+</html>

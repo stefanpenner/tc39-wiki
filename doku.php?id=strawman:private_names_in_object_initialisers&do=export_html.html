@@ -1,0 +1,192 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:private_names_in_object_initialisers&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:private_names_in_object_initialisers&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:private_names_in_object_initialisers&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="private_names_in_extended_object_initialisers"></a><h1>Private Names in Extended Object Initialisers</h1>
+<div class="level1">
+
+<p>
+<em>This is one of several related <a href="doku.php%3Fid=strawman:object_initialiser_extensions.html" class="wikilink1" title="strawman:object_initialiser_extensions" onclick="return svchk()" onkeypress="return svchk()">Object Initialiser Extensions</a>.</em> <br/>
+ <em>This extension builds upon concepts introduced in <a href="doku.php%3Fid=strawman:obj_initialiser_meta.html" class="wikilink1" title="strawman:obj_initialiser_meta" onclick="return svchk()" onkeypress="return svchk()">Object Initialiser Meta Properties</a>, <a href="doku.php%3Fid=strawman:obj_initialiser_methods.html" class="wikilink1" title="strawman:obj_initialiser_methods" onclick="return svchk()" onkeypress="return svchk()">Method Properties</a>,  <a href="doku.php%3Fid=strawman:obj_initialiser_const.html" class="wikilink1" title="strawman:obj_initialiser_const" onclick="return svchk()" onkeypress="return svchk()">Other Object Initialiser Property Modifiers</a>, and <a href="doku.php%3Fid=strawman:obj_initialiser_class_abstraction.html" class="wikilink1" title="strawman:obj_initialiser_class_abstraction" onclick="return svchk()" onkeypress="return svchk()">Class Initialisers</a></em>
+</p>
+
+<p>
+<a href="doku.php%3Fid=strawman:private_names.html" class="wikilink1" title="strawman:private_names" onclick="return svchk()" onkeypress="return svchk()">Private Names</a> can be used to support information hiding within extended object initialisers and class initialisers. If an object or class initialiser is within the scope of a <em>PrivateDeclaration</em> then any occurrence of that declaration&rsquo;s private identifier as a <em>PropertyName</em> within the initaliser will use the associated private name value as the <em>PropertyName</em> value.  <a href="doku.php%3Fid=strawman:private_names.html" class="wikilink1" title="strawman:private_names" onclick="return svchk()" onkeypress="return svchk()">Private Names</a> can be used in conjunction with <a href="doku.php%3Fid=strawman:instance_variables.html" class="wikilink1" title="strawman:instance_variables" onclick="return svchk()" onkeypress="return svchk()">Instance Variables</a> within such initialisers if strict information hiding is desired.
+</p>
+
+<p>
+The following example shows private names used with a basic ES5-style object initialiser to limit access to properties of a specific object: 
+</p>
+<pre class="code javascript"><span class="kw2">function</span> createObjectWithPrivateProperties <span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw2">private</span> privateVar, privateFunction;
+      <span class="kw1">return</span> <span class="br0">&#123;</span>
+		<span class="co1">//private properties</span>
+		privateVar: x,
+		privateFunction: <span class="kw2">function</span> <span class="br0">&#40;</span>arg<span class="br0">&#41;</span> <span class="br0">&#123;</span>…<span class="br0">&#125;</span>,
+&nbsp;
+		<span class="co1">//public properties</span>
+		get prop1<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw1">this</span>.<span class="me1">privateFunction</span><span class="br0">&#40;</span><span class="kw1">this</span>.<span class="me1">privateVar</span><span class="br0">&#41;</span><span class="br0">&#125;</span>
+      <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+ Each call of the <code>createObjectWithPrivateProperties</code> function will associate unique private name values with <code>privateVar</code> and <code>privateFuction</code>, so each object that is created will have uniquely named <code>privateVar</code> and <code>privateFunction</code> properties that are only accessable via that object&rsquo;s unique <code>prop1</code> accessor property. In this example, <code>priavateVar</code> and <code>privateFunction</code> are &ldquo;instance private&rdquo; properties.
+</p>
+
+<p>
+A minor variation turns the properties into &ldquo;class private&rdquo; members that are accessable to all objects created via this factory function: 
+</p>
+<pre class="code javascript"><span class="kw2">private</span> privateVar, privateFunction;
+<span class="kw2">function</span> createObjectWithClassPrivateProperties <span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">return</span> <span class="br0">&#123;</span>
+		<span class="co1">//class private properties</span>
+		privateVar: x,
+		privateFunction: <span class="kw2">function</span> <span class="br0">&#40;</span>arg<span class="br0">&#41;</span> <span class="br0">&#123;</span>…<span class="br0">&#125;</span>,
+&nbsp;
+		<span class="co1">//public properties</span>
+		get prop1<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw1">this</span>.<span class="me1">privateFunction</span><span class="br0">&#40;</span><span class="kw1">this</span>.<span class="me1">privateVar</span><span class="br0">&#41;</span><span class="br0">&#125;</span>,
+		prop2: <span class="kw2">function</span><span class="br0">&#40;</span>another<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> another.<span class="me1">privateFunction</span><span class="br0">&#40;</span>another.<span class="me1">privateVar</span><span class="br0">&#41;</span><span class="br0">&#125;</span>
+      <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+Because the private name declarations are in a scope that surrounds the factory function, each invocation of the factory will use the same private name values and hence any code within the object initialiser can access these private properties of any of the instances that are created.  The <code>prop2</code> method is an example of such access. 
+</p>
+
+<p>
+This pattern has a problem from a software engineering perspective.  The private name declarations are not encapsulated within the object initialiser.  The presents a refactoring hazard.  If a programmer changes the factory function or moves the object initialiser they may forget to carry along the associated private declarations. This problem is greater for the &ldquo;class private&rdquo; use case because the private declarations are likely to be more remote from the object initialiser and hence more likely to be missed or forgotten.
+</p>
+
+<p>
+The &ldquo;class private&rdquo; use case also creates a hazard of the private names being unintentionally (or even maliciously) used in other functions and resulting in an information hiding leak. 
+</p>
+
+<p>
+These issues can be overcome, by allowing the private name declarations to occur within the object or class initialiser:
+</p>
+<pre class="code javascript"><span class="kw2">function</span> createObjectWithPrivateProperties <span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+       <span class="kw1">return</span> <span class="br0">&#123;</span>
+		<span class="co1">//instance private names</span>
+                <span class="kw2">private</span> privateVar,
+                <span class="kw2">private</span> privateFunction,
+&nbsp;
+                <span class="co1">//private properties</span>
+		privateVar: x,
+		privateFunction: <span class="kw2">function</span> <span class="br0">&#40;</span>arg<span class="br0">&#41;</span> <span class="br0">&#123;</span>…<span class="br0">&#125;</span>,
+			 
+		<span class="co1">//public properties</span>
+		get prop1<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> <span class="kw1">this</span>.<span class="me1">privateFunction</span><span class="br0">&#40;</span><span class="kw1">this</span>.<span class="me1">privateVar</span><span class="br0">&#41;</span><span class="br0">&#125;</span>
+       <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">class</span> ObjectWithClassPrivateProperties <span class="br0">&#123;</span>
+      <span class="co1">//class private names</span>
+      <span class="kw2">private</span> privateVar,
+      <span class="kw2">private</span> privateFunction,
+&nbsp;
+      <span class="co1">//class private properties</span>
+      privateVar: undefined,  <span class="co1">//place holder in prototype</span>
+      privateFunction: <span class="kw2">function</span> <span class="br0">&#40;</span>arg<span class="br0">&#41;</span> <span class="br0">&#123;</span>…<span class="br0">&#125;</span>,
+&nbsp;
+      <span class="co1">//public properties</span>
+      prop2: <span class="kw2">function</span><span class="br0">&#40;</span>another<span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="kw1">return</span> another.<span class="me1">privateFunction</span><span class="br0">&#40;</span>another.<span class="me1">privateVar</span><span class="br0">&#41;</span><span class="br0">&#125;</span>,
+&nbsp;
+      <span class="kw2">new</span> <span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+           privateVar : x
+      <span class="br0">&#125;</span>                  
+<span class="br0">&#125;</span></pre>
+<p>
+ With this extension, object and class initialisers introduce a new scope contour that is only used to bind private names. If an initialiser includes any private name declarations, that private identifier is bound within the scope of the initialiser. All components of the initialiser except for the meta properties are within this scope. In the case of class initialisers, this means that such private names are shared among the constructor, prototype, and instance objects.
+</p>
+
+<p>
+Such private name declarations must be the first declarations within the initialiser, immediately following the meta properties definition if it is present. They are required to occur first to allow initialiser to be processed in a single pass.
+</p>
+
+<p>
+A class initialiser can introduce both class private and instance private names.  Instance private names are created by including one or more <em>PrivateDeclaration</em> in the <strong><code>new</code></strong> body.
+</p>
+
+<p>
+As with statement level private name declarations, <code>private</code> declarations within an initialiser can associate a private identifier with an already existing private name value. This is useful to disambiguate distinct but like-named private names. This is done by using a <code>private</code> declaration of the form:
+</p>
+
+<p>
+ <strong><code>private</code></strong> <em>Identifier</em> <strong><code>:</code></strong> <em>AssignmentExpression</em> <strong><code>,</code></strong> <br/>
+ 
+</p>
+
+<p>
+If <em>AssignmentExpression</em> does not evaluate to a private name value, a TypeError exception is thrown.
+</p>
+
+<p>
+No support is currently proposed for constructor private names. It would be straightforward to allow <code><strong>class private</strong></code> name declarations and an addition scope contour that surrounded <strong><code>class</code></strong> all property declarations.  However, it isn&rsquo;t clear that there would be enough use of them to justify their inclusion.
+</p>
+
+</div>
+<!-- SECTION [1-6185] -->
+<a name="syntax"></a><h2>SYNTAX</h2>
+<div class="level2">
+
+<p>
+ ObjectLiteral : <br/>
+ <strong>{</strong> <em>Block</em><sub>opt</sub> <strong>}</strong><br/>
+ <strong>{</strong> MetaProperties <strong>}</strong><br/>
+ <strong>{</strong> MetaProperties <strong>,</strong>  <em>Block</em><sub>opt</sub> <strong>}</strong><br/>
+ <strong>{</strong> MetaProperties <strong>,</strong> <em>PrivateNamesList<sub>opt</sub></em> PropertyNameAndValueList <strong>}</strong><br/>
+ <strong>{</strong> MetaProperties <strong>,</strong> <em>PrivateNamesList<sub>opt</sub></em> PropertyNameAndValueList <strong>,</strong>  <em>Block</em><sub>opt</sub> <strong>}</strong><br/>
+ <strong>{</strong> <em>PrivateNamesList<sub>opt</sub></em> PropertyNameAndValueList <strong>}</strong><br/>
+ <strong>{</strong> <em>PrivateNamesList<sub>opt</sub></em> PropertyNameAndValueList <strong>,</strong> <strong>}</strong><br/>
+
+</p>
+
+<p>
+<em>ClassBody</em><br/>
+ <strong>{ }</strong><br/>
+ <strong>{</strong> <em>ClassMetaProperties</em> <strong>}</strong><br/>
+ <strong>{</strong> <em>ClassMetaProperties</em> <strong>, }</strong><br/>
+ <strong>{</strong> <em>ClassMetaProperties</em> <strong>,</strong>  <em>PrivateNamesList<sub>opt</sub></em>  <em>ClassPropertyNameAndValueList</em> <strong>}</strong><br/>
+ <strong>{</strong> <em>ClassMetaProperties</em> <strong>,</strong>  <em>PrivateNamesList<sub>opt</sub></em>  <em>ClassPropertyNameAndValueList</em> <strong>, }</strong><br/>
+ <strong>{</strong> <em>PrivateNamesList<sub>opt</sub></em> <em>ClassPropertyNameAndValueList</em> <strong>}</strong><br/>
+ <strong>{</strong> <em>PrivateNamesList<sub>opt</sub></em> <em>ClassPropertyNameAndValueList</em> <strong>, }</strong><br/>
+
+</p>
+
+<p>
+<em>PrivateNamesList</em> :<br/>
+ <em>PrivateName</em> <br/>
+ <em>PrivateNamesList</em>  <em>PrivateName</em><br/>
+
+</p>
+
+<p>
+<em>PrivateName</em> :<br/>
+ <strong><code>private</code></strong> <em>identifier</em> <strong>,</strong><br/>
+ <strong><code>private</code></strong> <em>identifier</em> <strong><code>:</code></strong> <em>AssignmentExpression <strong>,</strong></em>
+</p>
+
+</div>
+<!-- SECTION [6186-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/3/31ffaa69e1085e425e0c08e299432525.xhtml used -->
+</body>
+</html>

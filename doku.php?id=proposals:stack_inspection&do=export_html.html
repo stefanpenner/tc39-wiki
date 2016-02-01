@@ -1,0 +1,410 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:stack_inspection&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:stack_inspection&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:stack_inspection&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:stack_inspection&amp;do=export_html.html#motivation" class="toc">Motivation</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:stack_inspection&amp;do=export_html.html#high-level_description" class="toc">High-level description</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:stack_inspection&amp;do=export_html.html#stack_inspection_library" class="toc">Stack Inspection Library</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:stack_inspection&amp;do=export_html.html#examples" class="toc">Examples</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:stack_inspection&amp;do=export_html.html#stack-like_accumulation" class="toc">Stack-like accumulation</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:stack_inspection&amp;do=export_html.html#tail_recursion" class="toc">Tail recursion</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:stack_inspection&amp;do=export_html.html#implementation" class="toc">Implementation</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:stack_inspection&amp;do=export_html.html#storage_of_annotations" class="toc">Storage of annotations</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:stack_inspection&amp;do=export_html.html#annotation_methods" class="toc">Annotation methods</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:stack_inspection&amp;do=export_html.html#use_cases" class="toc">Use cases</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:stack_inspection&amp;do=export_html.html#aspect-oriented_programming" class="toc">Aspect-oriented programming</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:stack_inspection&amp;do=export_html.html#lightweight_debugging" class="toc">Lightweight debugging</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:stack_inspection&amp;do=export_html.html#stack_traces" class="toc">Stack traces</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:stack_inspection&amp;do=export_html.html#dynamic_security" class="toc">Dynamic security</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:stack_inspection&amp;do=export_html.html#use_patterns" class="toc">Use patterns</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:stack_inspection&amp;do=export_html.html#newest_annotation_wins" class="toc">Newest annotation wins</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:stack_inspection&amp;do=export_html.html#oldest_annotation_wins" class="toc">Oldest annotation wins</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:stack_inspection&amp;do=export_html.html#accumulate_all_annotations" class="toc">Accumulate all annotations</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:stack_inspection&amp;do=export_html.html#optional_status" class="toc">Optional status</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:stack_inspection&amp;do=export_html.html#references" class="toc">References</a></span></li>
+</ul>
+</div>
+</div>
+
+<p>
+(Also see the <a href="doku.php%3Fid=discussion:stack_inspection.html" class="wikilink1" title="discussion:stack_inspection" onclick="return svchk()" onkeypress="return svchk()">discussion page</a> for this proposal.)
+</p>
+
+<a name="motivation"></a><h1>Motivation</h1>
+<div class="level1">
+
+<p>
+ Stack inspection is useful for e.g.: 
+</p>
+<ul>
+<li class="level1"><div class="li"> lightweight implementations of debuggers</div>
+</li>
+<li class="level1"><div class="li"> stack trace information for exceptions</div>
+</li>
+<li class="level1"><div class="li"> security mechanisms based on access control lattices</div>
+</li>
+<li class="level1"><div class="li"> aspect-oriented programming facilities involving control-flow inspection</div>
+</li>
+<li class="level1"><div class="li"> implementation of dynamic binding mechanisms</div>
+</li>
+</ul>
+
+<p>
+ There are several requirements: 
+</p>
+<ul>
+<li class="level1"><div class="li"> it should be sufficiently low-level to provide useful debugging information and introspection of the control stack</div>
+</li>
+<li class="level1"><div class="li"> but it should be specified independently of the implementation strategy of a particular EcmaScript runtime, e.g., the particular memory layout of stack frames</div>
+</li>
+<li class="level1"><div class="li"> using the stack inspection mechanism should not subvert the benefit of <a href="doku.php%3Fid=proposals:proper_tail_calls.html" class="wikilink1" title="proposals:proper_tail_calls" onclick="return svchk()" onkeypress="return svchk()">proper tail calls</a></div>
+</li>
+<li class="level1"><div class="li"> in the presence of <a href="doku.php%3Fid=proposals:proper_tail_calls.html" class="wikilink1" title="proposals:proper_tail_calls" onclick="return svchk()" onkeypress="return svchk()">proper tail calls</a>, it should still be possible to implement security based on stack inspection</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [84-954] -->
+<a name="high-level_description"></a><h1>High-level description</h1>
+<div class="level1">
+
+<p>
+ The stack inspection library allows programmers to annotate the stack with extra data. At any point during execution, a program may annotate the current stack with a piece of data, and at any point it can view the entire set of stack annotations.
+</p>
+
+<p>
+In order to provide access control, all annotations are created by an &ldquo;annotator&rdquo; object, whose object identity serves as an implicit key. To add and view annotations, a program must have access to this object, which can be kept private by encapsulating the object in a private field or hidden namespace variable. This way, different libraries can use different annotators so their annotations don&rsquo;t interfere with each other.
+</p>
+
+<p>
+Now, the implementation of <a href="doku.php%3Fid=proposals:proper_tail_calls.html" class="wikilink1" title="proposals:proper_tail_calls" onclick="return svchk()" onkeypress="return svchk()">proper tail calls</a> requires eliminating or reusing stack frames in order to prevent tail calls from accumulating unbounded stack space. But when this happens, we don&rsquo;t necessarily want the current stack annotations to disappear. Consequently, each annotation is stored (at least conceptually) <em>above</em> the current stack frame. This way, when we make a tail call, we retain the most recent annotations. 
+</p>
+<pre class="code">+-------------+
+| annotations |
++-------------+
+|             |
+|    frame    |
+|             |
++-------------+
+| annotations |
++-------------+
+|             |
+|    frame    |
+|             |
++-------------+
+| annotations |
++-------------+
+|             |
+|    frame    |
+|             |
+.             .
+.             .</pre>
+
+<p>
+ Alternatively, an implementation might choose to store the annotations in a property of the parent activation object.
+</p>
+
+<p>
+Note that lower-level facilities that require annotations to be made on all function calls, such as stack traces or security annotations, can be implemented by instrumentation. For example, to implement stack traces, an implementation could instrument every function call with a call to save backtrace information via a private <code>ControlInspector</code> object.
+</p>
+
+</div>
+<!-- SECTION [955-2940] -->
+<a name="stack_inspection_library"></a><h1>Stack Inspection Library</h1>
+<div class="level1">
+
+<p>
+ The <acronym title="Application Programming Interface">API</acronym> for the stack inspection library involves a single generic class called <code>ControlInspector</code>:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> ControlInspector.&lt;T&gt; <span class="br0">&#123;</span>
+    final <span class="kw2">function</span> annotate<span class="br0">&#40;</span>val : T<span class="br0">&#41;</span> : <span class="kw1">void</span>
+    final <span class="kw2">function</span> getCurrentAnnotation<span class="br0">&#40;</span><span class="br0">&#41;</span> : ?T
+    final <span class="kw2">function</span> getAnnotations<span class="br0">&#40;</span><span class="br0">&#41;</span> : <span class="br0">&#91;</span>T<span class="br0">&#93;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+The methods of <code>ControlInspector</code> have the following behavior: 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>ControlInspector.&lt;T&gt;.annotate(val : T) : void</code></div>
+</li>
+</ul>
+
+<p>
+ Annotates the current stack with a new value of type <code>T</code>, implicitly associated with this annotator instance. The annotation is stored conceptually &ldquo;above&rdquo; the stack frame of the caller of <code>annotate</code>, so that if the caller performs a tail call, the annotation is preserved for the callee&rsquo;s stack frame. 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>ControlInspector.&lt;T&gt;.getCurrentAnnotation() : ?T</code></div>
+</li>
+</ul>
+
+<p>
+ Returns the annotation associated with this annotator instance for the current stack, if any. If there is no annotation associated with this current stack, returns <code>null</code>. 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>ControlInspector.&lt;T&gt;.getAnnotations() : [T]</code></div>
+</li>
+</ul>
+
+<p>
+ Returns an array containing all annotations associated with this annotator instance for the entire stack, arranged from most recent (top of the stack) to least recent (bottom of the stack). Modifying the array has no effect on the actual stack annotations.
+</p>
+
+</div>
+<!-- SECTION [2941-4247] -->
+<a name="examples"></a><h1>Examples</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [4248-4271] -->
+<a name="stack-like_accumulation"></a><h2>Stack-like accumulation</h2>
+<div class="level2">
+
+<p>
+ In this example, a control inspector stores annotations on a recursive procedure and the annotations accumulate in a stack-like manner.
+</p>
+<pre class="code javascript">let lengthInspector = <span class="kw2">new</span> ControlInspector<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+&nbsp;
+<span class="kw2">function</span> length<span class="br0">&#40;</span>array, index<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">if</span> <span class="br0">&#40;</span>index &gt;= array.<span class="me1">length</span><span class="br0">&#41;</span>
+        <span class="kw1">return</span> <span class="nu0">0</span>;
+&nbsp;
+    lengthInspector.<span class="me1">annotate</span><span class="br0">&#40;</span>array<span class="br0">&#91;</span>index<span class="br0">&#93;</span><span class="br0">&#41;</span>;
+    <span class="kw3">print</span><span class="br0">&#40;</span>lengthInspector.<span class="me1">getAnnotations</span><span class="br0">&#40;</span><span class="br0">&#41;</span> + <span class="st0">'<span class="es0">\n</span>'</span><span class="br0">&#41;</span>;
+    <span class="co1">// (non-tail) recursive call</span>
+    <span class="kw1">return</span> <span class="nu0">1</span> + length<span class="br0">&#40;</span>array, index + <span class="nu0">1</span><span class="br0">&#41;</span>;
+<span class="br0">&#125;</span>
+&nbsp;
+length<span class="br0">&#40;</span><span class="br0">&#91;</span><span class="nu0">3</span>,<span class="nu0">8</span>,<span class="nu0">6</span>,<span class="nu0">2</span><span class="br0">&#93;</span>, <span class="nu0">0</span><span class="br0">&#41;</span></pre>
+<p>
+At each recursive call, the program prints out the current set of annotations, producing the following output:
+</p>
+<pre class="code javascript"><span class="br0">&#91;</span><span class="nu0">3</span><span class="br0">&#93;</span>
+<span class="br0">&#91;</span><span class="nu0">3</span>,<span class="nu0">8</span><span class="br0">&#93;</span>
+<span class="br0">&#91;</span><span class="nu0">3</span>,<span class="nu0">8</span>,<span class="nu0">6</span><span class="br0">&#93;</span>
+<span class="br0">&#91;</span><span class="nu0">3</span>,<span class="nu0">8</span>,<span class="nu0">6</span>,<span class="nu0">2</span><span class="br0">&#93;</span></pre>
+</div>
+<!-- SECTION [4272-4960] -->
+<a name="tail_recursion"></a><h2>Tail recursion</h2>
+<div class="level2">
+
+<p>
+ In a tail-recursive procedure, only the most recent annotation is preserved.
+</p>
+<pre class="code javascript">let lastvalInspector = <span class="kw2">new</span> ControlInspector<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+&nbsp;
+<span class="kw2">function</span> lastval<span class="br0">&#40;</span>array, index<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">if</span> <span class="br0">&#40;</span>index == array.<span class="me1">length</span> - <span class="nu0">1</span><span class="br0">&#41;</span>
+        <span class="kw1">return</span> array<span class="br0">&#91;</span>index<span class="br0">&#93;</span>;
+&nbsp;
+    <span class="kw3">print</span><span class="br0">&#40;</span>lastvalInspector.<span class="me1">getAnnotations</span><span class="br0">&#40;</span><span class="br0">&#41;</span> + <span class="st0">'<span class="es0">\n</span>'</span><span class="br0">&#41;</span>;
+    lastvalInspector.<span class="me1">annotate</span><span class="br0">&#40;</span>array<span class="br0">&#91;</span>index<span class="br0">&#93;</span><span class="br0">&#41;</span>;
+    <span class="co1">// tail-recursive call</span>
+    <span class="kw1">return</span> lastval<span class="br0">&#40;</span>array, index + <span class="nu0">1</span><span class="br0">&#41;</span>;
+<span class="br0">&#125;</span>
+&nbsp;
+lastval<span class="br0">&#40;</span><span class="br0">&#91;</span><span class="nu0">3</span>, <span class="nu0">8</span>, <span class="nu0">6</span>, <span class="nu0">2</span><span class="br0">&#93;</span>, <span class="nu0">0</span><span class="br0">&#41;</span></pre>
+<p>
+Because each recursive call is a tail call, this program only ever stores at most one annotation on the stack, producing the following output:
+</p>
+<pre class="code javascript"><span class="br0">&#91;</span><span class="br0">&#93;</span>
+<span class="br0">&#91;</span><span class="nu0">3</span><span class="br0">&#93;</span>
+<span class="br0">&#91;</span><span class="nu0">8</span><span class="br0">&#93;</span>
+<span class="br0">&#91;</span><span class="nu0">6</span><span class="br0">&#93;</span></pre>
+</div>
+<!-- SECTION [4961-5614] -->
+<a name="implementation"></a><h1>Implementation</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [5615-5644] -->
+<a name="storage_of_annotations"></a><h2>Storage of annotations</h2>
+<div class="level2">
+
+<p>
+ There are several alternative implementation strategies to stack annotations: 
+</p>
+<ul>
+<li class="level1"><div class="li"> on the runtime stack in between procedure activation frames (as pictured above)</div>
+</li>
+</ul>
+
+<p>
+ This is a conceptually simple model, and may be efficient for implementations that expect most frames to be annotated. It might be a difficult strategy for implementations that have constraints on the representation of the stack, such as those that make use of the underlying implementation language&rsquo;s stack. 
+</p>
+<ul>
+<li class="level1"><div class="li"> as properties of the parent function activation object</div>
+</li>
+</ul>
+
+<p>
+ This is probably the simplest implementation, but it may not be very efficient. 
+</p>
+<ul>
+<li class="level1"><div class="li"> as a completely separate stack</div>
+</li>
+</ul>
+
+<p>
+ The benefit of a separate stack is that collecting the current annotations is much more efficient: searching for annotations doesn&rsquo;t require searching through unannotated frames. This is especially efficient if annotations are sparse.
+</p>
+
+</div>
+<!-- SECTION [5645-6567] -->
+<a name="annotation_methods"></a><h2>Annotation methods</h2>
+<div class="level2">
+
+<p>
+ Because the annotation methods may themselves consume stack space, implementations must take care to place the annotations in the right place. The solutions are: 
+</p>
+<ul>
+<li class="level1"><div class="li"> inline the methods or implement them in such a way that they take no stack space</div>
+</li>
+<li class="level1"><div class="li"> ensure they always take a single stack frame and offset the location of the annotation accordingly</div>
+</li>
+<li class="level1"><div class="li"> store the annotations in a separate stack, in which case the exact physical layout of the control stack doesn&rsquo;t affect the layout of the annotation stack</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [6568-7109] -->
+<a name="use_cases"></a><h1>Use cases</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [7110-7134] -->
+<a name="aspect-oriented_programming"></a><h2>Aspect-oriented programming</h2>
+<div class="level2">
+
+<p>
+ With stack annotations, it&rsquo;s possible to implement aspect-oriented programming idioms such as <a href="http://citeseer.ist.psu.edu/kiczales01overview.html" class="urlextern" target="_blank" title="http://citeseer.ist.psu.edu/kiczales01overview.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">AspectJ</a>&lsquo;s <code>cflow</code> advice. Programs can monitor the behavior of control flow by annotating function calls.
+</p>
+
+<p>
+It may be possible to implement some of these automatically without changing program source code by wrapping the <code>Function.call</code> method with additional behavior that annotates the calls.
+</p>
+
+</div>
+<!-- SECTION [7135-7624] -->
+<a name="lightweight_debugging"></a><h2>Lightweight debugging</h2>
+<div class="level2">
+
+<p>
+ Debuggers can easily instrument programs with annotations that monitor the behavior of control, set breakpoints, etc.
+</p>
+
+<p>
+Similarly, debuggers can make dynamic decisions about how to deal with exceptions based on the currently installed exception handlers, which can be saved in stack annotations.
+</p>
+
+</div>
+<!-- SECTION [7625-7955] -->
+<a name="stack_traces"></a><h2>Stack traces</h2>
+<div class="level2">
+
+<p>
+ Stack traces can easily be implemented by instrumenting code with annotations that save backtrace information.
+</p>
+
+</div>
+<!-- SECTION [7956-8093] -->
+<a name="dynamic_security"></a><h2>Dynamic security</h2>
+<div class="level2">
+
+<p>
+ To implement a JVM-like security system based on stack inspection, annotators simply overwrite the current annotation (if there is one; this is what <code>getCurrentAnnotation</code> is for) to the meet of the old permissions and the new permissions.
+</p>
+
+</div>
+<!-- SECTION [8094-8366] -->
+<a name="use_patterns"></a><h1>Use patterns</h1>
+<div class="level1">
+
+<p>
+ When a program makes a tail call, it may be preferable for the new stack frame to keep the old annotation, overwrite the old annotation with a new annotation, or combine the old and new annotations, depending on the particular program.
+</p>
+
+</div>
+<!-- SECTION [8367-8631] -->
+<a name="newest_annotation_wins"></a><h2>Newest annotation wins</h2>
+<div class="level2">
+
+<p>
+ The default behavior for a tail call is for the new annotation to overwrite the previous one:
+</p>
+<pre class="code javascript">a.<span class="me1">annotate</span><span class="br0">&#40;</span>...<span class="br0">&#41;</span></pre>
+</div>
+<!-- SECTION [8632-8805] -->
+<a name="oldest_annotation_wins"></a><h2>Oldest annotation wins</h2>
+<div class="level2">
+
+<p>
+ To allow the old annotation to supersede the new one, simply check for the existence of an annotation:
+</p>
+<pre class="code javascript"><span class="kw1">if</span> <span class="br0">&#40;</span>a.<span class="me1">getCurrentAnnotation</span><span class="br0">&#40;</span><span class="br0">&#41;</span> == <span class="kw2">null</span><span class="br0">&#41;</span>
+  a.<span class="me1">annotate</span><span class="br0">&#40;</span>...<span class="br0">&#41;</span></pre>
+</div>
+<!-- SECTION [8806-9028] -->
+<a name="accumulate_all_annotations"></a><h2>Accumulate all annotations</h2>
+<div class="level2">
+
+<p>
+ To accumulate all annotations in a series of tail calls, accumulate them in an array:
+</p>
+<pre class="code javascript">let arr = a.<span class="me1">getCurrentAnnotation</span><span class="br0">&#40;</span><span class="br0">&#41;</span> || <span class="kw2">new</span> Array
+arr.<span class="me1">push</span><span class="br0">&#40;</span>...<span class="br0">&#41;</span>
+a.<span class="me1">annotate</span><span class="br0">&#40;</span>arr<span class="br0">&#41;</span></pre>
+</div>
+<!-- SECTION [9029-9261] -->
+<a name="optional_status"></a><h1>Optional status</h1>
+<div class="level1">
+
+<p>
+ This library is specified with &ldquo;optional reflective library&rdquo; status (see <a href="doku.php%3Fid=proposals:meta_objects.html" class="wikilink1" title="proposals:meta_objects" onclick="return svchk()" onkeypress="return svchk()">meta objects</a>), meaning that lightweight implementations may choose not to provide it.
+</p>
+
+</div>
+<!-- SECTION [9262-9456] -->
+<a name="references"></a><h1>References</h1>
+<div class="level1">
+
+<p>
+ This library is based on the system described by <a href="http://www.csc.calpoly.edu/~clements" class="urlextern" target="_blank" title="http://www.csc.calpoly.edu/~clements" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">John Clements</a> in his <a href="http://www.csc.calpoly.edu/~clements/papers/dissertation.pdf" class="urlextern" target="_blank" title="http://www.csc.calpoly.edu/~clements/papers/dissertation.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">dissertation</a>. 
+</p>
+
+</div>
+<!-- SECTION [9457-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/7/7eff05ed79c23cfcb7189aecd63311a6.xhtml used -->
+</body>
+</html>

@@ -1,0 +1,59 @@
+====== Local packages ======
+
+(Also see [[proposals:local packages|proposals:local packages]].)
+
+==== Alternative: Syntactic keyword to introduce a local package ====
+
+An alternative syntax to ''private package'' is to use a syntactic keyword, eg ''local'', as the package name or as the first token in the package name:
+
+<code>
+    package local.doubleclick {
+        function doMyAd() { ... }
+        var isIE3 = ...;
+        var isIE4 = ...;
+    }
+    {   import doubleclick.doMyAd; doubleclick.doMyAd();  }
+</code>
+
+==== Alternative: More interesting import semantics ====
+
+If ''import'' were defined to load packages from a host on the internet then it could be relied on to load a package only once even if the package is used several times.
+
+For example, a page would contain scripts like this:
+
+<code>
+    {   import com.doubleclick.adscript.doMyAd; doMyAd("ibm");  }
+    ....
+    {   import com.doubleclick.adscript.doMyAd; doMyAd("thinkgeek");  }
+</code>
+
+and the contents of the package ''com.doubleclick.adscript'' would be loaded from ''http://doubleclick.com/adscript.js'' once.
+
+==== ''Private'' ====
+
+----
+
+** Slight Revision **
+
+I agree that the need for program private packages is real. I'd like to suggest that we use the attribute ''private'' rather than ''let'' for this purpose. Since ''private'' is used elsewhere to modify the visibility of names and ''let'' is used to limit the scope of names, ''private'' seems like the more natural alternative here. E.g.
+
+<code>
+    private package doubleclick {
+        function doMyAd() { ... }
+        var isIE3 = ...;
+        var isIE4 = ...;
+    }
+    {   import doubleclick.doMyAd; doubleclick.doMyAd();  }
+</code>
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/05/24 18:00// 
+
+I agree that's better.  I was seduced by the analogy with ''let'' hiding names from the outside at the top level of programs and classes (the implicit block thing) and saw this as a natural extension of that.  But the analogy is probably imperfect, and ''private'' states the purpose more clearly.
+
+(Should we have ''final'' packages that refuse to be extended by lexically separate definitions?  As it is now, it is possible for me to write code to get at the internals of any package by simply adding a package declaration that extends the one I want to get into with a public function that accesses private data.  Is this mostly good or mostly bad?)
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/25 05:50//
+
+Fixed and incorporated.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/25 14:54//

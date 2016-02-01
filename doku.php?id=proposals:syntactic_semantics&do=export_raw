@@ -1,0 +1,340 @@
+====== Syntactic semantics notation ======
+
+
+  * We will use a portable subset of ML
+  * We need style guidelines for the ML code
+  * We should prefer completeness over correctness
+
+====== Prior discussion ======
+
+===== Proposed notation =====
+
+  * The interpretation of a syntactic form is defined as a sequence of steps
+  * Italicized names refer to syntactic non-terminals
+  * Bolded names refer to built-in values
+  * Underlined names refer to spec variables
+  * Steps begin with a primitive action (e.g. Verify, Read, CheckType). The meaning of these primitives must, of course, be defined elsewhere
+  * Primitive actions can be chained together in a single step (e.g. ''Return Read __r__''). In this case the first primitive is applied to the result of the second
+  * The form 'Let ... <- ...' binds the spec name on the left side of <- to the value of the expression on the right side. Spec names shall only be bound once
+  * Text between << and >> is English prose, which in most cases should be replaced with the formal notation 
+  * The value of the last step in a sequence is the value returned from that sequence. 'Return' is optional but sometimes used for clarity
+
+===== Example : Multiplicative expressions =====
+
+===== Verification =====
+
+<code>
+MultiplicativeExpression : UnaryExpression
+</code>
+
+  * Verify //UnaryExpression//
+
+<code>
+MultiplicativeExpression : MultiplicativeExpression  *  UnaryExpression
+</code>
+
+  * Let __x__ <- Verify //MultiplicitiveExpression//
+  * CheckType __x__, **Number**
+  * Let __y__ <- Verify //UnaryExpression//
+  * CheckType __y__, **Number**
+  * Return **Number**
+
+<code>
+</code>
+
+===== Evaluation =====
+
+<code>
+MultiplicativeExpression : UnaryExpression
+</code>
+
+  * Evaluate //UnaryExpression//
+
+<code>
+MultiplicativeExpression : MultiplicativeExpression  *  UnaryExpression
+</code>
+
+  * Let __r__ <- Evaluate //MultiplicitiveExpression//
+  * Let __x__ <- Read __r__
+  * Let __s__ <- Evaluate //UnaryExpression//
+  * Let __y__ <- Read __x__
+  * Return Multiply __x__, __y__
+
+   
+===== Example : While statement =====
+
+===== Verification =====
+
+<code>
+WhileStatement : while ParenListExpression Substatement
+</code>
+
+  * Let __continueTargets__ <- <<the current set of possible targets of continue targets>>
+  * Let __breakTargets__ <- <<the current set of possible targets of break targets>>
+  * Push __continueTargets__ <- <<the default label>>
+  * Push __breakTargets__ <- <<the default label>>
+  * Verify //ParenListExpression//
+  * Verify //Substatement//
+
+===== Generation =====
+
+Generate <<//WhileStatement// : ''while'' //ParenListExpression//://e// //Substatement//://s//>>, //labels// =
+
+  * Try
+    * Loop __L__ (__result__ <- **nothing**) {
+      * Let __v__ <- <<Generate //e//, //labels//>>;
+      * Let __x__ <- Read __v__;
+      * Let __b__ <- Convert __x__, **Boolean**;
+      * If Not __b__
+      * Then {
+        * Let __current__ <-
+          * Try
+            * <<Generate //s//, //labels//>>
+          * Catch (Continue:<<//labels//>>)
+            * **nothing**;
+        * Let __next__ <- If __current__ = **nothing** Then __result__ Else __current__;
+        * Repeat __L__ (__next__)
+      * }
+      * Else __result__
+    * }
+  * Catch (Break:<<//labels//>>)
+    * **nothing**
+
+===== Link to ANF? =====
+
+I observe that with no line numbers and more ''Let'' bindings in the metalanguage it becomes something that looks superficially like A-Normal Form.  A paper of Cormac's seems to be the canonical reference for this:
+
+http://doi.acm.org/10.1145/155090.155113
+
+Whether this is of any practical consequence whatsoever to our work remains to be explored; perhaps Cormac can elaborate.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/10/11 10:49//
+
+Hey Cormac,
+
+Can you provide us with a copy of this paper? I don't pay ACM enough money to download it from their web site.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/10/11 11:53//
+
+Never mind, I paid the five bucks to get it. Here are a couple more interesting links:
+
+Retrospective: The Essence of Compiling with Continuations, Flanagan et al:
+
+http://www.soe.ucsc.edu/~cormac/papers/best-pldi.pdf
+
+SSA is Functional Programming, Appel:
+
+http://www.cs.princeton.edu/~appel/papers/ssafun.pdf#search=%22SSA%20is%20functional%22
+
+Yes, this is related both to A-Normal Form and monads, both of which are a standard "semantics design pattern" for creating the basic computational structure of a semantics.
+
+BTW, Cormac has the ANF paper linked to from his web page at:
+
+http://www.soe.ucsc.edu/~cormac/papers/pldi93.ps
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2006/10/16 12:19//
+
+To answer your question better, Lars, the reason why this begins to resembled SSA, ANF, or monadic style is that all of these styles explicitly encode the //order// in which subexpressions of an expression are evaluated. This is useful for writing compilers because it converts a tree-shaped expression into a list-shaped sequence of statements (making it easier to translate into straight-line assembly language). The reason why it's also useful for a specification language is that it informs the reader about the order of evaluation.
+
+We don't have to be extremist about never nesting expressions in the specification language, and we can always specify the order of evaluation of the specification language itself. But for the sake of making it informative to the reader, being relatively consistent about sequencing subcomputations via ''Let'' will have the benefit of making the order of evaluation explicit.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2006/10/17 10:04//
+
+===== Existing notations =====
+
+==== ES3 RegExp notation ====
+
+Here is a sample of the ES3 notation used for describing RegExp:
+
+<code>
+15.10.2.9 AtomEscape
+The production AtomEscape :: DecimalEscape evaluates as follows:
+    1.	Evaluate DecimalEscape to obtain an EscapeValue E.
+    2.	If E is not a character then go to step 6.
+    3.	Let ch be E's character.
+    4.	Let A be a one-element CharSet containing the character ch.
+    5.	Call CharacterSetMatcher(A, false) and return its Matcher result.
+    6.	E must be an integer. Let n be that integer.
+    7.	If n=0 or n>NCapturingParens then throw a SyntaxError exception.
+    8.	Return an internal Matcher closure that takes two arguments, a State x and a Continuation c, and performs the following:
+        1.	Let cap be x's captures internal array.
+        2.	Let s be cap[n].
+        3.	If s is undefined, then call c(x) and return its result.
+        4.	Let e be x's endIndex.
+        5.	Let len be s's length.
+        6.	Let f be e+len.
+        7.	If f>InputLength, return failure.
+        8.	If there exists an integer i between 0 (inclusive) and len (exclusive) such that Canonicalize(s[i]) is not the same character as Canonicalize(Input [e+i]), then return failure.
+        9.	Let y be the State (f, cap).
+        10.	Call c(y) and return its result.
+
+The production AtomEscape :: CharacterEscape evaluates as follows:
+    1.	Evaluate CharacterEscape to obtain a character ch.
+    2.	Let A be a one-element CharSet containing the character ch.
+    3.	Call CharacterSetMatcher(A, false) and return its Matcher result.
+
+The production AtomEscape :: CharacterClassEscape evaluates as follows:
+    1.	Evaluate CharacterClassEscape to obtain a CharSet A.
+    2.	Call CharacterSetMatcher(A, false) and return its Matcher result.
+
+</code>
+
+==== E4X notation ====
+
+7	Notational Conventions
+
+This specification extends the notational conventions used in the ECMAScript Edition 3 specification. In particular, it extends the algorithm notation to improve the clarity, readability and maintainability of this specification. The new algorithm conventions are described in this section.
+
+7.1	Algorithm Conventions
+
+This section introduces the algorithm conventions this specification adds to those used to describe the semantics of ECMAScript Edition 3. These conventions are not part of the E4X language. They are used within this specification to describe the semantics of E4X operations.
+
+7.1.1	Indentation Style
+
+This specification extends the notation used in the ECMAScript Edition 3 specification by defining an algorithm indentation style. The new algorithm indention style is used in this specification to group related collections of steps together. This convention is useful for expressing a set of steps that are taken conditionally or repeatedly. For example, the following algorithm fragment uses indentation to describe a set of steps that are taken conditionally:
+
+   1.	If resetParameters is true
+     a.	Let x = 0
+     b.	Let y = 0
+     c.	Let deltaX = 0.5
+   2.	Else
+     a.	Let deltaX = deltaX + accelerationX
+
+In the example above, steps 1.a through 1.c are taken if the condition expressed in step 1 evaluates to true. Otherwise, step 2.a is taken.
+
+Standard outline numbering form is used to identify steps and distinguish nested levels of indentation when it might not otherwise be obvious due to pagination. 
+
+7.1.2	Property Access
+
+This specification extends the notation used in the ECMAScript Edition 3 specification by defining three property access conventions. When used on the left hand side of an assignment operation in this specification, the property access conventions are used to modify the value of a specified property of a specified object. In other contexts in this specification, the property access conventions are used for specifying that the value of a specified property be retrieved from a specified object based on its property name. 
+
+There are three forms of the property access conventions, two for accessing normal properties and one for accessing internal properties. The first convention for accessing normal properties is expressed using the following notation:
+
+	object . propertyName
+
+When used on the left hand side of an assignment operation, this property access convention is equivalent to calling the %%[[Put]]%% method of object, passing the string literal containing the same sequence of parameters as propertyName and the value from the right hand side of the assignment operator as arguments. For example, the following algorithm fragment:
+
+   1.	Let item.price = "5.95"
+
+is equivalent to the following algorithm fragment:
+
+   1.	Call the [[Put]] method of item with arguments "price" and "5.95"
+
+When used in other contexts, this property access convention is equivalent to calling the %%[[Get]]%% method of object passing the string literal containing the same sequence of characters as propertyName as an argument. For example, the following algorithm fragment:
+
+   1.	Let currentPrice = item.price
+
+is equivalent to the following algorithm fragment:
+
+   1.	Let currentPrice be the result of calling the [[Get]] method of item with argument "price"
+
+The second convention for accessing normal properties is expressed using the following notation:
+
+	object [ propertyName ]
+
+When used on the left hand side of an assignment operation, this property access convention is equivalent to calling the Object %%[[Put]]%% method with object as the this object, passing ToString(propertyName) and the value from the right hand side of the assignment operator as arguments. For example, the following algorithm fragment:
+
+   1.	Let item[1] = item2
+
+is equivalent to the following algorithm fragment:
+
+   1.	Call the Object [[Put]] method with item as the this object and arguments ToString(1) and item2
+
+When used in other contexts, this property access convention is equivalent to calling the Object %%[[Get]]%% method with object as the this object and argument ToString(propertyName). For example, the following algorithm fragment:
+
+   1.	Let item2 = item[1]
+
+is equivalent to the following algorithm fragment:
+
+   1.	Let item2 be the result of calling the Object [[Get]] method with item as the this object and argument ToString(1)
+
+This is a convenient and familiar notation for specifying numeric property names used as array indices.
+
+The convention for accessing internal property names, including those that refer to internal methods, is specified using the following notation:
+
+	object . [[ internalPropertyName ]]
+
+When used on the left hand side of an assignment operation, this property access convention is equivalent to setting the value of the %%[[ internalPropertyName ]]%% of the specified object to the value from the right hand side of the assignment operator. For example, the following algorithm fragment:
+
+   1.	Let x.[[Class]] = "element"
+
+is equivalent to the following algorithm fragment:
+
+   1.	Let the value of the [[Class]] property of x be "element"
+
+When used in other contexts, this property access convention is equivalent to getting the value of the %%[[internalPropertyName]]%% property of object. For example, the following algorithm fragment:
+
+   1.	Let class = x.[[Class]]
+
+is equivalent to the following algorithm fragment:
+
+   1.	Let class be the value of the [[Class]] property of x
+
+7.1.3	Iteration
+
+This specification extends the notation used for describing ECMAScript Edition 3 by defining two iteration conventions. These iteration conventions are used by this specification for expressing that a set of steps shall be taken once for each item in a collection or once for each integer in a specified range.
+
+The first iteration convention is defined for expressing a sequence of steps that shall be taken once for each member of a collection. It is expressed using the following for each notation:
+
+	For each item in collection steps
+
+This for each notation is equivalent to performing the given steps repeatedly with the variable item bound to each member of collection. The value of collection is computed once prior to performing steps and does not change while performing steps. The order in which item is bound to members of collection is implementation dependent. The repetition ends after item has been bound to all the members of collection or when the algorithm exits via a return or a thrown exception. The steps may be specified on the same line following a comma or on the following lines using the indentation style described in section 7.1.1. For example,
+
+   1.	Let total = 0
+   2.	For each product in groceryList
+     a.	If product.price > maxPrice, throw an exception 
+     b.	Let total = total + product.price
+
+In this example, steps 2.a and 2.b are repeated once for each member of the collection groceryList or until an exception is thrown in line 2.a. The variable product is bound to the value of a different member of groceryList before each repetition of these steps.
+
+The second iteration convention defined by this specification is for expressing a sequence of steps that shall be repeated once for each integer in a specified range of integers. It is expressed using the following for notation:
+
+	For variable = first to last steps
+
+This for notation is equivalent to computing first and last, which will evaluate to integers i and j respectively, and performing the given steps repeatedly with the variable variable bound to each member of the sequence i, i+1 … j in numerical order. The values of first and last are computed once prior to performing steps and do not change while performing steps. The repetition ends after variable has been bound to each item of this sequence or when the algorithm exits via a return or a thrown exception. If i is greater than j, the steps are not performed. The steps may be specified on the same line following a comma or on the following lines using the indentation style described above. For example,
+
+   1.	For i = 0 to priceList.length-1, call ToString(priceList[i])
+
+In this example, ToString is called once for each item in priceList in sequential order.
+
+A modified version of the for notation exists for iterating through a range of integers in reverse sequential order. It is expressed using the following notation:
+
+	For variable = first downto last steps
+
+The modified for notation works exactly as described above except the variable variable is bound to each member of the sequence i, i-1, .. j in reverse numerical order. If i is less than j, the steps are not performed.
+
+7.1.4	Conditional Repetition
+
+This specification extends the notation used in the ECMAScript Edition 3 specification by defining a convention for expressing conditional repetition of a set of steps. This convention is defined by the following notation:
+
+	While ( expression ) steps
+
+The while notation is equivalent to computing the expression, which will evaluate to either true or false and if it is true, taking the given steps and repeating this process until the expression evaluates to false or the algorithm exits via a return or a thrown exception. The steps may be specified on the same line following a comma or on the following lines using the indentation style described above. For example,
+
+   1.	Let log2 = 0
+   2.	While (n > 1)
+     a.	Let n = n / 2
+     b.	Let log2 = log2 + 1
+
+In this example, steps 2.a and 2.b are repeated until the expression n > 1 evaluates to false.
+
+7.1.5	Method Invocation
+
+This specification extends the notation used in the ECMAScript Edition 3 specification by defining a method invocation convention. The method invocation convention is used in this specification for calling a method of a given object passing a given set of arguments and returning the result. This convention is defined by the following notation:
+
+	object . methodName ( arguments )
+
+where arguments is a comma separated list of zero or more values. The method invocation notation is equivalent to constructing a new Reference r with base object set to object and property name set to a string literal containing the same sequence of characters as methodName, constructing an internal list list of the values in arguments, invoking the CallMethod operator (section 11.2.2.1) passing r and list as arguments and returning the result. For example, the following algorithm fragment:
+
+   1.	Let sub = s.substring(2, 5)
+
+Is equivalent to the following algorithm fragment:
+
+   1.	Let r be a new Reference with base object = s and property name = "substring"
+   2.	Let list be an internal list containing the values 2 and 5
+   3.	Let sub = CallMethod(r, list)
+
+
+==== Waldemar's Edition 4 notation ====
+
+http://www.mozilla.org/js/language/js20/formal/notation.html

@@ -1,0 +1,257 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:traits_semantics&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:traits_semantics&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:traits_semantics&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:traits_semantics&amp;do=export_html.html#trait_semantics" class="toc">Trait Semantics</a></span><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:traits_semantics&amp;do=export_html.html#traitliteral" class="toc">TraitLiteral</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:traits_semantics&amp;do=export_html.html#tcompose" class="toc">TCompose</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:traits_semantics&amp;do=export_html.html#toverride" class="toc">TOverride</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:traits_semantics&amp;do=export_html.html#tresolve" class="toc">TResolve</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:traits_semantics&amp;do=export_html.html#tcreate" class="toc">TCreate</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="trait_semantics"></a><h2>Trait Semantics</h2>
+<div class="level2">
+
+<p>
+ This page describes the semantics of trait composition for the <a href="doku.php%3Fid=strawman:syntax_for_efficient_traits.html" class="wikilink1" title="strawman:syntax_for_efficient_traits" onclick="return svchk()" onkeypress="return svchk()">syntax for efficient traits</a> strawman.
+</p>
+
+<p>
+A trait is a &ldquo;property descriptor map&rdquo;, represented as a set of properties. Only a property descriptor map object&rsquo;s own properties are treated as members of this set. The prototype of the property descriptor map is ignored. Properties are represented as <code>name:pd</code> tuples where name is the property name (a string) and pd is a property descriptor object (this corresponds to the &ldquo;Property Identifier&rdquo; type in ES-262 5th ed, section 8.10). Property descriptors are either plain ES5 data or accessor property descriptors, or one of the following traits-specific property descriptors: a &ldquo;required&rdquo; property (identifying an &ldquo;abstract&rdquo; property that should be present in the final trait), a &ldquo;conflicting&rdquo; property (identifying a name conflict during composition) or a &ldquo;method&rdquo; property, which identifies a data property whose function value should be treated as a &ldquo;method&rdquo; (with bound-<code>this</code> semantics).
+</p>
+<pre class="code">
+PDMap ::= { PropertyIdentifier* }
+PropertyIdentifier ::= String:PropDesc
+PropDesc ::= { value: v, writable: b }
+           | { get: fg, set: fs }
+           | { required: true }
+           | { conflict: true }
+           | { value: f, writable: false, method: true }
+</pre>
+
+<p>
+The functions below are specified using a Haskell-like syntax. Property descriptor maps are represented using the syntax <code>{ n1:p1, ..., nk:pk }</code>. These property descriptor maps are treated as sets, so the ordering of the properties <code>n1:p1</code> up to <code>nk:pk</code> is irrelevant. Property descriptors on this page are assumed to have default attributes <code>enumerable:true</code> and <code>configurable:true</code>.
+</p>
+
+<p>
+Metasyntactic variables used: <code>v</code> for any value, <code>b</code> for booleans, <code>f</code> for functions, <code>fg</code> for getter functions, <code>fs</code> for setter functions, <code>n</code> for property names, <code>p</code> for property descriptors, <code>pdm</code> for property descriptor maps.
+</p>
+
+</div>
+<!-- SECTION [1-2001] -->
+<a name="traitliteral"></a><h3>TraitLiteral</h3>
+<div class="level3">
+
+<p>
+ The function <code>TraitLiteral</code> describes how a <code>TraitPartList</code> consisting of a series of property declarations is converted into a property descriptor map.
+</p>
+<pre class="code">
+TraitLiteral :: TraitPartList -&gt; PDMap
+TraitLiteral [] = {}
+TraitLiteral (part:parts) =
+  add_prop (TraitLiteral parts) (to_property part)
+
+to_property :: TraitPart -&gt; PropertyIdentifier
+to_property 'n : expr'                = n:{ value: expr, writable: true }
+to_property 'get n() { body }'        = n:{ get: const() { body }, set: undefined }
+to_property 'set n(arg) { body }'     = n:{ get: undefined, set: const(arg) { body } }
+to_property 'method n(args) { body }' = n:{ value: const(args) { body }, writable: false, method: true }
+to_property 'require n'               = n:{ required: true }
+</pre>
+
+<p>
+Notes:
+</p>
+<ul>
+<li class="level1"><div class="li"> we implicitly assume that all created property descriptors have additional attributes <code>{ enumerable: true, configurable: true }</code>.</div>
+</li>
+<li class="level1"><div class="li"> See below for the definition of <code>add_prop</code>.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [2002-2991] -->
+<a name="tcompose"></a><h3>TCompose</h3>
+<div class="level3">
+
+<p>
+ <code>TCompose</code> takes an arbitrary number of property descriptor maps and returns a property descriptor map that combines all own properties of its arguments. Name clashes lead to the generation of special <code>conflict</code> properties in the resulting trait. <code>TCompose</code> is commutative: its result is independent of the ordering of its arguments.
+</p>
+<pre class="code">
+TCompose :: [ PDMap ] -&gt; PDMap
+TCompose [] = {}
+TCompose (pdm:pdms) =
+  compose_pdmap pdm (TCompose pdms)
+
+compose_pdmap :: PDMap -&gt; PDMap -&gt; PDMap
+compose_pdmap pdm { } = pdm
+compose_pdmap pdm { n1:p1, … , nk:pk } =
+  compose_pdmap (add_prop pdm n1:p1) { n2:p2, …, nk:pk }
+
+add_prop :: PDMap -&gt; PropertyIdentifier -&gt; PDMap
+add_prop { n1:p1, …, nk:pk } ni:pi =
+  { n1:p1, …, nk:pk, ni:pi } if not member ni { n1, …, nk }
+add_prop { n1:p1, … , n:pi1, … nk:pk } n:pi2 =
+  { n1:p1, …, n:(compose_pd pi1 pi2), … , nk:pk }
+
+compose_pd :: PropDesc -&gt; PropDesc -&gt; PropDesc
+compose_pd { value: v1, writable: bw1, method: b1 } { value: v2, writable bw2, method: b2 } =
+  { value: v1, writable: bw1, method: b1 } if (identical v1 v2) and bw1 === bw2 and b1 === b2
+compose_pd { value: v1, writable: bw1, method: b1 } { value: v2, writable bw2, method: b2 } =
+  { conflict: true } if not (identical v1 v2) or bw1 !== bw2 or b1 !== b2
+compose_pd { get: fg1, set: fs1 } { get: fg2, set: fs2 } = { get: fg1, set: fs1 } if (identical fg1 fg2) and (identical fs1 fs2)
+compose_pd { get: fg1, set: fs1 } { get: fg2, set: fs2 } = { conflict: true } if not (identical fg1 fg2) or not (identical fs1 fs2)
+compose_pd { get: fg, set: undefined } { get: undefined, set: fs } = { get: fg, set: fs }
+compose_pd { get: undefined, set: fs } { get: fg, set: undefined } = { get: fg, set: fs }
+compose_pd { value: v, writable: bw, method: b } { get: fg, set: fs } = { conflict: true }
+compose_pd { get: fg, set: fs } { value: v, writable: bw, method: b } = { conflict: true }
+compose_pd { required: true } p = p
+compose_pd p { required: true } = p
+compose_pd { conflict: true } p = { conflict: true }
+compose_pd p { conflict: true } = { conflict: true }
+</pre>
+
+<p>
+Notes:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>{ value: v, writable: b, method: false }</code> is considered equivalent to the plain data property descriptor <code>{ value: v, writable: b }</code>.</div>
+</li>
+<li class="level1"><div class="li"> We implicitly assume that the <code>enumerable</code> and <code>configurable</code> attributes of the above property descriptors are equal. This is the case for property descriptors created using <code>TraitLiteral</code>. If these attributes are not equal for a pair of property descriptors, they are treated as non-equal and would generate <code>{ conflict: true }</code> if composed.</div>
+</li>
+<li class="level1"><div class="li"> <code>identical(a,b)</code> has the semantics of <a href="doku.php%3Fid=harmony:egal.html" class="wikilink1" title="harmony:egal" onclick="return svchk()" onkeypress="return svchk()">egal</a>.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [2992-5677] -->
+<a name="toverride"></a><h3>TOverride</h3>
+<div class="level3">
+
+<p>
+ <code>TOverride</code> takes an arbitrary number of property descriptor maps and combines them into a single property descriptor map. It automatically resolves name clashes by having the left-hand trait&rsquo;s property value take precedence over the right-hand trait&rsquo;s property value. Hence, <code>TOverride</code> is not commutative: the ordering of arguments is significant and precedence is from left to right.
+</p>
+<pre class="code">
+TOverride :: [ PDMap ] -&gt; PDMap
+TOverride [] = {}
+TOverride (pdm:pdms) =
+  override_pdmap pdm (TOverride pdms)
+
+override_pdmap :: PDMap -&gt; PDMap -&gt; PDMap
+override_pdmap pdm {} = pdm
+override_pdmap pdm { n1:p1, … , nk:pk } =
+  override_pdmap (override_prop pdm n1:p1) { n2:p2, …, nk:pk }
+
+override_prop :: PDMap -&gt; PropertyIdentifier -&gt; PDMap
+override_prop { n1:p1, …, nk:pk } ni:pi = { n1:p1, …, nk:pk, ni:pi } if not member ni { n1, …, nk }
+override_prop { n1:p1, … , n:pi1, … nk:pk } n:pi2 = { n1:p1, …, n:pi1, … , nk:pk }
+</pre>
+
+</div>
+<!-- SECTION [5678-6649] -->
+<a name="tresolve"></a><h3>TResolve</h3>
+<div class="level3">
+
+<p>
+ <code>TResolve</code> renames and excludes property names of a single argument property descriptor map.
+</p>
+
+<p>
+Let Renames be a map from String to String and Exclusions be a set of Strings:
+</p>
+<pre class="code">
+Renames    ::= [ String -&gt; String ]
+Exclusions ::= [ String ]
+
+TResolve :: Renames -&gt; Exclusions -&gt; PDMap -&gt; PDMap
+TResolve r e pdm = 
+  rename r (exclude e pdm)
+
+exclude :: Exclusions -&gt; PDMap -&gt; PDMap
+exclude e {} = {}
+exclude e { n1:p1, …, nk:pk } =
+  add_prop (exclude e { n2:p2, …, nk:pk }) n1:{ required: true } if member n1 e
+exclude e { n1:p1, … , nk:pk } =
+  add_prop (exclude e { n2:p2, …, nk:pk }) n1:p1 if not member n1 e
+
+rename :: Renames -&gt;  PDMap -&gt; PDMap
+rename map {} = {}
+rename map { n1:p1, …, nk:pk } =
+  add_prop (rename map { n2:p2, …, nk:pk }) m:p1 if member (n1 -&gt; m) map
+rename map { n1:p1, …, nk:pk } =
+  add_prop (rename map { n2:p2, …, nk:pk }) n1:p1 if not member (n1 -&gt; m) map
+</pre>
+
+</div>
+<!-- SECTION [6650-7585] -->
+<a name="tcreate"></a><h3>TCreate</h3>
+<div class="level3">
+
+<p>
+ <code>TCreate</code> takes a prototype object and a property descriptor map and returns an &ldquo;instance&rdquo; of the property descriptor map. <code>TCreate</code> validates the property descriptor map to see if it contains unsatisfied <code>required</code> arguments and unresolved <code>conflict</code> properties. If so, it fails. <code>TCreate</code> also binds and freezes all properties marked as <code>method</code>s.
+</p>
+<pre class="code">
+TCreate :: Object -&gt; PDMap -&gt; Object
+TCreate proto pdm =
+  do {
+   -- pardon the awkward mixture of Haskell and Javascript syntax
+   obj &lt;- Object.create(proto);
+   Object.defineProperties(obj, validate obj pdm);
+   return Object.freeze(obj);
+  }
+
+validate :: Object -&gt; PDMap -&gt; PDMap
+validate obj {} = {}
+validate obj { n1:p1, …, nk:pk } =
+  add_prop (validate obj { n2:p2, …, nk:pk }) n1:(validate_prop obj n1:p1)
+
+validate_prop :: Object -&gt; PropertyIdentifier -&gt; PropDesc
+validate_prop self n:{ value: v, writable: b, method: false } = { value: v, writable: b }
+validate_prop self n:{ value: v, writable: b, method: true } = { value: freezeAndBind(v,self), writable: b  }
+validate_prop self n:{ get: fg, set: fs } = { get: freezeAndBind(fg,self), set: freezeAndBind(fs,self) }
+validate_prop self n:{ required: true } = &lt;error: required property: n&gt; if not (n in self)
+validate_prop self n:{ required: true } = {} if (n in self)
+validate_prop self n:{ conflict: true } = &lt;error: conficting property: n&gt;
+
+freezeAndBind :: Function -&gt; Object -&gt; Function
+freezeAndBind fun obj = 
+  Object.freeze(Function.prototype.bind.call(fun, obj))
+</pre>
+
+</div>
+<!-- SECTION [7586-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/0/01fb750df5be5d8d982114dd042fe590.xhtml used -->
+</body>
+</html>

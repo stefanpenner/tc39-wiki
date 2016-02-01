@@ -1,0 +1,90 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=harmony:let&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="http://wiki.ecmascript.org/feed.php?mode=list&amp;ns=harmony" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=harmony:let&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=harmony:let&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="let"></a><h2>let</h2>
+<div class="level2">
+
+<p>
+ <strong>Note:</strong> more details on <code>let</code> at <a href="doku.php%3Fid=harmony:block_scoped_bindings.html" class="wikilink1" title="harmony:block_scoped_bindings" onclick="return svchk()" onkeypress="return svchk()">block scoped bindings</a>.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x64%3B%26%23x68%3B%26%23x65%3B%26%23x72%3B%26%23x6d%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x63%3B%26%23x63%3B%26%23x73%3B%26%23x2e%3B%26%23x6e%3B%26%23x65%3B%26%23x75%3B%26%23x2e%3B%26%23x65%3B%26%23x64%3B%26%23x75%3B" class="mail" title="&#x64;&#x68;&#x65;&#x72;&#x6d;&#x61;&#x6e;&#x40;&#x63;&#x63;&#x73;&#x2e;&#x6e;&#x65;&#x75;&#x2e;&#x65;&#x64;&#x75;">Dave Herman</a> 2010/08/20 15:37</em> 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+Strong consensus for <code>let</code> as the new <code>var</code>, with the same syntax but block scope.
+</p>
+
+<p>
+We want <code>let</code> to share the same &ldquo;temporal dead zone&rdquo; as <a href="doku.php%3Fid=harmony:const.html" class="wikilink1" title="harmony:const" onclick="return svchk()" onkeypress="return svchk()">const</a>: no use before declaration. Note however that <code>let</code> does not require an initializer; the default initial value is <code>undefined</code>.
+</p>
+
+<p>
+As with <a href="doku.php%3Fid=harmony:const.html" class="wikilink1" title="harmony:const" onclick="return svchk()" onkeypress="return svchk()">const</a>, <code>let x; let x</code> is an error (again ignoring initializers).
+</p>
+
+<p>
+We think <code>let</code> should behave like <a href="doku.php%3Fid=harmony:const.html" class="wikilink1" title="harmony:const" onclick="return svchk()" onkeypress="return svchk()">const</a> when the environment frame is an object and not declarative (at top level in global code, and in <code>eval</code> called from global code): you get an error if there exists a property of that object with the same name when the <code>let</code> is evaluated. So in browsers, <code>let name = 42</code> will throw (due to <code>window.name</code>).
+</p>
+
+<p>
+Open issues: 
+</p>
+<ul>
+<li class="level1"><div class="li"> What error should be thrown in the previous paragraph?</div>
+</li>
+<li class="level1"><div class="li"> Should <code>a = []; for (let i = 0; i &lt; 3; i++) a.push(function () { return i; }); print(a[0]())</code> print <code>3</code> or <code>0</code>?</div>
+<ul>
+<li class="level2"><div class="li"> Some say yes (Mark did a <a href="https://mail.mozilla.org/pipermail/es-discuss/2008-October/007819.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2008-October/007819.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">lambda coding</a>).</div>
+</li>
+<li class="level2"><div class="li"> Others say no (and Mozilla&rsquo;s JS1.7 in Rhino and SpiderMonkey implement this, but these could be changed and users might be happier).</div>
+</li>
+<li class="level2"><div class="li"> Jon Zeppieri <a href="https://mail.mozilla.org/pipermail/es-discuss/2008-October/007826.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2008-October/007826.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">pointed out</a> a big flaw: <code>for (let i=0;i&lt;N;i++){...}</code> differs from <code>let i=0; for (;i&lt;N;i++){...}</code>.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Same example but using <code>for (let i in o)</code> &ndash; here everyone agrees that in this form, we want fresh binding per iteration. Same for <code>for-of</code> (see <a href="doku.php%3Fid=harmony:iterators.html" class="wikilink1" title="harmony:iterators" onclick="return svchk()" onkeypress="return svchk()">iterators</a>).</div>
+</li>
+<li class="level1"><div class="li"> Bad old grammar and semantics in ES1-5 that permit <code>for (var i = E in o)</code> where <code>E</code> is evaluated before the loop begins.</div>
+<ul>
+<li class="level2"><div class="li"> We are stuck with this closure bug for <code>var</code>.</div>
+</li>
+<li class="level2"><div class="li"> We agree for <code>let</code> and <code>const</code> that the initializer <code> = E</code> should be forbidden grammatically.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2009/09/24 21:10</em> 
+</p>
+
+</div>
+
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/5/546b1c683339d4344e5af7b029d6dbc8.xhtml used -->
+</body>
+</html>

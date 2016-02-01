@@ -1,0 +1,195 @@
+====== Dropping traits from the spec ======
+
+The spec defines the behavior of static aspects of the language in terms of ''traits'' objects.
+
+This proposal suggests that the concept of ''traits'' be modeled in terms of property attributes on prototype objects.
+
+In particular, this proposal suggests inclusion of a ''TypeConstraint'' attribute, which would be included on (and //only// on) properties declared in classes. This attribute would carry a reference to a type (class). Given a class field ''F'' of type ''C'', the associated property ''P'' would have the attribute ''TypeConstraint C''. This attribute would cause the following restrictions:
+
+  * ''TypeConstraint'' implies ''DontDelete''
+  * ''TypeConstraint C'' on property ''P'' of object ''O'' means that only values of type ''C'' or its subclasses can be assigned to ''O.P'', //or// to any property ''P'' in a secondary object ''S'' where ''O'' is a member of the prototype chain of ''S''. In other words, ''P'' is prohibited from:
+    * type-incompatible rebinding in ''O''
+    * type-incompatible shadowing in an object using ''O'' as a prototype
+  * Reading from a property ''P'' with ''TypeConstraint C'' would therefore always produce a value of type ''C''.
+
+===== Mike's critiques regarding prototype indirection =====
+
+//Question:// does forbidding type-incompatible shadowing of prototype properties not interact poorly with implementations like SpiderMonkey which permit manipulation of the %%__proto__%% chain after object creation?  Given
+
+''O = { P: TypeConstraint }; S = { }; S2 = { %%__%%proto%%__%%: S, P: "wibble" };
+S.%%__%%proto%%__%% = O;
+''
+
+it seems that we would need to maintain a reference from S to S2 in order to check it for a newly created shadowing.
+
+ --- //[[shaver@mozilla.org|Mike Shaver]] 2006/01/31 07:43//
+
+//Answer:// Sorry, yes. In the version of this proposal I initially posted (via email), I included the restriction that the presence of a ''TypeConstraint'' attribute on a slot of an object ''P'' required that any child object ''C'' using ''P'' as a prototype have its ES3-intrinsic ''%%[[Prototype]]%%'' property (JS1.x ''%%__proto__%%'' property) made read-only. I was told that this was an unnecessary restriction since the prototype chain is immutable according to spec anyways, but I will happily add language noting this requirement, if the proposal is accepted.
+
+In your example, you're correct in noting that more is needed to prohibit the post-construction shadowing. Because the shadowing arises from the connection of two legal prototype chains at an "uninformed" intermediary, this proposal could only be sound with one of two additional modifications:
+
+  - All prototype chains are read-only, all the time //or// 
+  - Any writable ''%%[[Prototype]]%%'' property needs to be bi-directional -- each object with a writable prototype must keep a list of its prototype delegators --  and assignment of a ''%%__proto__%%'' slot on object ''O'' after construction causes a complete traversal and shadowing check of all the chains ''O'' is involved in.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/01/31 10:52//
+
+===== Jeff's edge cases regarding name-binding =====
+
+Here are two sharp edges in the object model that need to be addressed with or without triats.
+
+----
+
+Hi,
+
+This is an awkward way of editing the wiki, but I'm afraid I'm quite lost in your descriptions. I do not understand either the problem statements nor the solutions, nor do I know which language (with traits or without) you are phrasing the problem and solution in. Could you extend the examples with some details? I've made notes above indicating the parts I do not understand. All the notes I've made in your section are bracketed between horizontal rules (''%%----%%'').
+
+Fwiw, I'm perfectly willing to accept that traits are a requirement for the name binding rules of the language to make sense. What I lack is a clear understanding of //why//, which makes me think that the existing language is too complex for users to grasp also.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/03/11 12:30//
+
+Actually, these aren't intended to be critiques of this proposal, but rather to point out some edge cases that need to be dealt with by any design. I apologize that my meaning was not clear. To make things worse, there were quite a few typos. I'll try to make things clearer by fixing the typos and erasing some of the confusing prose. Hopefully then the answers to your questions will become clear.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/03/14 12:40//
+
+Thank you, your revisions helped. I have some residual questions though, which I have left in place below.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/03/15 00:30//
+
+----
+
+**Lexical lookup at runtime**
+
+<code>
+var x = 10
+class A { function m() { with(…) { print(x) } } }
+class B extends A { var x = 20 }
+var o = new B()
+o.m() // should print 10
+</code>
+
+The challenge is to represent the lexical scopes at runtime so that ''x'' in m binds to the global ''var x'', not the instance ''var x'' in ''B''.
+
+----
+
+Graydon's questions for clarification in this section:
+  * I agree that this is a challenge; what do you propose as a solution? 
+  * Would it work to insert an anonymous object in the scope chain of method ''A.m'', acting as a lexical closure over the variable ''x''?
+  * Would such a solution place undue burden on lightweight compilers wishing to avoid static analysis?
+
+----
+
+**Early binding**
+
+We want to allow smart implementations to bind references at compile time without changing the meaning of programs. For example, in the sample code below an implementation might want to resolve a reference to ''m'' through an instance of type ''A'' to a virtual table index, or even to a method body, to avoid having to resolve the name at runtime.
+
+<code>
+class A { function m() {} }
+class B extends A { override function m() {} }
+
+var a : A = new B
+a.m()  // maybe resolve m to a virtual table index based on current knowledge of A
+</code>
+
+If we want a language that allows for early binding, then clearly dynamic lookup and early binding must result in the same function being called. 
+
+So far this isn't much of a problem because there is only one ''m'' in ''B'' and it overrides the ''m'' in ''A''. But what if there is more than one ''m'' in ''B''?
+
+In the following example, ''class A'' introduces method ''m'' into the default namespace. ''class B'' overrides ''A'''s ''m'' and introduces another method ''m'' in the ''namespace N''. ''N'' is an open namespace at the point of reference of ''o.m()'' in ''f'' so there at least two possible interpretations of that reference.
+
+<code>
+class A { function m() { print("A.m") } }
+namespace N
+class B extends A { override function m() { print("B.m") }; N function m() { print("B.N::m") } } 
+
+var o = new B
+f(o)
+
+function f( o ) 
+{ 
+  use namespace N
+  o.m()   // prints B.m, B.N::m, or error?
+  var a : A = o
+  a.m()   // prints B.m, with early binding
+}
+</code>
+
+The compiler sees only one ''m'' in the reference through ''A'', and so has no way of knowing that there will be an alternative binding to ''m'' in ''B''. But at runtime ''m'' in ''N'' will also be seen. So what should the correct interpretation of this program be?
+
+Waldemar's solution: At run time, search for ''m'' from the root type (Object) down to the instance type (''B'' in this case) until a match for ''m'' is found. If a match is found, use its qualified name to search for the ultimate match in the instance.
+
+----
+
+Graydon's questions for clarification in this section:
+  * Is the following commentary correct?
+    * The call ''a.m()'' will dispatch to the same method, ''B.m'', in both early binding and late binding interpretations under the current proposal, since the variable type ''A'' has no use of namespace ''N'' at all.
+    * No early binding of the call ''o.m()'' is possible since ''o'' is of unconstrained type
+    * We seek a rule for dispatching the call ''o.m()'' unambiguously or raising a runtime error
+    * Waldemar's rule would encounter ''A.m'', consider the unqualified name ''m'' to refer to the name ''m'' in the default namespace, and then dispatch to ''B.m'', not ''B.N::m''
+    * An equally possible rule would involve using the normal (compile-time) unqualified name lookup rule at runtime against the discovered instance type ''B'' and reporting an ambiguous binding due to the open namespace ''N''
+  * Do you have a particular preference about which rule to adopt?
+  * Did Waldemar offer much commentary on his preference?
+  * Do traits help? Not to sound too defeatest, I'm just curious; this latter problem doesn't sound (to me) immediately related to whether we're looking things up in prototypes or traits. I imagine we need to be storing qualified ''(namespace,name)'' pairs as property keys in all cases.
+
+----
+
+Quick interjections:
+
+  * Someone familiar with AS3 please reassure us that namespaces are *not* first-class, so that the compiler can see all uses as well as definitions via the ''use namespace'' pragma.  Dave (and Cormac) have raised dynamic namespacing as yet another soundness threat (along with ''with'' and ''eval'' as constituted in Edition 3).
+
+  * Waldemar offered commentary about member lookup rule alternatives and his preference at [[http://www.mozilla.org/js/language/js20/rationale/member-lookup.html]].
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/15 18:53//
+
+----
+
+Arguments to ''use namespace ...'' directives must be compile time constant expressions. Namespace attributes must be compile time constant expressions. Name qualifiers may be runtime expressions (as in E4X).
+
+So, for example, the following is a valid program:
+
+<code javascript>
+namespace N
+N var x = 10
+var q = N
+print(q::x) // prints 10
+use namespace N
+// use namespace q  <- would be an error, q is not a ct constant expression
+print(x)    // also prints 10
+</code>
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/03/16 09:06//
+
+----
+
+So ''q::x'' in general (with data flow that can't be analyzed statically) is a run-time expression.
+
+This is like ''eval(y)'' where ''y'' is constrained not to bind new variables or have other effects.  It is very much like ''with''.  Wait, it's just like computed property names via ''q[x]''.  In fact a namespace ''q'' could be modeled as an object mapping string to string, so that evaluating a qualified name ''q::x'' could be evaluated via ''eval(q[x])''.  If the reference is not lexical, but in object ''o'', it's like ''eval("o['" + q[x] + "']")'' (provided ''q[x]'' doesn't contain any single-quote characters).
+
+I know E4X introduced namespaces as values, but the usability experience (as with XML namespaces in general) has been dismal.  Do we really want to build on this, especially if it threatens soundness?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/16 10:22//
+
+----
+
+This comment is unrelated to the discussion above, but reflects feelings I've had during the recent meetings. 
+
+I've really come to dislike this proposal (even though I made it); the more I see the differences between the static and dynamic translation modes, the more I think we'd be causing more cost than benefit if we pursue this path. At least with the traits design, we have a proof of existence that it works, and it carries the virtue that you decide //early// how you're going to treat a name lookup, and then enter distinct code paths thereafter. I've come to believe that design is in fact better than artificially unifying prototypes and traits. 
+
+Does anyone dearly want to keep this proposal alive? I'd be happy (really happy, not just "quietly resigned") to move it to the "withdrawn" section.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/04/06 23:17//
+
+At least we should consider renaming **traits** (possibly to **meta slots**) to avoid confusion with the meaning of traits in other languages.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/04/07 10:19//
+
+Links:
+
+  * [[http://www.iam.unibe.ch/~scg/Research/Traits/|Traits for Squeak (Smalltalk)]]
+  * [[http://research.sun.com/projects/plrg/fortress0618.pdf|Fortress spec]]
+  * [[http://scala.epfl.ch/intro/traits.html|Scala traits]]
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/04/07 12:09//
+
+Perhaps "class metaslots" vs. "prototype metaslots" (though both those terms are a bit verbose).
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/04/07 13:51//

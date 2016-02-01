@@ -1,0 +1,121 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:classes_as_inheritance_sugar&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:classes_as_inheritance_sugar&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:classes_as_inheritance_sugar&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<p>
+<em>not yet ready</em>
+</p>
+
+<a name="classes_as_inheritance_sugar"></a><h1>Classes as Inheritance Sugar</h1>
+<div class="level1">
+
+<p>
+ The main complaint I have heard about <a href="doku.php%3Fid=strawman:classes_with_trait_composition.html" class="wikilink1" title="strawman:classes_with_trait_composition" onclick="return svchk()" onkeypress="return svchk()">classes with trait composition</a> is that it does not use JavaScript&rsquo;s prototype chain in order to either
+</p>
+<ul>
+<li class="level1"><div class="li"> provide the instance of a class with shared methods of that class, or</div>
+</li>
+<li class="level1"><div class="li"> provide for inheritance among classes.</div>
+</li>
+</ul>
+
+<p>
+This strawman is a variant of <a href="doku.php%3Fid=strawman:classes_with_trait_composition.html" class="wikilink1" title="strawman:classes_with_trait_composition" onclick="return svchk()" onkeypress="return svchk()">classes with trait composition</a> with a somewhat more complex translation, in order to meet this additional objective. As with the original, keep in mind that these translations are explanatory, not proposed implementation. 
+</p>
+
+<p>
+In order to store some form of the public members of a class on its shared prototype, we reuse the technique shown at <a href="doku.php%3Fid=strawman:classes_with_trait_composition.html#adding_class-private_instance_variables" class="wikilink1" title="strawman:classes_with_trait_composition" onclick="return svchk()" onkeypress="return svchk()">adding class-private instance variables</a> for its instance-private instance variables, i.e., all lexical variables which are local to a class&rsquo; constructor and captured by its public members. The shared form of the public members are unbound methods and accessor properties which look up this private state on its <code>this</code>-binding. 
+</p>
+
+<p>
+For each class <code>C</code>, its <code>C.prototypeTrait</code> member contains a trait (an enhanced property descriptor map) describing this <code>C</code>&lsquo;s contribution towards its direct or indirect instances. <code>C.prototype</code> is then initialized to the equivalent of <code>Object.freeze(Object.create(SuperC.prototype, C.prototypeTrait))</code>. <code>C.makeIngredients</code> remains a method with the same external signature and contract as before, but now primarily associate and initializes a private state record with each <code>self</code> instance it is asked to initialize.
+</p>
+
+<p>
+Since the purpose of this is to integrate class inheritance better with legacy inheritance, let&rsquo;s start with the first inheritance example at <a href="doku.php%3Fid=strawman:classes_with_trait_composition.html#adding_single_inheritance" class="wikilink1" title="strawman:classes_with_trait_composition" onclick="return svchk()" onkeypress="return svchk()">adding_single_inheritance</a>.
+</p>
+<pre class="code javascript">  <span class="kw2">class</span> Point<span class="br0">&#40;</span>x, y<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">public</span> getX<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> x; <span class="br0">&#125;</span>
+    <span class="kw2">public</span> getY<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> y; <span class="br0">&#125;</span>
+    <span class="kw2">public</span> toString<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">return</span> <span class="st0">'&lt;'</span> + <span class="kw1">this</span>.<span class="me1">getX</span><span class="br0">&#40;</span><span class="br0">&#41;</span> + <span class="st0">','</span> + <span class="kw1">this</span>.<span class="me1">getY</span><span class="br0">&#40;</span><span class="br0">&#41;</span> + <span class="st0">'&gt;'</span>;
+    <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span>
+  <span class="kw2">class</span> WobblyPoint<span class="br0">&#40;</span>x, y, wobble<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">extends</span> Point<span class="br0">&#40;</span>x, y<span class="br0">&#41;</span>;
+    <span class="kw2">public</span> getX<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">return</span> <span class="kw2">super</span>.<span class="me1">getX</span><span class="br0">&#40;</span><span class="br0">&#41;</span> + wobble * Math.<span class="me1">random</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span></pre><pre class="code javascript">  <span class="kw2">const</span> Point = <span class="br0">&#40;</span><span class="kw2">const</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span>
+    <span class="kw2">const</span> private___ = SoftField___<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+    <span class="kw2">const</span> PointTrait___ = OFreeze___<span class="br0">&#40;</span><span class="br0">&#123;</span>
+      getX: <span class="br0">&#123;</span> value: <span class="kw2">const</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> private___.<span class="me1">get</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>.<span class="me1">x</span>; <span class="br0">&#125;</span>,
+              method: <span class="kw2">true</span> <span class="br0">&#125;</span>,
+      getY: <span class="br0">&#123;</span> value: <span class="kw2">const</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> private___.<span class="me1">get</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>.<span class="me1">y</span>; <span class="br0">&#125;</span>,
+              method: <span class="kw2">true</span> <span class="br0">&#125;</span>,
+      toString: <span class="br0">&#123;</span> value: <span class="kw2">const</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+                    <span class="kw1">return</span> <span class="st0">'&lt;'</span> + <span class="kw1">this</span>.<span class="me1">getX</span><span class="br0">&#40;</span><span class="br0">&#41;</span> + <span class="st0">','</span> + <span class="kw1">this</span>.<span class="me1">getY</span><span class="br0">&#40;</span><span class="br0">&#41;</span> + <span class="st0">'&gt;'</span>;
+                  <span class="br0">&#125;</span>,
+                  method: <span class="kw2">true</span> <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+    <span class="kw1">return</span> MakeClass___<span class="br0">&#40;</span><span class="br0">&#91;</span><span class="br0">&#93;</span>, 
+                        PointTrait___, 
+                        <span class="kw2">const</span><span class="br0">&#40;</span>self, x, y<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      private___.<span class="me1">set</span><span class="br0">&#40;</span>self, <span class="br0">&#123;</span>
+        x: x,
+        y: y
+      <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="kw2">const</span> WobblyPoint = <span class="br0">&#40;</span><span class="kw2">const</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">const</span> private___ = SoftField___<span class="br0">&#40;</span><span class="br0">&#41;</span>;
+    <span class="kw2">const</span> WobblyPointTrait___ = OFreeze<span class="br0">&#40;</span><span class="br0">&#123;</span>
+      getX: <span class="br0">&#123;</span> value: <span class="kw2">const</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+                <span class="kw1">return</span> Point.<span class="me1">prototype</span>.<span class="me1">getX</span>.<span class="me1">call</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span> + 
+                  private___.<span class="me1">get</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>.<span class="me1">wobble</span> * Math.<span class="me1">random</span><span class="br0">&#40;</span><span class="br0">&#41;</span>;
+              <span class="br0">&#125;</span>,
+              method: <span class="kw2">true</span> <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+    <span class="kw1">return</span> MakeClass___<span class="br0">&#40;</span><span class="br0">&#91;</span>Point<span class="br0">&#93;</span>, 
+                        WobblyPointTrait___,
+                        <span class="kw2">const</span><span class="br0">&#40;</span>self, x, y, wobble<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      private___.<span class="me1">set</span><span class="br0">&#40;</span>self, <span class="br0">&#123;</span>
+        wobble: wobble
+      <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="br0">&#125;</span><span class="br0">&#41;</span>;</pre>
+</div>
+<!-- SECTION [20-3404] -->
+<a name="see"></a><h1>See</h1>
+<div class="level1">
+
+<p>
+ <a href="doku.php%3Fid=strawman:classes_with_trait_composition.html" class="wikilink1" title="strawman:classes_with_trait_composition" onclick="return svchk()" onkeypress="return svchk()">classes with trait composition</a>
+</p>
+
+</div>
+<!-- SECTION [3405-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/b/b6d8a3f43bc729c663ed3d1aba339232.xhtml used -->
+</body>
+</html>

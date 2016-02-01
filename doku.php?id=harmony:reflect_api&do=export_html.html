@@ -1,0 +1,440 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=harmony:reflect_api&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="http://wiki.ecmascript.org/feed.php?mode=list&amp;ns=harmony" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=harmony:reflect_api&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=harmony:reflect_api&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:reflect_api&amp;do=export_html.html#reflect_api" class="toc">Reflect API</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:reflect_api&amp;do=export_html.html#purpose" class="toc">Purpose</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=harmony:reflect_api&amp;do=export_html.html#forwarding" class="toc">Forwarding</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:reflect_api&amp;do=export_html.html#specification" class="toc">Specification</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:reflect_api&amp;do=export_html.html#references" class="toc">References</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="reflect_api"></a><h1>Reflect API</h1>
+<div class="level1">
+
+<p>
+ <strong>This proposal has progressed to the Draft ECMAScript 6 Specification (Section <a href="https://people.mozilla.org/~jorendorff/es6-draft.html#sec-reflection." class="urlextern" target="_blank" title="https://people.mozilla.org/~jorendorff/es6-draft.html#sec-reflection." onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">26</a>), which is available for review here: <a href="doku.php%3Fid=harmony:specification_drafts.html" class="wikilink1" title="harmony:specification_drafts" onclick="return svchk()" onkeypress="return svchk()">specification_drafts</a>. Any new issues relating to them should be filed as bugs at <a href="http://bugs.ecmascript.org" class="urlextern" target="_blank" title="http://bugs.ecmascript.org" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://bugs.ecmascript.org</a>. The content on this page is for historic record only and may no longer reflect the current state of the feature described within.</strong>
+</p>
+
+<p>
+We propose a new standard module &ldquo;@reflect&rdquo; that exports the following properties:
+</p>
+<pre class="code javascript">module <span class="st0">"@reflect"</span>
+&nbsp;
+<span class="kw2">function</span> Proxy<span class="br0">&#40;</span>target, handler<span class="br0">&#41;</span>
+<span class="kw2">function</span> Handler<span class="br0">&#40;</span><span class="br0">&#41;</span>
+&nbsp;
+<span class="co1">// each of the following functions corresponds</span>
+<span class="co1">// one-to-one with a Proxy trap from the handler API</span>
+<span class="kw2">function</span> getOwnPropertyDescriptor<span class="br0">&#40;</span>target,<span class="kw3">name</span><span class="br0">&#41;</span>
+<span class="kw2">function</span> defineProperty<span class="br0">&#40;</span>target,<span class="kw3">name</span>,desc<span class="br0">&#41;</span>
+<span class="kw2">function</span> getOwnPropertyNames<span class="br0">&#40;</span>target<span class="br0">&#41;</span>
+<span class="kw2">function</span> getPrototypeOf<span class="br0">&#40;</span>target<span class="br0">&#41;</span>
+<span class="kw2">function</span> deleteProperty<span class="br0">&#40;</span>target,<span class="kw3">name</span><span class="br0">&#41;</span> 
+<span class="kw2">function</span> enumerate<span class="br0">&#40;</span>target<span class="br0">&#41;</span>
+<span class="kw2">function</span> freeze<span class="br0">&#40;</span>target<span class="br0">&#41;</span>
+<span class="kw2">function</span> seal<span class="br0">&#40;</span>target<span class="br0">&#41;</span>
+<span class="kw2">function</span> preventExtensions<span class="br0">&#40;</span>target<span class="br0">&#41;</span>
+<span class="kw2">function</span> isFrozen<span class="br0">&#40;</span>target<span class="br0">&#41;</span>
+<span class="kw2">function</span> isSealed<span class="br0">&#40;</span>target<span class="br0">&#41;</span>
+<span class="kw2">function</span> isExtensible<span class="br0">&#40;</span>target<span class="br0">&#41;</span>
+<span class="kw2">function</span> has<span class="br0">&#40;</span>target,<span class="kw3">name</span><span class="br0">&#41;</span>
+<span class="kw2">function</span> hasOwn<span class="br0">&#40;</span>target,<span class="kw3">name</span><span class="br0">&#41;</span>
+<span class="kw2">function</span> keys<span class="br0">&#40;</span>target<span class="br0">&#41;</span>
+<span class="kw2">function</span> get<span class="br0">&#40;</span>target,<span class="kw3">name</span>,receiver<span class="br0">&#41;</span>
+<span class="kw2">function</span> set<span class="br0">&#40;</span>target,<span class="kw3">name</span>,value,receiver<span class="br0">&#41;</span>
+<span class="kw2">function</span> apply<span class="br0">&#40;</span>target,thisArg,args<span class="br0">&#41;</span>
+<span class="kw2">function</span> construct<span class="br0">&#40;</span>target,args<span class="br0">&#41;</span></pre>
+<p>
+Most of the above operations are easy to accomplish by other means in ES5. Some were previously hard to accomplish:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>get(target,name,receiver)</code> can be used to lookup <code>target[name]</code>, but if the property is an accessor, the accessor&rsquo;s <code>this</code>-binding will refer to <code>receiver</code>.</div>
+</li>
+<li class="level1"><div class="li"> <code>set(target, name, value, receiver)</code> can be used to set a property <code>target[name] = value</code>, but if the property is an accessor, the accessor&rsquo;s <code>this</code>-binding will refer to <code>receiver</code>.</div>
+</li>
+<li class="level1"><div class="li"> <code>construct(target, args)</code> is equivalent to <code>new target(...args)</code>. This is not trivial to accomplish in ES5 given the lack of the spread operator.</div>
+</li>
+<li class="level1"><div class="li"> <code>apply(fun,thisArg,args)</code> is a convenient shorthand for <code>Function.prototype.apply.call(fun,thisArg,args)</code></div>
+</li>
+<li class="level1"><div class="li"> <code>set</code>, <code>defineProperty</code>, <code>freeze</code>, <code>seal</code> and <code>preventExtensions</code> return a boolean rather than throwing on failure, where <code>true</code> indicates success and <code>false</code> indicates failure.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1-2316] -->
+<a name="purpose"></a><h2>Purpose</h2>
+<div class="level2">
+
+<p>
+ The &ldquo;@reflect&rdquo; module serves multiple purposes:
+</p>
+<ul>
+<li class="level1"><div class="li"> Now that we have modules, a &ldquo;@reflect&rdquo; module is a more natural place for many of the reflection methods previously defined on Object. For backwards-compatibility purposes, it is unlikely that the static methods on <code>Object</code> will disappear. However, <a href="doku.php%3Fid=harmony:extended_object_api.html" class="wikilink1" title="harmony:extended_object_api" onclick="return svchk()" onkeypress="return svchk()">new methods</a> should likely be added to the &ldquo;@reflect&rdquo; module rather than to the <code>Object</code> constructor.</div>
+</li>
+<li class="level1"><div class="li"> A natural home for proxies, avoiding the need for a global <code>Proxy</code> binding.</div>
+</li>
+<li class="level1"><div class="li"> Most methods in this module map one-to-one onto Proxy traps. Proxy handlers need these methods to conveniently forward operations, as shown below.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [2317-3010] -->
+<a name="forwarding"></a><h2>Forwarding</h2>
+<div class="level2">
+
+<p>
+ The methods in &ldquo;@reflect&rdquo; make it easy for Proxy handlers to forward trapped operations, for instance:
+</p>
+<pre class="code javascript">module Reflect from <span class="st0">"@reflect"</span>;
+&nbsp;
+funtion makeChangeLogger<span class="br0">&#40;</span>target, log<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw1">return</span> Proxy<span class="br0">&#40;</span>target, <span class="br0">&#123;</span>
+    set: <span class="kw2">function</span><span class="br0">&#40;</span>target, <span class="kw3">name</span>, value, receiver<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw2">var</span> success = Reflect.<span class="me1">set</span><span class="br0">&#40;</span>target,<span class="kw3">name</span>, value, receiver<span class="br0">&#41;</span>;
+      <span class="kw1">if</span> <span class="br0">&#40;</span>success<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        log<span class="br0">&#40;</span><span class="st0">'property '</span>+<span class="kw3">name</span>+<span class="st0">' on '</span>+target+<span class="st0">' set to '</span>+value<span class="br0">&#41;</span>;
+      <span class="br0">&#125;</span>
+      <span class="kw1">return</span> success;
+    <span class="br0">&#125;</span>
+  <span class="br0">&#125;</span><span class="br0">&#41;</span>;
+<span class="br0">&#125;</span></pre>
+<p>
+This relieves the <code>makeChangeLogger</code> abstraction from accurately implementing the semantics of forwarding <code>set</code>.
+</p>
+
+<p>
+The one-to-one correspondence between &ldquo;@reflect&rdquo; methods and Proxy traps enables the <a href="doku.php%3Fid=harmony:proxies.html#transparent_chains_of_no-op_proxies" class="wikilink1" title="harmony:proxies" onclick="return svchk()" onkeypress="return svchk()">double lifting</a> pattern:
+</p>
+<pre class="code javascript">module Reflect from <span class="st0">"@reflect"</span>;
+&nbsp;
+<span class="kw2">var</span> genericHandler = Proxy<span class="br0">&#40;</span>target, <span class="br0">&#123;</span>
+  get: <span class="kw2">function</span><span class="br0">&#40;</span>target, trapName, receiver<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="co1">// code here is run before every operation triggered on proxy</span>
+    <span class="co1">// note: the Reflect module instance is needed to generically</span>
+    <span class="co1">// forward the trap invocation</span>
+    <span class="kw1">return</span> Reflect<span class="br0">&#91;</span>trapName<span class="br0">&#93;</span>;
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span><span class="br0">&#41;</span>;
+<span class="kw2">var</span> proxy = Proxy<span class="br0">&#40;</span>target, genericHandler<span class="br0">&#41;</span>;</pre>
+<p>
+This pattern is useful to build very generic wrapper abstractions such as membranes or caretakers.
+</p>
+
+<p>
+Note finally that the <code>Reflect</code> module instance is itself a valid Proxy handler.
+</p>
+
+</div>
+<!-- SECTION [3011-4363] -->
+<a name="specification"></a><h1>Specification</h1>
+<div class="level1">
+
+<p>
+ <strong> export function Proxy(target, handler)</strong>
+</p>
+
+<p>
+See <a href="doku.php%3Fid=harmony:proxies_spec.html" class="wikilink1" title="harmony:proxies_spec" onclick="return svchk()" onkeypress="return svchk()">proxies spec</a>.
+</p>
+
+<p>
+<strong> export function Handler()</strong>
+</p>
+
+<p>
+See <a href="doku.php%3Fid=harmony:virtual_object_api.html" class="wikilink1" title="harmony:virtual_object_api" onclick="return svchk()" onkeypress="return svchk()">virtual object api</a>.
+</p>
+
+<p>
+<strong> export function getOwnPropertyDescriptor(target,name)</strong>
+</p>
+
+<p>
+Same as <code>Object.getOwnPropertyDescriptor(target,name)</code>
+</p>
+
+<p>
+<strong> export function defineProperty(target,name,desc)</strong>
+</p>
+
+<p>
+Same as <code>Object.defineProperty(target,name,desc)</code>
+</p>
+
+<p>
+<strong> export function getOwnPropertyNames(target)</strong>
+</p>
+
+<p>
+Same as <code>Object.getOwnPropertyNames(target)</code>
+</p>
+
+<p>
+<strong> export function getPrototypeOf(target)</strong>
+</p>
+
+<p>
+Same as <code>Object.getPrototypeOf(target)</code>
+</p>
+
+<p>
+<strong> export function deleteProperty(T, P)</strong>
+</p>
+
+<p>
+When the <strong>deleteProperty</strong> function is called with arguments T and P, the following steps are taken: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let target be ToObject(T)</div>
+</li>
+<li class="level1"><div class="li"> Let name be ToString(P)</div>
+</li>
+<li class="level1"><div class="li"> Return the result of calling the [[Delete]] internal method of target providing name as the first argument and false as the second argument.</div>
+</li>
+</ol>
+
+<p>
+ <strong> export function enumerate(T)</strong> 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let target be ToObject(T)</div>
+</li>
+<li class="level1"><div class="li"> Return the result of calling the [[Enumerate]] internal method of target providing no arguments.</div>
+</li>
+</ol>
+
+<p>
+ <strong> export function freeze(target)</strong>
+</p>
+
+<p>
+This algorithm should do the same as Object.freeze (ES5 15.2.3.9) except it should return a boolean instead of returning target or throwing.
+</p>
+
+<p>
+TODO
+</p>
+
+<p>
+<strong> export function seal(target)</strong>
+</p>
+
+<p>
+This algorithm should do the same as Object.seal except it should return a boolean instead of returning target or throwing.
+</p>
+
+<p>
+TODO
+</p>
+
+<p>
+<strong> export function preventExtensions(target)</strong>
+</p>
+
+<p>
+This algorithm should do the same as Object.preventExtensions except it should return a boolean instead of returning target or throwing.
+</p>
+
+<p>
+TODO
+</p>
+
+<p>
+<strong> export function isFrozen(target)</strong>
+</p>
+
+<p>
+Same as <code>Object.isFrozen(target)</code>
+</p>
+
+<p>
+<strong> export function isSealed(target)</strong>
+</p>
+
+<p>
+Same as <code>Object.isSealed(target)</code>
+</p>
+
+<p>
+<strong> export function isExtensible(target)</strong>
+</p>
+
+<p>
+Same as <code>Object.isExtensible(target)</code>
+</p>
+
+<p>
+<strong> export function has(T, P)</strong>
+</p>
+
+<p>
+When the <strong>has</strong> function is called with arguments T and P, the following steps are taken: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let target be ToObject(T)</div>
+</li>
+<li class="level1"><div class="li"> Let name be ToString(P)</div>
+</li>
+<li class="level1"><div class="li"> Return the result of calling the [[HasProperty]] internal method of target providing name as the sole argument.</div>
+</li>
+</ol>
+
+<p>
+ <strong> export function hasOwn(target,name)</strong>
+</p>
+
+<p>
+When the <strong>hasOwn</strong> function is called with arguments T and P, the following steps are taken: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let target be ToObject(T)</div>
+</li>
+<li class="level1"><div class="li"> Let name be ToString(P)</div>
+</li>
+<li class="level1"><div class="li"> Return the result of calling the [[HasOwnProperty]] internal method of target providing name as the sole argument.</div>
+</li>
+</ol>
+
+<p>
+ <strong> export function keys(target)</strong>
+</p>
+
+<p>
+Same as <code>Object.keys(target)</code>
+</p>
+
+<p>
+<strong> export function get(T, P, R)</strong>
+</p>
+
+<p>
+When the <strong>get</strong> function is called with arguments T, P and R the following steps are taken: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let target be ToObject(T)</div>
+</li>
+<li class="level1"><div class="li"> Let name be ToString(P)</div>
+</li>
+<li class="level1"><div class="li"> Let receiver be target</div>
+</li>
+<li class="level1"><div class="li"> If R is present and not undefined, set receiver to ToObject(R)</div>
+</li>
+<li class="level1"><div class="li"> Return the result of calling the [[GetP]] internal method of target providing name as the first argument and receiver as the second argument.</div>
+</li>
+</ol>
+
+<p>
+ <strong> export function set(T, P, V, R)</strong>
+</p>
+
+<p>
+When the <strong>set</strong> function is called with arguments T, P, V and R the following steps are taken: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let target be ToObject(T)</div>
+</li>
+<li class="level1"><div class="li"> Let name be ToString(P)</div>
+</li>
+<li class="level1"><div class="li"> Let receiver be target</div>
+</li>
+<li class="level1"><div class="li"> If R is present and not undefined, set receiver to ToObject(R)</div>
+</li>
+<li class="level1"><div class="li"> Return the result of calling the [[SetP]] internal method of target providing name as the first argument, V as the second argument and receiver as the third argument.</div>
+</li>
+</ol>
+
+<p>
+ <strong> export function apply(T, thisArg, argArray)</strong>
+</p>
+
+<p>
+Same as ES5 15.3.4.3 <code>Function.prototype.apply</code> with T as receiver (the <code>func</code> object).
+</p>
+
+<p>
+<strong> export function construct(T, argArray)</strong>
+</p>
+
+<p>
+When the <strong>construct</strong> function is called with arguments T and argArray the following steps are taken: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Let target be ToObject(T)</div>
+</li>
+<li class="level1"><div class="li"> If target does not implement the [[Construct]] internal method, throw a TypeError exception.</div>
+</li>
+<li class="level1"><div class="li"> If argArray is null or undefined, then</div>
+<ul>
+<li class="level2"><div class="li"> a. Return the result of calling the [[Construct]] internal method of target, providing an empty list of arguments.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> If Type(argArray) is not Object, then throw a TypeError exception.</div>
+</li>
+<li class="level1"><div class="li"> Let len be the result of calling the [[Get]] internal method of argArray with argument &ldquo;length&rdquo;.</div>
+</li>
+<li class="level1"><div class="li"> Let n be ToUint32(len).</div>
+</li>
+<li class="level1"><div class="li"> Let argList be an empty List.</div>
+</li>
+<li class="level1"><div class="li"> Let index be 0.</div>
+</li>
+<li class="level1"><div class="li"> Repeat while index &lt; n</div>
+<ul>
+<li class="level2"><div class="li"> a. Let indexName be ToString(index).</div>
+</li>
+<li class="level2"><div class="li"> b. Let nextArg be the result of calling the [[Get]] internal method of argArray with indexName as the argument.</div>
+</li>
+<li class="level2"><div class="li"> c. Append nextArg as the last element of argList.</div>
+</li>
+<li class="level2"><div class="li"> d. Set index to index + 1.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Return the result of calling the [[Construct]] internal method on target, providing argList as the list of arguments.</div>
+</li>
+</ol>
+
+</div>
+<!-- SECTION [4364-9096] -->
+<a name="references"></a><h1>References</h1>
+<div class="level1">
+
+<p>
+ For a non-normative, approximate implementation of these methods, see <a href="https://github.com/tvcutsem/harmony-reflect" class="urlextern" target="_blank" title="https://github.com/tvcutsem/harmony-reflect" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">this code</a>. 
+</p>
+
+</div>
+<!-- SECTION [9097-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/8/8bc949d04aa74dbf029084a68fcb86d4.xhtml used -->
+</body>
+</html>

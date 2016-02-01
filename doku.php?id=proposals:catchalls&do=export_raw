@@ -1,0 +1,94 @@
+====== Catchall proposal ======
+
+[[http://bugs.ecmascript.org/ticket/214|Ticket #214]] and [[http://bugs.ecmascript.org/ticket/196|Ticket #196]] discuss open issues in the semantics and the method suite.
+
+(Also see the [[discussion:catchalls|discussion page]] for this proposal)
+
+This proposal is to standardize the following method types
+
+  * ''meta function has(ident)'', the catchall has-property predicate.
+  * ''meta function get(ident)'', the catchall getter.
+  * ''meta function set(ident,val)'', the catchall setter.
+  * ''meta function invoke(ident, args...)'', the catchall method invoker.
+  * ''intrinsic function has(ident)'', the non-overridable universal has-property predicate.
+  * ''intrinsic function get(ident)'', the non-overridable universal property getter.
+  * ''intrinsic function set(ident, val)'', the non-overridable universal property setter.
+  * ''intrinsic function invoke(ident, args...)'', the non-overridable universal method.
+
+The first four methods are to be called, if defined on an object, when lookup of a named property fails in a particular (has, get, set, invoke) context. Every object supports non-overridable methods in the [[proposals:intrinsic namespace]], that perform primitive has, get, set, and invocation operations.
+
+The rationale for the ''has'' catchall is to handle lexical references that can resolve to objects on the scope chain with ''get'', ''set'', and/or ''invoke'' catchalls. A lexical reference is evaluated in ES3 according to 10.1.4 as follows:
+
+  - Get the next object in the scope chain. If there isn't one, go to step 5.
+  - Call the ''%%[[HasProperty]]%%'' method of Result(1), passing the Identifier as the property.
+  - If Result(2) is true, return a value of type Reference whose base object is Result(1) and whose property name is the Identifier.
+  - Go to step 1.
+  - Return a value of type Reference whose base object is null and whose property name is the Identifier.
+
+ES4 does not have the specification-only Reference type, and it does have namespace-qualified identifiers (''ns::id'') and expressions (''ns::[''//expr//'']''). But for the purposes of this proposal we'll consider just the Identifier case from ES3; the extension to handle namespaces is trivial.
+
+ES3's ''%%[[HasProperty]]%%'' internal method is specified in 8.6.2.4 as follows:
+
+  - If O has a property with name P, return true.
+  - If the ''%%[[Prototype]]%%'' of O is null, return false.
+  - Call the ''%%[[HasProperty]]%%'' method of ''%%[[Prototype]]%%'' with property name P.
+  - Return Result(3).
+
+To implement the ''has'' catchall, we need to pass an addition argument: the initial value of O. So we change the ''%%[[HasProperty]]%%(P)'' signature to ''%%[[HasProperty]]%%(P, O)'' when called on object O.
+
+When the ''%%[[HasProperty]]%%'' method of O is called with property name P and initial object Q = O, the following steps are taken:
+
+  - If O has a property with name P, return true.
+  - If the ''%%[[Prototype]]%%'' of O is null, goto step 5.
+  - Call the ''%%[[HasProperty]]%%'' method of ''%%[[Prototype]]%%'' passing P and Q.
+  - Return Result(3).
+  - If Q has a property with name ''meta::has'', return Q''.meta::has(''P'')''
+  - Return false.
+
+
+
+
+====== Notes ======
+
+It might be somewhat tempting to phrase ''intrinsic::invoke'' and ''invoke *'' in terms of a getter, but that involves consing a closure per call, so we decide against such an interpretation.
+
+Note that [[catchalls]] are important both for the following use-case, monitoring of ''length'' for ''Array'' and similar classes; and for [[meetings:minutes_feb_21_2007#primitives_yet_again|primitive types]].
+
+---- 
+
+Note: the definitions of catchalls here is probably adequate for most uses, but it's definitely not adequate to implement the ECMA-262 implementation of Array and XML; if I have
+
+<code>
+  dynamic class Array {
+    function set *(propname, value) { 
+      /* misc code, followed by: */
+      this[propname] = value; 
+    }
+  }
+</code>
+
+it seems that doing code like this:
+
+<code>
+  var foo = new Array;
+  foo["0"] = 0; // calls set*
+  foo["0"] = 1; // doesn't call set* since lookup won't fail!
+</code>
+
+Edwin suggests we could revise this by distinguishing between declared vs. dynamic properties: //The first three methods are to be called, if defined on an object, when lookup of a named property **fails to find a declared property** in a particular (has, get, set, invoke) context.// Thus, dynamic property lookup would always be bottlenecked through the catchalls (whether or not the property exists), when the catchalls are defined for a given class.
+
+ --- //[[stejohns@adobe.com|Steven Johnson]] 2006/11/29 08:55//
+
+I think that's right.  See some discussion on ticket 196 why that would be:  http://bugs.ecmascript.org/ticket/196.
+
+Why do we not have a catchall for %%[[Delete]]%%?
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/09/24 18:57//
+
+%%[[Delete]]%% is the final frontier. There's no good reason to leave it out, and if we don't support it, abstractions built on catchalls (including ones in the builtins, IIRC) will break. Shall I edit it here or comment in trac?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/09/24 20:44//
+
+Comment in trac is best at this point.  Thanks.  (Please also comment on what you think of the semantics issue.)
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/09/24 21:13//

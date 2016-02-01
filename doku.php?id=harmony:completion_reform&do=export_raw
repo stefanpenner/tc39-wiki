@@ -1,0 +1,62 @@
+===== Completion value =====
+
+The existing specs describe a completion value that every statement can produce, but some statements do not //necessarily// produce a completion value. This means that it's not always statically predictable which sub-statement of a compound statement will produce the completion. For example:
+
+<code javascript>
+{
+    41;          // completion is 41
+    if (...) 42; // either no completion or 42
+}                // block's completion is either 41 or 42
+</code>
+
+<code javascript>
+{
+    41;             // completion is 41
+    while (...) 42; // either no completion (if 0 iterations) or 42
+}                   // block's completion is either 41 or 42
+</code>
+
+For [[proper tail calls]], the completion position should coincide with tail position. This would be important for e.g. [[strawman:block lambda revival]].
+
+===== Completion for conditionally executed statements =====
+
+This strawman proposes breaking compatibility of the definition of completion values, such that completion position becomes statically predictable. The basic idea is that these conditional cases would produce the undefined value as their completion, rather than no completion.
+
+<code javascript>
+{
+    41;          // completion is 41
+    if (...) 42; // either undefined or 42
+}                // block's completion is either undefined or 42
+</code>
+
+<code javascript>
+{
+    41;             // completion is 41
+    while (...) 42; // either undefined (if 0 iterations) or 42
+}                   // block's completion is either undefined or 42
+</code>
+
+
+
+===== Backwards compatibility =====
+
+While this is backwards-incompatible, the completion value only showed up in ES5 and earlier as the result of ''eval''. The hope is that this is an obscure enough corner case of completion values, that it wouldn't be likely to break many programs.
+
+----
+I like it. The strange "nothing means previous statement's completion value" semantics were a just-so story from JS1.0 that we codified in ES1.
+
+Can we get away with this kind of migration-tax (remember, only five fingers of fate to use up)? We probably can IMHO, and anyway we should test and scan the web harder to check before making a hard decision.
+
+At the least, I'd rather we have this completion-value semantics for sharp-functions and other new syntactic forms than the bad old completion semantics.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/03/01 00:24//
+
+
+
+
+===== Additional changes =====
+
+  * should make the completion of a ''try''-''finally'' be the result of the ''try'' block -- see [[https://mail.mozilla.org/pipermail/es-discuss/2011-November/018289.html|Mike Samuel's message]] on es-discuss
+      * It already is, except in the case the finally has an abrupt completion.  --- //[[Allen@Wirfs-Brock.com|Allen Wirfs-Brock]] 2012/03/02 00:46//
+
+  * also needs to fix do-while and for/for-in statements

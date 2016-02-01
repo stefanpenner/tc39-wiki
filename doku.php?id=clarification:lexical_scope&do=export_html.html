@@ -1,0 +1,133 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=clarification:lexical_scope&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=clarification" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=clarification:lexical_scope&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=clarification:lexical_scope&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="clarification"></a><h1>Clarification</h1>
+<div class="level1">
+<ul>
+<li class="level1"><div class="li"> some dynamic scope is unavoidable for backwards compatibility</div>
+<ul>
+<li class="level2"><div class="li"> <code>with</code></div>
+</li>
+<li class="level2"><div class="li"> <code>eval</code></div>
+</li>
+<li class="level2"><div class="li"> global object</div>
+</li>
+<li class="level2"><div class="li"> computed field names</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> but the type <code>*</code> always gets us out of trouble: anywhere we can&rsquo;t determine what something refers to, it just has the dynamic type</div>
+</li>
+<li class="level1"><div class="li"> <code>let</code> (see <a href="doku.php%3Fid=proposals:block_expressions.html" class="wikilink1" title="proposals:block_expressions" onclick="return svchk()" onkeypress="return svchk()">block expressions</a>) is an improvement over <code>var</code></div>
+</li>
+<li class="level1"><div class="li"> some places, such as <a href="doku.php%3Fid=proposals:reformed_with.html" class="wikilink1" title="proposals:reformed_with" onclick="return svchk()" onkeypress="return svchk()">reformed with</a>, help clean it up</div>
+</li>
+<li class="level1"><div class="li"> <code>use strict</code> should help as well&ndash;when you ask for it, you get a language with more lexical scope</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1-566] -->
+<a name="request_for_clarification"></a><h1>Request for clarification</h1>
+<div class="level1">
+
+<p>
+ In its heart of hearts, EcmaScript <em>wants</em> to be a lexically scoped language.
+</p>
+
+<p>
+The trouble is, the scoping mechanisms are rather sloppily defined. I propose to clean up the language describing any and all scoping constructs in the language in the more precise and conventional terms of programming language semantics, using the language of environments.
+</p>
+
+<p>
+The important feature of lexical scope is that it&rsquo;s a static property of programs. Therefore, scope errors should be compile-time errors, not runtime errors. I propose that all scope-related errors be specified as compile-time errors.
+</p>
+
+<p>
+This affects all binding constructs in the language, including: 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>with</code> (see the related <a href="doku.php%3Fid=proposals:with-bound_variables.html" class="wikilink1" title="proposals:with-bound_variables" onclick="return svchk()" onkeypress="return svchk()">with-bound variables</a> proposal)</div>
+</li>
+<li class="level1"><div class="li"> <code>let</code> (see the related <a href="doku.php%3Fid=proposals:block_expressions.html" class="wikilink1" title="proposals:block_expressions" onclick="return svchk()" onkeypress="return svchk()">block expressions</a> proposal)</div>
+</li>
+<li class="level1"><div class="li"> array comprehensions (see the <a href="doku.php%3Fid=proposals:iterators_and_generators.html" class="wikilink1" title="proposals:iterators_and_generators" onclick="return svchk()" onkeypress="return svchk()">iterators and generators</a> proposal)</div>
+</li>
+<li class="level1"><div class="li"> <code>catch</code></div>
+</li>
+<li class="level1"><div class="li"> <code>function</code></div>
+</li>
+<li class="level1"><div class="li"> <code>var</code></div>
+</li>
+<li class="level1"><div class="li"> namespaces</div>
+</li>
+<li class="level1"><div class="li"> classes</div>
+</li>
+<li class="level1"><div class="li"> packages</div>
+</li>
+</ul>
+
+<p>
+ For those features that we do want to reflect into the language, reflection should be specified on top of the core specification, not as the definition itself. 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+Don&rsquo;t forget eval, which can introduce new bindings into a scope.  
+</p>
+
+<p>
+And though I am not yet an E4X expert, I believe some E4X constructs also extend the scope chain dynamically.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/03/03 10:52</em>
+</p>
+
+<p>
+E4X&rsquo;s filtering predicate expressions, e.g. <code>list.elem.(@attr == &ldquo;foo&rdquo;)</code>, are analogous to <code>with</code> and therefore amenable to the <a href="doku.php%3Fid=proposals:with-bound_variables.html" class="wikilink1" title="proposals:with-bound_variables" onclick="return svchk()" onkeypress="return svchk()">with-bound variables</a> proposed &ldquo;fix&rdquo;.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/03/03 23:26</em>
+</p>
+
+<p>
+Also remember variable references of the form
+</p>
+<pre class="code javascript">   q::<span class="br0">&#91;</span>expr<span class="br0">&#93;</span></pre>
+<p>
+which is basically the same as
+</p>
+<pre class="code javascript">   <span class="kw1">eval</span><span class="br0">&#40;</span><span class="st0">"q::"</span> + expr<span class="br0">&#41;</span></pre>
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/03/17 11:36</em> 
+</p>
+
+</div>
+<!-- SECTION [567-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/5/57c716d349b5141a4d432bb4740fa980.xhtml used -->
+</body>
+</html>

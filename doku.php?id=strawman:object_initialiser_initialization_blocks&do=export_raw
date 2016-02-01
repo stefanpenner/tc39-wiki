@@ -1,0 +1,35 @@
+====== Initialization Blocks in Object Initialisers ======
+//This is one of several related [[strawman:object_initialiser_extensions|Object Initialiser Extensions]].// 
+
+Occasionally when instantiating an object it is necessary to perform imperative initialization actions other than simply initializing property values.  For example:
+<code javascript>
+function monitoredObject(a,b) {
+   var obj = {
+        a: a,
+        b: b
+   };
+   ObjectMonitor.newObjectToMonitor(obj);
+   return obj;
+}
+</code>
+Ideally, such initialization code should be encapsulated with the rest of the code that creates the object. However, in the past there has been no way to write that such that the object that is being created may be referenced by the initialization code. Initaliser Initialization Blocks provide such a capability.  A Initialization Block is simply a code //Block// that appears as the last element of //ObjectLiteral//. The Initialization Block is evaluated as part of the //ObjectLiteral// after all of the //PropertyAssignment// productions have been evaluated. Within the scope of an Initialization Block the identifier ''**this**'' is bound to the object that is created being created. Using an Initialization Block, the above example could be coded as:
+<code javascript>
+function monitoredObject(a,b) {
+   return  {
+     a: a,
+     b: b,
+     {ObjectMonitor.newObjectToMonitor(this);}
+   };
+}
+</code>
+=====  Syntax =====
+The following provides the syntax for this spicific  extensions:
+
+//ObjectLiteral// : \\
+**{** //Block//<sub>opt</sub> **}**\\
+**{** //PropertyNameAndValueList// **,** //Block//<sub>opt</sub> **}**
+
+=====  Discussion =====
+This is a minor extension but is more significant when used as part of a [[strawman:obj_initialiser_class_abstraction|Class Initialisers]] \\
+ --- //[[Allen@Wirfs-Brock.com|Allen Wirfs-Brock]] 2011/03/19 19:40//
+

@@ -1,0 +1,331 @@
+====== Overview ======
+
+This proposal is a simplification of [[harmony:classes]]. It focuses on providing **convenient syntax for the most common class patterns** of constructors and prototypes: a constructor with a declarative set of shared prototype methods, and built-in syntax for accessing the super-class.
+
+===== Goals =====
+
+The most important goals of this proposal, which are directly addressed by minimal classes, are:
+
+  * comfortable, familiar look and feel
+  * clear and simple correspondence to existing JS patterns and semantics
+  * public, mutable defaults
+  * methods should be on the prototype
+  * prevent accidental creation of shared state via prototype data properties
+  * idiomatic way to call super-constructor with proper ''this''-binding
+  * idiomatic way to call super-class methods with proper ''this''-binding, lexically scoped to declared superclass
+  * class properties and methods aka statics
+  * class-level inheritance (with inheritance of statics)
+
+===== Non-goals =====
+
+The following are not directly addressed by minimal classes, but are also not incompatible with them:
+
+  * additional modifiers on properties (''const'', guards, ''public''/''private'')
+  * traits/mixins
+  * universal ''super''
+  * ''public'', ''private'', ''@'' shorthand
+  * computed property names
+  * ''const'' classes
+
+These are all reasonable things to aim for. But they are not necessary in order to fulfill the goals above.
+
+===== Anti-goals =====
+
+Do not want:
+
+  * declarations that don't carry runtime semantic meaning (and only serve to help tools or possibly compilers)
+  * special semantics specific to classes
+  * any static analysis in the semantics
+  * special per-instance private records
+
+
+====== Examples ======
+
+The [[https://github.com/mrdoob/three.js/|three.js]] ''SkinnedMesh'' example cited in [[harmony:classes]].
+
+<code javascript>
+class SkinnedMesh extends THREE.Mesh {
+  new(geometry, materials) {
+    super(geometry, materials);
+ 
+    this.identityMatrix = new THREE.Matrix4();
+    this.bones = [];
+    this.boneMatrices = [];
+    ...
+  }
+ 
+  update(camera) {
+    ...
+    super.update();
+  }
+}
+</code>
+
+The ''Monster'' example from [[harmony:classes]]. Classes do not provide any kind of special private record; private is simply achieved via [[harmony:private name objects]].
+
+<code javascript>
+// a private name used by the Monster class
+const pHealth = Name.create();
+
+class Monster {
+  // The keyword "new" followed by an argument list and a body
+  // defines the body of the class’s constructor function.
+  new(name, health) {
+    this.name = name;
+    this[pHealth] = health;
+  }
+ 
+  // An identifier followed by an argument list and body defines a
+  // method. A “method” here is simply a function property on some
+  // object.
+  attack(target) {
+    log('The monster attacks ' + target);
+  }
+ 
+  // The contextual keyword "get" followed by an identifier and
+  // a curly body defines a getter in the same way that "get"
+  // defines one in an object literal.
+  get isAlive() {
+    return this[pHealth] > 0;
+  }
+ 
+  // Likewise, "set" can be used to define setters.
+  set health(value) {
+    if (value < 0) {
+      throw new Error('Health must be non-negative.')
+    }
+    this[pHealth] = value
+  }
+}
+
+// The only way to create prototype data properties is by
+// modifying the prototype outside of the declaration.
+Monster.prototype.numAttacks = 0;
+
+// Immutable properties can be added with defineProperty.
+Object.defineProperty(Monster.prototype, "attackMessage", { value: 'The monster hits you!' });
+</code>
+
+As shown in [[harmony:classes]], it's possible to define ''static'' methods as well:
+
+<code javascript>
+class Monster {
+  // "static" places the property on the constructor.
+  static allMonsters = [];
+  
+  // "static" is required for constructor methods
+  static numMonsters() { return Monster.allMonsters.length; }
+}
+</code>
+
+====== Syntax ======
+
+
+===== Class declarations and expressions =====
+
+<code ebnf>
+Declaration :
+    ClassDeclaration
+    ...
+ClassDeclaration :
+    class Identifier ClassHeritage? { ClassBody }
+
+MemberExpression :
+    ClassExpression
+    ...
+ClassExpression :
+    class Identifier? ClassHeritage? { ClassBody }
+
+ClassHeritage :
+    extends AssignmentExpression
+
+ExpressionStatement :
+    [lookahead ∉ { "{", "function", "class" }] Expression ;
+
+// "..." means existing members defined elsewhere
+</code>
+
+===== Class bodies =====
+
+<code ebnf>
+ClassElement :
+    PrototypePropertyDefinition
+    ClassPropertyDefinition
+
+PrototypePropertyDefinition :
+    IdentifierName     ( FormalParameterList? ) { FunctionBody } // method
+    get IdentifierName ( )                      { FunctionBody } // getter
+    set IdentifierName ( FormalParameter )      { FunctionBody } // setter
+
+ClassPropertyDefinition :
+    static ExportableDefinition
+
+ExportableDefinition :
+    VariableDeclarationList ;                                    // data properties
+    IdentifierName     ( FormalParameterList? ) { FunctionBody } // method
+    get IdentifierName ( )                      { FunctionBody } // getter
+    set IdentifierName ( FormalParameter )      { FunctionBody } // setter
+</code>
+
+====== Semantics ======
+
+The semantics of minimal classes is described here via desugaring. I'll use special variables of the form ''%x'' for fresh variables not exposed to user code. But desugarings of the contents of a class body can refer to these names bound by their containing class's desugaring.
+
+===== Classes =====
+
+A class expression:
+
+<code javascript>
+class C extends D {
+    CE ...
+    new(cargs) { cbody }
+    CE ...
+}
+</code>
+
+is equivalent to:
+
+<code javascript>
+(do {
+    let %d = D,
+        %p = %d.prototype,
+        C = %d ◁ function C(cargs) { cbody };
+    C.prototype = Object.create(%p, {
+        CE, ...,
+        constructor: {
+            value: C,
+            enumerable: false,
+            writable: true,
+            configurable: true
+        },
+        CE, ...
+    });
+    C
+})
+</code>
+
+for the original definition of ''Object.create''. Class declarations and anonymous class expressions are similar. Classes without an ''extends'' clause implicitly extend the original ''Object'' constructor.
+
+===== Static properties =====
+
+In a class body, a ''static'' property declaration:
+
+<code javascript>
+static X = E, ...;
+</code>
+
+is equivalent to:
+
+<code javascript>
+X: {
+    value: E,
+    enumerable: true,
+    writable: true,
+    configurable: true
+}, ...
+</code>
+
+Static methods, getters, and setters are similar.
+
+===== Prototype properties =====
+
+In a class body, a prototype method declaration:
+
+<code javascript>
+m(args) { body }
+</code>
+
+is equivalent to:
+
+<code javascript>
+m: {
+    value: function m(args) { body },
+    enumerable: false,
+    writable: true,
+    configurable: true
+}
+</code>
+
+Prototype getters and setters are similar.
+
+
+===== Super =====
+
+In this proposal, ''super'' works **exactly the same** as in [[harmony:object initialiser super]], so it's entirely compatible. But it's described in separate terms to show that ''super'' can also stand alone as simply a part of the class desugaring to existing constructs.
+
+In a class constructor (but not inside its nested functions), a super-constructor call:
+
+<code javascript>
+super(args, ...)
+</code>
+
+is equivalent to:
+
+<code javascript>
+%d.call(this, args, ...)
+</code>
+
+for the original meaning of ''Function.prototype.call''.
+
+In a class constructor or prototype method (but not inside its nested functions), a super-method call:
+
+<code javascript>
+super.m(args, ...)
+</code>
+
+is equivalent to:
+
+<code javascript>
+%p.m.call(this, args, ...)
+</code>
+
+for the original meaning of ''Function.prototype.call''.
+
+====== Rejected ======
+
+  * ''public'' for instance properties
+    * should be public by default! this is JS
+    * should actually have ''public'' //mean// something if we use it
+    * wanted for integrating with ''@'' shorthand
+  * ''var'' for instance properties
+    * it's not a variable!
+    * ''let'' is the new ''var'' -- we want to kill ''var'' dead
+    * looks like it should be in scope as a variable but it's not
+  * ''let'' for instance properties
+    * it's not a variable!
+    * looks like it should be in scope as a variable but it's not
+  * ''prop'' or ''field'' for instance properties
+    * too wordy, weird contextual keyword
+  * special static semantics for ''this.x'' assignments in certain static contexts in constructor body
+    * too ad hoc
+    * requires static analysis
+    * too easy to fall off the expected path
+  * ''instance { foo, bar }'' for not-yet-initialized but ''undefined'' instance properties
+    * unattractive
+    * too much work just to avoid clashing with inherited data properties
+    * better not to introduce inherited data properties at all
+  * ''x;'' for not-yet-initialized but ''undefined'' instance properties
+    * looks weird
+    * too much work just to avoid clashing with inherited data properties
+    * better not to introduce inherited data properties at all
+  * object literal body for class body
+    * introduces data properties into prototype too easily
+    * doesn't provide a way to censor them if desired
+    * hard to evolve the syntax with new modifiers down the road
+  * arbitrary expression for class body; contents are copied
+    * implicit copying of mutable state is problematic
+    * copying is expensive
+    * not really adding more dynamism when you can already use assignment to do the same thing
+  * ''class'' instead of ''static'' for statics
+    * future-hostile to nested classes
+    * ''static'' is already reserved and perfectly familiar, even common terminology
+  * ''constructor'' instead of ''new'' for the constructor syntax
+    * this would be fine, but it's nice to use a keyword for something that gets special treatment
+    * and it's simply more ergonomic
+
+====== References ======
+
+  * [[harmony:classes]]
+  * [[https://gist.github.com/1329619|Jeremy Ashkenas's gist]] -- classes with expression body
+  * [[https://gist.github.com/1330478|Dave Herman's gist]] -- classes with literal body
+  * [[https://gist.github.com/1332193|Brendan's gist]] -- classes with soft Corinthian leather

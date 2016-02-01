@@ -1,0 +1,45 @@
+===== String.prototype.at =====
+
+This initial proposal was drafted by [[mathias@qiwi.be|Mathias Bynens]] and originally published at [[https://github.com/mathiasbynens/String.prototype.at|mathiasbynens/String.prototype.at]]
+
+A robust & optimized ES3-compatible polyfill for [[http://esdiscuss.org/topic/string-prototype-symbolat-improved-string-prototype-charat|the String.prototype.at proposal for ECMAScript 6]].
+
+Spec bug ticket: <https://bugs.ecmascript.org/show_bug.cgi?id=2073>
+
+**Spec proposal for String.prototype.at(pos)**
+
+**NOTE:** Returns a single-element String containing the code point at element position pos in the String value resulting from converting the this object to a String. If there is no element at that position, the result is the empty String. The result is a String value, not a String object.
+
+When the at method is called with one argument pos, the following steps are taken:
+
+1. Let //O// be CheckObjectCoercible(this value).
+
+2. Let //S// be ToString(O).
+
+3. ReturnIfAbrupt(S).
+
+4. Let //position// be ToInteger(pos).
+
+5. ReturnIfAbrupt(position).
+
+6. Let //size// be the number of elements in //S//.
+
+7. If //position// <  or //position// ≥ size, return the empty String.
+
+8. Let //first// be the code unit at index //position// of //S//.
+
+9. Let //cuFirst// be the code unit value of the element at index 0 of //first//.
+
+10. If //cuFirst// < 0xD800 or //cuFirst// > 0xDBFF or //position// + 1 = //size//, then return //first//.
+
+11. Let //cuSecond// be the code unit value of the element at index //position// + 1 of //S//.
+
+12. If //cuSecond// < 0xDC00 or //cuSecond// > 0xDFFF, then return //first//.
+
+13. Let //second// be the code unit at index //position// + 1 of //S//.
+
+14. Let //cp// be (//first// – 0xD800) × 0x400 + (//second// – 0xDC00) + 0x10000.
+
+15. Return the elements of the UTF-16 Encoding (clause 6) of //cp//.
+
+**NOTE:** The at function is intentionally generic; it does not require that its this value be a String object. Therefore it can be transferred to other kinds of objects for use as a method.

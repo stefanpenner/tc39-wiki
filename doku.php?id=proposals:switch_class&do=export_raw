@@ -1,0 +1,74 @@
+====== Structural union types ======
+(Also see the [[discussion:switch_class|discussion page]] for this proposal)
+
+(Formerly "switch interfaces", which were formerly "enums", which were formerly "switch classes")
+
+The language shall support structural types which are the transitive union of other named types. 
+
+===== Union types =====
+
+A union type ''U'' is declared as follows:
+
+<code>
+type U = (P,Q,R)
+</code>
+
+Such a declaration asserts the following facts:
+  * A type ''U'' exists.
+  * A value is of type ''U'' if and only if it is a member of type ''P'', or ''Q'', or ''R''.
+
+
+The types ''P'', ''Q'', ''R'' do not need to be disjoint. If they overlap, there is potential ambiguity in switching on the union's members: you should always test types in most-specific to least-specific order in any non-disjoint type switch, otherwise a dead code warning may result. See below.
+
+
+===== Type switches =====
+
+A type switch is stated as follows:
+
+<code>
+switch type (e:T) {
+  case (p : P) { ... }
+  case (q : Q) { ... }
+  case (r : R) { ... }
+  default (t : T) { ... }
+}  
+</code>
+
+Where ''T'', ''P'', ''Q'', ''R'' are //any types// (nominal or structural), not just union types. 
+
+Such a statement is syntactic sugar for the following:
+
+<code>
+let (x:T = e) {
+  if (x is P) {
+    let (p:P = cast P(x)) {
+      // p:P switch arm here, can see p:P
+    }
+  } else if (x is Q) {
+    let (q:Q = cast Q(x)) {
+      // q:Q switch arm here, can see q:Q
+    }
+  }
+  ...
+    else {
+    let (t:T = x) {
+      // default case here, can only see t:T
+    }
+  }
+}
+</code>
+
+Further notes:
+  * The ''x'' variable in the above translation is a compiler-generated temporary, for illustration purposes; it should  be considered a unique variable name, not free in any of the arms of the switch.
+  * The user may omit the variable binding in the ''default'' arm.
+
+The ''switch type'' form carries important enhancements over writing out the above translation by hand:
+  * The downcast //may// (in a static environment) use a more efficient type of downcast if it can prove it safe.
+  * The typechecker can tell you when you've missed a case:
+    * If you are switching on a union type, you must cover all cases or provide a ''default''.
+    * A dead-code warning can be issued if you test non-disjoint types in an order in which //more specific// types are tested //later//.
+      * This can happen if a union type contains non-disjoint members.
+      * This can also happen if you switch on a non-union type, such as a class or interface.
+    * The ''default'' arm is legal if:
+      * ''T'' is not a union type, //or//
+      * ''T'' is a union type, and one or more of the members of the union type are not explicitly handled in other arms of the type switch

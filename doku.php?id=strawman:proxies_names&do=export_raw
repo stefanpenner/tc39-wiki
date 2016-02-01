@@ -1,0 +1,68 @@
+====== Proxies and Private Names ======
+
+This is a placeholder page to record the ongoing discussion on the interaction between [[harmony:direct_proxies]] and [[harmony:private_name_objects]].
+
+The basic issue is that a proxy can't just intercept operations involving private names naively, since that would allow a malicious proxy to steal private names, e.g.:
+
+<code javascript>
+let n = new Name()
+obj[n] // if obj is a proxy, the proxy handler sees: handler.get(target, n, obj)
+</code>
+
+Here's another [[https://mail.mozilla.org/pipermail/es-discuss/2011-December/018901.html|problematic case described by Sam Tobin-Hochstadt]].
+
+An earlier design discussed at the July TC39 meeting split up all traps into "normal" and "name" variants, where the "name" variants would need to "prove" to the proxy that they knew of the intercepted private name, given its "public" part. This lead to some concern about the overhead required to transparently deal with names and lead us to explore [[https://mail.mozilla.org/pipermail/es-discuss/2012-August/024313.html|some alternative designs]], one of which is detailed below:
+
+  * The Proxy constructor (and [[strawman:revokable_proxies|Proxy.revocable]]) takes a third argument that describes a "whitelist" of private names this proxy knows about
+
+<code javascript>
+var whitelist = new WeakSet()
+var p = Proxy(target, handler, whitelist)
+var n1 = new Name()
+var n2 = new Name()
+whitelist.add(n1)
+p[n1] // calls handler.get(target, n1, p)
+p[n2] // calls handler.unknownPrivateName(target)
+</code>
+
+  * The whitelist must be a genuine built-in WeakSet (throw TypeError if it isn't)
+  * If a private name is on the whitelist, this is sufficient "proof" for the proxy that its handler knows about this private name, so the name can be exposed to its traps.
+  * When a proxy traps an operation involving a private name, before calling the handler trap, it checks whether the name is on the whitelist.
+  * If the private name is on the whitelist, the trap is called normally (passing the name as-is to the trap)
+  * Unique names don't need to be part of the set to be trappable.
+  * Names can be added to or removed from the whitelist even after the proxy was constructed (dynamic updates, needed for membranes).
+  * If the private name is not on the whitelist, the proxy calls a new ''unknownPrivateName(target)'' trap.
+  * If the ''unknownPrivateName'' trap is not defined, or the trap invocation returns ''true'', the operation is forwarded to the target (the handler never sees the name).
+  * If the ''unknownPrivateName'' trap returns ''false'', a TypeError is thrown. This is useful for proxies that don't want to forward operations on names they don't know about (membranes probably want to do this)
+  * If no whitelist is specified, the proxy always calls the ''unknownPrivateName'' trap for any operation involving private names (it's as if the whitelist is always empty).
+
+**Lookup on the whitelist**
+
+Care must be taken that a proxy can't specify its own whitelist to interfere with the lookup of private names. To this end, the whitelist must be a built-in WeakSet, and the lookup of a private name ''name'' occurs by calling the built-in/intrinsic ''WeakSet.prototype.has'' method. Overriding this method will not influence private name lookup. The check is performed as if the proxy performs:
+
+<code javascript>
+WeakSet.prototype.has.call(whitelist, name) // assuming the original definition of WeakSet.prototype.has
+</code>
+
+
+**Advantages**
+
+  * No doubling of the number of traps (''get'' vs ''getName'', ''has'' vs ''hasName'', etc.)
+  * Traps get the actual private name as argument, allowing them to easily forward the operation (no trickery with ''.public'' properties)
+  * The ''unknownPrivateName'' trap allows the handler to define its own policy w.r.t. how to deal with unknown private names.
+  * Proxies that don't specify a whitelist and don't specify an ''unknownPrivateName'' trap are oblivious to private names: any operation involving a private name is just forwarded to the target, without consulting the handler.
+
+===== Open issues =====
+
+  * WeakSet isn't currently specified. Alternatively, the whitelist could be a WeakMap mapping private names to ''true''. An effort is underway to prototype this in [[https://bugzilla.mozilla.org/show_bug.cgi?id=792439|Spidermonkey]].
+  * It's not entirely clear from [[harmony:private_name_objects]] which operations precisely can be invoked with name objects rather than string-valued property names.
+  * It may make more sense for the ''unknownPrivateName'' trap to return or throw explicitly, rather than having it a return a boolean. See [[https://mail.mozilla.org/pipermail/es-discuss/2013-January/028001.html|this es-discuss thread]].
+
+**Discussion during TC39 September 2012 meeting, Boston**:
+  * Must specify that even if ''WeakSet.prototype.has'' is changed, proxy still calls the intrinsic one (to prevent stealing of names via an overridden method)
+  * Desire to allow any array-like instead of WeakSet (for notational convenience, i.e. ''Proxy(target, handler, [n1, n2])''), which is then coerced into (i.e. whose elements are copied into) a WeakSet. One problem with this is that updating the original array-like won't then update the coerced WeakSet, which may be confusing.
+  * Desire to get rid of the ''.public'' property of private names. If we don't drop the ''.public'' property, don't need the whitelist but instead just a ''resolvePrivateName'' trap. If we stick with the whitelist, we should not pass the ''.public'' property to the unknownPrivateName/resolvePrivateName trap.
+  * Turned the ''resolvePrivateName(target, name.public) -> undefined | name'' trap into a simpler ''unknownPrivateName(target) -> boolean'' trap. At this point, the ''.public'' property on private names is no longer needed as far as proxies are concerned.
+  * The ''resolvePrivateName(target, public)'' trap worked as follows:
+    * If the ''resolvePrivateName'' trap is not defined, or the trap invocation returns ''undefined'', the operation is forwarded to the target.
+    * If the ''resolvePrivateName'' trap returns the private name corresponding to ''public'', the operation is trapped as if the private name were in the whitelist.

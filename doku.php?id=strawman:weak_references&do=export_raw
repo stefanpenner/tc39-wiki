@@ -1,0 +1,201 @@
+This proposal is based on Jackson et.al.'s //weak references and post-mortem finalization//. Post-mortem finalization is a gc notification rule safe from resurrection bugs, since computation only proceeds among non-condemned objects. We specify the proposed API in terms of a new function: ''makeWeakRef''. Pending an accepted [[harmony:modules]] proposal, we do not yet specify in what namespace this constructor is found. Note that ''makeWeakRef'' is not safe for general access since it grants access to the non-determinism inherent in observing garbage collection. The resulting side channel reveals information that may violate the [[strawman:gc_semantics#confidentiality|confidentiality assumptions]] of other programs.
+
+One conventional use of weak references is to build weak-key tables, in order to implement soft fields. However, such weak-key tables have a surprising memory leaked which cannot be fixed without additional primitives. Separately, we propose [[harmony:weak maps]] as an improved weak-key table.
+
+TODO: Unify this page and [[strawman:weak_refs]] into one strawman.
+
+
+====== Weak References and Post Mortem Finalization ======
+
+<code javascript>
+  var holdem = []; // not exported. Used only to delay GC.
+  BETWEEN_TURNS(function() { holdem = []; });
+
+  function makeWeakRef(target) {
+    if (isValueType(target)) { throw new TypeError(...); }
+    holdem.push(target);
+    let executors = []; // As in "executor of the estate of the deceased".
+
+    function get() {
+      const result = PRIM_GET(); // returns target if not yet gc'ed, else undefined.
+      if (result) { holdem.push(result); }
+      return result;
+    }
+    function register(executor) {
+      executor = function(){executor();}; // executor can only be called
+      if (get() === undefined) {
+        POSTPONE(executor);
+      } else {
+        executors.push(executor);
+      }
+    }
+    PRIM_REGISTER(target, register, function() {
+      executors.forEach(function(executor) {
+        POSTPONE(executor);
+      });
+      executors = null;
+    });
+    return Object.freeze({get, register});
+  }
+</code>
+
+The above specification assumes ''BETWEEN_TURNS'', ''PRIM_GET'', ''PRIM_REGISTER'', and ''POSTPONE'' functions available only within this implementation. 
+  * ''PRIM_REGISTER(ref, register, primExecutor)'' registers the ''[ref,register,primExecutor]'' triple with the garbage collector, so that the garbage collector will notify the ''primExecutor'' once it collects ''ref'' given that it has not yet collected ''register''. Once ''register'' is collected, then all such triples containing ''register'' as their second element can be collected as well, since their ''primExecutor''s will never be invoked.
+
+If ''get()'' is present in the above API, then a target object that is potentially collectable but that has not yet been collected can become non-collectable. We need to ensure that the reference it reveals is never observed to go from non-collected to collected within one turn (i.e., without the stack having become empty between these observations). To achieve this, we assume two more explanatory primitives.
+  * ''BETWEEN_TURNS(callback)'' only calls its callback between turns, when the stack is empty.
+  * ''PRIM_GET()'' returns either the target, if the target has not yet been collected, or ''undefined'' if it has.
+If ''get()'' is omitted, then once an object is collectable it is always thereafter either collectable or collected. In either case, since notification is post-mortem, we do not need to distinguish //condemned// vs. //collected//. Once an object has become condemned, it can never again be reachable. 
+
+In the absence of ''makeWeakRef'', garbage collection decisions are not observable and so need not have a precise semantics. The presence of ''makeWeakRef'', with or without ''get()'' does make these decisions observable. However, we do not wish the semantics to require precise garbage collection as that may not be feasible for JavaScript as embedded into some other platforms. Rather, we define reachability in order to define what objects the garbage collector MAY collect without ever saying what objects it MUST collect. Since our semantics never requires collection, a garbage collector that never collects, or that always traces weak references and never observably collects, would still conform to this spec.
+
+===== Safe Post Mortem Notification =====
+
+Notifications, if any, happen via a ''POSTPONE()'' function assumed internal to the implementation. POSTPONE must guarantee that these notifications, if they occur at all, happen only when the activation stack is empty, rather than being interleaved with any ongoing sequential computation, in order to avoid plan interference hazards. For example, the forEach loop above need not snapshot the executors array, since it can assume that POSTPONE cannot cause a reentry of ''register'' during the loop. In an environment such as a browser supporting [[strawman:concurrency|event-loop concurrency]] via ''setTimeout'', POSTPONE may be implemented as the equivalent of
+
+<code javascript>
+  function POSTPONE(executor) { setTimeout(executor, 0); }
+</code>
+
+except using the initial binding of ''setTimeout'' rather than the current one. Alternatively, in for example a sequential execution context, POSTPONE may merely drop the executors, allowing them to become collectable immediately if not otherwise referenced.
+
+Were POSTPONE allowed to deliver notifications during execution of other code, even if execution of that other code were suspended during the notification, then POSTPONE would raise all the consistency problems familiar from Unix signal handlers. To cope with these problems, common wisdom among Unix programmers is that signal handlers should only set a global scalar variable, to be tested by polling at safe points in the execution of the main program. The "empty stack" rule above automatically provides the safety provided by that pattern.
+
+
+===== Abstract GC Algorithm =====
+
+This elaborates the [[harmony:weak maps#abstract gc algorithm|weak maps abstract GC algorithm]] to account for the co-existence of weak references and weak maps within one system.
+
+<code>
+ While any objects are fringe {
+  While any objects are fringe, pick a fringe object x {
+   If (x is the register() function of a weak reference) {
+    Note each prim-registered [ref,register,primExecutor] triple whose second member is this register() function.
+    Color that primExecutor fringe.
+   } else if (x is the get() function of a weak map) {
+    Note this weak map.
+   } else {
+    For all y's directly reachable from x {
+      if y is untraced, color it fringe.
+    }
+   }
+   Color x retained.
+  }
+
+  For each noted weak map wm {
+   For each k,v pair in wm {
+    If k is retained and v is untraced, color v fringe
+   }
+  }
+ }
+ 
+ For each noted [ref,register,primExecutor] triple {
+  If (ref is untraced) {
+    Ensure that the PRIM_GET() function of that weak references returns undefined.
+    call primExecutor();
+  }
+ }
+</code>
+
+
+
+====== Weak Reference Patterns ======
+
+
+===== Distributed Acyclic Garbage Collection =====
+
+As an illustrative component of a distributed object system. When a proxy is locally gc'ed, it notifies its counterparty connection so that it can drop its corresponding export.
+
+The following example got too complex to explain the point. Must simplify. In the meantime, this code is explained at [[https://mail.mozilla.org/pipermail/es-discuss/2013-November/034656.html]].
+
+<code javascript>
+  const importTable = [];
+  function ImportHandler(i) {
+    let importHandler = importTable[i];
+    if (importHandler === undefined) {
+      let importCount = 0;
+      let proxyRef = undefined;
+      function executor() {
+        // is it still dead?
+        let proxy = proxyRef && proxyRef.get();
+        if (proxy === undefined) {
+          sendGCReport(i, importCount);
+          importCount = 0;
+        }
+      }
+      importHandler = Object.freeze({
+        //... normal proxy handler traps ...
+        importProxy: function() {
+          importCount++;
+          let proxy = proxyRef && proxyRef.get();
+          if (proxy === undefined) {
+            proxy = Proxy.create(importHandler);
+            proxyRef = makeWeakRef(proxy);
+            proxyRef.register(executor);
+          }
+          return proxy;
+        }
+      });
+      importTable[i] = importHandler;
+    }
+    return importHandler;
+  }
+  function Import(i) {
+    return ImportHandler(i).importProxy();
+  }
+</code>
+
+A realistic example is at [[http://code.google.com/p/caja-captp/source/browse/trunk/src/captp.js#453|SwissTable]]. That example also points out the need for a WeakValueMap. 
+
+
+
+
+
+===== A WeakValueMap =====
+
+A WeakValueMap, mapping from keys to weakly held values. WeakValueMap can be built from weak references and [[harmony:weak maps]]. Unlike weak maps by themselves, a WeakValueMap reveals the non-determinism (or determinism, given a particular implementation and a controlled execution history) of GC.
+
+<code javascript>
+  function WeakValueMap() {
+    const valueRefs = WeakMap();
+    return Object.freeze({
+      get: function(key) {
+        const ref = valueRefs.get(key);
+        return ref && ref.get();
+      }, 
+      set: function(key, value) {
+        valueRefs.set(key, makeWeakRef(value));
+      }
+    }); 
+  }        
+</code>
+
+The code above has a memory leak: Once a value becomes unreachable, if its key is still reachable, the association from the key to a now-empty weak reference will remain in the valueRefs table. We can use post-mortem finalization to avoid this leak as follows.
+
+<code javascript>
+  function WeakValueMap() {
+    const valueRefs = WeakMap();
+    return Object.freeze({
+      get: function(key) {
+        const ref = valueRefs.get(key);
+        return ref && ref.get();
+      }, 
+      set: function(key, value) {
+        const ref = makeWeakRef(value);
+        valueRefs.set(key, ref);
+        const keyRef = makeWeakRef(key);
+        ref.register(function() {
+          const k = keyRef.get();
+          if (k) { valueRefs.delete(k); }
+        });
+      }
+    }); 
+  }        
+</code>
+
+===== Comments =====
+
+  * I suggest using ''Ref'' not ''Ptr'' in the naming scheme. The latter connotes unsafe machine address more than the former, and it is spelled in the cybercrud tradition of dropping vowels and even secondary/interior consonants.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/11/21 22:47//
+  * Done --MarkM 

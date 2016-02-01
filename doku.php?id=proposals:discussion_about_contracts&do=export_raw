@@ -1,0 +1,107 @@
+==== Dave's contracts for JS sketch ====
+
+<code>
+class Integer {
+  ...
+  function isNatural(): Boolean {...}
+}
+
+function repeat(n: Integer@isNatural,
+                s: String)
+  : [String | hasLength(n * s.length)]
+{
+}
+
+function hasLength(n) {
+  return this.length == n
+}
+</code>
+
+A function signature with contract refinements to types:
+
+  function[this:String,Integer@isNatural]:Boolean
+
+Note that ''this'' must be type-constrained here.
+
+Static analysis can erase the contract parts.  The ''@'' syntax makes that easy for readers and parsers to distinguish.
+
+==== Notes from conversation with Dave ====
+
+Dave's summary:
+
+Type system soundness requires runtime semantic soundness.
+
+JS wasn't designed with a static type system in mind, which thwarts reasoning
+about static type (e.g., o[m] for member reference, global object expandos).
+
+Can have top type only, or punt to runtime to check, or change the language
+incompatibly -- or just extend it "incompatibly" (e.g. ''class'' restricts
+dynamism).
+
+So a static type system, but with runtime checks for things that can't be
+expressed (this is common, e.g. divide by zero).
+
+Contract systems allow expressive, blame-fingering runtime checks.  Extending
+from static to dynamic with contracts can be done (hybrid a la Cormac Flanagan
+et al.).  JS is dynamic in Edition 3, can we go the other way?
+
+Split JS up into JS[d] and JS[s], specify JS[s] in terms of JS[d] using AST
+reflection.
+
+Objection: specifying sound semantics for Edition 3 is hard, Dave has tried it.
+
+Formal operational semantics for JS[d] and JS[s], and showing correspondence
+between the two.  Lot of work, diminishing returns, may pay to do subset that
+depends on type system soundness, leave full semantics for later and/or for
+other people.
+
+But Mozilla and Opera want one implementation, interpreted.  Adobe wants
+compilation as well, or first.
+
+Dave didn't know the plan was to have one syntax for types, annotations, etc.
+So JS[d] would perform the same type checks as JS[s] for every reached type
+annotation or operation, and miss those that weren't executed.  But, it's not
+clear to him how to have a sound type system.
+
+A static type system requires a different kind of soundness proof from a
+dynamic (contract) system
+
+Exchange with group to talk about how things are more unified/similar in the
+language as proposed.
+
+Try this:
+
+Core language is dynamic without type annotations, JS[c].
+
+One fork, JS[s], adds static type annotations, static type system, static
+checks.  Describe soundness of that fork in terms of core language.
+
+The other fork, JS[d], adds type annotations as sugar for extra assertions,
+contracts.  Describe soundness in terms of added core language expressions
+that may throw.
+
+Dave also wants to pitch that contracts and static types work well together.
+Take int plus is-prime.  Should be possible to distinguish syntactically the
+static part from the contract part of the annotations, without requiring two
+kinds of annotations to be written.
+
+Contracts are not in general decidable.  So typecase can't switch on them.
+Robbie Findler shows lazy higher-order contract checking.  Typecase could do
+static only, or static plus first-order contracts, but not all contracts.
+
+Restating: we don't want a contract system that has any status in the static
+type system.  We may well want a contract system.  ES3 lacks even filename,
+line number, and a stack backtrace for uncaught exceptions.
+
+See above for contract sketch.
+
+Macros:
+
+Automatic hygiene is important.  Could have a gensym operator at a minimum,
+but we really want to make it foolproof for newbies, avoid automatic variable
+capture hazards.
+
+The 'with' statement is problematic.  Adding leading dot syntax as in VB would
+help to avoid typechecking and macro evaluation interleaving.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/02/15 14:44//

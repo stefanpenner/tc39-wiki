@@ -1,0 +1,97 @@
+===== Rationale =====
+
+To add new immutable datatypes that are identified up to their contents rather than by reference in the heap.
+
+This allows us to add new integer types such as int64 and bignum without extending the set of ''typeof'' tags.
+
+It also allows us to extend the behavior of the built-in operators to work on these new types.
+
+Finally, it allows dealing with 64-bit values in marshalling and unmarshalling, like HTML5 File API and typed arrays.
+
+Oh, and we could probably do IEE754r decimal, too.
+
+===== Examples =====
+
+<code javascript>
+let x = uint64(17);
+let y = uint64(17);
+console.log(x === y)            // true
+console.log(typeof x)           // "object"
+console.log(Object.isValue(x))  // true
+console.log(Object.isValue({})) // false
+</code>
+
+<code javascript>
+function factorial(n) {
+    return n <= 1 ? bignum(1) : n * factorial(n - 1);
+}
+console.log(factorial(bignum(500)));
+// 122013682599111006870123878542304692625357434280319284219241
+// 358838584537315388199760549644750220328186301361647714820358
+// 416337872207817720048078520515932928547790757193933060377296
+// 085908627042917454788242491272634430567017327076946106280231
+// 045264421887878946575477714986349436778103764427403382736539
+// 747138647787849543848959553753799042324106127132698432774571
+// 554630997720278101456108118837370953101635632443298702956389
+// 662891165897476957208792692887128178007026517450776841071962
+// 439039432253642260523494585012991857150124870696156814162535
+// 905669342381300885624924689156412677565448188650659384795177
+// 536089400574523894033579847636394490531306232374906644504882
+// 466507594673586207463792518420045936969298102226397195259719
+// 094521782333175693458150855233282076282002340262690789834245
+// 171200620771464097945611612762914595123722991334016955236385
+// 094288559201872743379517301458635757082835578015873543276888
+// 868012039988238470215146760544540766353598417443048012893831
+// 389688163948746965881750450692636533817505547812864000000000
+// 000000000000000000000000000000000000000000000000000000000000
+// 0000000000000000000000000000000000000000000000000000000
+</code>
+
+===== Semantics =====
+
+  * Objects have a new %%[[%%Value%%]]%% field indicating whether the object is a value object.
+  * We add new types such as uint64, int64, and bignum (and probably smaller int types as well).
+  * Instances of these types are frozen (their prototypes don't necessarily need to be).
+  * We add new overloaded behavior to all the operators, even ''==='', to work with these new value types.
+  * We consider adding some built-in suffixes for literals.
+
+===== Performance =====
+
+  * An optimizing implementation could represent e.g. a uint64 using an unboxed 64-bit integer.
+  * Even with JS value representation schemes like NaN-boxing, it's still possible to use an unboxed representation with type inference.
+  * Because value objects are immutable, implementations are free to choose between copying and sharing references.
+  * Because the constructors are pure, they can easily be partially evaluated (especially when imported from modules, where their value cannot have been mutated), leading to identical performance to builtin literals.
+
+===== Compatibility =====
+
+  * ''typeof'' is unchanged
+  * the change to ''==='' is actually not any different from a constructor that keeps a memo-table
+  * the operators are changed incompatibly, but only for these new kinds of values that didn't used to exist
+  * promotion rules //should// even make it possible for lots of generic arithmetic to continue to work even with mixed types, though undoubtedly not all (hooray for dynamic typing...)
+
+===== Object.isValue =====
+
+A predicate for detecting whether a given value is a non-reference value. (In pointy-headed semantics terminology, determining whether a given //expressed value// is also a //stored value//. See, there's different kinds of "value" in the world, so you need different qualifiers to avoid confusion. End of nerdy semantics rant.)
+
+Returns true for all primitives and for value objects, false for all reference objects.
+
+===== WeakMaps =====
+
+Weak maps are intended to be keyed by objects that can become garbage. It doesn't make sense to expose the "lifetime" of value objects, since their lifetimes should be completely hidden from programs. For example, a program may stack-allocate value objects sometimes, and they may garbage collect value objects and then recreate them later (for example, if they are recreated via ''eval'' of a literal).
+
+So a weak map should reject the use of value objects as keys. (The ''Object.isValue'' predicate is a test for this distinction.)
+
+===== Alternative: customization =====
+
+We could allow user-defined value objects. But this opens the door to arbitrary operator overloading. I prefer to keep this proposal fixed. It's forwards-compatible with future mechanisms for user-defined value objects.
+
+===== Alternative: separate type =====
+
+We could define a new ''typeof'' type, to indicate that this is different from ordinary objects. But making a separate family of objects keeps this proposal maximally backwards-compatible.
+
+===== To do =====
+
+  * Detailed promotion rules for arithmetic (see e.g. [[http://msdn.microsoft.com/en-us/library/aa691330%28v=vs.71%29.aspx]] for precedent)
+  * Detailed overflow rules (current preference: no promotion, perhaps error instead of wrap-around, though that requires an additional branch)
+  * What to do about JSON
+  * Various conversion utilities, like string -> bignum, number * number -> uint64, etc.

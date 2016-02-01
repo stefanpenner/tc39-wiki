@@ -1,0 +1,48 @@
+====== The content on this page is OBSOLETE ======
+
+Standardize some useful but missing built-in methods on Object: 
+
+<code javascript>
+Object.getPropertyDescriptor(obj, name) -> pd
+Object.getPropertyNames(obj) -> [ string ]
+</code>
+
+''Object.getPropertyDescriptor'' behaves like ''Object.getOwnPropertyDescriptor'', except that it also takes the object's prototype chain into account. The same holds true for ''getPropertyNames'', which combines all own with all inherited property names (removing duplicates in the process).
+
+
+
+===== Non-normative Implementation =====
+
+<code javascript>
+Object.getPropertyDescriptor = function(subject, name) {
+  var pd = Object.getOwnPropertyDescriptor(subject, name);
+  var proto = Object.getPrototypeOf(subject);
+  while (pd === undefined && proto !== null) {
+    pd = Object.getOwnPropertyDescriptor(proto, name);
+    proto = Object.getPrototypeOf(proto);
+  }
+  return pd;
+}
+
+Object.getPropertyNames = function(subject, name) {
+  var props = Object.getOwnPropertyNames(subject);
+  var proto = Object.getPrototypeOf(subject);
+  while (proto !== null) {
+    props = props.concat(Object.getOwnPropertyNames(proto));
+    proto = Object.getPrototypeOf(proto);
+  }
+  // FIXME: remove duplicate property names from props
+  return props;
+}
+</code>
+
+===== Interaction with Proxies =====
+
+Under the new [[harmony:direct proxies]] API, these methods would _not_ trigger a corresponding trap on the handler. Instead, these methods trigger the ''getOwnPropertyDescriptor'' or ''getOwnPropertyNames'' traps of a proxy in the prototype chain.
+
+Under the old [[harmony:proxies]] API, these methods would trigger a corresponding trap, so that proxies could emulate inherited properties. At the November 2011 TC39 meeting, we decided that proxies don't necessarily need to be able to do this kind of emulation, since any new proto-climbing algorithms written by end-users will also not have a chance to "delegate" the proto-walking to an encountered proxy. Instead, these algorithms climb the proto chain themselves, interacting only with the "own" properties at each level of the proto chain.
+
+===== See also =====
+
+  * [[strawman:extended object api|extended object api strawman]] for further static methods whose design remains controversial.
+  * [[strawman:proxy derived traps]], a discussion on the interaction between ''getPropertyDescriptor''/''getPropertyNames'' and the old [[harmony:proxies]] API.

@@ -1,0 +1,198 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:expression_closures&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:expression_closures&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:expression_closures&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:expression_closures&amp;do=export_html.html#rationale" class="toc">Rationale</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:expression_closures&amp;do=export_html.html#syntax" class="toc">Syntax</a></span><ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:expression_closures&amp;do=export_html.html#examples" class="toc">Examples</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=proposals:expression_closures&amp;do=export_html.html#question_about_syntax" class="toc">Question about syntax</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:expression_closures&amp;do=export_html.html#semantics" class="toc">Semantics</a></span></li>
+</ul>
+</div>
+</div>
+
+<p>
+(Also see the <a href="doku.php%3Fid=discussion:expression_closures.html" class="wikilink1" title="discussion:expression_closures" onclick="return svchk()" onkeypress="return svchk()">discussion page</a> page for this proposal.)
+</p>
+
+<a name="rationale"></a><h1>Rationale</h1>
+<div class="level1">
+
+<p>
+ Having a syntax for closures that have expression bodies could solve several problems:
+</p>
+<ul>
+<li class="level1"><div class="li"> allows refactoring of code into closures without changing the meaning, where <code>return</code> makes this problematic for statements</div>
+</li>
+<li class="level1"><div class="li"> makes expression-based or functional style programming much more readable</div>
+</li>
+<li class="level1"><div class="li"> fits nicely into the language, by symmetry to the <code>let</code> expression form</div>
+</li>
+<li class="level1"><div class="li"> doesn&rsquo;t change the semantics of existing programs, by making previously illegal syntax legal</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [92-587] -->
+<a name="syntax"></a><h1>Syntax</h1>
+<div class="level1">
+
+<p>
+ We extend the syntax for function expressions to allow them to have expression bodies as opposed to just blocks. The body of such a function would not be allowed to begin with an open brace (as usual), and as we&rsquo;ve been discussing with <code>let</code> and <code>yield</code>, its body should be an <code>AssignmentExpression</code> as opposed to a <code>CommaExpression</code>:
+</p>
+<pre class="code ebnf">FunctionExpression ::= ...
+                    |  &quot;function&quot;            Arguments {la != &quot;{&quot;} AssignmentExpression
+                    |  &quot;function&quot; Identifier Arguments {la != &quot;{&quot;} AssignmentExpression
+</pre>
+</div>
+<!-- SECTION [588-1177] -->
+<a name="examples"></a><h3>Examples</h3>
+<div class="level3">
+<pre class="code javascript"><span class="kw2">function</span><span class="br0">&#40;</span>x, y, z<span class="br0">&#41;</span> x + y
+<span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="nu0">7</span>
+<span class="kw2">function</span><span class="br0">&#40;</span>x<span class="br0">&#41;</span>x
+<span class="kw2">function</span><span class="br0">&#40;</span>a,b<span class="br0">&#41;</span><span class="br0">&#40;</span>g<span class="br0">&#40;</span><span class="br0">&#41;</span>,h<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+foo<span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span>x<span class="br0">&#41;</span>x,<span class="kw2">function</span><span class="br0">&#40;</span>y<span class="br0">&#41;</span>y,<span class="nu0">3</span><span class="br0">&#41;</span> <span class="co1">// three arguments to foo</span></pre>
+<p>
+...and just for fun:
+</p>
+<pre class="code javascript"><span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span>f<span class="br0">&#41;</span><span class="br0">&#40;</span>f<span class="br0">&#40;</span>f<span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span>g<span class="br0">&#41;</span><span class="br0">&#40;</span>g<span class="br0">&#40;</span>g<span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#41;</span></pre>
+</div>
+<!-- SECTION [1178-1445] -->
+<a name="question_about_syntax"></a><h3>Question about syntax</h3>
+<div class="level3">
+
+<p>
+ Why not make the body of an expression closure a <em>ListExpression</em> as in <em>LetExpression</em> and <em>YieldExpression</em>, and make it a peer of those non-terminals. This would be more consistent and flexible. But then your last example would have to be bracketed as would an analogous <code>let</code> or <code>yield</code>:
+</p>
+<pre class="code">
+foo((function(x)x),(function(y)y),3) // three arguments to foo
+</pre>
+
+<p>
+As it is, the user might not know if they get three arguments or just one. With this change, he would get an error and be forced to parenthesize.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6a%3B%26%23x6f%3B%26%23x64%3B%26%23x79%3B%26%23x65%3B%26%23x72%3B%26%23x40%3B%26%23x61%3B%26%23x64%3B%26%23x6f%3B%26%23x62%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6a;&#x6f;&#x64;&#x79;&#x65;&#x72;&#x40;&#x61;&#x64;&#x6f;&#x62;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Jeff Dyer</a> 2006/09/27 16:11</em>
+</p>
+
+<p>
+That makes sense to me.  I think the use of AssignmentExpression was quasi-arbitrary, influenced by ongoing discussion of <code>let</code> and <code>yield</code> and our then-current thinking on those.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/09/28 00:25</em>
+</p>
+
+<p>
+I thought we had agreed that both <code>let</code> and <code>yield</code> would change to have <code>AssignmentExpression</code> bodies instead of <code>ListExpression</code>...?
+</p>
+
+<p>
+I agree that we should be consistent across all three forms (expression <code>let</code>, <code>yield</code>, and expression <code>function</code>). So in order to deal with the ambiguity of any of these three forms being followed by a comma, we have three basic options:
+</p>
+<ol>
+<li class="level1"><div class="li"> Pick a precedence to resolve the ambiguity and hope people find it intuitive.</div>
+</li>
+<li class="level1"><div class="li"> Force parenthesization of <code>let</code>, <code>yield</code>, and expression-function expressions if they <em>are followed by</em> commas. I.e., specify their bodies as <code>ListExpression</code>s.</div>
+</li>
+<li class="level1"><div class="li"> Force parenthesization of the bodies of <code>let</code>, <code>yield</code>, and expression-functions if they <em>contain</em> commas. I.e., specify their bodies as <code>AssignmentExpression</code>s.</div>
+</li>
+</ol>
+
+<p>
+Nobody likes option 1. Brendan originally suggested option 2, which means you can express: 
+</p>
+<pre class="code javascript">yield <span class="nu0">1</span>,<span class="nu0">2</span>,<span class="nu0">3</span>
+<span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="nu0">1</span>,<span class="nu0">2</span>,<span class="nu0">3</span>
+let <span class="br0">&#40;</span>x=<span class="kw2">true</span><span class="br0">&#41;</span> <span class="nu0">1</span>,<span class="nu0">2</span>,<span class="nu0">3</span></pre>
+<p>
+ without parenthesization, but you must parenthesize: 
+</p>
+<pre class="code javascript">f<span class="br0">&#40;</span><span class="br0">&#40;</span>yield <span class="nu0">1</span><span class="br0">&#41;</span>,<span class="nu0">2</span>,<span class="nu0">3</span><span class="br0">&#41;</span>
+f<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="nu0">1</span><span class="br0">&#41;</span>,<span class="nu0">2</span>,<span class="nu0">3</span><span class="br0">&#41;</span>
+f<span class="br0">&#40;</span><span class="br0">&#40;</span>let <span class="br0">&#40;</span>x=<span class="kw2">true</span><span class="br0">&#41;</span> <span class="nu0">1</span><span class="br0">&#41;</span>,<span class="nu0">2</span>,<span class="nu0">3</span><span class="br0">&#41;</span></pre>
+<p>
+ With option 3, you must parenthesize: 
+</p>
+<pre class="code javascript">yield <span class="br0">&#40;</span><span class="nu0">1</span>,<span class="nu0">2</span>,<span class="nu0">3</span><span class="br0">&#41;</span>
+<span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#40;</span><span class="nu0">1</span>,<span class="nu0">2</span>,<span class="nu0">3</span><span class="br0">&#41;</span>
+let <span class="br0">&#40;</span>x=<span class="kw2">true</span><span class="br0">&#41;</span> <span class="br0">&#40;</span><span class="nu0">1</span>,<span class="nu0">2</span>,<span class="nu0">3</span><span class="br0">&#41;</span></pre>
+<p>
+ but you can now express: 
+</p>
+<pre class="code javascript">f<span class="br0">&#40;</span>yield <span class="nu0">1</span>,<span class="nu0">2</span>,<span class="nu0">3</span><span class="br0">&#41;</span>
+f<span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="nu0">1</span>,<span class="nu0">2</span>,<span class="nu0">3</span><span class="br0">&#41;</span>
+f<span class="br0">&#40;</span>let <span class="br0">&#40;</span>x=<span class="kw2">true</span><span class="br0">&#41;</span> <span class="nu0">1</span>,<span class="nu0">2</span>,<span class="nu0">3</span><span class="br0">&#41;</span></pre>
+<p>
+ without parenthesization. I prefer option 3, because I expect it to be common for these expressions to occur as arguments to functions.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x64%3B%26%23x68%3B%26%23x65%3B%26%23x72%3B%26%23x6d%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x63%3B%26%23x63%3B%26%23x73%3B%26%23x2e%3B%26%23x6e%3B%26%23x65%3B%26%23x75%3B%26%23x2e%3B%26%23x65%3B%26%23x64%3B%26%23x75%3B" class="mail" title="&#x64;&#x68;&#x65;&#x72;&#x6d;&#x61;&#x6e;&#x40;&#x63;&#x63;&#x73;&#x2e;&#x6e;&#x65;&#x75;&#x2e;&#x65;&#x64;&#x75;">Dave Herman</a> 2006/09/28 21:08</em>
+</p>
+
+<p>
+We did agree at the f2f to make the bodies of these constructs <em>AssignmentExpression</em>, but I got cold feet. The ensuing dialog is posted at <a href="doku.php%3Fid=discussion:iterators_and_generators.html" class="wikilink1" title="discussion:iterators_and_generators" onclick="return svchk()" onkeypress="return svchk()">iterators and generators</a>. Basically, we ended up with a modified version of Brendan&rsquo;s original proposal; <em>AssignmentExpression</em> with syntax errors when found in a non-<em>ListExpression</em> comma delimited list. Let us know if you agree with the reasoning there. The problem with your #3 is that a user still might not be clear about how many arguments are being passed to a function, for example.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6a%3B%26%23x6f%3B%26%23x64%3B%26%23x79%3B%26%23x65%3B%26%23x72%3B%26%23x40%3B%26%23x61%3B%26%23x64%3B%26%23x6f%3B%26%23x62%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6a;&#x6f;&#x64;&#x79;&#x65;&#x72;&#x40;&#x61;&#x64;&#x6f;&#x62;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Jeff Dyer</a> 2006/09/29 05:51</em>
+</p>
+
+<p>
+A common practice is to have a function which returns an object literal. If such a function is mechanically converted to this form, it might produce a syntax error, or worse, the object literal might be interpreted as a valid function body.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x40%3B%26%23x79%3B%26%23x61%3B%26%23x68%3B%26%23x6f%3B%26%23x6f%3B%26%23x2d%3B%26%23x69%3B%26%23x6e%3B%26%23x63%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x63;&#x72;&#x6f;&#x63;&#x6b;&#x40;&#x79;&#x61;&#x68;&#x6f;&#x6f;&#x2d;&#x69;&#x6e;&#x63;&#x2e;&#x63;&#x6f;&#x6d;">Douglas Crockford</a> 2007/03/25 18:02</em>
+</p>
+
+</div>
+<!-- SECTION [1446-4783] -->
+<a name="semantics"></a><h1>Semantics</h1>
+<div class="level1">
+
+<p>
+ The meaning of 
+</p>
+<pre class="code javascript"><span class="kw2">function</span><span class="br0">&#40;</span>x1, ..., xn<span class="br0">&#41;</span> e</pre>
+<p>
+ is defined to be equivalent to 
+</p>
+<pre class="code javascript"><span class="kw2">function</span><span class="br0">&#40;</span>x1, ..., xn<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> e; <span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [4784-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/4/41391aa58021cbd7338e5ef396e07b19.xhtml used -->
+</body>
+</html>

@@ -1,0 +1,77 @@
+//not yet ready//
+
+====== Classes as Inheritance Sugar ======
+
+The main complaint I have heard about [[strawman:classes with trait composition]] is that it does not use JavaScript's prototype chain in order to either
+   * provide the instance of a class with shared methods of that class, or
+   * provide for inheritance among classes.
+This strawman is a variant of [[strawman:classes with trait composition]] with a somewhat more complex translation, in order to meet this additional objective. As with the original, keep in mind that these translations are explanatory, not proposed implementation. 
+
+In order to store some form of the public members of a class on its shared prototype, we reuse the technique shown at [[strawman:classes_with_trait_composition#adding class-private instance variables]] for its instance-private instance variables, i.e., all lexical variables which are local to a class' constructor and captured by its public members. The shared form of the public members are unbound methods and accessor properties which look up this private state on its ''this''-binding. 
+
+For each class ''C'', its ''C.prototypeTrait'' member contains a trait (an enhanced property descriptor map) describing this ''C'''s contribution towards its direct or indirect instances. ''C.prototype'' is then initialized to the equivalent of ''Object.freeze(Object.create(SuperC.prototype, C.prototypeTrait))''. ''C.makeIngredients'' remains a method with the same external signature and contract as before, but now primarily associate and initializes a private state record with each ''self'' instance it is asked to initialize.
+
+Since the purpose of this is to integrate class inheritance better with legacy inheritance, let's start with the first inheritance example at [[strawman:classes_with_trait_composition#adding_single_inheritance]].
+
+
+<code javascript>
+  class Point(x, y) {
+    public getX() { return x; }
+    public getY() { return y; }
+    public toString() {
+      return '<' + this.getX() + ',' + this.getY() + '>';
+    }
+  }
+  class WobblyPoint(x, y, wobble) {
+    extends Point(x, y);
+    public getX() {
+      return super.getX() + wobble * Math.random();
+    }
+  }
+</code>
+
+
+<code javascript>
+  const Point = (const(){
+    const private___ = SoftField___();
+    const PointTrait___ = OFreeze___({
+      getX: { value: const() { return private___.get(this).x; },
+              method: true },
+      getY: { value: const() { return private___.get(this).y; },
+              method: true },
+      toString: { value: const() {
+                    return '<' + this.getX() + ',' + this.getY() + '>';
+                  },
+                  method: true }
+    });
+    return MakeClass___([], 
+                        PointTrait___, 
+                        const(self, x, y) {
+      private___.set(self, {
+        x: x,
+        y: y
+      });
+    });
+  });
+  const WobblyPoint = (const() {
+    const private___ = SoftField___();
+    const WobblyPointTrait___ = OFreeze({
+      getX: { value: const() {
+                return Point.prototype.getX.call(this) + 
+                  private___.get(this).wobble * Math.random();
+              },
+              method: true }
+    });
+    return MakeClass___([Point], 
+                        WobblyPointTrait___,
+                        const(self, x, y, wobble) {
+      private___.set(self, {
+        wobble: wobble
+      });
+    });
+  });
+</code>
+
+====== See ======
+
+[[strawman:classes with trait composition]]

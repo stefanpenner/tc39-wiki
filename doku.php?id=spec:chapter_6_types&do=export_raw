@@ -1,0 +1,462 @@
+====== Types ======
+
+A type is a set of values. Expressions have known values at run time and
+properties have known types at compile time (as well as run time.) The
+various types of Ecmascript 4 can be related graphically as a type
+lattice where the edges of the lattice indicate subset relationships.
+
+There are three fundamental program visible types (Null, Object and
+void). What makes these types fundamental is that they their union
+includes all possible values in the language. Null includes null,
+void includes undefined, and Object includes every other value. Null
+and void are different because they do not have object like properties
+(e.g. toString, valueOf), and they both have values that represent a
+missing value.
+
+The type Null includes one value – the value that results of the
+primary expression null. The value null is used to represent the idea
+“no value” in the context of an Object typed reference. 
+
+The type void includes one value – the value that is the initial
+value of the global property undefined and the result of the unary
+expression void 0. The value undefined is used to represent the idea “no
+property” or “no value” in the context of an untyped reference.
+
+  * While the need for two types that represent the idea of “no value” seems strange to programmers familiar with statically typed object oriented languages, in this language the distinction is useful for representing the absence of a property or the absence of a value of an untyped property versus the absence of a typed property.  Here is an example,
+
+<code javascript>
+dynamic class A {
+    var x : String
+    var y
+}
+var a : A = new A
+print(a.x)    // null
+print(a.y)    // undefined
+print(a.z)    // undefined
+a.y = 10
+a.z = 20
+print(a.y)    // 10
+print(a.z)    // 20
+</code>
+
+  * When dealing with dynamic instances, there is little difference between a property that doesn’t exist and a property with no type and no value. But there is a difference between a property that has a type and one that doesn’t. This is one of the reasons for the existence of both types Null and void.
+
+Note: In Ecmascript ed. 3 program visible values where instances of one
+of six unrelated types (Undefined, Null, Boolean, Number, String and
+Object). Conversions were provided to translate a value from one type to
+another. Ed. 4 provides the same conversions between the primitive types
+(void/Undefined, Null, Boolean, String, Number, int and uint)
+
+====== Type operators ======
+
+**PROPOSAL** --- Please see the [[proposals:is_as_to|is_as_to proposal page]] for more information.
+
+The language includes three type operators that enable programs to
+test and manipulate values in terms of a type. These type operators
+are ‘is’, 'as' and ‘to’. Each of these operators has a
+corresponding type annotation that constrains the value of a property
+according to the meaning of the operation. 
+Please see the [[proposals:is_as_to|is_as_to proposal page]] for more information.
+
+**PROPOSAL** --- Please see the [[proposals:syntax_for_type_expressions#unary_type_operator|unary type operator proposal page]] for more information.
+
+The language also includes a unary type operator that creates a syntactic 
+context for type expressions wherever an ordinary expression is expected.
+
+===== Operator is =====
+
+The is operator appears in expressions of the form:
+
+<code javascript>
+v is T
+</code>
+
+The is operator checks to see if the value on the left hand side is
+a member of the type on the right hand side. For user defined types
+and most built-in types, is returns true if the value is an instance
+of a class that is or derives from the type on the right hand side,
+otherwise it returns false. For built-in numeric types the result cannot
+be determined by the class of the value. The implementation must check
+the actual value to see if it is included in the value set of the type.
+
+The following table shows the results of using various values and types
+with the is operator:
+
+^ Value     ^ String  ^ Number  ^ int     ^ uint    ^ Boolean ^ Object  ^
+^ {}        | false   | false   | false   | false   | false   | true    |
+^ "string"  | true    | false   | false   | false   | false   | true    |
+^ "10"      | true    | false   | false   | false   | false   | true    |
+^ null      | false   | false   | false   | false   | false   | false   | 
+^ undefined | false   | false   | false   | false   | false   | false   | 
+^ true      | false   | false   | false   | false   | true    | true    |
+^ false     | false   | false   | false   | false   | true    | true    |
+^ 0         | false   | true    | true    | true    | false   |true     |
+^ 1         | false   | true    | true    | true    | false   |true     |
+^ -1        | false   | true    | true    | false   | false   |true     |
+^ 1.23      | false   | true    | false   | false   | false   |true     |
+^ -1.23     | false   | true    | false   | false   | false   |true     |
+^ NaN       | false   | true    | false   | false   | false   |true     |
+
+===== Operator cast =====
+
+**PROPOSAL** --- Please see the [[proposals:is_as_to|is_as_to proposal page]] for more information.
+
+The cast operator appears in expressions of the form:
+
+<code javascript>
+cast T(v)
+</code>
+
+The purpose of the cast operator is to guarantee that a value is of certain
+type, and if not indicate so by throwing an exception. 
+
+The steps used to evaluate the cast operator are:
+
+  - Let v be the value of the left operand
+  - Let T be the value of the right operand
+  - If T is not of type Type
+    - Throw a TypeError
+  - If v is of type T 
+    - Return the value v
+  - Else
+    - Throw an Error
+
+===== Operator to =====
+
+**PROPOSAL** --- Please see the [[proposals:is_as_to|is_as_to proposal page]] for more information.
+
+The to operator appears in expressions of the form:
+
+<code javascript>
+v to T
+</code>
+
+The to operator converts the value of the right side to a value of the
+type on the left side.
+
+Implicit conversions occur when a value is assigned to a property,
+passed as an argument to a function, or returned from a function. 
+
+When the destination type is a user defined type T, the user definition
+of the to operator as in,
+
+<code javascript>
+class T 
+{
+    function to T(v) { … }
+}
+</code>
+
+If a user defined type does not specify the to operator, then a system
+default is provided. The default to checks for 
+
+<code javascript>
+class T 
+{
+    function to T(v) 
+    { 
+        if( v is T ) return v
+        else if( v is Null ) return null
+        else throw new TypeError()
+    }
+}
+</code>
+
+When the destination type is a primitive type, the to operator is
+described by the corresponding abstract procedure (e.g. toString()
+and toNumber().) The following table shows some results:
+
+^Value^String^Number^int^uint^Boolean^Object^
+^{}|“[objectObject]”|NaN|0|0|true|{}|
+^"string"|"string"|NaN|0|0|true|"string"|
+^"10"|"10"|10|10|10|true|"10"|
+^null|Null|0|0|0|false|null|
+^undefined|Null|NaN|0|0|false|null|
+^true|"true"|1|1|1|true|true|
+^false|"false"|0|0|0|false|false|
+^0|”0”|0|0|0|false|0|
+^1|”1”|1|1|1|true|1|
+^-1|”-1”|-1|-1|2E+32-1|true|-1|
+^1.23|"1.23"|1.23|1|1|true|1.23|
+^-1.23|"-1.23"|-1.23|-1|2E+32-1|true|-1.23|
+^NaN|"NaN"|NaN|0|0|false|NaN|
+
+===== Operator type =====
+
+**PROPOSAL** --- Please see the [[proposals:syntax_for_type_expressions#unary_type_operator|unary type operator proposal page]] for more information.
+
+As it stands, type expressions shall only occur in limited syntactic contexts (that is, in a type expression, in a type annotation, in a cast expression, in an inheritance clause, in a type definition). But since type values are first class, programmers will want to express them literally outside of those few contexts. We propose to introduce a unary ''type'' operator that creates a syntactic context for type expressions where ever a ordinary expression is expected.
+
+====== Type annotations ======
+
+A type annotation places a type-related constraint on a variable. A variable
+with a type annotation consists of the ''var'' keyword, followed by the name of the
+variable, followed by a colon (:), followed by the name of a type.
+The following example shows a variable named ''v'' with a type annotation (''T''), where ''v''
+is assigned the value of the variable ''x'':
+
+<code>
+var v : T = x;
+</code>
+
+A variable with a type annotation carries that type information with it at runtime,
+which means that the type of the variable is constrained to the type specified in the
+type annotation. If a variable with a type annotation is on the left-hand side of
+an assignment statement, the value on the right-hand side is converted to the specified
+type with the ''to'' operator before the assignment occurs. For example, the following
+code uses the ''to'' operator to enforce type constraints at runtime:
+
+<code>
+var v = x to T;
+v = y to T;
+v = z to T;
+</code>
+
+A type annotation associates the type constraint with the variable so that the explicit
+use of the ''to'' operator is not necessary. The following code results in the same
+runtime behavior as the previous example:
+
+<code>
+var v : T = x;
+v = y;
+v = z;
+</code>
+
+Moreover, in strict mode, it is an error to assign a value to a variable with a type annotation
+if the type of the value is incompatible with the type specified
+in the type annotation.
+
+====== Run time versus compile time type ======
+
+We sometimes refer to a class or interface that helps to define the
+structure of a value as the value’s type. What we really mean is that
+that value is a member of that class or interface type. This distinction
+is subtle but important. Since a value might belong to any number of
+unrelated types to say that it is of a particular type is misleading.
+
+In dynamically typed languages expressions don’t have types; they have
+values whose types may change each time the expression is evaluated. 
+
+Statically typed languages make the important simplification of associating
+a type with every expression, even if it is a very general one, when it
+is compiled. In this way the suitability of an expression can be checked
+against its use before it is ever actually run. The cost of this added
+reliability is the loss of flexibility that comes from not having to
+think about the types of values.
+
+<code javascript>
+function f( o : Object ) {
+    var x : Number
+    x = o               // Allowed in standard mode
+}
+f(10)                   // No problem, x gets set to 10
+</code>
+
+Other places where the differences between dynamic and static type
+checking can be seen are property access, and method invocation. 
+
+<code javascript>
+function f( o : Object ) {
+    o.g()
+    return o.x
+}
+</code>
+
+Whereas in a static type system, the binding for a method call or property
+read, would need to be known at compile-time, the standard mode always
+defers that checking until runtime.
+
+The strict mode has a hybrid type system. Normally static type rules
+are used to check the compatibility of an expression with its destination
+type but there are a few special cases. For example, when an expression
+on the right side of an assignment expression consists of a reference
+to an property with no type, name lookup is deferred to run time. When
+an object reference has a base object that is an instance of a dynamic
+class, the reference is checked at runtime. These dynamic typing features
+are useful when strict-mode programs are interoperating with dynamic
+features such as XML objects.
+
+====== Untyped versus typed properties ======
+
+A property without a type annotation or with the wildcard annotation
+''*'' (as in, ''var x : *'') is said to be untyped. Writing to an untyped
+property will always succeed since an untyped property can hold any
+value. Expressions that read from an untyped property are said to be
+untyped expressions. Assignment from an untyped expression may or may
+not succeed at runtime depending on whether its value can be implicitly
+converted to the destination type.  Nevertheless, in the strict mode
+assignments from untyped expressions are always type checked at runtime
+as in the standard mode.
+
+Use untyped properties when you want to store the result of an untyped
+expression or undefined as one of the values, or when you want to defer
+type checking to runtime.
+
+====== Object types ======
+
+All program visible types other than void and Null derive from type
+Object. This means that all values (except ''undefined'' and ''null'') have
+properties that can be accessed by object references without the need
+to be wrapped in an object as they were in Ecmascript ed. 3.
+
+====== Number types ======
+
+**PROPOSAL** --- For more information, see the [[proposals:numbers|Numbers proposal]].
+
+There are four numeric types: ''decimal'', ''double'', ''int'', and ''uint''.
+
+  * ''decimal'' values are 128-bit IEEE decimal floating point values
+  * ''double'' values are 64-bit IEEE binary floating point values
+  * ''int'' values are integers in the range -(2^31) .. (2^31)-1
+  * ''uint'' values are integers in the range 0 .. (2^32)-1
+
+All numeric types are ''final'' classes that are direct subtypes of Object.
+
+===== Decimal type =====
+
+**PROPOSAL** --- For more information, see the [[proposals:decimal|Decimal arithmetic proposal]].
+
+A new non-normalizing decimal type, corresponding to the 128-bit decimal type described in the forthcoming IEEE754r document, and providing the arithmetic operations and rules set forth in that document.
+
+====== Class types ======
+
+A class refers to a type or a value depending on its use.
+
+<code javascript>
+class A 
+{
+    static var x
+    var y
+    prototype var z
+}
+
+var a : A		// A means type A
+a = new A		// A means value A
+</code>
+
+The value is a class object that has the form shown in the drawing
+above. The class object is CA. When used as a type it evaluates to its
+instance traits (TA). When used in a new expression the class serves
+as a factory object with a special method that creates a new instance
+(OA), which contains an internal delegate property pointing to the class
+object’s prototype (P) and an internal traits property pointing to
+the class object’s instance traits (TA).
+
+====== Interface types ======
+
+An interface name can only be used where a type is expected.
+
+<code javascript>
+interface I {}
+var x : I		// I means type I
+x = new I		// Error, I is not a value
+</code>
+
+====== Structural types ======
+
+**PROPOSAL** --- For more information, see the [[proposals:structural_types_and_typing_of_initializers|structural typing proposal]] and the [[proposals:type_definitions|type definitions proposal]].
+
+A structural type is a type that is compared to other types by its
+structure and content rather than by its name or explicit declaration.
+Four categories of types can be expressed using structural types:
+function types, union types, Object types, and Array types.
+
+A structural type can be assigned to a type identifier with the ''type''
+keyword. For example, the following code assigns structural types
+to identifiers:
+
+<code javascript>
+type F = function (int,Object):int  // a function type
+type U = (A, B, C)                  // a union type
+type R = { p: int, q: String }      // an object type
+type S = [ int, , String!, * ]      // an array type
+</code>
+
+A structural type, whether or not it is assigned to a type identifier,
+can be used in type contexts, such as the return type of a function, 
+a variable declaration, a parameter declaration, or on the right-hand
+side of the ''is'' operator.
+
+===== Structural union types =====
+
+**PROPOSAL** --- For more information, see the [[proposals:switch_class|Structural union types proposal]].
+
+The language shall support structural types which are the transitive union of other named types.
+Union types and type switches are both supported.
+
+
+
+===== Type expressions =====
+
+**PROPOSAL** --- For more information, see the [[proposals:syntax_for_type_expressions|Syntax for type expressions proposal]].
+
+
+====== Iterator types ======
+
+**PROPOSAL** --- For more information, see the [[proposals:iterators_and_generators|Iterators and Generators proposal]].
+
+
+
+====== Strict mode and static types ======
+
+In strict mode both expressions and properties have types. To
+be used to compute the value of a property, the expression must have
+a static type that is compatible with the type of the property. One
+way to think about static types of expressions and values is that the
+static type is a conservative approximation of the set of values that
+will result from that expression.
+
+Strict mode provides static typechecking, but there are some implicit conversions.
+Specifically, in strict mode, the annotation ''x : T = y'' represents an error unless one of the following is true:
+
+  * ''y'' is of type ''U'' and ''T'' defines a ''to'' operator that accepts values of type ''U''
+  * ''y'' is of the top "unconstrained" type
+  * ''T'' is ''Boolean'' (which always gets an implicit conversion)
+  * ''y'' is of type ''U'' and both ''U <: Number'' and ''T <: Number''
+
+User-provided ''to'' operators are used to determine type compatibility for assignment. Please see the [[proposals:is_as_to|is_as_to proposal page]] for more information.
+
+An explicit cast to a user defined type is only useful in strict
+mode. This is because the effect of an explicit cast is to defer
+type checking until runtime, which is already the case in standard
+mode. This is not necessarily the case for built-in types that have
+special conversion behavior.
+
+====== Type parameters ======
+
+**PROPOSAL** --- For more information, see the [[proposals:type_parameters|type parameters proposal]].
+
+A type definition that includes type parameters defines a generic type.
+A generic type is a data type that is 
+constrained to the type or types passed as type arguments when the data
+type is instantiated. For example, the following code constrains an 
+instance of Array to hold only elements of type String:
+
+<code javascript>
+var stringArray:Array.<String> = new Array.<String>;
+</code>
+
+
+====== Nullable types ======
+
+**PROPOSAL** --- For more information, see the [[proposals:nullability|Nullability proposal]]
+
+Almost all types include the value ''null'' by default. Only the Boolean type and the Numeric types
+do not include the value ''null'' by default.
+
+Any type that is annotated with the ''?'' prefix modifier is said to be "nullable", which means
+that the type includes the value ''null''. For example, the following variable ''x'' can hold
+the values ''true'', ''false'', or ''null'' because the Boolean type is declared with the ''?'' modifier.
+
+<code javascript>
+var x : ?Boolean = null;
+</code>
+
+Any type that is annotated with the ''!'' postfix modifier is said to be "non-nullable",
+which means that the type does not include the value ''null''. For example, the following
+variable ''y'' cannot hold the value ''null'' because the Object type is declared with the
+''!'' modifier.
+
+<code javascript>
+var y : Object! = null;  // error
+</code>

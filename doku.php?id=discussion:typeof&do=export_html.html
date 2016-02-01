@@ -1,0 +1,136 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=discussion:typeof&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=discussion" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=discussion:typeof&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=discussion:typeof&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<p>
+(this is the discussion page for <a href="doku.php%3Fid=proposals:typeof.html" class="wikilink1" title="proposals:typeof" onclick="return svchk()" onkeypress="return svchk()">typeof</a>)
+</p>
+
+<a name="previous_proposal_and_discussion"></a><h2>Previous proposal and discussion</h2>
+<div class="level2">
+
+<p>
+ We are adding some new fundamental types in edition 4. What should the result of <code>typeof</code> be when a value of one of these new types is its operand? 
+</p>
+<table class="inline">
+	<tr>
+		<th> Type	</th><th> Result </th><th> Comment </th>
+	</tr>
+	<tr>
+		<td> Undefined	</td><td colspan="2">&ldquo;undefined&rdquo;</td>
+	</tr>
+	<tr>
+		<td class="leftalign"> Null	        </td><td>&ldquo;null&rdquo;</td><td> es4 bug fix </td>
+	</tr>
+	<tr>
+		<td> Boolean	</td><td colspan="2">&ldquo;boolean&rdquo;</td>
+	</tr>
+	<tr>
+		<td> Number	</td><td colspan="2">&ldquo;number&rdquo;</td>
+	</tr>
+	<tr>
+		<td> String	</td><td colspan="2">&ldquo;string&rdquo;</td>
+	</tr>
+	<tr>
+		<td class="leftalign"><acronym title="Extensible Markup Language">XML</acronym>        </td><td>&ldquo;xml&rdquo;</td><td> new to e4x, but with no special case for Namespace </td>
+	</tr>
+	<tr>
+		<td> XMLList	</td><td>&ldquo;xml&rdquo;</td><td> ditto </td>
+	</tr>
+	<tr>
+		<td> Object (native and doesn&rsquo;t implement <code>[Call]</code>) </td><td colspan="2">&ldquo;object&rdquo;</td>
+	</tr>
+	<tr>
+		<td> Object (native and implements <code>[Call]</code>)	 </td><td colspan="2">&ldquo;function&rdquo;</td>
+	</tr>
+	<tr>
+		<td> Class </td><td>&ldquo;type&rdquo;</td><td> or &ldquo;class&rdquo;, <code>typeof String</code> returns &ldquo;function&rdquo; in es3 </td>
+	</tr>
+	<tr>
+		<td> Interface </td><td>&ldquo;type&rdquo;</td><td> or &ldquo;interface&rdquo;</td>
+	</tr>
+	<tr>
+		<td> Namespace </td><td>&ldquo;namespace&rdquo;</td><td> e4x chose &ldquo;object&rdquo;, does it deserve special status? </td>
+	</tr>
+	<tr>
+		<td> int </td><td colspan="2">&ldquo;number&rdquo;</td>
+	</tr>
+	<tr>
+		<td> uint </td><td colspan="2">&ldquo;number&rdquo;</td>
+	</tr>
+</table>
+<br />
+<hr noshade="noshade" size="1" />
+
+<p>
+From <a href="doku.php%3Fid=proposals:bug_fixes.html" class="wikilink1" title="proposals:bug_fixes" onclick="return svchk()" onkeypress="return svchk()">bug fixes</a> where the <code>typeof</code> fixing started, more about the <code>typeof null === &ldquo;null&rdquo;</code> fix: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Spidering the web shows no dependencies on <code>typeof null === &ldquo;object&rdquo;</code>.</div>
+</li>
+<li class="level1"><div class="li"> Spidering discloses a number of pages that will suffer a <code>ReferenceError</code> if <code>null</code> is passed.</div>
+<ul>
+<li class="level2"><div class="li"> I.e., these pages contain scripts that use <code>typeof foo == &ldquo;object&rdquo;</code> to guard <code>foo</code> dereferences.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ Note that if we make <code>RegExp</code> have a <code>[Call]</code> internal method, <code>typeof /hi/ === &ldquo;function&rdquo;</code>.  In <acronym title="Internet Explorer">IE</acronym>, <code>typeof alert === &ldquo;object&rdquo;</code> even though <code>alert</code> is callable (but of course not a function object, so not <code>apply</code>able, etc.).  Do we really want all callable objects to be of type <code>&ldquo;function&rdquo;</code>?
+</p>
+
+<p>
+In general, <code>typeof</code> seems like a mess that will be hard to reform sensibly.  If we provide a <code>builtin::type()</code> function, or perhaps <code>reflect::type()</code>, we could do something much better, and stop investing in <code>typeof</code>.  Comments?
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/03/31 15:13</em>
+</p>
+
+<p>
+I tend to agree that we should deprecate <code>typeof</code>. But can we ignore the fact that we are introducing new builtin types that are peers of function, number, etc? Maybe that argues for associating <code>Class</code> and <code>Interface</code> with a more generic name like <code>&ldquo;type&rdquo;</code> (i think <code>&ldquo;object&rdquo;</code> is too generic) and leaving <code>Namespace</code> with <code>&ldquo;object&rdquo;</code>. Also, I&rsquo;d rather break compatibility with E3 <code>typeof String</code> and other constructors giving <code>&ldquo;function&rdquo;</code> and let them instead give <code>&ldquo;type&rdquo;</code> (or <code>&ldquo;class&rdquo;</code>) in E4. Is that going too far? Maybe it is.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6a%3B%26%23x6f%3B%26%23x64%3B%26%23x79%3B%26%23x65%3B%26%23x72%3B%26%23x40%3B%26%23x61%3B%26%23x64%3B%26%23x6f%3B%26%23x62%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6a;&#x6f;&#x64;&#x79;&#x65;&#x72;&#x40;&#x61;&#x64;&#x6f;&#x62;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Jeff Dyer</a> 2006/03/31 16:08</em>
+</p>
+
+<p>
+We have reason to believe <code>typeof null === &ldquo;object&rdquo;</code> is a bug that could bite real content, from our spidering of the web.  We have no such evidence in favor of breaking <code>typeof String === &ldquo;function&rdquo;</code>, and plenty of reason to fear incompatibility.  It might be best to leave <code>typeof</code> utterly alone and deprecate it, but I&rsquo;m still in favor of the <code>null</code> bug-fix.
+</p>
+
+<p>
+In any event, <code>reflect::type()</code> or something like it wins.  (<acronym title="By the way">BTW</acronym>, I don&rsquo;t mean to suggest that a <code>type</code> built-in function or unary operator should be part of the optional <a href="doku.php%3Fid=proposals:meta_objects.html" class="wikilink1" title="proposals:meta_objects" onclick="return svchk()" onkeypress="return svchk()">reflection</a> package &ndash; I do think it will be hard to reserve <code>type</code>, so we might rather put it in a namespace that is open by default but prioritized somehow such that user-defined <code>function type...</code> or <code>var type...</code> hide it.)  
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/03/31 16:34</em> 
+</p>
+
+</div>
+<!-- SECTION [57-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/8/87cc52a7f023adc21377ab4092d578ed.xhtml used -->
+</body>
+</html>

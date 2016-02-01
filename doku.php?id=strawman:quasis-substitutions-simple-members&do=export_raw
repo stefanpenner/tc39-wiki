@@ -1,0 +1,38 @@
+===== Quasi Expression Substitution Body =====
+This defines the substitution body of a [[strawman:quasis|quasi]] allowing a large subset of //MemberExpression//s in a way that allows easy bounding of the quasi by a lexical scanner.
+Determining where a substitution ends does not require the ability to parse an EcmaScript expression.
+
+
+==== //SubstitutionBody// :: ====
+  * //Identifier// //SubstitutionBodyTail//
+
+
+
+==== //SubstitutionBodyTail// :: ====
+  * ε
+  * ''.'' //Identifier// //SubstitutionBodyTail//
+  * ''['' //PropertyName// '']'' //SubstitutionBodyTail//
+
+//PropertyName// is defined in 11.1.5 as (//IdentifierName// | //StringLiteral// | //NumericLiteral//).
+
+==== //SubstitutionModifier// :: ====
+  * ε
+
+
+
+
+
+==== SVE ====
+^ Production ^ Result ^
+| //QuasiLiteral// :: //QuasiTag// ''`'' //LiteralPortion//  //QuasiLiteralTail// | SVE(//QuasiLiteralTail//) |
+| //QuasiLiteralTail// :: //Substitution//  //LiteralPortion//  //QuasiLiteralTail// | array-concat(single-element-array(SVE(//Substitution//)), SVE(//QuasiLiteralTail//)) |
+| //QuasiLiteralTail// :: ''`'' | an empty array |
+| //Substitution// :: ''$'' //Identifier// | //PrimaryExpression// : //Identifier// |
+| //Substitution// :: ''${'' //SubstitutionModifier//  //SubstitutionBody// ''}'' | SVE(//SubstitutionBody//) |
+| //SubstitutionBody// :: //Identifier//  //SubstitutionBodyTail// | concat of //Identifier// and //SubstitutionBodyTail// as a //MemberExpression// |
+
+
+The SVE is an expression that evaluates the specified expression in the scope in which the quasi appears.
+The SVE of the quasi literal is the array of the SVE for each substitution body.
+
+E.g. the SVE of ''quasitag`literalPortion0 $x literalPortion1 ${y.z[w]} literalPortion2`'' is ''[x, y.z[w]]''.

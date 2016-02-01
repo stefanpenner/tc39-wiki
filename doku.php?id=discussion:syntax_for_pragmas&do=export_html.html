@@ -1,0 +1,84 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=discussion:syntax_for_pragmas&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=discussion" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=discussion:syntax_for_pragmas&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=discussion:syntax_for_pragmas&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<p>
+(previous syntax discussion)
+</p>
+
+<a name="syntax"></a><h2>Syntax</h2>
+<div class="level2">
+
+<p>
+ Pragmas may occur only at the head of certain syntactic units: the program, package body, function body, class body, and block.  (In practice pragmas will follow <code>import</code> clauses.)
+</p>
+
+<p>
+Pragmas are introduced with the reserved keyword <code>use</code> followed by a syntactic keyword that names the pragma and then values that are arguments for that pragma.  The standard pragma names and their meanings are enumerated in a later section.
+</p>
+
+<p>
+Multiple pragmas may be strung together in a single <code>use</code> statement, separated by commas, eg 
+</p>
+<pre class="code">  use decimal, rounding up;</pre>
+
+<p>
+ A pragma argument is a single <em>AssignmentExpression</em> whose interpretation depends on the pragma.  See the section below.  Multiple arguments may be provided, they are separated by commas: 
+</p>
+<pre class="code">  use namespace ns1, ns2;</pre>
+
+<p>
+ The argument list for a pragma may be enclosed in parentheses: 
+</p>
+<pre class="code">  use namespace(ns1, ns2);</pre>
+
+<p>
+ The ambiguity between multiple pragmas on a line and multiple arguments to a pragma are resolved by ending argument parsing when a standard pragma keyword is seen.  Thus: 
+</p>
+<pre class="code">  use rounding up, namespace ns1, ns2;</pre>
+
+<p>
+ is unambiguous, does not require a backtracking parser, and means: 
+</p>
+<pre class="code">  use rounding(up), namespace(ns1, ns2);</pre>
+
+<p>
+ In the event that a pragma argument should have the same representation as a pragma name, parentheses can be used to override the argument parsing rule.  The statement: 
+</p>
+<pre class="code">  use namespace ns1, rounding;</pre>
+
+<p>
+ is a syntax error, because the pragma <code>rounding</code> requires one argument.  However, with parentheses the token <code>rounding</code> can be used as an argument: 
+</p>
+<pre class="code">  use namespace(ns1, rounding);</pre>
+
+<p>
+ An implementation may provide additional pragma names.  These pragma names <em>must not</em> end argument parsing like the built-in pragmas do.  (//Rationale:// If implementation pragmas ended argument parsing then they would not do so in all implementations.  That would make it impossible for an implementation to recognize an unknown pragma in all cases.  That in turn would be dangerous; see the section on semantics.)
+</p>
+
+</div>
+<!-- SECTION [31-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/c/c61b05d21eb473bd6f1548adcc7f6172.xhtml used -->
+</body>
+</html>

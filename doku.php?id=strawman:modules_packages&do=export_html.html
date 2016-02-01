@@ -1,0 +1,378 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:modules_packages&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:modules_packages&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:modules_packages&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:modules_packages&amp;do=export_html.html#introduction" class="toc">Introduction</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:modules_packages&amp;do=export_html.html#goals" class="toc">Goals</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:modules_packages&amp;do=export_html.html#proposal" class="toc">Proposal</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:modules_packages&amp;do=export_html.html#packages" class="toc">Packages</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:modules_packages&amp;do=export_html.html#secure_package_references" class="toc">Secure package references</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:modules_packages&amp;do=export_html.html#catalogs" class="toc">Catalogs</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:modules_packages&amp;do=export_html.html#the_package.json_file" class="toc">The package.json file</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:modules_packages&amp;do=export_html.html#the_hashes.json_file" class="toc">The hashes.json file</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:modules_packages&amp;do=export_html.html#the_signatures.json_file" class="toc">The signatures.json file</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:modules_packages&amp;do=export_html.html#physical_format_of_catalogs" class="toc">Physical format of catalogs</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:modules_packages&amp;do=export_html.html#use_in_import" class="toc">Use in import</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:modules_packages&amp;do=export_html.html#variants" class="toc">Variants</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:modules_packages&amp;do=export_html.html#casual_development" class="toc">Casual development</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:modules_packages&amp;do=export_html.html#open_issues" class="toc">Open issues</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:modules_packages&amp;do=export_html.html#references" class="toc">References</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:modules_packages&amp;do=export_html.html#comments" class="toc">Comments</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="introduction"></a><h1>Introduction</h1>
+<div class="level1">
+
+<p>
+ This proposal describes a manner of packaging and referring to ECMAScript code. It is intended to satisfy the <em>Uniform location and retrieval</em> goal of <a href="doku.php%3Fid=strawman:modules_emaker_style.html" class="wikilink1" title="strawman:modules_emaker_style" onclick="return svchk()" onkeypress="return svchk()">modules_emaker_style</a>.
+</p>
+
+<p>
+The goals of this proposal are similar to what <a href="http://www.osgi.org/" class="urlextern" target="_blank" title="http://www.osgi.org/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">OSGi</a> tries to do for Java. However, we have deliberately narrowed the scope (<em>e.g.</em>, not including a spec for &ldquo;services&rdquo;) and have taken advantage of ECMAScript&rsquo;s dynamic nature (functions are first class values, so there is no need for the <code>ClassLoader</code> namespace hygiene worries of OSGi).
+</p>
+
+<p>
+We assume that the open exchange format for ECMAScript programs is always textual code, not some compiled form. That said, our proposal imagines packages as a <em>target</em> of any compilation steps that a developer may use; a package is not a &ldquo;tarball of source code with a Makefile&rdquo; that contains all information required to reproduce its runnable form.
+</p>
+
+</div>
+<!-- SECTION [1-938] -->
+<a name="goals"></a><h1>Goals</h1>
+<div class="level1">
+
+<p>
+ <u>Security.</u> We must permit the construction of unambiguous references between code such that important correctness properties can be maintained.
+</p>
+
+<p>
+<u>No global namespace.</u> Our standard must allow decentralized naming and identification of code.
+</p>
+
+<p>
+<u>Accommodate simple cases.</u> We should be able to trivially support the common, casual cases such as linking directly to some code by specifying its <acronym title="Uniform Resource Locator">URL</acronym>; linking to files on a local filesystem by specifying their full location; or fetching code from a <code>PATH</code> variable.
+</p>
+
+<p>
+<u>Zero-admin provisioning.</u> Since ECMAScript is primarily deployed within Web browsers, and often in consumer devices, the mechanism for locating and fetching code must be able to reproduce a predictable software environment in the absence of a local &ldquo;system administrator&rdquo; in charge of software installation. This property also helps with the reliability &ndash; and, ultimately, security &ndash; of the deployed software.
+</p>
+
+</div>
+<!-- SECTION [939-1895] -->
+<a name="proposal"></a><h1>Proposal</h1>
+<div class="level1">
+
+<p>
+ Note that many implementation details are deliberately left out of this proposal, <em>e.g.</em>, ZIP <em>vs.</em> <code>tar.gz</code>; format of ancillary metadata files; whether some fields are required or optional; choice of crypto algorithms; <em>etc.</em> Our intent is to agree on a general direction before spending time nailing down these details.
+</p>
+
+</div>
+<!-- SECTION [1896-2251] -->
+<a name="packages"></a><h2>Packages</h2>
+<div class="level2">
+
+<p>
+ A <em>package</em> is an archive file containing: 
+</p>
+<ul>
+<li class="level1"><div class="li"> A file <code>package.json</code> containing metadata and a catalog;</div>
+</li>
+<li class="level1"><div class="li"> A file <code>hashes.json</code> containing cryptographic hashes;</div>
+</li>
+<li class="level1"><div class="li"> A file <code>signatures.json</code> containing digital signatures; and</div>
+</li>
+<li class="level1"><div class="li"> Zero or more content files, arranged a directory hierarchy.</div>
+</li>
+</ul>
+
+<p>
+ The following shows a simple package containing some ECMAScript code:
+</p>
+
+<p>
+<a href="lib/exe/detail.php%3Fid=strawman%253Amodules_packages&amp;cache=cache&amp;media=strawman:packagecontents_003.png.html" class="media" title="strawman:packagecontents_003.png" onclick="return svchk()" onkeypress="return svchk()"><img src="lib/exe/fetch.php%3Fw=&amp;h=&amp;cache=cache&amp;media=strawman:packagecontents_003.png" class="media" alt="" /></a>
+</p>
+
+</div>
+<!-- SECTION [2252-2682] -->
+<a name="secure_package_references"></a><h2>Secure package references</h2>
+<div class="level2">
+
+<p>
+ A <em>secure package reference</em> is a piece of data used to securely refer to a remote package. In <a href="http://www.skyhunter.com/marcs/petnames/IntroPetNames.html" class="urlextern" target="_blank" title="http://www.skyhunter.com/marcs/petnames/IntroPetNames.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Marc Stiegler</a>&lsquo;s terminology, it is a <em>key</em> &ndash; securely unique and decentralized, but not memorable to humans. A secure reference consists of the following components 
+</p>
+<ul>
+<li class="level1"><div class="li"> Zero or more URLs at which the package file may be retrieved by <acronym title="Hyper Text Transfer Protocol">HTTP</acronym> or HTTPS;</div>
+</li>
+<li class="level1"><div class="li"> An optional cryptographic hash representing the root checksum of the package (to be described below); and</div>
+</li>
+<li class="level1"><div class="li"> Signature verification key fingerprints for zero or more signers who must have signed the contents of the package (according to a scheme described below).</div>
+</li>
+</ul>
+
+<p>
+ An example of a secure package reference represented in JSON is as follows:
+</p>
+<pre class="code javascript"><span class="br0">&#123;</span>
+  locations: <span class="br0">&#91;</span>
+    <span class="st0">'https://foosoft.example.com/releases/stringUtils/stringUtils-1.3.7a.zip'</span>,
+    <span class="st0">'http://syndicatedpackages.example.org/df2a391b3ddfab49.zip'</span>
+  <span class="br0">&#93;</span>,
+  signers: <span class="br0">&#91;</span>
+    <span class="co1">// Fingerprint for Alice's public signature verification key</span>
+    <span class="st0">'74:63:08:82:95:75:e1:7c:33:31:bb:cb:00:c0:89:8b'</span>,
+    <span class="co1">// Fingerprint for Bob's public signature verification key</span>
+    <span class="st0">'22:c3:68:3b:09:41:36:c3:39:83:91:ae:71:b2:0f:04'</span>
+  <span class="br0">&#93;</span>,
+  hash: <span class="br0">&#123;</span>
+    algorithm: <span class="st0">'sha1'</span>,
+    value: <span class="st0">'d111175e022c19f447895ad6b72ff259552d1b38'</span>
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [2683-4019] -->
+<a name="catalogs"></a><h2>Catalogs</h2>
+<div class="level2">
+
+<p>
+ A <em>catalog</em> is a structure that maps <em>local names</em> to secure package references. The local names are unique in the context of a given catalog, and are therefore <em>lambda names</em> in <a href="http://www.skyhunter.com/marcs/petnames/IntroPetNames.html" class="urlextern" target="_blank" title="http://www.skyhunter.com/marcs/petnames/IntroPetNames.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Marc Stiegler</a>&lsquo;s terminology.
+</p>
+
+<p>
+As a simple example in JSON, imagine that catalog <code>X</code> contains:
+</p>
+<pre class="code javascript"><span class="br0">&#123;</span>
+  names: <span class="br0">&#123;</span>
+    fooStrUtils: <span class="coMULTI">/* a secure package reference */</span>,
+    barMailUtils: <span class="coMULTI">/* a secure package reference */</span>
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+where the reader can substitute examples based on the previous section for the secure package references. In this catalog, there is only one occurrence of <code>fooStrUtils</code> and <code>barMailUtils</code>, though these names may be used without restriction by other catalogs to refer to the same or different secure package references.
+</p>
+
+<p>
+Catalogs may refer to other catalogs, in which case the referring catalog imports the names from the referred catalog. (We imagine for the time being that catalogs are <em>themselves</em> stored <em>as</em> packages; we will elaborate on this below.) We may extend <code>X</code> to contain:
+</p>
+<pre class="code javascript"><span class="br0">&#123;</span>
+  names: <span class="br0">&#123;</span>
+    fooStrUtils: <span class="coMULTI">/* a secure package reference */</span>,
+    barMailUtils: <span class="coMULTI">/* a secure package reference */</span>
+  <span class="br0">&#125;</span>,
+  direct: <span class="br0">&#91;</span>
+    <span class="coMULTI">/* a secure package reference to catalog Y */</span>
+  <span class="br0">&#93;</span>,
+  namespaced: <span class="br0">&#123;</span>
+    <span class="st0">"theZ"</span>: <span class="coMULTI">/* a secure package reference to catalog Z */</span>
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+where catalog <code>Y</code> contains:
+</p>
+<pre class="code javascript"><span class="br0">&#123;</span>
+  names: <span class="br0">&#123;</span>
+    fooStrUtils: <span class="coMULTI">/* a secure package reference */</span>,
+    otherUtils: <span class="coMULTI">/* a secure package reference */</span>
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+and catalog <code>Z</code> contains:
+</p>
+<pre class="code javascript"><span class="br0">&#123;</span>
+  names: <span class="br0">&#123;</span>
+    fooStrUtils: <span class="coMULTI">/* a secure package reference */</span>
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+Catalog <code>Y</code> will cause catalog <code>X</code> to fail to validate, since it multiply defines the symbol <code>fooStrUtils</code>. However, the similar symbol in catalog <code>Z</code> will be known to a user of <code>X</code> as <code>theZ/fooStrUtils</code> and will hence not be ambiguous.
+</p>
+
+<p>
+The exchange format for catalogs is as a package file, allowing secure package references to be used to link them. We will describe this further below.
+</p>
+
+<p>
+We imagine that much of the work of cataloging will be accomplished by dedicated librarian sites, analogously to Linux RPM repositories and CPAN.
+</p>
+
+</div>
+<!-- SECTION [4020-6270] -->
+<a name="the_package.json_file"></a><h2>The package.json file</h2>
+<div class="level2">
+
+<p>
+ The <code>package.json</code> file contains two components: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Metadata describing the package; and</div>
+</li>
+<li class="level1"><div class="li"> The root catalog for the package, which might refer to other catalogs.</div>
+</li>
+</ul>
+
+<p>
+ The package&rsquo;s root catalog defines the short names whereby the package can refer to other packages. The simplest form of this is a direct reference to some external catalog. For example, a minimal catalog would be one that refers insecurely to a CPAN-like curated repository, for example:
+</p>
+<pre class="code javascript"><span class="br0">&#123;</span> direct: <span class="br0">&#91;</span> <span class="br0">&#123;</span> locations: <span class="br0">&#91;</span> <span class="st0">'http://cjan.example.com/catalog.zip'</span> <span class="br0">&#93;</span> <span class="br0">&#125;</span> <span class="br0">&#93;</span> <span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [6271-6862] -->
+<a name="the_hashes.json_file"></a><h2>The hashes.json file</h2>
+<div class="level2">
+
+<p>
+ The <code>hashes.json</code> file contains a Merkle tree of hashes of the entire tree of the package contents, but <em>not</em> including <code>hashes.json</code> and <code>signatures.json</code>.
+</p>
+
+<p>
+This design allows a platform to verify the checksum for a specific file from a package without having to compute a hash over the entire package.
+</p>
+
+</div>
+<!-- SECTION [6863-7209] -->
+<a name="the_signatures.json_file"></a><h2>The signatures.json file</h2>
+<div class="level2">
+
+<p>
+ The <code>signatures.json</code> file contains a list of signatures. Each of these is generated when a principal signs the root checksum from <code>hashes.json</code> with their private key.
+</p>
+
+</div>
+<!-- SECTION [7210-7421] -->
+<a name="physical_format_of_catalogs"></a><h2>Physical format of catalogs</h2>
+<div class="level2">
+
+<p>
+ Catalogs are distributed as packages containing only <code>package.json</code>, <code>hashes.json</code> and <code>signatures.json</code>. The actual catalog data is stored in the catalog section of the <code>package.json</code> file. As a corollary, the catalog of any package can be used by another package by specifying that package <em>as</em> the catalog.
+</p>
+
+<p>
+<strong>TODO</strong> Can a secure package reference refer to a file within the current package? If so, can it be used to &ldquo;refactor&rdquo; catalogs so that the <code>package.json</code> file does not get too big?
+</p>
+
+</div>
+<!-- SECTION [7422-7969] -->
+<a name="use_in_import"></a><h2>Use in import</h2>
+<div class="level2">
+
+<p>
+ The <code>import</code> special form, as described in <a href="doku.php%3Fid=strawman:modules_emaker_style.html" class="wikilink1" title="strawman:modules_emaker_style" onclick="return svchk()" onkeypress="return svchk()">modules_emaker_style</a>, when invoked from within a package, refers to files within that package relative to the current module. For example, the following:
+</p>
+<pre class="code javascript"><span class="kw2">import</span> <span class="st0">'../baz/B'</span></pre>
+<p>
+imports a module <code>../baz/B.js</code> from the current package in a path <em>relative</em> to the current module.
+</p>
+
+<p>
+We augment <code>import</code> to accept a second argument representing the package from which an imported module is retrieved. The first argument is therefore the path in the package&rsquo;s archive at which to retrieve the module. In its most basic form, the programmer specifies a secure package reference as a direct JSON value in the <code>import</code>:
+</p>
+<pre class="code javascript"><span class="kw2">import</span> <span class="st0">'foo/bar/A'</span> from <span class="br0">&#123;</span>
+  locations: <span class="br0">&#91;</span>
+    <span class="st0">'https://foosoft.example.com/releases/stringUtils/stringUtils-1.3.7a.zip'</span>,
+    <span class="st0">'http://syndicatedpackages.example.org/df2a391b3ddfab49.zip'</span>
+  <span class="br0">&#93;</span>,
+  signers: <span class="br0">&#91;</span>
+   <span class="st0">'74:63:08:82:95:75:e1:7c:33:31:bb:cb:00:c0:89:8b'</span>,
+   <span class="st0">'22:c3:68:3b:09:41:36:c3:39:83:91:ae:71:b2:0f:04'</span>
+  <span class="br0">&#93;</span>,
+  checksum: <span class="br0">&#123;</span>
+    algorithm: <span class="st0">'sha1'</span>,
+    value: <span class="st0">'d111175e022c19f447895ad6b72ff259552d1b38'</span>
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+This example imports <code>foo/bar/A.js</code> from the package identified by the secure package reference. Most usages, however, will involve local names defined by the root catalog of the module from which <code>import</code> is being invoked. With that in mind, in the typical case, <code>import</code> will accept as its second argument a catalog local name, for example:
+</p>
+<pre class="code javascript"><span class="kw2">import</span> <span class="st0">'foo/bar/A'</span> from <span class="st0">'fooStrUtils'</span></pre>
+</div>
+<!-- SECTION [7970-9544] -->
+<a name="variants"></a><h1>Variants</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [9545-9568] -->
+<a name="casual_development"></a><h2>Casual development</h2>
+<div class="level2">
+
+<p>
+ For casual development, the packaging format may be too heavyweight. We may also want to support an option where: 
+</p>
+<ul>
+<li class="level1"><div class="li"> A package reference is simply a <acronym title="Uniform Resource Locator">URL</acronym> to a directory of files; and</div>
+</li>
+<li class="level1"><div class="li"> A catalog reference is simply a <acronym title="Uniform Resource Locator">URL</acronym> to a single JSON file.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [9569-9848] -->
+<a name="open_issues"></a><h1>Open issues</h1>
+<div class="level1">
+
+<p>
+ This whole proposal is a design sketch for discussion. As noted earlier, even assuming this proposal is accepted in its entirety, much detail design needs to be done.
+</p>
+
+</div>
+<!-- SECTION [9849-10043] -->
+<a name="references"></a><h1>References</h1>
+<div class="level1">
+<ul>
+<li class="level1"><div class="li"> <a href="http://wiki.commonjs.org/wiki/Packages/1.0" class="urlextern" target="_blank" title="http://wiki.commonjs.org/wiki/Packages/1.0" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://wiki.commonjs.org/wiki/Packages/1.0</a> &ndash; CommonJS packages specification.</div>
+</li>
+<li class="level1"><div class="li"> <a href="http://wiki.commonjs.org/wiki/Packages/A" class="urlextern" target="_blank" title="http://wiki.commonjs.org/wiki/Packages/A" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://wiki.commonjs.org/wiki/Packages/A</a> &ndash; Background on packaging at CommonJS wiki.</div>
+</li>
+<li class="level1"><div class="li"> <a href="http://www.skyhunter.com/marcs/petnames/IntroPetNames.html" class="urlextern" target="_blank" title="http://www.skyhunter.com/marcs/petnames/IntroPetNames.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://www.skyhunter.com/marcs/petnames/IntroPetNames.html</a> &ndash; <em>An Introduction to Petname Systems</em> by Marc Stiegler.</div>
+</li>
+<li class="level1"><div class="li"> <a href="http://www.eros-os.org/pipermail/e-lang/2009-April/013075.html" class="urlextern" target="_blank" title="http://www.eros-os.org/pipermail/e-lang/2009-April/013075.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://www.eros-os.org/pipermail/e-lang/2009-April/013075.html</a> &ndash; A thread on &ldquo;Module naming and identification&rdquo; on the <code>e-lang@eros-os.org</code> mailing list.</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://groups.google.com/group/commonjs/browse_thread/thread/17442874b369da5d/e86182c110497ceba" class="urlextern" target="_blank" title="https://groups.google.com/group/commonjs/browse_thread/thread/17442874b369da5d/e86182c110497ceba" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">https://groups.google.com/group/commonjs/browse_thread/thread/17442874b369da5d/e86182c110497ceba</a> &ndash; A thread on the CommonJS mailing list which Christoph Dorn introduced the idea of catalogs.</div>
+</li>
+<li class="level1"><div class="li"> <a href="http://www.osgi.org/" class="urlextern" target="_blank" title="http://www.osgi.org/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://www.osgi.org/</a> &ndash; The OSGi alliance.</div>
+</li>
+<li class="level1"><div class="li"> <a href="http://jcp.org/en/jsr/detail?id=291" class="urlextern" target="_blank" title="http://jcp.org/en/jsr/detail?id=291" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://jcp.org/en/jsr/detail?id=291</a> &ndash; JSR 291, the Java Community Process codification of OSGi.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [10044-10899] -->
+<a name="comments"></a><h1>Comments</h1>
+<div class="level1">
+
+<p>
+ One nit - terminology wise, it seems confusing for a package to contain a file called package.json, as you have two different &lsquo;packages&rsquo; floating around.  &mdash; <em><a href="mailto:%26%23x63%3B%26%23x6f%3B%26%23x72%3B%26%23x6d%3B%26%23x61%3B%26%23x63%3B%26%23x40%3B%26%23x73%3B%26%23x6f%3B%26%23x65%3B%26%23x2e%3B%26%23x75%3B%26%23x63%3B%26%23x73%3B%26%23x63%3B%26%23x2e%3B%26%23x65%3B%26%23x64%3B%26%23x75%3B" class="mail" title="&#x63;&#x6f;&#x72;&#x6d;&#x61;&#x63;&#x40;&#x73;&#x6f;&#x65;&#x2e;&#x75;&#x63;&#x73;&#x63;&#x2e;&#x65;&#x64;&#x75;">Cormac Flanagan</a> 2010/01/27 00:26</em>
+</p>
+
+</div>
+<!-- SECTION [10900-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/d/d4f9325e62ac88a3f18f4994bcdf538e.xhtml used -->
+</body>
+</html>

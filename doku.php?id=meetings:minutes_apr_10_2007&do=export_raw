@@ -1,0 +1,57 @@
+====== Attendees ======
+
+  * Jeff Dyer, Adobe Systems
+  * Lars T Hansen
+  * Cormac Flanagan, Univ. of California
+  * Dick Sweet, Adobe Systems
+  * Chris Pine, Opera
+  * Francis Cheng, Adobe Systems
+  * Dave Herman, Northeastern University
+
+
+====== Agenda items ======
+
+  * ''~'' postfix operator (see [[meetings:minutes_mar_27_2007]]):
+    * if ''T'' is a type expression then ''T~'' means the type ''(T,undefined)'' in any context
+    * if ''I : T~'' or ''I~'' appears in a parameter list then ''=undefined'' is implied for the parameter
+  * The interaction of ''intrinsic::hashcodes'' with operator overloading
+    * overloading operator ''==='' means the hashcode system must consult the ''==='' method before returning a hashcode for an object, ie, ''intrinsic::hashcode'' can be arbitrarily expensive and even non-terminating.  Implications of this?  Following is an example where ''intrinsic::hashcode'' called for the first time on an instance of C will have to invoke ''==='' on that instance and every other instance whose hash code has been taken, and if equality is found return the hash code of the former.  It's possible the easy fix is to specify ''intrinsic::hashcode'' in terms of ''intrinsic::==='', but is that the intent?
+
+<code javascript>
+      class C {
+          public static function ===(lhs, rhs) {
+              if (lhs is C and rhs is C)
+                  return lhs.key === rhs.key;
+              else
+                  return intrinsic::===(lhs, rhs);
+          }
+
+          var key = Math.floor(Math.random()*10);
+      }
+</code>
+
+
+
+
+
+
+====== Discussion ======
+
+  * ''~'' postfix operator (see [[meetings:minutes_mar_27_2007]]):
+ 
+Jeff likes this proposal, but is uncomfortable with the default value aspect (second bullet point). If we do this for tilde (T~), he'd want to do it for T? as well.
+
+No resolution on this yet. Need someone (Brendan?) to fight for it.
+
+  * The interaction of ''intrinsic::hashcodes'' with operator overloading
+
+Need Graydon and Brendan to weigh in on this issue.
+
+  * We talked briefly about the translation of the refimpl to a final spec draft. 
+
+Jeff thinks an acceptable final form can be achieved with refactoring, erasure and pretty printing
+Dave points out that the process should ideally be fully automated so we can do interim updates easily
+
+  * No phone call next week because of the f2f starting Wednesday
+
+Attendees should add their name to the list on the meeting page [[meetings:minutes_apr_18_2007]]

@@ -1,0 +1,286 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:trademarks&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:trademarks&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:trademarks&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:trademarks&amp;do=export_html.html#trademarks" class="toc">Trademarks</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:trademarks&amp;do=export_html.html#brander" class="toc">Brander</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:trademarks&amp;do=export_html.html#guard" class="toc">Guard</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:trademarks&amp;do=export_html.html#type" class="toc">Type</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:trademarks&amp;do=export_html.html#built-in_trademarks" class="toc">Built-In Trademarks</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:trademarks&amp;do=export_html.html#alternatives_and_open_issues" class="toc">Alternatives and Open Issues</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:trademarks&amp;do=export_html.html#bibliography" class="toc">Bibliography</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="trademarks"></a><h1>Trademarks</h1>
+<div class="level1">
+
+<p>
+ A trademark represents a generative nominal type. A trademark has two facets: 
+</p>
+<ul>
+<li class="level1"><div class="li"> A trademark&rsquo;s <strong>brander</strong> allows one to brand objects or sets of objects with that trademark. Objects can be branded by a trademark when they&rsquo;re created or at any later time, but a brand is irrevocable: Once an object is branded by a trademark <em>tm</em>, it is forever branded by trademark <em>tm</em>.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> A trademark&rsquo;s <strong>guard</strong> allows one to test a specimen object to see if it is branded by that trademark.  The companion <a href="doku.php%3Fid=strawman:guards.html" class="wikilink1" title="strawman:guards" onclick="return svchk()" onkeypress="return svchk()">guards</a> proposal provides convenient syntax for doing such tests.</div>
+</li>
+</ul>
+
+<p>
+ To make brands unforgeable, the two facets of a trademark are represented by different ECMAScript objects, linked to each other under the scenes. Given the brander one can readily create a guard. On the other hand, one cannot obtain the brander given just the guard of a trademark. Thus the brander of a trademark is a capability.
+</p>
+
+<p>
+Some of the <acronym title="Application Programming Interface">API</acronym> relating to trademarks also consists of static global methods. These are gathered into a <code>Type</code> object, which is a collection of static methods analogous to <code>Math</code> or <code>JSON</code>. <code>Type</code> is imported into scope using the module mechanism.
+</p>
+
+</div>
+<!-- SECTION [3-1190] -->
+<a name="brander"></a><h2>Brander</h2>
+<div class="level2">
+
+<p>
+ The branding facet of a trademark is an object with the following frozen methods. Here <em>specimen</em> is an arbitrary ECMAScript value and <em>guard</em> is a guard. 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>test</code>(<em>specimen</em>)</div>
+<ul>
+<li class="level2"><div class="li"> Returns either <code>true</code> or <code>false</code> indicating whether <em>specimen</em> has been branded with this trademark.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <code>validate</code>(<em>specimen</em>)</div>
+<ul>
+<li class="level2"><div class="li"> If <code>test</code>(<em>specimen</em>) returns <code>true</code>, return <em>specimen</em>. Otherwise throw a TypeError.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <code>brand</code>(<em>specimen</em>)</div>
+<ul>
+<li class="level2"><div class="li"> Brand <em>specimen</em> with this trademark. Once branded, <em>specimen</em> is branded forever. Branding the same <em>specimen</em> again has no effect.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <code>brandPrototype</code>(<em>specimen</em>)</div>
+<ul>
+<li class="level2"><div class="li"> Brand <em>specimen</em> and all, current or future, objects with <em>specimen</em> on their prototype chain with this trademark. Once branded, <em>specimen</em> is prototype-branded forever. Branding the same <em>specimen</em> again has no effect.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <code>append</code>(<em>guard</em>)</div>
+<ul>
+<li class="level2"><div class="li"> Derive this trademark from <em>guard</em>&lsquo;s trademark. Every object branded by <em>guard</em>, either now or in the future, automatically acquires this trademark&rsquo;s brand as well.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <code>isGuard</code>(<em>guard</em>)</div>
+<ul>
+<li class="level2"><div class="li"> If <em>guard</em> is a guard whose [[Brand]] internal property is this brander, return <code>true</code>. Otherwise return <code>false</code>.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <code>setGuard</code>(<em>guard</em>) (optional, not needed if the facilities for specifying that an object is a guard at creation time are sufficient)</div>
+<ul>
+<li class="level2"><div class="li"> If <em>guard</em> is not an extensible object or is already a guard (i.e. has a [[Brand]] internal property), throw an error. Otherwise create a [[Brand]] internal property on <em>guard</em> and set it to this brander.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ Branders are created by <code>Type.make</code> below.
+</p>
+
+</div>
+<!-- SECTION [1191-2856] -->
+<a name="guard"></a><h2>Guard</h2>
+<div class="level2">
+
+<p>
+ The guarding facet of a trademark is an object with a [[Brand]] internal property. There are two ways to set this property to a brander <em>b</em> on a guard <em>g</em>: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Set <em>g</em>&lsquo;s [[Brand]] internal property to <em>b</em> at the time <em>g</em> is created using whatever syntax or <acronym title="Application Programming Interface">API</acronym> is approved for setting metaproperties during object creation.</div>
+</li>
+<li class="level1"><div class="li"> Call <em>b</em>.<code>makeGuard</code>(<em>g</em>) (not needed if the above mechanism is adequate)</div>
+</li>
+</ul>
+
+<p>
+ Once <em>g</em>&lsquo;s [[Brand]] is set, it cannot be deleted or changed. Furthermore, user code cannot directly read the [[Brand]] internal property.
+</p>
+
+<p>
+Guards are typically used for constraining the values of variables, fields, or parameters as part of <a href="doku.php%3Fid=strawman:guards.html" class="wikilink1" title="strawman:guards" onclick="return svchk()" onkeypress="return svchk()">guards</a>:
+</p>
+<pre class="code javascript">  let x :: guard = value;
+  <span class="kw2">function</span> f<span class="br0">&#40;</span>a :: guard1, b :: guard2, c<span class="br0">&#41;</span> :: resultGuard <span class="br0">&#123;</span>...<span class="br0">&#125;</span></pre>
+<p>
+One can also invoke a guard manually using <code>Type</code> methods. These methods are on <code>Type</code> instead of directly on the guard to make it easy to make any object into an guard without polluting its property name space. In particular, <code>Object</code>, <code>Number</code>, <code>String</code>, etc. can serve as built-in guards.
+</p>
+
+<p>
+The <code>~</code> and <code>|</code> operators have special behavior when their operands are guards.  When given guards as both operands, the <code>|</code> operator invokes <code>Type.union</code> on the operands.  When given a guard as the operand, the <code>~</code> operator invokes <code>Type.union</code> on the guard with <code>Null</code> and <code>Void</code>.  These let one conveniently make guard annotations such as:
+</p>
+<pre class="code javascript">  let x :: Number | Boolean = value;  <span class="co1">// Either a Number of a Boolean</span>
+  let y :: ~Number = value;  <span class="co1">// Either a Number or null or undefined</span></pre>
+</div>
+<!-- SECTION [2857-4512] -->
+<a name="type"></a><h2>Type</h2>
+<div class="level2">
+
+<p>
+ The <code>Type</code> global object is a collection of static methods for working with branders and guards. It provides the following methods: 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>make</code>()</div>
+<ul>
+<li class="level2"><div class="li"> Create and return a new brander, initially with no branded specimens.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <code>make</code>(<em>guard1</em>, <em>guard2</em>, ...)</div>
+<ul>
+<li class="level2"><div class="li"> Same as <code>make</code> to create a new brander <em>b</em> followed by a series of <em>b</em>.<code>append</code> calls to append all of the given guards to <em>b</em>. This will make the new brander the union of the guards&rsquo; types.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <code>union</code>(<em>guard1</em>, <em>guard2</em>, ...)</div>
+<ul>
+<li class="level2"><div class="li"> Same as <code>make</code> above, but returns the guard, not the brander. Other than containing the [[Brand]] internal property, the returned guard object is like an object created by <code>{}</code>. There is no way to access the brander.</div>
+</li>
+<li class="level2"><div class="li"> Open issues: Should the returned object be frozen? If so, can calling this multiple times return the same object?</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <code>test</code>(<em>guard</em>, <em>specimen</em>)</div>
+<ul>
+<li class="level2"><div class="li"> Return either <code>true</code> or <code>false</code> indicating whether <em>specimen</em> has been branded with <em>guard</em>&lsquo;s trademark. Throw an error if <em>guard</em> is not a guard. <code>test</code> invokes <em>guard</em>.[[Brand]].<code>test</code>(<em>specimen</em>).</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <code>validate</code>(<em>guard</em>, <em>specimen</em>)</div>
+<ul>
+<li class="level2"><div class="li"> If <code>test</code>(<em>guard</em>, <em>specimen</em>) returns <code>true</code>, return <em>specimen</em>. Otherwise throw a TypeError. <code>validate</code> invokes <em>guard</em>.[[Brand]].<code>validate</code>(<em>specimen</em>).</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ There intentionally is no way to make complement or difference types because doing so would violate monotonicity: if specimen <em>s</em> is in <em>t1</em> but not <em>t2</em>, then <em>s</em> will be in <em>t1</em> - <em>t2</em>. However, it will disappear from <em>t1</em> - <em>t2</em> if someone later brands <em>s</em> with <em>t2</em>.
+</p>
+
+</div>
+<!-- SECTION [4513-6184] -->
+<a name="built-in_trademarks"></a><h2>Built-In Trademarks</h2>
+<div class="level2">
+
+<p>
+ We seed the trademark graph by providing guards for built-in types: 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>Null</code> accepts <code>null</code></div>
+</li>
+<li class="level1"><div class="li"> <code>Void</code> accepts <code>undefined</code></div>
+</li>
+<li class="level1"><div class="li"> <code>Number</code> accepts all primitive numbers, including infinities and NaN</div>
+</li>
+<li class="level1"><div class="li"> <code>Integer</code> accepts all primitive numbers whose values are finite integers, regardless of magnitude.  <code>Integer</code> includes both +0 and -0.</div>
+</li>
+<li class="level1"><div class="li"> <code>Boolean</code> accepts the primitives <code>true</code> and <code>false</code></div>
+</li>
+<li class="level1"><div class="li"> <code>String</code> accepts all primitive strings</div>
+</li>
+<li class="level1"><div class="li"> <code>Type</code> accepts all guards (i.e. objects directly containing a [[Brand]] internal property)</div>
+</li>
+<li class="level1"><div class="li"> <code>Object</code> accepts all non-primitive objects.  Note that <code>null</code> and <code>undefined</code> are not objects.</div>
+</li>
+<li class="level1"><div class="li"> <code>Any</code> accepts everything</div>
+</li>
+</ul>
+
+<p>
+ Because guards introduce no extra methods, these uses do not conflict with these objects&rsquo; other APIs.
+</p>
+
+</div>
+<!-- SECTION [6185-7017] -->
+<a name="alternatives_and_open_issues"></a><h1>Alternatives and Open Issues</h1>
+<div class="level1">
+<ul>
+<li class="level1"><div class="li"> Coordinate syntax of creating a guard and/or a brander with the private, class, and object initializer proposals.</div>
+</li>
+<li class="level1"><div class="li"> Can we take out <code>setGuard</code>?</div>
+</li>
+<li class="level1"><div class="li"> Do we want an <code>appendBrander</code> method on a brander that takes a brander instead of a guard argument?</div>
+</li>
+<li class="level1"><div class="li"> Do we want a way to freeze branders to prevent future calls to <code>brand</code>, <code>brandPrototype</code>, or <code>append</code>?  If so, do it by piggybacking on <code>Object.freeze</code> (i.e. <code>brand</code>, <code>brandPrototype</code>, and <code>append</code> would throw an error if the brander is frozen) or by introducing a <code>freeze</code> method on the brander?  In either case, knowing that a brander is frozen might make some code patterns easier to understand and analyze.  Note that, just like for all other objects, freezing is shallow, so even a frozen brander can acquire new branded instances by having earlier appending a different brander or by deriving from a prototype-branded prototype.</div>
+</li>
+<li class="level1"><div class="li"> Currently <code>test</code> and <code>validate</code> will never run user code. This guarantees monotonicity &mdash; there is no way to revoke a brand. Is this desirable, or do we want to relax this restriction and add a way to write potentially problematic user-specified guards?</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [7018-8238] -->
+<a name="bibliography"></a><h1>Bibliography</h1>
+<div class="level1">
+
+<p>
+ <a href="http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.92.6213&amp;rep=rep1&amp;type=pdf" class="urlextern" target="_blank" title="http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.92.6213&amp;rep=rep1&amp;type=pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Efficient Type Inclusion Tests</a>
+</p>
+
+<p>
+<a href="http://portal.acm.org/citation.cfm?id=361937" class="urlextern" target="_blank" title="http://portal.acm.org/citation.cfm?id=361937" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Protection in Programming Languages</a>
+</p>
+
+<p>
+<a href="http://mumble.net/~jar/pubs/secureos/" class="urlextern" target="_blank" title="http://mumble.net/~jar/pubs/secureos/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">A Security Kernel Based on the Lambda-Calculus</a>
+</p>
+
+<p>
+<a href="http://erights.org/elang/kernel/auditors/" class="urlextern" target="_blank" title="http://erights.org/elang/kernel/auditors/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Auditors: An Extensible, Dynamic
+Code Verification Mechanism</a>
+</p>
+
+<p>
+<a href="http://wiki.erights.org/wiki/Guard-based_auditing" class="urlextern" target="_blank" title="http://wiki.erights.org/wiki/Guard-based_auditing" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Guard-based Auditing</a>
+</p>
+
+<p>
+<a href="http://www.soe.ucsc.edu/research/report?ID=1588" class="urlextern" target="_blank" title="http://www.soe.ucsc.edu/research/report?ID=1588" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Virtual Values for Language Extension</a> 
+</p>
+
+</div>
+<!-- SECTION [8239-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/5/539f4158a72a8af6204b0f8980bd84b3.xhtml used -->
+</body>
+</html>

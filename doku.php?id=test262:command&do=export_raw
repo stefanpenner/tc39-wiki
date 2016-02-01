@@ -1,0 +1,30 @@
+====== Running the Test262 tests from the command line ======
+
+
+
+First download the Test262 tests from [[http://hg.ecmascript.org/tests/test262/]]. To run the tests you also need to install Python.
+
+The test suite comes with a python test harness, tools/packaging/test262.py. The easiest way to run the tests is to enter the Test262 root directory and run
+
+<code>
+  python tools/packaging/test262.py --command <command>
+</code>
+The <command> parameter specifies how to run the JavaScript implementation. For example, to run the v8 engine on windows you would use
+<code>
+  python tools/packaging/test262.py --command v8/shell.exe
+</code>
+Each test will be run by adding the test file path name after the specified command. For more complex commands you can use the %%{{path}}%% placeholder which will be replaced with the file path to run:
+<code>
+  python tools/packaging/test262.py --command "v8/shell.exe {{path}}"
+</code>
+The test harness prints the test outcomes as it runs the tests. To run a particular test or set of tests you can specify the names on the command-line, for instance
+<code>
+  python tools/packaging/test262.py --command <command> Unary_Operators
+</code>
+to run only the unary operator tests. The test group names match the names of the specification sections they test. You can also use section numbers, for instance 11.4.8 to run all tests of the bitwise NOT operator, or individual test names like S9.3.1_A1 to run individual tests.
+
+The test case files that come with Test262 are not run directly. A little bit of processing takes place to include common code, set up time zone information, etc. To see the source code that is run for a particular test use the --cat option:
+<code>
+  python tools/packaging/test262.py --command <command> S9.3.1_A1 --cat
+</code>
+Note that since some of the tests are time zone dependent so the source code printed may only be meaningful in your time zone.

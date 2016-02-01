@@ -1,0 +1,154 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:fixing_override_mistake&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:fixing_override_mistake&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:fixing_override_mistake&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:fixing_override_mistake&amp;do=export_html.html#fixing_the_read-only_override_prohibition_mistake" class="toc">Fixing the Read-only Override Prohibition Mistake</a></span><ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:fixing_override_mistake&amp;do=export_html.html#why_it_s_bad_for_efficiency" class="toc">Why it's bad for efficiency</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:fixing_override_mistake&amp;do=export_html.html#why_it_s_inconvenient" class="toc">Why it's inconvenient</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:fixing_override_mistake&amp;do=export_html.html#why_it_s_bad_for_security" class="toc">Why it's bad for security</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:fixing_override_mistake&amp;do=export_html.html#how_bad_would_fixing_it_be_for_legacy_compatibility" class="toc">How bad would fixing it be for legacy compatibility?</a></span></li>
+</ul>
+</li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=strawman:fixing_override_mistake&amp;do=export_html.html#proposal_currently_in_es5_spec_language" class="toc">Proposal (currently in ES5 spec language)</a></span></li>
+</ul>
+</li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:fixing_override_mistake&amp;do=export_html.html#see" class="toc">See</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="fixing_the_read-only_override_prohibition_mistake"></a><h1>Fixing the Read-only Override Prohibition Mistake</h1>
+<div class="level1">
+
+<p>
+ Currently, according to the ES5.1 spec, if object y inherits a non-writable data property &ldquo;foo&rdquo; from object x, then one cannot override &ldquo;foo&rdquo; on y simply by using assignment. In other words,  
+</p>
+<pre class="code javascript">  <span class="kw2">var</span> x = Object.<span class="me1">freeze</span><span class="br0">&#40;</span><span class="br0">&#123;</span>foo: <span class="nu0">88</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;
+  <span class="kw2">var</span> y = Object.<span class="me1">create</span><span class="br0">&#40;</span>x<span class="br0">&#41;</span>;
+  y.<span class="me1">foo</span> = <span class="nu0">99</span>; <span class="co1">// Currently specified to fail</span></pre>
+<p>
+This is a problem for efficiency, convenience, and security. Although currently specified, it is not implemented correctly as of this writing by Chrome/v8 and Safari/JSC, and so legacy web content does not yet depend on this behavior. In retrospect, I believe that specifying it this way was a mistake due to lack of adequate attention to this issue and its implications. 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+ <strong>Not a Mistake</strong>  &mdash; <em><a href="mailto:%26%23x41%3B%26%23x6c%3B%26%23x6c%3B%26%23x65%3B%26%23x6e%3B%26%23x40%3B%26%23x57%3B%26%23x69%3B%26%23x72%3B%26%23x66%3B%26%23x73%3B%26%23x2d%3B%26%23x42%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x41;&#x6c;&#x6c;&#x65;&#x6e;&#x40;&#x57;&#x69;&#x72;&#x66;&#x73;&#x2d;&#x42;&#x72;&#x6f;&#x63;&#x6b;&#x2e;&#x63;&#x6f;&#x6d;">Allen Wirfs-Brock</a> 2012/01/09 20:45</em>
+</p>
+
+<p>
+ This was not a mistake in ES5/5.1 and it is not a bug.  It is a semantics that goes all the way back to ES1.  It is also a behavior which makes complete sense from a prototypal inheritance perspective and can be found in the Self language. 
+</p>
+
+<p>
+The basic idea is that the properties prototype object are shared parts of all of inheriting child object.  Modifying such a shared part by a child, introduces a local change that is visible to that child (and its children) so this requires creation of a &ldquo;own&rdquo; property on the child. However, read-only properties can not modified (by normal means, eg assignment) so there is no need to create a &ldquo;own&rdquo; copy.  Assigning to an inherited read-only property or a &ldquo;own&rdquo; read-only property should have the same affect (whether it is ignoring the assignment, throwing, etc.).  Allowing assignment to an inherited read-only property would break the invariant that that a prototype&rsquo;s readonly property is an immutable value that is  shared among all children of the prototype.
+</p>
+
+<p>
+If there was a mistake in designing ES5, it was allowing Object.defineOwnProperty to create child properties that over-ride inherited read-only data properties.  This broke an invariant that previously existed in the language but this invariant  was already violated by some pre-ES5 clause 15 objects, (eg the writability of the prototype property of some children of Function.prototype).  However, I think the ES5 decision was probably the right one given the legacy clause 15 usages and the overall reflective nature of defineOwnProperty).
+</p>
+
+<p>
+Finally, this issue was given plenty of attention in during the development of ES5.  In various drafts, the ES5 specification actually broke the legacy behavior causing it to behave similarly to what is suggested by this strawman.  Those specification bugs were corrected in order to ensure that the semantics specified by ES3 and earlier editions were not changed by ES5.
+</p>
+<hr noshade="noshade" size="1" />
+
+</div>
+<!-- SECTION [1-2796] -->
+<a name="why_it_s_bad_for_efficiency"></a><h3>Why it's bad for efficiency</h3>
+<div class="level3">
+
+<p>
+ To be written
+</p>
+
+</div>
+<!-- SECTION [2797-2850] -->
+<a name="why_it_s_inconvenient"></a><h3>Why it's inconvenient</h3>
+<div class="level3">
+
+<p>
+ To be written
+</p>
+
+</div>
+<!-- SECTION [2851-2899] -->
+<a name="why_it_s_bad_for_security"></a><h3>Why it's bad for security</h3>
+<div class="level3">
+
+<p>
+ To be written
+</p>
+
+</div>
+<!-- SECTION [2900-2951] -->
+<a name="how_bad_would_fixing_it_be_for_legacy_compatibility"></a><h3>How bad would fixing it be for legacy compatibility?</h3>
+<div class="level3">
+
+<p>
+ To be written
+</p>
+
+</div>
+<!-- SECTION [2952-3033] -->
+<a name="proposal_currently_in_es5_spec_language"></a><h2>Proposal (currently in ES5 spec language)</h2>
+<div class="level2">
+
+<p>
+ Changes to <strong><a href="http://es5.github.com/#x8.12.4" class="urlextern" target="_blank" title="http://es5.github.com/#x8.12.4" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">8.12.4</a> [[CanPut]](P)</strong>
+</p>
+<pre class="code">...
+8. Else inherited must be a DataDescriptor
+  a. ...
+  b. Else return true</pre>
+
+<p>
+ This change is independent of the &ldquo;mode&rdquo; of the code in which the assignment appears. As of ES-next, this change would affect non-strict, strict, and extended-mode assignment. The only difference in assignment behaviors would remain that non-strict assignment failures are silent. But all would fail for all the same cases, which would differ from the cases specified to fail in ES5.1.
+</p>
+
+</div>
+<!-- SECTION [3034-3637] -->
+<a name="see"></a><h1>See</h1>
+<div class="level1">
+
+<p>
+ <a href="https://mail.mozilla.org/pipermail/es-discuss/2011-November/017997.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2011-November/017997.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">ES-discuss thread</a> and <a href="https://mail.mozilla.org/pipermail/es-discuss/2011-November/018774.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2011-November/018774.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">another</a>
+</p>
+
+<p>
+<a href="http://code.google.com/p/v8/issues/detail?id=1169" class="urlextern" target="_blank" title="http://code.google.com/p/v8/issues/detail?id=1169" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Overriding inherited read-only proprties must fail / throw</a>
+</p>
+
+<p>
+<a href="http://hg.ecmascript.org/tests/test262/file/c84161250e66/test/suite/chapter15/15.2/15.2.3/15.2.3.6/15.2.3.6-4-405.js" class="urlextern" target="_blank" title="http://hg.ecmascript.org/tests/test262/file/c84161250e66/test/suite/chapter15/15.2/15.2.3/15.2.3.6/15.2.3.6-4-405.js" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Test262 test case</a>
+</p>
+
+</div>
+<!-- SECTION [3638-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/0/0fce85a8cd20605374545f6f891df9e8.xhtml used -->
+</body>
+</html>

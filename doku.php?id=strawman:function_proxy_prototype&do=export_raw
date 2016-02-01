@@ -1,0 +1,33 @@
+===== Custom prototypes for function proxies =====
+
+Programmers want to be able to create subtypes of the core built-in types like ''[[http://perfectionkills.com/how-ecmascript-5-still-does-not-allow-to-subclass-an-array/|Array]]'' and ''Function''. The [[strawman:binary data]] spec in particular wants callable ''Function'' subtypes.
+
+This strawman proposes adding an optional fourth argument to ''Proxy.createFunction'' specifying a custom prototype object for the function proxy. If the argument is unspecified or given the undefined value, the prototype defaults to ''Function.prototype'':
+
+<code javascript>
+Proxy.createFunction(handler, call, construct, proto)
+</code>
+
+In order to preserve the spec invariant that callable objects are subtypes of ''Function'' (and testing ''instanceof Function'' is sufficient to determine whether an object is callable), ''Proxy.createFunction'' would test that the given prototype is an ''instanceof Function'', and throw an exception if the test returns ''false''.
+
+----
+
+Same comment as for [[strawman:name_property_of_functions]] -- passing ''otherWindow.Function.prototype'' would be disallowed by this proposal since ''instanceof'' starts one hop up the prototype chain before testing.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/02/28 21:56//
+
+''Proxy.createFunction'' should test that ''(proto instanceof Function) || (proto === Function.prototype)''.
+
+ --- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2011/03/30 12:36//
+
+===== References =====
+
+  * [[http://perfectionkills.com/how-ecmascript-5-still-does-not-allow-to-subclass-an-array/|Kangax on extending core pseudo-classes]]
+  * [[strawman:binary data]]
+  * [[https://mail.mozilla.org/pipermail/es-discuss/2011-February/012874.html|discussion on es-discuss]]
+
+===== Feedback =====
+
+Discussed at the March 2011 TC39 meeting. No objections raised.
+
+ --- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2011/03/30 12:36//

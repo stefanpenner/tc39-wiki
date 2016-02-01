@@ -1,0 +1,304 @@
+===== Goals =====
+
+Some of these may be withdrawn:
+
+  * Shorter syntax for function expressions
+  * Implicit ''return'' to make functions even shorter
+  * Lexical ''this'' to reduce common ''this'' binding errors with optional explicit dynamic ''this'' binding 
+  * No ''arguments'' object in scope
+  
+Non goals
+
+  * Changing the semantics of existing functions (using old syntax)
+
+
+===== Precedent =====
+
+  * JS1.8+ (SpiderMonkey and Rhino) [[https://developer.mozilla.org/en/New_in_JavaScript_1.8#Expression_closures_%28Merge_into_own_page.2fsection%29|expression closures]].
+    * Expression closures:
+      * can be declarations or expressions,
+      * may be anonymous or named if expressions,
+      * but cannot accomodate statements in their bodies without another extension such as [[let expressions]].
+    * In any case expression closures save only ''{'', ''return'', ''}'', and the space after return (or parentheses around the return value, or a prefix operator), but still start with ''function'' (the eight-letter word), so some find them not enough of a win.
+
+
+===== Proposal =====
+
+We propose introducing a shorthand for function expressions.
+
+<code>
+[0, 1, 2, 3].map(#(x) {x * x})
+</code>
+
+You can think of it as the existing function expression where ''function'' is replaced by ''#'' as well as an implicit return of the completion value. The parameter list can be omitted in the cases where no parameters are needed.
+
+<code>
+let randomArray = NonHoleyArray(10).map(#{Math.random()});
+</code>
+
+===== Syntax =====
+
+The ''FunctionExpression'' and ''FunctionDeclaration'' productions need to be updated accordingly.
+
+<code>
+FunctionExpression ::= "function" Identifier? "(" FormalParameterList? ")" "{" FunctionBody "}"
+                    |  "#" Identifier? ("(" FormalParameterList? ")")? "{" FunctionBody "}"
+
+FunctionDeclaration ::= "function" Identifier? "(" FormalParameterList? ")" "{" FunctionBody "}"
+                     |  "#" Identifier? ("(" FormalParameterList? ")")? "{" FunctionBody "}"
+</code>
+
+===== Semantic =====
+
+This is just syntactic sugar and the desugaring can be done like this:
+
+<code>
+#name (args) { body }
+</code>
+
+desugars to:
+
+<code>
+function name(args) {
+  body
+  return [[CompletionValue]](body)
+}
+</code>
+
+<code>
+#{ body }
+</code>
+
+desugars to:
+
+<code>
+function() {
+  body
+  return [[CompletionValue]](body)
+}
+</code>
+
+This is a bit simplified because lexical ''this'' makes this slightly more complicated.
+
+
+===== Lexical this =====
+
+One of the most common errors in JavaScript is the unexpected ''this'' binding rule.
+
+<code>
+var object = {
+  start: function() {
+    window.setTimeout(function() {
+      this.continue();
+    }, 500);
+  },
+  continue: function() {
+    ...
+  }
+};
+object.start();  // Error: No such function "continue"
+</code>
+
+In the above code snippet one would expect that ''object.continue'' would be called after half a second. This is not the case because ''window.setTimeout'' is responsible for calling the function and ''this'' is determined at the call site.
+
+To fix this we are proposing that ''#''-functions use lexical scoped ''this''.
+
+<code>
+var object = {
+  start: function() {
+    window.setTimeout(#{
+      this.continue();
+    }, 500);
+  },
+  continue: function() {
+    ...
+  }
+};
+object.start();  // It's all good
+</code>
+
+But looking at the code above we notice that the remaining ''function'' keywords cannot be replaced with ''#'' because those functions do not want lexical ''this''. Therefore we provide an explicit way to declare that you want dynamically bound ''this'' by using ''this'' as the first parameter.
+
+<code>
+var object = {
+  start: #(this) {
+    window.setTimeout(#{
+      this.continue();
+    }, 500);
+  },
+  continue: #(this) {
+    ...
+  }
+};
+object.start();  // It's all good
+</code>
+
+If the first parameter name of a ''#''-function is not the identifier ''this'' then the function is considered to have a lexically bound this. For ''FunctionExpression'' we can do something like this:
+
+<code>
+var f = #(args) { body };
+</code>
+
+desugars to
+
+<code>
+var f = function(args) {
+  body
+  return [[CompletionValue]](body)
+}.bind(this);
+</code>
+
+If we have an explicit dynamic ''this'' we don't need the do the binding because it behaves like normal functions:
+
+<code>
+var f = #(this, args) { body };
+</code>
+
+desugars to
+
+<code>
+var f = function(args) {
+  body
+  return [[CompletionValue]](body)
+}
+</code>
+
+For ''FunctionDeclaration'' we need to introduce a temporary variable in the scope where the function was declared and use alpha renaming.
+
+<code>
+#name(args) { body }
+</code>
+
+desugars to something like
+
+<code>
+const $this = this;  // Needs to be hoisted to top
+function name(args) {
+  [[AlphaRename]](this, $this, body)
+  return [[CompletionValue]]([[AlphaRename]](this, $this, body))
+}
+</code>
+
+===== No arguments object =====
+
+The reason for disallowing ''arguments'' is that we have [[harmony:rest_parameters]] which is better in every way.
+
+===== Alternate Syntax Proposals =====
+
+A shorter keyword such as "f", "fn", or "fun":
+
+<code>
+[0, 1, 2, 3].map(fn(x) {x * x})
+let randomArray = Array(10).map(fn{Math.random()});
+</code>
+
+This has the disadvantage that it requires unbounded lookahead for an LL parser. It also looks funny in the case where arguments are omitted.
+
+A backslash, which vaguely resembles lambda and is used as such in other languages:
+
+<code>
+[0, 1, 2, 3].map(\(x) {x * x})
+let randomArray = Array(10).map(\{Math.random()});
+</code>
+
+This has the disadvantage of creating an escaping hazard when JS code is included in a quoted string.
+
+
+Other characters that are currently disallowed in ECMAScript syntax:
+
+<code>
+[0, 1, 2, 3].map(@(x) {x * x})
+let randomArray = Array(10).map(@{Math.random()});
+
+[0, 1, 2, 3].map(`(x) {x * x})
+let randomArray = Array(10).map(`{Math.random()});
+</code>
+
+These suggestions are not known to have any problems beyond what # might, and may be visually more pleasing.
+
+ @ is already used by Internet Explorer's JavaScript extensions for conditional compilation.
+ --- //[[Allen.Wirfs-Brock@microsoft.com|Allen Wirfs-Brock]] 2010/07/27 15:33// 
+
+Characters that are used as binary but not unary operators, assuming these do not create parsing ambiguities:
+
+<code>
+[0, 1, 2, 3].map(^(x) {x * x})
+let randomArray = Array(10).map(^{Math.random()});
+
+[0, 1, 2, 3].map(*(x) {x * x})
+let randomArray = Array(10).map(*{Math.random()});
+
+[0, 1, 2, 3].map(%(x) {x * x})
+let randomArray = Array(10).map(%{Math.random()});
+</code>
+
+The caret (^) seems well-liked for its visual similarity to lambda. It also seems to fit nicely both with and without arguments.
+
+Ruby-like syntax:
+
+<code>
+[0, 1, 2, 3].map({|x| x * x})
+</code>
+
+(Not sure how the zero-argument case would work.)
+
+Following Smalltalk's precedent it presumably would be: 
+<code>
+var x=0;
+[0, 1, 2, 3].forEach({|| ++x})
+</code>
+ --- //[[Allen.Wirfs-Brock@microsoft.com|Allen Wirfs-Brock]] 2010/07/27 15:36//
+
+
+
+===== Discussion =====
+
+In case we allow ''#'' in all places where ''function'' is allowed it is tempting to make the parentheses optional for ''function'' as well.
+
+----
+
+Another alternative is to unbundle the shortening of "function" and of "return" into orthogonal bits of sugar that happen to compose well. Specifically, have "''#''" simply be sugar for "''function''" and "( Expression )" be sugar for "{ return Expression; }". This allows all four combinations, including "''#(x,y) (x+y)''" for "''function(x,y) { return x+y; }''".
+
+
+<code>
+#namedFunctionDeclaration {
+  var x = 0;
+  var y = 1;
+  return x + y;
+}
+</code>
+
+as well as:
+
+<code>
+#namedFunctionDeclaration(x, y) {
+  x + y;
+}
+</code>
+
+However, even here it is easy for a refactoring to accidentally expose the completion value.
+
+----
+
+Lexical ''this'' might introduce a lot of new bugs due to the way that jQuery uses ''this'' when chaining calls.
+
+<code>
+$('.things').click(#{ this.style.width = '...'; });
+</code>
+
+ --- //[[arv@google.com|Erik Arvidsson]] 2011/02/25 22:05//
+
+
+----
+
+There is a syntax conflict with [[http://brendaneich.com/2011/01/harmony-of-my-dreams/|Harmony of Brendan's Dreams]] where he is proposing to use ''#{ ... }'' for frozen ''Object''s.
+
+ --- //[[arv@google.com|Erik Arvidsson]] 2011/02/25 22:09//
+
+I considered the idea of ''#{...}'' meaning a function taking zero arguments, but it conflicts to the [[strawman:records]] proposal as Allen notes, and it seems to me harmful to remove ''()'' as a visual sign of a formal parameter list, indicating a function head.
+
+Lexical ''this'' may not be usable by JQuery, but declaring ''this'' as a parameter in a sharp-function still beats what JQuery has to do currently.
+
+In general it seems to me we do not want too many variant forms. With [[strawman:completion reform]] I do not see a need for both ''#()(''//expr//'')'' and ''#(){''//...stmt//''}'' -- just the latter is enough.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/02/28 21:48//

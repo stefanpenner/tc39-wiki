@@ -1,0 +1,51 @@
+====== Standardizing The Magic __proto__ Property ======
+
+
+===== Draft Specification =====
+
+The draft of the specification for this feature for incorporation into the ES6 working draft is here: {{harmony:draft_proto_spec_rev2.pdf}}
+
+===== Background =====
+
+See [[https://mail.mozilla.org/pipermail/es-discuss/2011-December/019025.html|Why we need to clean up __proto__]] for the motivation.
+
+Proposed Requirements:
+  - That %%__proto__%% be specified as "Normative-Optional", which will in general be the new status of the Appendix B items. Normative-Optional means that there is no requirement or encouragement that the feature be implemented. IE's current behavior of omitting it would still be standards conformant. However, if a feature of this name is provided, then it must act as specified. This allows name-based feature testing code to be correct. (This is in practice how Appendix B has been treated. This change in spec language would make it official.)
+  - If present, %%__proto__%% is present //only// on Object.prototype as an accessor property, approximately as it is on FF today.
+  - Object.prototype.%%__proto__%% have attributes {get: ..., set: ..., enumerable: false, configurable: true}. Currently FF reports this as being a non-configurable data property, and it is in fact non-deletable. With this change, conforming platforms would be honest about %%__proto__%%'s accessor nature, and would allow it to be deleted. If deleted, then it is no longer there to be inherited by any other objects in that context (frame).
+  - Object.create(null), creating an object that does not inherit from Object.prototype, also creates an object that does not inherit it's %%__proto__%%, even if that property has not been deleted. With this change, objects-as-stringmaps for objects created by Object.create(null) would avoid the %%__proto__%% hazard, even in contexts where Object.prototype.%%__proto__%% has not been deleted. (FF already acts this way, so my previous message was wrong in claiming that Object.create(null) fails to avoid this platform on all non-IE browsers.)
+  - If Object.prototype.%%__proto__%% is present, then its setter is the only means of altering the %%[[Prototype]]%% property of objects, and works only for objects from that context (frame). If Object.prototype.%%__proto__%% is absent or deleted, that there by no remaining way to alter the %%[[Prototype]]%% property of objects from that context.
+  - The previous item presents a problem for proxies. With %%__proto__%%'s setter being normative optional, should proxies also have a normative optional trap for attempts to set their %%[[Prototype]]%%? If so, then presumably there should also be such an operation in that context's @reflect module. In that case, it no longer clear what to do to lock down a context so that the %%[[Prototype]]%% of its objects can no longer be mutated.
+
+
+===== Normative-Optional Proposal (currently in ES5 spec language) =====
+
+//The following proposal is my elaboration of a suggestion made verbally by Dave Herman at the 11/2011 EcmaScript committee meeting. --MarkM//
+
+**B.?? Object.prototype.%%__proto__%%**
+
+The Object.prototype.%%__proto__%% property, if present, has attributes 
+{
+%%[[Get]]%%: %%[[ProtoGetter]]%%,
+%%[[Set]]%%: %%[[ProtoSetter]]%%,
+%%[[Enumerable]]%%: false,
+%%[[Configurable]]%%: true
+}.
+
+**B.?? %%[[ProtoGetter]]%%()**
+  - Let O be the result of calling ToObject passing **this** as the argument.
+  - Return the value of the %%[[Prototype]]%% property of O.
+
+**B.?? %%[[ProtoSetter]]%%(Parent)**
+  - Let O be the result of calling ToObject passing **this** as the argument.
+  - If O is not an object from this context, throw a **TypeError** exception.
+  - If O is non-extensible, throw a **TypeError** exception.
+  - If Parent is null, let P be null. Else let P be the result of calling ToObject passing Parent as the argument.
+  - Set the %%[[Prototype]]%% property of O to P.
+
+%%[[ProtoSetter]]%% shall be the exclusive means for mutating the %%[[Prototype]]%% property of objects in this context. //(See note above about possible conflict with Proxy goals.)//
+
+
+===== Open Issues =====
+
+  * As noted in the newsgroup, I contend we are making unnecessary work (the "frame check") and borrowing trouble (unknown, speculative based on experience extending semantics without long-duration field trials) by reflecting ''%%__proto__%%'' as an accessor with a usable setter. Either we should reflect as a data property, or supply a poisoned setter as Andreas R. suggested.  --- //[[brendan@mozilla.org|Brendan Eich]] 2012/02/18 20:23//

@@ -1,0 +1,117 @@
+===== Motivation =====
+
+Syntax matters, keystrokes count. Both readability and writability can be impaired by too much punctuation and unnecessary bracketing. Some languages even prefer indentation-based block structure to bracing, and their fans report read and write (including keystroke and RSI avoidance) wins.
+
+JS has a number of statement forms with mandatory parentheses around the head. Can we relax syntax without introducing ambiguity or bad human read/write factors? This proposal makes an attempt, first described [[http://brendaneich.com/2010/11/paren-free/|here]] and prototyped in [[https://github.com/mozilla/narcissus/|Narcissus]] via the --paren-free option.
+
+A specific motivation for this proposal is the irredeemable ''for-in'' loop, whose semantics have been underspecified forever, with ongoing divergence among implementations, and where [[strawman:array comprehensions]] and [[strawman:generator expressions]] do not want parenthesized ''for-in'' heads, yet where users //do// want better semantics for all ''for-in'' variants.
+
+===== History =====
+
+JS derives from Java from C++ from [[http://plan9.bell-labs.com/who/dmr/chist.html|C (via early C and B)]], from [[http://cm.bell-labs.com/cm/cs/who/dmr/bcpl.html|BCPL]]. BCPL had paren-free ''if'', etc., heads disambiguated via ''do'' reserved words to separate an expression consequent, avoiding ambiguity.
+
+JS style guides often favor mandatory bracing of ''if '' consequents and other sub-statement bodies, which also suffice to avoid ambiguity about where the condition or head expression ends and the dependent sub-statement starts.
+
+
+
+
+
+
+
+
+
+
+
+===== Proposal =====
+
+Consider ES5 12.5, "The ''if'' Statement", modified as follows:
+
+<code ebnf>
+IfStatement :
+    if Expression SubStatement else SubStatement
+    if Expression SubStatement
+    if ( Expression ) OtherStatement else Statement
+    if ( Expression ) OtherStatement
+</code>
+
+Where //SubStatement// is
+
+<code ebnf>
+SubStatement :
+    Block
+    KeywordStatement
+</code>
+
+and //KeywordStatement// is
+
+<code ebnf>
+KeywordStatement :
+    IfStatement
+    IterationStatement
+    ContinueStatement
+    BreakStatement
+    ReturnStatement
+    SwitchStatement
+    ThrowStatement
+    TryStatement
+    DebuggerStatement
+</code>
+
+This leaves
+
+<code ebnf>
+OtherStatement :
+    EmptyStatement
+    ExpressionStatement
+    VariableStatement
+    LabelledStatement
+</code>
+
+and
+
+<code ebnf>
+Statement :
+    Block
+    KeywordStatement
+    OtherStatement
+</code>
+
+The same pattern applied to //IfStatement// above applies to //IterationStatement//, //SwitchStatement//, and ''catch'' clauses in //TryStatement// -- except ''catch'' blocks must still be braced (as with ''try'' and ''finally'' since their introduction in ES3), so no //OtherStatement// ''catch'' body production.
+
+TODO: expand these all into a complete sub-grammar.
+
+We allow single sub-statements starting with unconditionally reserved keywords to be unbraced after a paren-free head, since the keyword acts as BCPL's ''DO'' separator to disambiguate head from body expression.
+
+Notice how this relaxation from requiring braces around the body allows ''if-else-if'' chains (idiomatic since K&R C and unproblematic as far as dangling-else goes) without a special case:
+
+<code javascript>
+  if x < y {
+  } else if x < z {
+  } else if x < w {
+  } else {
+  }
+</code>
+
+instead of the perfidious rightward drift of:
+
+<code javascript>
+  if x < y {
+  } else {
+    if x < z {
+    } else {
+      if x < w {
+      } else {
+      }
+    }
+  }
+</code>
+
+This keyword-or-brace refinement also matches some popular style guides that recommend braced bodies except where the body is a short keyword-prefixed statement starting with ''break'', ''continue'', ''throw'', or ''return''.
+
+Note that the paren-free ''if-else'' production requires the ''else'' clause to be a //SubStatement//. You cannot write ''if x > y { alert("win"); } else alert("lose")''.
+
+For backward compatibility, we support parenthesized heads with any sub-statement. To preserve the LR(1) grammar this requires factoring out //OtherStatement//.
+
+Thus, this proposal is intended to make no backward-incompatible syntactic or semantic changes to ES5. "Paren-free" is now purely a relaxation of syntax rules.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/06/05 21:06//

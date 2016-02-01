@@ -1,0 +1,166 @@
+Frameworks would benefit from such conveniences without too much additional complexity in engine implementations. Frameworks like [[http://www.ajax.asp.net/Default.aspx|Atlas]], Live, [[http://developer.yahoo.com/yui|YUI]], [[http://www.prototypejs.org|Prototype]], [[http://www.dojotoolkit.org|Dojo]], etc. routinely augment the built-in types. There are various reasons for this:
+
+(a) the built-ins are deficient and lack the “convenience” methods that have evolved out of AJAX
+
+(b) these Frameworks require specialized methods on the built-in objects.
+
+Of these, (a) contributes to unnecessary duplication and code bloat. The methods to add would be as follows.
+
+**Function Additions**
+
+//function//''.bind(''//thisValue//'','' //arguments//...'')''
+
+The ''bind'' method (''Function.prototype.bind'') creates a new function that curries //thisValue// and the optional //arguments//. ''this'' will be faithfully bound to //thisValue//, even if //thisValue// is ''null'' or ''undefined''.
+
+<del>//function//''.apply(''//thisValue//'','' //arguments//'')''
+//function//''.call(''//thisValue//'','' //arguments//...'')''
+
+The specification of the ''apply'' and ''call'' methods (''Function.prototype.apply'' and ''Function.prototype.call'') creates a new function that curries //thisValue// and the optional //arguments//. ''this'' shall be faithfully bound to //thisValue//, even if //thisValue is// ''null'' or ''undefined''.</del>
+----
+
+
+**Array Additions**
+
+These methods do not use JS1.6's troublesome and unnecessary //thisValue// parameter.
+
+//array//''.indexOf(''//value//'')''\\
+//array//''.lastIndexOf(''//value//'')''\\
+//array//''.every(''//func//'')''\\
+//array//''.filter(''//func//'')''\\
+//array//''.forEach(''//func//'')''\\
+//array//''.map(''//func//'')''\\
+//array//''.some(''//func//'')''
+
+Relevant Goal: [[es3.1:es3.1_goals|2, 3]]\\
+Relevant Design Principle: [[es3.1:design_principles|2a, 2b, 3]]\\
+Relevant ES4 proposal: [[proposals:static_generics|static generics]]\\
+Relevant ES3.1 proposal: {{es3.1:es31_arrayobject.pdf|pdf}}
+----
+**String Additions**
+
+//string//''.trim()'', //string//''.quote()''
+
+Relevant Goal: [[es3.1:es3.1_goals|2, 3]]\\
+Relevant Design Principle: [[es3.1:design_principles|2a, 2b, 3]]\\
+Relevant ES4 proposal: [[proposals:static_generics|static generics]]\\
+Relevant ES3.1 proposal: {{es3.1:es31_stringobject.pdf|pdf}}
+----
+
+**Object Additions**
+
+Methods are added to the global ''Object'' object. There would be security and reliability hazards
+if these were added to ''Object.prototype''.
+
+''Object.dontEnum(''//object//'','' //memberName//'')''
+
+The own property //memberName// of //object// is marked to be excluded for the ''for'' ''in'' enumeration.
+
+If a new object is made that delegates to //object//, the new object may create 
+and change its own //memberName// property, and that property will be enumerable.
+
+''Object.readOnly(''//object//'','' //memberName//'')''
+
+The own property //memberName// of //object// is marked so that it cannot be modified.
+Attempting to change a readOnly property will throw an exception.
+
+If a new object is made that delegates to //object//, the new object may create and change its own //memberName// property.
+
+''Object.dontDelete(''//object//'','' //memberName//'')''
+
+The own property //memberName// of //object// is marked so that it cannot be deleted by the ''delete'' operator.
+Attempting to delete a dontDelete property will throw an exception.
+
+If a new object is made that delegates to //object//, the new object may create 
+and delete its own //memberName// property.
+
+''Object.fix(''//object//'')''
+
+The ''fix'' method fixes an object so that new properties cannot be added to it.
+Attempting to add a new property to a fixed object will throw an exception.
+
+If a new object is made that delegates to //object//, the new object may create 
+new properties.
+
+''Object.hasOwnProperty(''//object//'','' //memberName//'')''
+
+The ''hasOwnProperty'' method returns ''true'' if the //object// contains a
+property with the key //memberName//, ignoring the chain of delegation.
+
+''Object.keys(''//object//'')''
+
+The ''keys'' method produces an array containing all of the enumerable keys of the 
+object, in no particular order.
+
+''Object.values(''//object//'','' //keys//'')''
+
+The ''values'' method produces an array containing the values from an object. 
+By default, the array is filled with the enumerable values of the object. 
+If a //keys// array parameter is supplied, then it provides the names of the 
+members whose values should be included in the result, in the order determined 
+by the //keys//.
+
+''Object.beget(''//object//'')''
+
+The ''beget'' method returns a new empty object that delegates to the original //object//.
+
+It can be implemented as
+
+<code>
+Object.beget = function (object) {
+    function F() {}
+    F.prototype = object;
+    return new F();
+};
+</code>
+
+//object//''.isEmpty()''
+
+The ''isEmpty'' method returns ''true'' if the //object// (ignoring its 
+delegation chain) has no properties.
+
+It can be implemented as
+
+<code>
+Object.prototype.isEmpty = function () {
+    var i;
+    if (typeof this === 'object' || typeof this === 'function') {
+        for (i in this) {
+            if (Object.hasOwnProperty(this, i)) {
+                return false;
+            }
+        }
+    }
+    return true;
+};
+</code>
+
+Relevant Goal: [[es3.1:es3.1_goals|2, 3]]\\
+Relevant Design Principle: [[es3.1:design_principles|2a, 2b, 3]]\\
+Relevant ES4 proposal: none
+----
+**Date Additions**
+
+''date.toISOString()''
+
+Relevant Goal: [[es3.1:es3.1_goals|2, 3]]\\
+Relevant Design Principle: [[es3.1:design_principles|2a, 2b, 3]]\\
+Relevant ES4 proposal: [[proposals:date_and_time|date and time]]
+----
+
+ --- //[[pratapl@microsoft.com|Pratap Lakshman]] 2007/04/15 02:49//
+
+Most of these method additions appear to be target at the prototype objects (Array.prototype, String.prototype, etc.) However, ES4 proposal referenced is static generics which adds these methods to the actual static constructor (Array, String, etc.) I believe we should be referencing the Native Objects chapter of the specification: [[http://wiki.ecmascript.org/doku.php?id=spec:chapter_19_native_objects]]. However, I am certainly not opposed to including static generics in ES3.1, I think there is value in that.
+/
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2008/02/27 16:42//
+
+Also, there are a number of methods listed here that are not in ES4, and so violate compatibility. I believe the "keys", "values", "beget", "isEmpty", "toJSONString", and "parseJSON" should be removed. Also "dontenum" should be changed to "propertyIsEnumerable" where the second argument is used to set DontEnum.
+ --- //[[kzyp@dojotoolkit.org|Kris Zyp]]//
+
+
+Object.get has to have a well defined order. This is a requirement for web compatibility  See proposals:bug_fixes FOR.IN.LOOP.CREATION.ORDER for more info.
+
+ --- //[[arv@google.com|Erik Arvidsson]] 2008/03/11 06:44//
+
+The changes to Function.prototype.call and Function.prototype.apply are not compatible with ES3. Even though I like the changes I think they are too dangerous to be introduced without a version flag/strict mode/alternative names.
+
+ --- //[[arv@google.com|Erik Arvidsson]] 2008/03/11 06:49//

@@ -1,0 +1,428 @@
+====== Reference Evaluator ======
+
+This approach is traditionally known as [[http://lambda-the-ultimate.org/classic/message8879.html|definitional interpreters]], thanks to a classic paper by Reynolds.
+
+===== ML =====
+
+I'm linking to a separate discussion on [[discussion:ML]] as a central place to discuss information about ML: how to install and use ML, how to get up and running with our repository, etc.
+
+===== Data type =====
+
+Probably define these as abstract data types somehow:
+
+==== Machine state ====
+
+The machine state holds data for the current evaluation context:
+
+Data:
+
+  * ML machine state
+  * environment
+
+==== Environment ====
+
+Environment: One question here is how we model internal binding ribs / activation records.  For the moment we can assume they are prototype-less plain objects, but this could be refined (by adding another extension function).
+
+Data:
+  * list of scope frames
+  * this
+
+Operation:
+  * get/set/delete variable
+  * extend extend environment with scope frame
+
+==== Scope frame ====
+
+Data:
+
+  * object value
+  * static type value
+  * open namespace set
+  * pragma settings
+
+==== Values ====
+
+Data:
+
+  * null
+  * undefined
+  * instances of Object and its subclasses
+
+==== Object and property ====
+
+An ''Object'' is a unit of storage with identity, containing a property set, with operations.  The properties are not actually exposed as data types, but operations on properties' aspects are defined on objects that hold properties:
+
+Data:
+
+  * Prototype
+  * Type descriptor (formerly Traits), which is not its class but its instance type
+  * Class name
+  * Table of properties
+  * Table of slots
+
+Operations:
+
+  * Get/set property value
+  * Get property attributes
+  * Get property type
+  * Delete property
+
+A ''Property'' is logically a quadruple of name, value, type, and attributes (this will be removed completely):
+
+==== Type descriptor ====
+
+Kinds:
+
+  * Instance descriptor
+  * Interface descriptor
+  * Structure descriptor
+  * Wrapper (to express object conversions under a structural type)
+
+Data:
+
+  * Set of property descriptors
+  * Array of method bodys
+  * Base class
+  * Set of interfaces
+
+==== Property descriptor ====
+
+Data:
+
+  * Name
+  * Kind, one of getter, setter, function, slot
+  * Type descriptor
+  * Index
+
+==== Method body ====
+
+Data:
+
+  * Code block
+  * Class environment
+
+
+==== Name ====
+
+  * Name: a string naming the property or one of a set of unforgeable internal property names
+
+<code sml>
+type name = {
+    ns: namespace,
+    id: string,
+};
+</code>
+
+  * Namespace
+
+<code sml>
+type namespaceKind = Private | Public | Protected
+type namespace = {
+    ns_kind: namespaceKind,
+    ns_name: string
+};
+</code>
+
+  * Multiname -- set of Names
+
+==== Package ====
+
+Data:
+
+  * identifier
+  * public namespace
+  * internal namespace
+
+
+
+===== Operations =====
+
+  * ToBoolean( v : * )
+  * Convert( v : *, t : Type )
+  * Callcc
+
+===== Open questions =====
+
+  * Arguments object?  These are strange in ES3 but can probably be expressed by means of getters and setters in ES4
+ 
+
+  * Stack explicit or implicit?  Implicit is easier (save machine state in local variables on nontail call; restore on return) than explicit (continuation register in machine; explicit saving of frame on this stack on nontail call), but an implicit stack makes yield much harder (need to use call/cc or some generator abstraction?).
+
+
+  * If we use call/cc, then in order to get proper tail recursion for our reference implementation, we will need to use an optimized implementation strategy for call/cc that includes the operational semantics reduction rule, which does not (I believe) change the observable behavior of programs, only their space usage:
+<code>
+    E[let/cc ret in E'[ret e]] -> E[e]       provided E' does not include a try clause
+</code>
+
+===== Critique =====
+
+Unclear whether it's appropriate to have unforgeable internal property names or names with an "internal" attribute that need special accessor methods?
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/10/19 07:25//
+
+Don't forget getters and setters!  To say it in ES4:
+
+<code javascript>
+type Property = {
+    name: String,
+    dontEnum: Boolean,
+    dontDelete: Boolean,
+    readOnly: Boolean,
+    hasGetter: Boolean,
+    hasSetter: Boolean,
+    value: (*, {getter:function(String):*, setter:function(String,*):void})
+};
+</code>
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/10/19 10:04//
+
+====== Sketches ======
+
+Here are some sketches for a subset of the expression language, just trying to get a feel for what the spec will look like and also trying to expose software engineering issues.
+
+We need a style guide.  The code below is not stylistically uniform; ObjectLiteral carries a value that is just a list, instead of a record like the other expression constructors carry.  Is this OK or not?  (I think it's not OK.)
+
+We need to define suitable naming conventions, because the spec will be big and we'll be confused quickly if we don't use consistent names.  Things that need to be named are types, constructors, functions, and variables.  (A variable that holds a value that serve the same purpose in two functions (eg ''bindings'' below) should have the same name in both functions, probably.  And so on.)
+
+We need to decide whether we break things down into cases throughout or create abstractions.  Destructuring assignment is a good example, probably.  We can write an evaluator for destructuring assignment that does not depend on the shape of the pattern and the value by abstracting over that shape; this simplifies the evaluator by pushing the detail to a different part of the system.  Is anything gained?
+
+How do we factor the interpreter?
+
+Do we envision doing some rough cuts and then cleaning up later, learning as we go?  How will this impact the schedule?
+
+How does ML deal with recursive record type definitions (and define-before-use)?  I assume it handles them well.  We probably need to get another tutorial on this.
+
+<code>
+type plainBinding = 
+    { 
+      plain_id: string; 
+      plain_init: expr option 
+    }
+
+type destructuringBinding =
+    { 
+      destructuring_pattern: expr; 
+      destructuring_init: expr 
+    }
+
+type varBinding = 
+    Plain of plainBinding
+  | Destructuring of destructuringBinding
+
+
+type letExpr = 
+    { 
+      let_ds: varBinding list; 
+      let_body: expr 
+    }
+
+type varExpr = 
+    { 
+      var_id: string 
+    }
+      
+type nameAndValue = 
+    { 
+      nv_name: string; 
+      nv_init: expr 
+    }
+
+type expr = 
+    LetExpr of letExpr
+  | VarExpr of varExpr
+  | ObjectLiteral of nameAndValue list
+	
+let evalExpr = function 
+    env LetExpr e -> evalLetExpr env e.let_ds e.let_body
+  | env VarExpr e -> evalVarExpr env e.var_id
+	
+and evalLetExpr env ds body =
+  let bindings = makeObject Types.objectT in
+  let newenv = extendEnvironment env bindings in 
+  createBndings bindings ds env;
+  evalExpr newenv body
+
+and createBindings bindings env ds =
+  List.iter (createBinding bindings env) ds
+
+and createBinding = function
+
+    bindings env Plain { plain_id = id;  
+			 plain_init = None }
+    -> setPropertyValue bindings id Values.undefined
+
+  | bindings env Plain { plain_id = id;
+			 plain_init = Some e }
+    -> setPropertyValue bindings id (evalExpr env e)
+
+  | bindings env Destructuring { destructuring_pattern = pattern;
+				 destructuring_init = e }
+    -> destructureAndBind bindings pattern (evalExpr env e)
+
+and destructureAndBind = function 
+    bindings (ObjectLiteral pat) e -> use pat
+  | bindings (Array pat) e -> use pat
+
+and evalVarExpr env id =
+  match lookupInEnv env (makeMultiName env id) with
+    None -> raise referenceeError id
+  | Some v -> v
+
+and lookupInEnv env multiname =
+  match env with 
+    [] -> None
+  | r::rs -> 
+      (match getValueProtocol r multiname with
+	None -> lookupInEnv env multiname
+      | result -> result)
+
+and getValueProtocol obj multiname =
+  match getPropertyValue obj multiname with    
+    None -> 
+      (match getPrototype obj with
+	None -> None
+      | Some proto -> getValueProtocol proto multiname)
+  | result -> result
+
+and getPropertyValue obj multiname = (* IMPLEMENTME *)
+</code>
+
+====== A hard case ======
+
+<code>
+function f(n)
+{
+  if (x) return f(10)
+  g(20)
+}
+</code>
+
+The return makes it hard to maintain tail semantics in the interpreter.  One possible patch is to use exceptions to implement a simple trampoline:
+
+<code>
+let fun evalBlock ss : stmt list =
+  evalStmts ss
+
+and fun evalStmts ss : stmt list =
+  match ss
+    [] -> ??
+  | [s::ss] -> evalStmt s; evalStmts ss
+
+and fun evalStmt env s =
+  match s
+    ExprStmt e -> evalExpr(env, e)
+  | DefineStmt _ -> ()
+  | IfStmt i -> evalIfStmt(env, i)
+  | WhileStmt w -> evalWhileStmt(env, w)
+  | ReturnStmt e -> evalReturnStmt e
+  | BreakStmt lbl -> evalBreakStmt lbl
+  | ContinueStmt lbl -> evalContinueStmt lbl
+  | ThrowStmt e -> evalThrowStmt e
+
+and fun evalIfstmt env i =
+  if (toBoolean(env, evalExpr(env, i.if_cond)))
+    evalStmt(env, i.if_then)
+  else
+    evalStmt(env, i.if_else)
+
+and fun evalLabelStmt env (lbl * s) =
+  try
+    evalStmt env s
+  with
+    BreakException lb when lb = lbl -> nothing
+
+and fun evalWhileStmt env w = (* roughly *)
+    let rec L result =
+      let v = evalExpr(env, w.while_cond) in
+      let b = toBoolean(env, v)
+      if not b then
+        let current =
+        try
+          Eval s labels
+        with
+          ContinueException lb when inlabels lb w.with_contLabel -> nothing
+        in
+        let next = (if current = nothing then result else current) in
+        L next
+      else
+        result
+    in
+      L nothing
+
+and fun evalReturnStmt env e =
+  raise (ReturnException, evalExpr(env,e))
+
+and fun evalThrowStmt env e =
+  raise (ThrowException, evalExpr(env,e))
+
+and fun evalBreakStmt env lbl =
+  raise (BreakException, lbl)
+
+and fun evalContinueStmt env lbl =
+  raise (ContinueException, lbl)
+
+and fun evalTailCallExpr(env,e) =
+  throw TailcallException with (fun () = eval(env,e))
+
+and fun evalNontailCallExpr(env,e) =
+  try
+    eval(env,e)
+  with TailcallException thunk in
+    thunk()
+  with ReturnException val in
+    val
+</code>
+
+
+===== old definitions =====
+
+
+<code>
+    type machine = (* abstract *)
+
+    fun getThis : machine -> object option = (* abstract *)
+    fun setThis : machine * object option -> unit = (* abstract *)
+    fun getEnvironment : machine -> environment = (* abstract *)
+    fun setEnvironment : machine * environment -> unit = (* abstract *)
+</code>
+
+<code>
+     type environment = (* abstract *)
+
+     fun extendEnvironment : environment * object -> environment = (* abstract *)
+     fun getVariableValue : environment * qualifiedName -> value option = (* abstract *)
+     fun setVariableValue : environment * qualifiedName * value -> () = (* abstract *)
+     fun deleteVariable : environment * qualifiedName -> bool = (* abstract *)
+</code>
+
+<code sml>
+     type object = (* abstract *)
+
+     fun getPrototype : object -> object option = ...;
+     fun getClassname : object -> string = ...;
+     fun getPropertyValue : object * qualifiedName -> value = ...
+     fun setPropertyValue : object * qualifiedname * value -> () = ...
+     fun deleteProperty : object * qualifiedName -> bool = ...
+     fun getPropertyAttributes : object * qualifiedname -> attributeSet = (* abstract *)
+</code>
+
+<code javascript>
+type property = {
+    name: qualifiedName,
+    dontEnum: bool,
+    dontDelete: bool,
+    readOnly: bool,
+    hasGetter: bool,
+    hasSetter: bool,
+    value: (*, {getter:function(string):*, setter:function(string,*):void})
+};
+</code>
+
+<code>
+    type attributeSet = (* abstract *)
+
+    fun getDontEnum : attributeSet -> bool = (* abstract *)
+</code>
+<code>
+    type value = Null | Undefined | Object object 
+</code>

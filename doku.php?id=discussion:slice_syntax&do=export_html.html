@@ -1,0 +1,280 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=discussion:slice_syntax&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=discussion" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=discussion:slice_syntax&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=discussion:slice_syntax&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<p>
+Separated from <a href="doku.php%3Fid=proposals:slice_syntax.html" class="wikilink1" title="proposals:slice_syntax" onclick="return svchk()" onkeypress="return svchk()">slice syntax</a>. 
+</p>
+<hr noshade="noshade" size="1" />
+
+<a name="discussion"></a><h1>Discussion</h1>
+<div class="level1">
+
+<p>
+ Minor and barely related point: Are you proposing to actually expose <code>intrinsic::charAt</code> at the language level or is this just handy shorthand for what the implementation would be doing?
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/09/27 07:34</em>
+</p>
+
+<p>
+At one point, I think when discussing <a href="doku.php%3Fid=proposals:builtin_classes.html" class="wikilink1" title="proposals:builtin_classes" onclick="return svchk()" onkeypress="return svchk()">builtin classes</a>, we agreed to allow early binding optimizations by opening the <code>intrinsic</code> namespace before using the standard prototype methods.  Many standard classes would thus declare <code>intrinsic function charAt(uint):String; prototype function charAt(*):String;</code> or something like that.  The idea was to have two names for all of the mutable standard prototype properties, and the intrinsic ones would be immutable.
+</p>
+
+<p>
+If this isn&rsquo;t captured anywhere, I will write it up.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/09/27 09:58</em>
+</p>
+
+</div>
+<!-- SECTION [51-920] -->
+<a name="older_discussion"></a><h1>Older discussion</h1>
+<div class="level1">
+
+<p>
+ Minor point: I think that if you want to allow <code>s[3:5] = &ldquo;p!&rdquo;</code> then you should also introduce plain string &ldquo;assignment&rdquo;, ie, <code>s[3] = &ldquo;f&rdquo;</code> returns a new string with the fourth element replaced.
+</p>
+
+<p>
+Major point: I think that your argument about the asymmetry of this kind of assignment and the &ldquo;normal&rdquo; kind is fairly important.  I would probably want the following to work, for symmetry: <code>s[3:5] = t[7:9] = &ldquo;foo&rdquo;</code>, but of course it won&rsquo;t.  Thus I think it is probably wrong to use the destructive update operator to denote functional update, and we should not allow string slices as lvalues.
+</p>
+
+<p>
+We could introduce a functional update operator for the purpose (eg <code>s[3:5] := &ldquo;foo&rdquo;</code>) but it doesn&rsquo;t seem worth the bother, probably, and it doesn&rsquo;t extend readily beyond strings and arrays.
+</p>
+
+<p>
+The slice syntax can extend to other things, though.  If you allow it to be used on the integer types then you can say things like 
+</p>
+<pre class="code">
+   for each ( let i in int[0:99] )
+     print(i)
+</pre>
+
+<p>
+Perhaps it&rsquo;s a reasonable basis for an iterator syntax?  That is, for any object the expression <code>obj[n:m]</code> is the sequence of values <code>obj[n]</code>, <code>obj[n+1]</code>, and so on.
+</p>
+
+<p>
+(This works as lvalues too: obj[0:99] = int[100:199] does what you think.)
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/03/31 04:42</em>
+</p>
+
+<p>
+Alas, <code>int[0:99]</code> would be the <code>int</code> values from <code>0</code> up to but not including <code>99</code>, which is neither what you meant, nor what the closed interval notation <code>[0, 99]</code> means (considering integers only on the real number line).  The <code>:</code> distinguishes notations, but only by a hair.  The off-by-one bug hazard here seems severe.
+</p>
+
+<p>
+I&rsquo;ve pined for better <code>range</code> syntax mirroring closed interval notation.  The obvious <acronym title="Practical Extraction and Report Language">Perl</acronym>-ish form, <code>0..99</code>, is impossible to reconcile with E4X&rsquo;s descendant operator (<a href="http://www.mozilla.org/js/language/ECMA-357.pdf" class="urlextern" target="_blank" title="http://www.mozilla.org/js/language/ECMA-357.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">ECMA-357 11.2.3</a>).
+</p>
+
+<p>
+I agree on making string splice illegal &ndash; strings should appear to be immutable if reference types, and assignment expression evaluation should result in the RHS.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/03/31 15:23</em>
+</p>
+
+<p>
+You&rsquo;re right, by analogy with <code>slice</code> and <code>substring</code> my interval notation does not work.  Too bad.  Perhaps the slice syntax is not really slice syntax, but property interval syntax?  <img src="lib/images/smileys/icon_smile.gif" align="middle" alt=":-)" />  That is, s[3:5] means s[3] through s[5].  (Perhaps that&rsquo;s introducing one too many new concepts into the language.)
+</p>
+
+<p>
+As for the <code>int[0::99]</code> thing, I really meant this as an analogy: I would like to think of <code>int</code> not just as a type name but as the name of some (constant) binding whose value is an object s.t. int[n] = n, for all n.  That way there is no special case, and there is no (?) confusion about open and closed intervals, for example.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/04/04 00:46</em>
+</p>
+
+<p>
+Half-open intervals work well in analysis because they can tile the real number line.  Same for natural number based slices.  My favorite Python example is <a href="http://biotech.embl-ebi.ac.uk:8400/sw/common/share/python/examples/dstruct/classics/permcomb.py" class="urlextern" target="_blank" title="http://biotech.embl-ebi.ac.uk:8400/sw/common/share/python/examples/dstruct/classics/permcomb.py" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">permcomb.py</a>.  So a slice should be denoted by [start:end] where end is one greater than the last index in the slice.  This fits <code>Array.prototype.slice</code> and <code>String.prototype.slice</code> (but alas not <code>Array.prototype.splice</code>, which is <acronym title="Practical Extraction and Report Language">Perl</acronym>-inspired and uses a count instead of an <code>end</code> fencepost &ndash; I will propose a way around this minor compatibility issue).
+</p>
+
+<p>
+I like your idea for closed interval subrange types, but they need a distinct syntax.  <code>int[first..last]</code>, or just <code>first..last</code>, would be fine and familiar, if only E4X hadn&rsquo;t preempted <code>..</code> for the descendant operator, which implicitly quotes its right operand.  <a href="http://haxe.org/" class="urlextern" target="_blank" title="http://haxe.org/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">HaXe</a> uses <code>...</code> instead, for its interval notation, probably to avoid ambiguity with the decimal point in numeric literals followed by the dot property access operator.  Perhaps the best option is to preempt <code>,</code> in the <a href="doku.php%3Fid=proposals:syntax_for_type_expressions.html" class="wikilink1" title="proposals:syntax_for_type_expressions" onclick="return svchk()" onkeypress="return svchk()">type expression grammar</a>, and make <code>int[first, last]</code> denote the integers from <code>first</code> up to and including <code>last</code>.
+</p>
+
+<p>
+Closed intervals and half-open slices are both useful.  More than a few scripting languages have syntax and fairly &ldquo;surface&rdquo; semantics for both.  I see no reason in principle why Edition 4 should not have both.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/04/04 10:33</em>
+</p>
+
+<p>
+Again, not quite what I was aiming for; I was looking for an expression syntax, not a type expression syntax.  Like <code>Object</code>, <code>int</code> is an object.  But of course it would be nice to type the resulting expression.
+</p>
+
+<p>
+Anyhow, I think that if I want an interval expression then I should split it out as a separate proposal, the slice syntax should not be obscured by this matter.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/05/12 04:43</em> 
+</p>
+
+</div>
+<!-- SECTION [921-5774] -->
+<a name="clarification"></a><h2>Clarification</h2>
+<div class="level2">
+
+<p>
+ What should the syntax of the expression before and after the &ldquo;:&rdquo; token be? Python allows an the equivalent of the <em>LogicalOrExpression </em> in ES3, but ES3 already allows the more general <em>Expression</em> syntax inside of square brackets. So for simplicity the syntax should be <code>&ldquo;[&rdquo; <em>Expression</em> &ldquo;:&rdquo; <em>Expression</em> &ldquo;]&rdquo;</code>. Sound right?
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6a%3B%26%23x6f%3B%26%23x64%3B%26%23x79%3B%26%23x65%3B%26%23x72%3B%26%23x40%3B%26%23x61%3B%26%23x64%3B%26%23x6f%3B%26%23x62%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6a;&#x6f;&#x64;&#x79;&#x65;&#x72;&#x40;&#x61;&#x64;&#x6f;&#x62;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Jeff Dyer</a> 2006/05/11 12:00</em> 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+Either expression may be omitted, so BNF postfix <code>?</code> is needed.  But <em>Expression</em> starts with comma expressions, then assignment, then conditional.  Conditional contains <code>:</code>, so seems ambiguous.  I believe that&rsquo;s why Python uses <em>LogicalOrExpression</em>, so I think we want <em>LogicalOrExpression?</em>.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/05/11 16:30</em>
+</p>
+
+</div>
+<!-- SECTION [5775-6572] -->
+<a name="example"></a><h1>Example</h1>
+<div class="level1">
+
+<p>
+ Here is the classic Python permcomb.py:
+</p>
+<pre class="code python"><span class="kw1">def</span> permute<span class="br0">&#40;</span><span class="kw2">list</span><span class="br0">&#41;</span>:
+    <span class="kw1">if</span> <span class="kw1">not</span> <span class="kw2">list</span>:                                        <span class="co1"># shuffle any sequence</span>
+        <span class="kw1">return</span> <span class="br0">&#91;</span><span class="kw2">list</span><span class="br0">&#93;</span>                                   <span class="co1"># empty sequence</span>
+    <span class="kw1">else</span>:
+        res = <span class="br0">&#91;</span><span class="br0">&#93;</span>
+        <span class="kw1">for</span> i <span class="kw1">in</span> <span class="kw2">range</span><span class="br0">&#40;</span><span class="kw2">len</span><span class="br0">&#40;</span><span class="kw2">list</span><span class="br0">&#41;</span><span class="br0">&#41;</span>:
+            rest = <span class="kw2">list</span><span class="br0">&#91;</span>:i<span class="br0">&#93;</span> + <span class="kw2">list</span><span class="br0">&#91;</span>i+<span class="nu0">1</span>:<span class="br0">&#93;</span>                <span class="co1"># delete current node</span>
+            <span class="kw1">for</span> x <span class="kw1">in</span> permute<span class="br0">&#40;</span>rest<span class="br0">&#41;</span>:                     <span class="co1"># permute the others</span>
+                res.<span class="me1">append</span><span class="br0">&#40;</span><span class="kw2">list</span><span class="br0">&#91;</span>i:i+<span class="nu0">1</span><span class="br0">&#93;</span> + x<span class="br0">&#41;</span>             <span class="co1"># add node at front</span>
+        <span class="kw1">return</span> res
+&nbsp;
+&nbsp;
+<span class="kw1">def</span> subset<span class="br0">&#40;</span><span class="kw2">list</span>, size<span class="br0">&#41;</span>:
+    <span class="kw1">if</span> size == <span class="nu0">0</span> <span class="kw1">or</span> <span class="kw1">not</span> <span class="kw2">list</span>:                            <span class="co1"># order matters here</span>
+        <span class="kw1">return</span> <span class="br0">&#91;</span><span class="kw2">list</span><span class="br0">&#91;</span>:<span class="nu0">0</span><span class="br0">&#93;</span><span class="br0">&#93;</span>                                <span class="co1"># an empty sequence</span>
+    <span class="kw1">else</span>:
+        result = <span class="br0">&#91;</span><span class="br0">&#93;</span>
+        <span class="kw1">for</span> i <span class="kw1">in</span> <span class="kw2">range</span><span class="br0">&#40;</span><span class="kw2">len</span><span class="br0">&#40;</span><span class="kw2">list</span><span class="br0">&#41;</span><span class="br0">&#41;</span>:
+            pick = <span class="kw2">list</span><span class="br0">&#91;</span>i:i+<span class="nu0">1</span><span class="br0">&#93;</span>                           <span class="co1"># sequence slice</span>
+            rest = <span class="kw2">list</span><span class="br0">&#91;</span>:i<span class="br0">&#93;</span> + <span class="kw2">list</span><span class="br0">&#91;</span>i+<span class="nu0">1</span>:<span class="br0">&#93;</span>                 <span class="co1"># keep [:i] part</span>
+            <span class="kw1">for</span> x <span class="kw1">in</span> subset<span class="br0">&#40;</span>rest, size-<span class="nu0">1</span><span class="br0">&#41;</span>:
+                result.<span class="me1">append</span><span class="br0">&#40;</span>pick + x<span class="br0">&#41;</span>
+        <span class="kw1">return</span> result
+&nbsp;
+&nbsp;
+<span class="kw1">def</span> combo<span class="br0">&#40;</span><span class="kw2">list</span>, size<span class="br0">&#41;</span>:
+    <span class="kw1">if</span> size == <span class="nu0">0</span> <span class="kw1">or</span> <span class="kw1">not</span> <span class="kw2">list</span>:                            <span class="co1"># order doesn't matter</span>
+        <span class="kw1">return</span> <span class="br0">&#91;</span><span class="kw2">list</span><span class="br0">&#91;</span>:<span class="nu0">0</span><span class="br0">&#93;</span><span class="br0">&#93;</span>                                <span class="co1"># xyz == yzx</span>
+    <span class="kw1">else</span>:
+        result = <span class="br0">&#91;</span><span class="br0">&#93;</span>
+        <span class="kw1">for</span> i <span class="kw1">in</span> <span class="kw2">range</span><span class="br0">&#40;</span><span class="nu0">0</span>, <span class="br0">&#40;</span><span class="kw2">len</span><span class="br0">&#40;</span><span class="kw2">list</span><span class="br0">&#41;</span> - size<span class="br0">&#41;</span> + <span class="nu0">1</span><span class="br0">&#41;</span>:       <span class="co1"># iff enough left</span>
+            pick = <span class="kw2">list</span><span class="br0">&#91;</span>i:i+<span class="nu0">1</span><span class="br0">&#93;</span> 
+            rest = <span class="kw2">list</span><span class="br0">&#91;</span>i+<span class="nu0">1</span>:<span class="br0">&#93;</span>                            <span class="co1"># drop [:i] part</span>
+            <span class="kw1">for</span> x <span class="kw1">in</span> combo<span class="br0">&#40;</span>rest, size - <span class="nu0">1</span><span class="br0">&#41;</span>:
+                result.<span class="me1">append</span><span class="br0">&#40;</span>pick + x<span class="br0">&#41;</span>
+        <span class="kw1">return</span> result</pre>
+<p>
+And here is the equivalent <acronym title="JavaScript">JS</acronym> (I believe it&rsquo;s all pure ES3, but I haven&rsquo;t tested) version:
+</p>
+<pre class="code javascript"><span class="co1">// Translated from permcomb.py, found at</span>
+<span class="co1">// http://biotech.embl-ebi.ac.uk:8400/sw/common/share/python/examples/dstruct/classics/permcomb.py</span>
+<span class="co1">// by searching for &quot;permcomb.py&quot;.</span>
+<span class="co1">//</span>
+<span class="co1">// This shows bugs, gaps, and verbosities in JS compared to Python:</span>
+<span class="co1">// 1. Lack of range([start, ] end[, step]).</span>
+<span class="co1">// 2. ![] =&gt; false, indeed !&lt;any-object&gt; =&gt; false.</span>
+<span class="co1">// 3. Missing append or push for strings (if append, then we'd want append for</span>
+<span class="co1">//    arrays too).</span>
+<span class="co1">// 4. Missing slice operator syntax s[i:j].</span>
+<span class="co1">// 5. Lack of + for array concatenation.</span>
+&nbsp;
+String.<span class="me1">prototype</span>.<span class="me1">push</span> = <span class="kw2">function</span> <span class="br0">&#40;</span>str<span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="kw1">this</span> + str; <span class="br0">&#125;</span>;
+&nbsp;
+<span class="kw2">function</span> permute<span class="br0">&#40;</span>list<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">if</span> <span class="br0">&#40;</span>!list.<span class="me1">length</span><span class="br0">&#41;</span>                                   <span class="co1">// shuffle any sequence</span>
+        <span class="kw1">return</span> <span class="br0">&#91;</span>list<span class="br0">&#93;</span>;                                  <span class="co1">// empty sequence</span>
+    <span class="kw2">var</span> res = <span class="br0">&#91;</span><span class="br0">&#93;</span>;
+    <span class="kw1">for</span> <span class="br0">&#40;</span><span class="kw2">var</span> i = <span class="nu0">0</span>, n = list.<span class="me1">length</span>; i &lt; n; i++<span class="br0">&#41;</span> <span class="br0">&#123;</span>      <span class="co1">// delete current node</span>
+        <span class="kw2">var</span> rest = list.<span class="me1">slice</span><span class="br0">&#40;</span><span class="nu0">0</span>, i<span class="br0">&#41;</span>.<span class="me1">concat</span><span class="br0">&#40;</span>list.<span class="me1">slice</span><span class="br0">&#40;</span>i+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>;
+        <span class="kw1">for</span> each <span class="br0">&#40;</span><span class="kw2">var</span> x <span class="kw1">in</span> permute<span class="br0">&#40;</span>rest<span class="br0">&#41;</span><span class="br0">&#41;</span>               <span class="co1">// permute the others</span>
+            res.<span class="me1">push</span><span class="br0">&#40;</span>list.<span class="me1">slice</span><span class="br0">&#40;</span>i, i+<span class="nu0">1</span><span class="br0">&#41;</span>.<span class="me1">concat</span><span class="br0">&#40;</span>x<span class="br0">&#41;</span><span class="br0">&#41;</span>;     <span class="co1">// add node at front</span>
+    <span class="br0">&#125;</span>
+    <span class="kw1">return</span> res;
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">function</span> subset<span class="br0">&#40;</span>list, size<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">if</span> <span class="br0">&#40;</span>size == <span class="nu0">0</span> || !list.<span class="me1">length</span><span class="br0">&#41;</span>                      <span class="co1">// order matters here</span>
+        <span class="kw1">return</span> <span class="br0">&#91;</span>list.<span class="me1">slice</span><span class="br0">&#40;</span><span class="nu0">0</span>, <span class="nu0">0</span><span class="br0">&#41;</span><span class="br0">&#93;</span>;                      <span class="co1">// an empty sequence</span>
+    <span class="kw2">var</span> result = <span class="br0">&#91;</span><span class="br0">&#93;</span>;
+    <span class="kw1">for</span> <span class="br0">&#40;</span><span class="kw2">var</span> i = <span class="nu0">0</span>, n = list.<span class="me1">length</span>; i &lt; n; i++<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw2">var</span> pick = list.<span class="me1">slice</span><span class="br0">&#40;</span>i, i+<span class="nu0">1</span><span class="br0">&#41;</span>;                  <span class="co1">// sequence slice</span>
+        <span class="kw2">var</span> rest = list.<span class="me1">slice</span><span class="br0">&#40;</span><span class="nu0">0</span>, i<span class="br0">&#41;</span>.<span class="me1">concat</span><span class="br0">&#40;</span>list.<span class="me1">slice</span><span class="br0">&#40;</span>i+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>; <span class="co1">// keep [:i] part</span>
+        <span class="kw1">for</span> each <span class="br0">&#40;</span><span class="kw2">var</span> x <span class="kw1">in</span> subset<span class="br0">&#40;</span>rest, size-<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+            result.<span class="me1">push</span><span class="br0">&#40;</span>pick.<span class="me1">concat</span><span class="br0">&#40;</span>x<span class="br0">&#41;</span><span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span>
+    <span class="kw1">return</span> result;
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">function</span> combo<span class="br0">&#40;</span>list, size<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">if</span> <span class="br0">&#40;</span>size == <span class="nu0">0</span> || !list.<span class="me1">length</span><span class="br0">&#41;</span>                      <span class="co1">// order doesn't matter</span>
+        <span class="kw1">return</span> <span class="br0">&#91;</span>list.<span class="me1">slice</span><span class="br0">&#40;</span><span class="nu0">0</span>, <span class="nu0">0</span><span class="br0">&#41;</span><span class="br0">&#93;</span>;                      <span class="co1">// xyz == yzx</span>
+    <span class="kw2">var</span> result = <span class="br0">&#91;</span><span class="br0">&#93;</span>;
+    <span class="kw1">for</span> <span class="br0">&#40;</span><span class="kw2">var</span> i = <span class="nu0">0</span>, n = <span class="br0">&#40;</span>list.<span class="me1">length</span> - size<span class="br0">&#41;</span> + <span class="nu0">1</span>; i &lt; n; i++<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+                                                        <span class="co1">// iff enough left</span>
+        <span class="kw2">var</span> pick = list.<span class="me1">slice</span><span class="br0">&#40;</span>i, i+<span class="nu0">1</span><span class="br0">&#41;</span>;
+        <span class="kw2">var</span> rest = list.<span class="me1">slice</span><span class="br0">&#40;</span>i+<span class="nu0">1</span><span class="br0">&#41;</span>;                     <span class="co1">// drop [:i] part</span>
+        <span class="kw1">for</span> each <span class="br0">&#40;</span><span class="kw2">var</span> x <span class="kw1">in</span> combo<span class="br0">&#40;</span>rest, size - <span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+            result.<span class="me1">push</span><span class="br0">&#40;</span>pick.<span class="me1">concat</span><span class="br0">&#40;</span>x<span class="br0">&#41;</span><span class="br0">&#41;</span>;
+    <span class="br0">&#125;</span>
+    <span class="kw1">return</span> result;
+<span class="br0">&#125;</span></pre>
+<p>
+The comment lists problems I would like to address in this proposal (after moving the current contents to <span class="curid"><a href="doku.php%3Fid=discussion:slice_syntax.html" class="wikilink1" title="discussion:slice_syntax" onclick="return svchk()" onkeypress="return svchk()">slice_syntax</a></span>).  More in a bit.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/08/30 10:07</em> 
+</p>
+
+</div>
+<!-- SECTION [6573-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/2/2981d521bf56f949c0f7c27dac0e7726.xhtml used -->
+</body>
+</html>

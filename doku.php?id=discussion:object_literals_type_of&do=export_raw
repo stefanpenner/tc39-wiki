@@ -1,0 +1,410 @@
+(Moved here from [[clarification:type_system]] (moved there from [[proposals:destructuring assignment]].))
+
+Conclusion:  ES4 will have [[structural types|non-recursive structural types]] that can be declared and named:
+
+    type Goose = {name: string, email: string, noisy: boolean};
+
+The name is just shorthand for the type; this is not a nominal type.
+
+Object literals may be annotated with the desired type: ''{properties} : Type''.  This specifies both the static and runtime type of the literal:
+
+    // create a Goose and pass it to f()
+    f({name: 'Ben', email: 'ben@quack.net', noisy: true} : Goose);
+
+An unannotated object literal has static and runtime type ''{*}'', the maximally compatible object type.  Its properties are not typed.
+
+    var white = {r: 0xff, g: 0xff, b: 0xff};  // the type is {*}, not {r:*, g:*, b:*, *} or anything like that.
+    white.r = "foo";  // ok, just like ES3
+    delete white.r;  // ok, just like ES3
+    var g : Goose = white;  // ok statically: * is compatible with Goose
+                            // also ok at runtime: {*} is compatible with Goose too
+
+ --- //[[jorendorff@mozilla.com|Jason Orendorff]] 2007/07/03 05:37//
+
+
+
+===== The problem =====
+
+Type checking for multiple return values is somewhat impaired as compared with the [[proposals:group assignment]] proposal:  An Array's type does not include its length, so programs that use arrays to implement multiple return values won't be checked to see whether every function returns the number of values expected by the caller.
+
+The returned Array will in the general case be an ''Array<Object>'' type (eg if a function returns a Number and a Boolean).  In that case we would expect this to work:
+
+<code javascript>
+   function f() { return [ 10, true ] }
+   var a : Number;
+   var b : Boolean;
+   &[ a, b ] = f()
+</code>
+
+but will it?  Will explicit casts be required?  Should casts be inserted by the implementation?
+
+Type checking for object patterns should be more straightforward: the right-hand-side expression must have a structure that contains the fields referenced on the left-hand-side, recursively.
+
+(The variable declarations are not necessary -- just there for illustration.)
+
+===== Can we use contracts? =====
+
+The general type should be ''Array<*>''.
+
+This cries out for supported fixed-length arrays where the length is part of the type.  The [[proposals:contracts]] proposal suggests ''Array<T>#hasLength(N)'', but a special form would be better.  Thoughts?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/04/03 18:57//
+
+===== A type system for records; type-inferred record construction =====
+
+''Array<String, Number>'' is definitely a subtype of ''Array<*>'' (which btw should not be interpreted as Array of length 1 containing anything, but I guess that's just like ''new Array(13)'').  It has known length 2 and fields of known types.  In a sense, it is really just a structure constructor.
+
+The problem is that we can't give ''[ "foo", 37 ]'' that type, because that syntax is used to construct all sorts of arrays, many of which will be changed later.  The type of that constant is really ''Array<*>''. 
+
+But this problem with the type of the object and array literals will bite us other places too, so perhaps we should fix it.  I have a modest proposal here. :-)
+
+Micro-proposal 1: The meaning of ''Array<T>'' is "Array of length at least 1 whose element 0 has type T" where T can be *.  Ditto for more fields, comma-separated.  The meaning of ''Array<T1,T2,T...>'' is "Array of length at least 2 whose first element has type T1, whose second element has type T2, and whose remaining elements all have type T".
+
+Micro-proposal 2: The type of the expression ''#["foo", 37]'' is ''Array<String,Number>''.
+
+Micro-proposal 3: The meaning of ''Object<id1:T1>'' is "dynamic object whose field id1 holds a value of type T1". Ditto for multiple fields, comma-separated.
+
+Micro-proposal 4: The meaning of ''#{ a: 10, b: "foo" }'' is ''Object<a:int, b:String>''.
+
+With this notation and type system it would be possible to write statically typable code that uses arrays or structures for multiple return values (and other things).
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/07 04:36//
+
+===== "Annotated new" proposal =====
+
+This reminded me of a proposal we had talked about last year, but which I forgot to write down till now:
+
+<code javascript>
+  var a = new Array {0: "hi", 1: "there", 2: "bye", name: "message", id: generate_id()}
+</code>
+
+would be short for:
+
+<code javascript>
+  var a = new Array; a[0] = "hi"; a[1] = "there"; a[2] = "bye"; a.name = "message"; a.id = generate_id()
+</code>
+
+Any //NewExpression// could be used where ''Array'' occurs in the example above.  The syntactic extension consists of ''{'' following the //NewExpression// that follows ''new''.  Properties are set as if by assignment.
+
+This is separate from what you propose, except of course we could try to harmonize syntax.  Type constraints on the properties being initialized would be up to the type being constructed.
+
+Data constructors that imply type from initial value are very convenient, and we want to typing for initialisers.  My only qualm is about syntax: with #{...} and &{...} we are looking more Perl-like.  But I like this micro-proposal.  If it's not so micro, and it doesn't relate to destructuring, I vote for splitting it out.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/04/07 13:53//
+
+===== We really need variables declared by destructuring to be typed =====
+
+Even besides the notion of how you denote the type of the //composite// being returned and destructured, I worry about the ability to declare the types of the //variables// being declared with ''var'' and ''let'' destructuring forms. For example:
+
+<code javascript>
+var &{a: x, b: y} = foo();
+</code>
+
+It seems to me that ''x'' and ''y'' get top-type in such an assignment, which sorta sucks. I can picture a couple resolutions. Overloading colon even more:
+
+<code javascript>
+var &{a: (x:int), b: (y:int) } = foo();
+</code>
+
+Or reverting to the use of equals:
+
+<code javascript>
+var &{x:int=a, y:int=b} = foo();
+</code>
+
+They both look awful to me, but then, I'm sort of terrified of the entire proposal, since it uses the ''&'' character, which is plainly cursed.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/04/07 15:15//
+
+We can't push this proposal too far from its original form.  Its charm lies in reusing array and object initialiser syntax (with a prefix as needed for disambiguation).
+
+So the way to explicitly type ''let'' and ''var'' bound slots is to separate declaration from destructuring assignment:
+
+<code javascript>
+var x: int, y: int
+&{a: x, b: y} = foo()
+</code>
+
+I'm leery of cursed ''&'' and ''#'' too, but right now the keyword-ier, "right-er" alternative is not coming to mind.  I will seek inspiration in beer and report back! ;-)
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/04/07 16:56//
+
+===== Contextual inferencing of record types =====
+
+I agree that the magic syntax pretty much stinks.  ''&'' doesn't easily go away if we want to keep the current form of destructuring assignment but we should not add insult to injury with ''#'' if we can avoid it.
+
+On the one hand we would probably like to have nice types inferred for any object and array literal.  On the other hand it's for multiple return values that not having it will hurt the most.  So perhaps we should consider that use case more closely.  I have a function that returns multiple values:
+
+    function f() : Array<String,int> {
+        ....
+        return [ "foo", 37 ];
+    }
+
+Here the type of the value in the return statement is ''Array<*>'' which is more general than the type of the function.  However, since this is an array literal that is clearly compatible with the return type, then there is no need to split hairs: there is no ambiguity here.  The compiler can clearly observe that the type meets the specification, no new syntax is needed.
+
+So the rule might be that array and object literals can be returned from functions / assigned to variables / passed to parameters with a narrower declared type, provided that the type of the literal can be interpreted as being of the narrower type without any run-time checking or casts.
+
+This is nice because it is economical: we make the type system a little more expressive, solve the multiple return value typing problem, but add no new surface syntax and avoid falling deeper into the Perl sinkhole.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/18 04:39//
+
+(BTW, this doesn't work.  See below.)
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/21 04:40//
+
+===== Annotating the object initializer =====
+
+Ideas for annotating types in object initialisers:
+
+1.  Type annotation with initialiser syntax.
+
+  let o = {p:int = 1, a:Array[[ double ]] = [3.14, 2.718]};
+
+  * Plus: matches var/let initialised annotated forms.
+  * Minuses: ambiguous / incompatible, both
+    * because assignment is allowed in initialisers currently, and
+    * because type expressions are not syntactically distinct from other kinds of expressions.
+
+2.  Chained colons.
+
+  let o = {p:int: 1, a:Array[[ double ]]: [3.14, 2.718]};
+
+  * Plus: syntactically unambiguous.
+  * Minus: syntax lacks clarity compared to annotated var/let with initialiser.
+
+3.  Parenthesization.
+
+  let o = {(p:int): 1, (a:Array[[ double ]]): [3.14, 2.718]};
+
+  * Plus: unambiguous extensions to existing syntax.
+  * Minus: doesn't resemble any other annotated, initialised form.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/04/20 00:29//
+
+I like the first proposal quite a lot, it is clear and syntactically similar to normal variable initialization.  The rule would be that a field is initialized by either of
+
+    name ":" nonAssignmentExpression
+    name ":" nonAssignmentExpression "=" AssignmentExpression
+
+It finds immediate application in the destructuring binding forms, solving our problems there.  (Though as a declaring form it will look a little weird, with field name preceding type preceding the name being bound.)
+
+No doubt there are at least 37 sites on the web that use ''{ foo: bar = baz }'' type initializers, and will break because of this.  This seems worth investigating.  Presumably we could crawl for occurences of problematic constructs?
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/20 09:55//
+
+===== Inferencing has real problems =====
+
+The following was written after I wrote the notes higher up on "Record types", after the first day of the April meeting.  At the meeting, we thought that we could avoid typing the literals themselves because the receiving variables could provide the context.  This is not true.
+
+It is straightforward to infer useful types of Object and Array literals from their structure: The literal
+
+    { x : 10, y : "foo" }
+
+can be seen as having the type
+
+    Object[[ x : int, y : String ]]
+
+However, in practice this does not buy us much, because the resulting object structure has untyped fields and in practice we cannot rely on the literal retaining the interesting type.  Consider:
+
+    var v : Object[[ x: int, y: String]] = { x: 10, y: "foo" };
+
+Now ''v.x'' is known to have type ''int'', which is good.  But then:
+
+    var w : Object = v;
+    w.x = "hi there";
+
+This is legal even in the strict language, and the assignment to ''w.x'' gets a dynamic type check, but that check will pass because the type of the field in the structure is ''*''.
+
+But now accesses to ''v.x'' will no longer yield an ''int'', so the type system has been subverted.
+
+Thus it follows that standard ECMAScript 3 literals must have types ''Object%%[[%%*]]'' and ''Array%%[[%%*]]'' only, in all contexts.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/21 04:15//
+
+===== Annotation again (summary and a new proposal) =====
+
+Thus some sort of annotation is necessary.  Here is a list of proposals:
+  * Literal inferencing: This is my ''#'' prefix annotation, which means "infer the types of the slots from the types of the expressions".  
+    * Plus: Compatible 
+    * Minus: Syntax-y
+    * Minus: may be hard to express certain things cleanly
+    * Minus: does not solve the destructuring-define problem
+  * Contextual inferencing: this uses the receiving context for the literal to give the slots a type and was mentioned above and then rejected as unsound.  To recover soundness we would give it greater powers: In the example above, the assignment of the literal to ''v'' would propagate types from the type of ''v'' into the literal, and the fields would have those types, not ''*'' like they normally do
+    * Plus: Compatible (actually)
+    * Plus: No new syntax
+    * Minus: contextual inference not seen elsewhere in the language(?)
+    * Minus: does not solve the destructuring-define problem
+    * Minus: seems hard to control.
+  * Explicit annotation: Brendan's proposals, based on Graydon's, which explicitly annotates every slot with its type.  
+    * Plus: it works
+    * Plus: solves the destructuring-define problem (allows new variables to be typed)
+    * Minus: Mildly incompatible on the syntax level, 
+    * Minus: a little wordy
+
+Here is a new proposal that harks back to all three proposals, but opens up some new possiblities.
+
+First we allow record types to be named:
+
+    record R = Object[[ x: int, y: String ]];
+
+Then we allow record type names to be used to annotate the object literal:
+
+    { x: 10, y: "foo" } : R
+
+Allowing the type to be named is good for programming-in-the-large, and it allows idioms like this:
+
+    record T = Array[[ int, String, * ]]
+    
+    function f() : T {
+        ...
+        return [ 10, 20 ] : T
+    }
+
+The types can also be used literally, they don't have to be named:
+
+    { x: 10, y: "foo" } : Object[[ x: int, y: String ]]
+
+The types can be used in destructuring definitions:
+
+    let &{ x: a, y: b } : R = blah()
+
+So far this looks like Brendan's "explicit annotation" proposal, and it's probably good enough.  But we can make it more powerful and convenient by allowing certain keywords to be used instead of type expressions in the annotation position.
+
+The keyword ''literally'' means to infer the slot types from the field values, what's called "literal inferencing" above, so
+
+    { x: 10, y: "foo" } : literally
+
+gives the literal the type R above.
+
+The keyword ''contextually'' means to infer the slot types from the receiver type, what's called "context inferencing" above, so
+
+    var x : R = { x: f(), y: g() } : contextually
+
+gives the literal that same type (and places requirements on the types of f and g).  Without the annotation this would be a type error, because R is a narrower type than the type of the literal.
+
+Advantages of this proposal:
+
+  * intuitive notation: like a variable is declared ''name : type'', a record is defined as ''value : type''
+  * we decouple type declaration from field initialization, this is separation of concerns
+  * solves the destructuring-define problem
+  * named types are Good
+
+Disadvantages of the proposal:
+
+  * minor incompatibility issue: consider ''foo ? { x: 10 } : { x: 20 }'' which is valid in ES3 but which would be a syntax error here because ''{ x: 20 }'' is not a type expression
+  * we decouple type declaration from field initialization, sometimes it would be nice to keep them together
+  * it's easy to leave off the type annotation in the destructuring definition, and then you get ''*'' for everything, probably not what you want
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/21 04:40//
+
+
+
+===== Structural types and typing of initializers: agreement at last =====
+
+After a great deal of discussion: we have [[discussion:structural types|nonrecursive(?) structural types]], introduced by "type".  There are sum types (unions), Object types, and Array types.
+
+<code>
+    type F = function (int,Object):int  // [[function (int,Object) int false *]]
+    type U = (A, B, C)                  // interface U = switch {A,B,C}
+    type R = { p: int, q: String }      // Object[[ p: int, q: String ]]
+    type S = [ int, , String!, * ]      // Array[[ int, *, String!, * ]]
+
+    type T = { f: int }
+    function f() : T {
+        return { f: 37 } : T;
+    }
+
+    let &{ f: x } : T = f()             // binds x with type int (from T) with value from f()
+</code>
+
+F, U, R, S, T can be mentioned in expression contexts and yield type objects.
+
+The types don't have to be named by "type", they can be used in type contexts (eg as the return type of a function).  The type contexts are at least the right-hand-side of ":" in parameter lists, variable declarations, type definitions, etc, and on the right-hand-side of the "is" operator (and maybe "typeof"?).
+
+Note the definitions of R and S, which say that objects of those types have at least the fields named, but may have more.
+
+It may be possible to [[discussion:classes as structural types with branding|define classes as branded records]], but it's not clear whether it's necessary.
+
+We can no longer write eg ''Object%%[[%% f: int ]]'', the syntax is as for R above.
+
+There will be a typecase statement:
+
+<code>
+    switch type ( E : U ) {
+        case (a : A) { ... }
+        case (b : B) { ... }
+    }
+</code>
+
+where '': U'' may be omitted and defaults to '': *''.  See the [[proposals:switch class]] proposal for more.
+
+The names in a record type can be qualified by a namespace (statically resolvable).
+
+Function types are syntactically as noted elsewhere except as noted above (change in how named types are defined).
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/21 12:25//
+
+We could express the above switch statement as syntactic sugar for the following:
+<code javascript>
+    var t:U = E;
+    if (t is A) {
+        var a:A = E as A; 
+        ...
+    } else if (t in B) {
+        var b:B = E as B; 
+        ...
+    } 
+</code>
+
+ --- //[[cormac@soe.ucsc.edu|Cormac Flanagan]] 2006/05/01 12:13//
+
+
+===== Prefix or suffix syntax for literal types? =====
+
+In light of Graydon's example (//below, in Modeling [[discussion:classes as structural types with branding|classes as structural types with brands]]//):
+
+<code javascript>
+  type T = {f:int};
+  var x:Object = {f:int};
+  var y:T = x;             // I believe we agreed to treat this as an error.
+  var z:T = new T(x);      // Maybe we should permit this, which makes a copy.
+</code>
+
+(and yes, ''var y:T = x'' must be an error), the older idea of supporting
+
+<code javascript>
+  var z:T = new T {f: 42}
+</code>
+
+can be seen in a new light.  It is bulkier by two characters and a mandatory space than '':T'' at the end, but the advantage of putting the type at the beginning looks better as the initialiser grows -- and I see many multiline initialisers being used today in "duck-typing" and JSON-like contexts.
+
+A lesser point: we chose to add a ''to'' operator instead of reusing '':'' as an operator, to avoid confusion when a conversion comes between ''?'' and '':'' in a conditional expression.  The same argument applies here, although parentheses can patch the symptom, and I admit that initialisers are less commonly expressed conditionally.
+
+The ''new T {...}'' syntax does not require parenthesization of the object initialiser, as the proposed "copy constructor" invocation would.  Besides conciseness and readability, the advantage of a ''new'' special form taking an initialiser as operand is that the right type of object can be created immediately -- no copying needed.  On the other hand, it's trivial to optimize the ''new T({...})'' special case, and the copy constructor has the advantage that it works on pre-existing ''Object'' instances.
+
+Destructuring ''var'' and ''let'' initialization, on the same hand, really wants '': T'' at the end of the "initialiser" lvalue.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/04/22 22:40//
+
+There are several reasons to keep '': T'' instead of adding ''new T'' in front.  Will write more when I'm back in Oslo.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/24 11:54//
+
+Lars: feel free to enumerate reasons, but don't worry -- I'm in favor of '': T'', especially in light of ''type'' definitions and destructuring.  Just wanted to review the alternative ''new T {...}'' construct.  I do think we will want ''new T(o)'' as Graydon suggests.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/04/24 15:57//
+
+Keeping in mind that we are only talking about surface syntax, here are some reasons (not all equally good) to keep the syntax of literals as a suffix '': T'' rather than a prefix ''new T'':
+
+  * //Symmetry/majority vote//: Every other annotation in the language is expressed using '': T'' (though of course annotations have a slightly different meaning), and there are quite a few cases
+  * //Related needs//: ''let [a,b,c] : T = E'' really needs it to be a suffix annotation
+  * //Syntax//: ''new T [37]'' is syntactically ambiguous
+
+It's even possible to fix the backward compatibility problem with ''c ? { a: 10 } : { b: 10 }'' by decreeing that the '':'' is interpreted as part of the conditional operator in this case, using the same mechanisms we use to handle ''in'' in for-loop headers.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/26 03:28//
+
+
+
+
+

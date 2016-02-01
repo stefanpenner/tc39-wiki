@@ -1,0 +1,124 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=discussion:hashcodes&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=discussion" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=discussion:hashcodes&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=discussion:hashcodes&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<p>
+This is the discussion page for <a href="doku.php%3Fid=proposals:hashcodes.html" class="wikilink1" title="proposals:hashcodes" onclick="return svchk()" onkeypress="return svchk()">hashcodes</a>.
+</p>
+
+<a name="older_discussion"></a><h1>Older discussion</h1>
+<div class="level1">
+
+<p>
+ This proposal is to standardize a technique of acquiring a small scalar (a string or an integer) representing the identity of an object. This is very helpful in creating efficient (hash-based) data structures. There are only a few points to discuss: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Whether to produce a string or an integer.</div>
+</li>
+<li class="level1"><div class="li"> Whether the identifiers are unique or only approximately unique.</div>
+</li>
+<li class="level1"><div class="li"> Whether the identifiers have any underlying structure or longevity guarantees wrt. the memory model.</div>
+</li>
+</ul>
+
+<p>
+ Other issues?
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+ Some kind of object hashcode would suffice for associating data with arbitrary objects, but we could go further.  An alternative that I have sketched at past TG1 meetings would expose <code>hashes</code> or Python dicts in the language, and not raise the above issues.  We might do this for all objects, rather than add a new subtype whose property identifiers work differently: 
+</p>
+<pre class="code">var o = {}, p = {}
+
+o{undefined} = 0
+o{null} = 1
+o{true} = 2
+o{3.14} = 3
+o{'p'} = 4
+o{p} = 5
+
+assert(o.p === o{'p'})
+assert(o{p} === 5)
+
+o{-0} = 'zero'
+assert(o{0} == o{-0})
+
+o[0] = 'string-identified zero'
+assert(o[0] != o{0})</pre>
+
+<p>
+ This may be too big a change to all objects.  Substituting 
+</p>
+<pre class="code">var o = new Hash, p = {}</pre>
+
+<p>
+ would limit the change, but would also cry out for concise initialiser syntax.
+</p>
+
+<p>
+Either way, users would expect a simple and direct way to discover number of items (length), and arrays of keys, values, and items.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/02/02 19:58</em>
+</p>
+
+<p>
+I find myself wishing there were more parenthesization characters in <acronym title="American Standard Code for Information Interchange">ASCII</acronym>! Alas. I think the braces would pay off much better as <a href="doku.php%3Fid=discussion:type_parameters.html" class="wikilink1" title="discussion:type_parameters" onclick="return svchk()" onkeypress="return svchk()">type parameter</a> indicators, as braces are one of the few remaining characters we can juxtapose with identifiers without ambiguity. I also think that with type parameters and a single global <code>hashcode(x:Value)</code> function (and perhaps <code>compare(x:Value, y:Value)</code> for ordered containers), you can code up this solution in standard library code, as <code>class Hashtable{k,v} { ... }</code> without stealing the brace characters.
+</p>
+
+<p>
+Type parameters are, after all, most strongly motivated by typed containers.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x67%3B%26%23x72%3B%26%23x61%3B%26%23x79%3B%26%23x64%3B%26%23x6f%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x67;&#x72;&#x61;&#x79;&#x64;&#x6f;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">graydon</a> 2006/02/09 15:06</em>
+</p>
+
+<p>
+Maybe we can have our cake and eat it too!
+</p>
+
+<p>
+What is a parameterized type but an invocation of a type constructor. So why not use the call syntax to get a parameterized type? Example, write <code>Array(int)</code> to construct the type for an Array of ints. This will break compatibility with some builtin classes (but we already have that problem) and might conflict with our current idea of using the same syntax to mean cast (and sometimes convert). More on this in <a href="doku.php%3Fid=proposals:type_parameters.html" class="wikilink1" title="proposals:type_parameters" onclick="return svchk()" onkeypress="return svchk()">type_parameters</a>
+</p>
+
+<p>
+Regardless, it is still worth asking &ldquo;do we need syntactic sugar for <code>o[hashcode(x)]</code>?&rdquo;. I don&rsquo;t know. What would the uninitiated user think if they saw <code>o{p} = 10</code>? The syntax gives it equal status with <code>o[p]</code>, so when do I use one rather than the other? Maybe the more explicit <code>o[hashcode(p)]=10</code> is better. 
+</p>
+
+<p>
+I like the idea of <code>o{p}</code> meaning <code>o[hashcode(p)]</code>, but these are questions I need answered before I can be sure.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6a%3B%26%23x6f%3B%26%23x64%3B%26%23x79%3B%26%23x65%3B%26%23x72%3B%26%23x40%3B%26%23x61%3B%26%23x64%3B%26%23x6f%3B%26%23x62%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6a;&#x6f;&#x64;&#x79;&#x65;&#x72;&#x40;&#x61;&#x64;&#x6f;&#x62;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Jeff Dyer</a> 2006/02/27 14:19</em> 
+</p>
+
+</div>
+<!-- SECTION [62-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/7/7c8647d7bd579fbe7aaf428dfa62ce48.xhtml used -->
+</body>
+</html>

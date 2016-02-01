@@ -1,0 +1,54 @@
+====== Fixing ''typeof'' ======
+
+(Also see the [[discussion:typeof|discussion page]] for this proposal)
+
+We are adding some new fundamental types in edition 4. What should the result of ''typeof'' be when a value of one of these new types is its operand?
+
+Based on the need for backward compatibility, we have decided on the following results for ''typeof'':
+
+^ Type	^ Result ^ Comment ^
+| Undefined	| "undefined" | |
+| Null	        | "null" | es4 bug fix |
+| Boolean	| "boolean" | | 
+| Number	| "number" | | 
+| String	| "string" | | 
+| XML	        | "xml" | new to e4x, but with no special case for Namespace | 
+| XMLList	| "xml" | ditto | 
+| Object (native and doesn't implement ''[Call]'') | "object" | | 
+| Object (native and implements ''[Call]'')	 | "function" | | 
+| Class | "function" | ''typeof String === "function"''| 
+| Interface | "object" | | 
+| Namespace | "object" | | 
+| int | "number" | | 
+| uint | "number" | |
+
+----
+
+I think it is too late to fix ''typeof''. The change proposed for ''typeof null'' will break existing code. For example, ''isNull'' functions have been written by idiots as 
+
+    function isNull(a) {
+        return typeof a == 'object' && !a;
+    }
+
+It is possible to write an ''isNull'' that performs correctly with the fixed ''typeof'', but existing code cannot anticipate the change.
+
+Perhaps a better alternative is a new operator, maybe called ''typeString'', which works the way ''typeof'' should work, including
+
+    typeString [] === 'array'
+
+----
+
+(Hi Doug -- please sign your comments.  Use the feather-icon button at the right end of the in-page toolbar.  Thanks!)
+
+This proposal was split from [[proposals:bug fixes]], but neither this proposal nor the bug fixes in that proposal are backward-compatible.  Instead we anticipate some amount of version checking will be required, for some of these fixes.  We don't know whether any of these changes will be acceptable without content "opting in".  We were planning to implement and test before finalizing the standard.  And the standard is going to live for a long time and show up in places where prior web content does not matter, so we intended to fix small problems that trip people up repeatedly.
+
+In this light, any thoughts?  I would like to edit this proposal to be free of discussion -- if I add qualification about version checking probably being required, and how this will be specified normatively one way or the other in ES4, would that suffice?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/09/05 21:39//
+
+----
+I like this fix. New code will definitely be better for it. But the old code breaks. 
+
+How would version checking work? What does an application look at to determine the version? Perhaps that doesn't matter because old code does not know to ask. Or are you saying that it works the other way, that the language processor has version modes, and the application asks for the one it is confortable with? 
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2006/09/06 21:34//

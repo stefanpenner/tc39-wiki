@@ -1,0 +1,48 @@
+This is the discussion page for [[proposals:name objects]]
+
+====== Discussion ======
+
+ISSUE: should ''Name'' define a ''toString'' that attempts to compute a qualified name expression?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/02/01 00:38//
+
+This is hard to do because there is no good way to express a namespace as an expression. Maybe we should just generate a descriptive string (like we do for objects). For example:
+
+<code javascript>
+package foo {
+    public var x
+}
+import foo.x
+namespace bar
+namespace baz = "bazuri"
+bar var y
+baz var z
+</code>
+
+Given these definitions, the following would be the translations of their names to strings
+
+  foo.x        -> "[namespace public foo]::x"
+  bar::y       -> "[namespace user-opaque /[namespace internal ]::bar]::y"
+  baz::z       -> "[namespace user bazuri]::z"
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2007/02/01 13:45//
+
+Cool, especially if ''Namespace'' has a ''toString'' method that produces ''"[namespace public foo]"'' already. Does it?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/02/01 15:13//
+
+In AS3, ''toString'' on namespace instances just produces the namespace name (that is, the uri). Spidermonkey (e4x) does the same. The problem comes with the builtin namespaces (private, public, etc). Are we willing to break compatibility to get more descriptive strings?  --- //[[jodyer@adobe.com|Jeff Dyer]] 2007/02/01 15:38//
+
+You're right, this is a break from E4X (ECMA-357), which specifies ''Namespace.prototype.toString''. But E4X doesn't have the ''namespace foo'' declaration, so it does not say what the result of ''toString'' should be for a user-defined namespace not initialized by a URI string (which could be any old string). It seems we have at most three pieces of information to convey in the result of ''toString'':
+
+  * the declared name of the namespace (if there is one; and which itself could be namespace-qualified, right?)
+  * the initialising URI string (any old string, we should probably not say URI in the spec, or else require a well-formed URI) **OR** the package name (''foo'' in your example)
+  * the "kind" (''public'', ''private'', ''internal'', ''user'' -- any others?)
+
+If we are going to deviate from E4X, we should probably include all of these in an easy-to-split format. Brainstorming welcome.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/02/01 15:52//
+
+The declared name is irrelevant to the identity of the namespace, so I say we don't put it in the toString string. My example above that uses the binding name as the uri is misleading (I've fixed it). If anything we would want to generate a fake URI that is unique and recognisably associated with a particular declaration -- maybe including the path of its scope and its binding name. We could also use a different kind of user namespace (''user-opaque''?). Also we need to add the ''intrinisc'' kind to your list of namespace kinds above.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2007/02/02 10:38//

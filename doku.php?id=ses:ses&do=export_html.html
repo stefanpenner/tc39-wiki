@@ -1,0 +1,182 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=ses:ses&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=ses" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=ses:ses&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=ses:ses&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=ses:ses&amp;do=export_html.html#secure_ecmascript" class="toc">Secure ECMAScript</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=ses:ses&amp;do=export_html.html#current_work" class="toc">Current Work</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=ses:ses&amp;do=export_html.html#capabilities" class="toc">Capabilities</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=ses:ses&amp;do=export_html.html#expression" class="toc">Expression</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=ses:ses&amp;do=export_html.html#design_process" class="toc">Design Process</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=ses:ses&amp;do=export_html.html#ses_secure_ecmascript_design_experiment" class="toc">SES (Secure ECMAScript) Design Experiment</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="secure_ecmascript"></a><h1>Secure ECMAScript</h1>
+<div class="level1">
+
+<p>
+ See <a href="doku.php%3Fid=ses:ses_proposal_working_draft.html" class="wikilink1" title="ses:ses_proposal_working_draft" onclick="return svchk()" onkeypress="return svchk()">SES Proposal Working Draft</a>, a proposal to TC39-TG1 for a secure ECMAScript dialect based on the &ldquo;MountainView&rdquo; version of the ECMAScript 3.1 Specification.
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+*  <a href="doku.php%3Fid=ses:kona.html" class="wikilink1" title="ses:kona" onclick="return svchk()" onkeypress="return svchk()">The Kona Suggestions</a>
+</p>
+
+<p>
+The design of the ECMAScript Programming Language got a lot of things right. It combined functions and prototypes with a familiar syntax that is surprisingly expressive. ECMAScript displaced Java as the language of the web browser. Its popularity is now propelling it into other venues, such as widget systems and scriptable applications.
+</p>
+
+<p>
+Unfortunately, ECMAScript&rsquo;s design did not anticipate the security requirements of an open networked platform. ECMAScript&rsquo;s design is the root cause of a class of exploits that are collectively known as XSS that can subject casual web users to identity theft and other maladies. ECMAScript&rsquo;s design is the biggest obstacle to mashups, a powerful program construction and reuse pattern that is likely to be the next leap forward in software technology. Mashups are the key to the next generation of web applications.
+</p>
+
+<p>
+ECMAScript&rsquo;s security weaknesses are not the result of bugs, although many bugs are present in the language&rsquo;s design, specification, and implementations. The root of the weaknesses lies in the Global Object. The existence of the Global Object gives all scripts, regardless of their origin or intentions, the same capabilities. 
+</p>
+
+<p>
+All of the major web sites, and many of the minor web sites, are feeling the pain. They have always been at risk due to security mishaps. But now important new initiatives are being frustrated because of the inherent dangers. 
+</p>
+
+<p>
+The current work within TC39 to define a fourth edition of ECMAScript does not address these critical security issues. The goals of that project were set before the mashup security issues were widely recognized within the ECMAScript community. As a result, the proposed design is not responsive to the urgent needs of the community.
+</p>
+
+</div>
+<!-- SECTION [1-1989] -->
+<a name="current_work"></a><h2>Current Work</h2>
+<div class="level2">
+
+<p>
+ There are several efforts currently going on to produce safe ECMAScript dialects. Three that have been made public are ADsafe, Google&rsquo;s Caja, and Facebook&rsquo;s FBJS. All three take the approach of defining a subset of ECMAScript that is considered safe and that can also be executed in current ECMAScript engines. Caja and FBJS are transformers. They modify programs by renaming variables and properties, and by inserting runtime checks to prevent direct access to the Global Object or other dangerous capabilities. The transformers will reject programs that cannot be transformed into safe ones. ADsafe does not do transformations. Instead it performs a mechanical check on a program, assuring that it can be run safely. ADsafe defines a smaller subset than Caja or FBJS, but has the advantage that the programs it accepts run unaltered.
+</p>
+
+<p>
+The assumption behind all three is that there is a safe language inside of ECMAScript that can be obtained by removing the language&rsquo;s worst features. None of these efforts promise to pass all current programs. Programs must be written to the new rules. These rules begin to impose a capability discipline on the language. Such discipline is not possible when programs have direct access to the Global Object.
+</p>
+
+<p>
+These austere subsets all amplify the pain of programming, but they do show a reasonable starting point. We should start with a secure core language, and then carefully add conveniences without introducing insecurity, complexity, or confusion.
+</p>
+
+</div>
+<!-- SECTION [1990-3508] -->
+<a name="capabilities"></a><h2>Capabilities</h2>
+<div class="level2">
+
+<p>
+ The Object-Capability Model comes down to the management of object references. A function is only capable of interacting with objects for which it has references. References can be found in the function&rsquo;s <em>context</em>. New references can be obtained by <em>introduction</em>, either passed as parameters or returned from other functions, or obtained from shared objects. A reference to a new object is obtained by <em>creating</em> a new object. There must be no other way to obtain references. References cannot be obtained from global variables. References cannot be taken by force from a function.
+</p>
+
+<p>
+The first step in securing ECMAScript is to remove all features that could be used to obtained references except by context, introduction, or construction. Capability leakage cannot be tolerated. The design should also prevent collusion, which would allow two programs that have not been given the capability to communication a means of exchanging references. The mutability of function objects is a problem here.
+</p>
+
+<p>
+Compilation units must be completely isolated from each other. Each unit, when initialized, should return an object that describes its role and contains capabilities to its public methods. A system holds these sets of capabilities, and performs introductions, linking the units together.
+</p>
+
+<p>
+Compilation units must be able to cooperate after they are introduced, but introduction must not lead to compromise.
+</p>
+
+</div>
+<!-- SECTION [3509-4947] -->
+<a name="expression"></a><h2>Expression</h2>
+<div class="level2">
+
+<p>
+ The next step is to cautiously add features that make capabilities easier to manage or make programming more expressive. Examples include support for object immutability, so that untrusted programs can be given references to objects as well as functions, and support for arrays so that collections can be handled as easily as single objects.
+</p>
+
+</div>
+<!-- SECTION [4948-5314] -->
+<a name="design_process"></a><h2>Design Process</h2>
+<div class="level2">
+
+<p>
+ Minimalism is a critical aspect of a secure language. Minimalism is not something that committees do well.
+</p>
+
+<p>
+So I think the best way to proceed is with a competition, similar to the competition that produced Ada. TC39 should produce a requirements document that bounds the design. It will require a solution to the Mashup Problem, allowing two programs from two sources, cooperating in the same web page, each holding its own secrets, without having to trust each other. If a program is constructed with capability discipline, it should not be possible for another mashup component to misappropriate its data or references, or confuse it into acting against its own interest. The language must not be subject to any form of XSS attack.
+</p>
+
+<p>
+The competition would happen in a number of phases. After each phase, the competitors may refine their designs, influenced by the other designs. This might result in convergence, but it might not.
+</p>
+
+<p>
+In the last phase, implementations will be tested. Any design that is subject to capability leakage will be eliminated.
+</p>
+
+<p>
+The surviving designs are then subject to a beauty pageant. Candidates will be judged by TC39 on beauty, expressiveness, and minimalness. The winner is adopted as Secure ECMAScript (name subject to change). TC39 would produce the final specification.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x40%3B%26%23x79%3B%26%23x61%3B%26%23x68%3B%26%23x6f%3B%26%23x6f%3B%26%23x2d%3B%26%23x69%3B%26%23x6e%3B%26%23x63%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x63;&#x72;&#x6f;&#x63;&#x6b;&#x40;&#x79;&#x61;&#x68;&#x6f;&#x6f;&#x2d;&#x69;&#x6e;&#x63;&#x2e;&#x63;&#x6f;&#x6d;">Douglas Crockford</a> 2008/01/09 18:19</em>
+</p>
+
+</div>
+<!-- SECTION [5315-6720] -->
+<a name="ses_secure_ecmascript_design_experiment"></a><h2>SES (Secure ECMAScript) Design Experiment</h2>
+<div class="level2">
+
+<p>
+ Design an Object Capability Programming Language by removing or repairing features in ES5/Strict.
+</p>
+
+<p>
+It should be possible to write useful programs that produce the same result running as ES5/Strict and SES.
+</p>
+
+<p>
+It is not required that all ES5/Strict programs can run as SES.
+</p>
+
+<p>
+New features should be considered for SES only if they are likely to be included in ES-Harmony.
+</p>
+
+<p>
+There should be a straight-forward translation from SES to ES5/Strict.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x40%3B%26%23x79%3B%26%23x61%3B%26%23x68%3B%26%23x6f%3B%26%23x6f%3B%26%23x2d%3B%26%23x69%3B%26%23x6e%3B%26%23x63%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x63;&#x72;&#x6f;&#x63;&#x6b;&#x40;&#x79;&#x61;&#x68;&#x6f;&#x6f;&#x2d;&#x69;&#x6e;&#x63;&#x2e;&#x63;&#x6f;&#x6d;">Douglas Crockford</a> 2009/05/29 17:11</em> 
+</p>
+
+</div>
+<!-- SECTION [6721-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/d/d82cc8fa003d46bb30d725470cf378c9.xhtml used -->
+</body>
+</html>

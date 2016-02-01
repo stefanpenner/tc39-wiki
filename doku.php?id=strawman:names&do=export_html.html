@@ -1,0 +1,283 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:names&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:names&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:names&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:names&amp;do=export_html.html#this_proposal_has_been_superseded" class="toc">This proposal has been superseded</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:names&amp;do=export_html.html#overview" class="toc">Overview</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:names&amp;do=export_html.html#name_objects" class="toc">Name objects</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:names&amp;do=export_html.html#name_objects_as_property_names" class="toc">Name objects as property names</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:names&amp;do=export_html.html#binding_private_names" class="toc">Binding private names</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:names&amp;do=export_html.html#creating_private_object_properties" class="toc">Creating private object properties</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:names&amp;do=export_html.html#semantics" class="toc">Semantics</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:names&amp;do=export_html.html#potential_extensions" class="toc">Potential Extensions</a></span></li>
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:names&amp;do=export_html.html#references" class="toc">References</a></span></li>
+</ul>
+</div>
+</div>
+
+<a name="this_proposal_has_been_superseded"></a><h1>This proposal has been superseded</h1>
+<div class="level1">
+
+<p>
+ <strong><em>NOTE: This proposal has been superseded by the <a href="doku.php%3Fid=strawman:private_names.html" class="wikilink1" title="strawman:private_names" onclick="return svchk()" onkeypress="return svchk()">private_names</a> proposal.</em></strong>
+</p>
+
+</div>
+<!-- SECTION [1-142] -->
+<a name="overview"></a><h1>Overview</h1>
+<div class="level1">
+
+<p>
+ In existing ECMAScript, it is not possible to create hidden properties. It is possible to create non-enumerable properties, but they can still be discovered by guessing their property name. The <a href="doku.php%3Fid=proposals:proposals.html" class="urlextern" target="_blank" title="http://wiki.ecmascript.org/doku.php?id=proposals:proposals" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">proposed es4</a> facility for addressing this shortcoming was namespaces, which were complex and suffered from ambiguity and efficiency problems.
+</p>
+
+<p>
+This strawman proposes three related changes to support hidden properties. 
+</p>
+<ol>
+<li class="level1"><div class="li"> a new, propertyless, object called a <code>Name</code></div>
+</li>
+<li class="level1"><div class="li"> generalizing the <code>propertyName</code> concept to include either a string (as in ES5) or a <code>Name</code> as above</div>
+</li>
+<li class="level1"><div class="li"> a <code>private</code> keyword for automatic use of <code>Name</code> objects instead of strings in certain places in a lexically scoped fashion.</div>
+</li>
+</ol>
+
+<p>
+ In addition to creating hidden properties, this also allows properties to be added to existing objects without the possibility of interference with the existing methods, or with other additions by any other code.
+</p>
+
+</div>
+<!-- SECTION [143-1147] -->
+<a name="name_objects"></a><h1>Name objects</h1>
+<div class="level1">
+
+<p>
+ The <code>Name</code> constructor allows for the creation of fresh, opaque names:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> <span class="kw3">name</span> = <span class="kw2">new</span> <span class="kw3">Name</span>;
+<span class="kw3">print</span><span class="br0">&#40;</span><span class="kw3">name</span><span class="br0">&#41;</span>; <span class="co1">// [object Name]</span></pre>
+<p>
+<code>Name</code> objects never have properties, aside from those inherited from <code>Object</code>.  Attempting to add a property or mutate an existing property of a <code>Name</code> object results in a type error.
+</p>
+
+</div>
+<!-- SECTION [1148-1521] -->
+<a name="name_objects_as_property_names"></a><h1>Name objects as property names</h1>
+<div class="level1">
+
+<p>
+ Name objects can be used as property names:
+</p>
+<pre class="code javascript"><span class="kw2">var</span> <span class="kw3">name</span> = <span class="kw2">new</span> <span class="kw3">Name</span>;
+<span class="kw3">print</span><span class="br0">&#40;</span><span class="kw3">name</span><span class="br0">&#41;</span>; <span class="co1">// [object Name]</span>
+&nbsp;
+<span class="kw2">var</span> obj = <span class="br0">&#123;</span> a: <span class="nu0">1</span>, b: <span class="nu0">2</span>, c: <span class="nu0">3</span> <span class="br0">&#125;</span>;
+&nbsp;
+obj<span class="br0">&#91;</span><span class="kw3">name</span><span class="br0">&#93;</span> = <span class="st0">"secret"</span>;
+<span class="kw3">print</span><span class="br0">&#40;</span>obj<span class="br0">&#91;</span><span class="kw3">name</span><span class="br0">&#93;</span><span class="br0">&#41;</span>; <span class="co1">// secret</span>
+&nbsp;
+<span class="kw1">for</span> <span class="br0">&#40;</span><span class="kw2">var</span> key <span class="kw1">in</span> obj<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw3">print</span><span class="br0">&#40;</span><span class="st0">"obj."</span> + key + <span class="st0">" = "</span> + obj<span class="br0">&#91;</span>key<span class="br0">&#93;</span><span class="br0">&#41;</span>; <span class="co1">// obj.a = 1, obj.b = 2, obj.c = 3</span>
+<span class="br0">&#125;</span></pre>
+<p>
+Properties with <code>Name</code> objects as keys can never be enumerable. Attempting to create an enumerable property with a <code>Name</code> object as its key produces a TypeError. This preserves the invariant that enumerated keys are always strings.
+</p>
+
+<p>
+ <code>Object.getOwnPropertyNames</code>, <code>Object.keys</code>, and <code>Object.getOwnPropertyDescriptor</code> skip all properties with <code>Name</code> objects as keys.  
+</p>
+
+</div>
+<!-- SECTION [1522-2260] -->
+<a name="binding_private_names"></a><h1>Binding private names</h1>
+<div class="level1">
+
+<p>
+ The keyword <code>private</code> allows for block-scoping of an identifier as a special name. The declaration:
+</p>
+<pre class="code javascript"><span class="kw2">private</span> x;</pre>
+<p>
+hoists the creation of a new <code>Name</code> to the top of the block (evaluated after functions but before <code>var</code>s and <code>let</code>s). All uses of <code>x</code> as a <code>propertyName</code> in the block are converted to computed uses of the name object, instead of static uses of <code>&ldquo;x&rdquo;</code>.  In particular, uses of <code>x</code> after a <code>.</code> and as a property name in an object literal are so converted.  <code>x</code> is also bound as a plain variable to the <code>Name</code> value.
+</p>
+
+<p>
+This can be used both for &ldquo;instance-private&rdquo; properties:
+</p>
+<pre class="code javascript"><span class="kw2">function</span> Thing<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">private</span> key;
+    <span class="kw1">this</span>.<span class="me1">key</span> = <span class="st0">"secret"</span>;
+    <span class="kw1">this</span>.<span class="me1">hasKey</span> = <span class="kw2">function</span><span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">return</span> x.<span class="me1">key</span> === <span class="kw1">this</span>.<span class="me1">key</span>;
+    <span class="br0">&#125;</span>;
+    <span class="kw1">this</span>.<span class="me1">getThingKey</span> = <span class="kw2">function</span><span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">return</span> x.<span class="me1">key</span>;
+    <span class="br0">&#125;</span>;
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">var</span> thing1 = <span class="kw2">new</span> Thing;
+<span class="kw2">var</span> thing2 = <span class="kw2">new</span> Thing;
+&nbsp;
+<span class="kw3">print</span><span class="br0">&#40;</span><span class="st0">"key"</span> <span class="kw1">in</span> thing1<span class="br0">&#41;</span>;       <span class="co1">// false</span>
+<span class="kw3">print</span><span class="br0">&#40;</span>thing1.<span class="me1">hasKey</span><span class="br0">&#40;</span>thing1<span class="br0">&#41;</span><span class="br0">&#41;</span>; <span class="co1">// true</span>
+<span class="kw3">print</span><span class="br0">&#40;</span>thing1.<span class="me1">hasKey</span><span class="br0">&#40;</span>thing2<span class="br0">&#41;</span><span class="br0">&#41;</span>; <span class="co1">// false</span></pre>
+<p>
+as well as &ldquo;class-private&rdquo; properties:
+</p>
+<pre class="code javascript"><span class="kw2">private</span> key;
+<span class="kw2">function</span> Thing<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">this</span>.<span class="me1">key</span> = <span class="st0">"secret"</span>;
+    <span class="kw1">this</span>.<span class="me1">hasKey</span> = <span class="kw2">function</span><span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">return</span> x.<span class="me1">key</span> === <span class="kw1">this</span>.<span class="me1">key</span>;
+    <span class="br0">&#125;</span>;
+    <span class="kw1">this</span>.<span class="me1">getThingKey</span> = <span class="kw2">function</span><span class="br0">&#40;</span>x<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">return</span> x.<span class="me1">key</span>;
+    <span class="br0">&#125;</span>;
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">var</span> thing1 = <span class="kw2">new</span> Thing;
+<span class="kw2">var</span> thing2 = <span class="kw2">new</span> Thing;
+&nbsp;
+<span class="kw3">print</span><span class="br0">&#40;</span><span class="st0">"key"</span> <span class="kw1">in</span> thing1<span class="br0">&#41;</span>;       <span class="co1">// false</span>
+<span class="kw3">print</span><span class="br0">&#40;</span>thing1.<span class="me1">hasKey</span><span class="br0">&#40;</span>thing1<span class="br0">&#41;</span><span class="br0">&#41;</span>; <span class="co1">// true</span>
+<span class="kw3">print</span><span class="br0">&#40;</span>thing1.<span class="me1">hasKey</span><span class="br0">&#40;</span>thing2<span class="br0">&#41;</span><span class="br0">&#41;</span>; <span class="co1">// true</span></pre>
+</div>
+<!-- SECTION [2261-3757] -->
+<a name="creating_private_object_properties"></a><h1>Creating private object properties</h1>
+<div class="level1">
+
+<p>
+ The <code>private</code> keyword can also be used as a modifier on properties in object literals. For example:
+</p>
+<pre class="code javascript">let obj = <span class="br0">&#123;</span> <span class="kw2">private</span> foo: <span class="nu0">42</span>,
+            getFoo: <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="kw1">this</span>.<span class="me1">foo</span> <span class="br0">&#125;</span>;</pre>
+<p>
+is equivalent to:
+</p>
+<pre class="code javascript">let obj = let <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+              <span class="kw2">private</span> foo;
+           =&gt; <span class="br0">&#123;</span> foo: <span class="nu0">42</span>,
+                getFoo: <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="kw1">this</span>.<span class="me1">foo</span> <span class="br0">&#125;</span> <span class="br0">&#125;</span>
+          <span class="br0">&#125;</span>;</pre>
+<p>
+Note that this relies on the conversion for object literals described above.
+</p>
+
+</div>
+<!-- SECTION [3758-4277] -->
+<a name="semantics"></a><h1>Semantics</h1>
+<div class="level1">
+
+<p>
+ <strong>Property Selection</strong>:
+</p>
+
+<p>
+A <code>private x</code> declaration is equivalent to a declaration of the form <code>let x = new Name</code>, with the following differences: 
+</p>
+<ul>
+<li class="level1"><div class="li"> The declaration is hoisted before all other <code>var</code> and <code>let</code> bindings. </div>
+</li>
+<li class="level1"><div class="li"> The declarative environment record associated with the declaration records that <code>IsBindingPrivate(&rdquo;x&rdquo;)</code> (discussed below) is <code>true</code>.  </div>
+</li>
+</ul>
+
+<p>
+ The key semantic question is the resolution of expressions of the form <code>e.x</code>.  The proposed semantics are as follows:
+</p>
+
+<p>
+ - Each declarative environment record maintains a marker with each entry declared with <code>private</code>.  This is accessed with a new internal function <code>IsBindingPrivate(String)</code>.  
+</p>
+
+<p>
+ - Iterate up the chain of environment records until one is found where <code>HasBinding(&rdquo;x&rdquo;)</code> produces <code>true</code>.  If that same environment record produces <code>true</code> for <code>IsBindingPrivate(&rdquo;x&rdquo;)</code>, then the expression is evaluated as if it was <code>e[x]</code>.  Otherwise it is evaluated as if it was <code>e[&rdquo;x&rdquo;]</code>.  
+</p>
+
+<p>
+ - If no binding for <code>x</code> is found, <code>e.x</code> is treated normally.
+</p>
+
+<p>
+Of course, the semantics need not be implemented via runtime lookup.  However, this semantics ensures that <code>e.x</code> references a <code>Name</code> object as the <code>propertyName</code> only if a declaration of <code>private x</code> is lexically in scope.  This ensures both that programmers can reason about code lexically, and that implementations can statically compile all property references to either <code>String</code> or <code>Name</code> lookup.
+</p>
+
+<p>
+<strong>Operation</strong> <em>ToName</em>(x):
+</p>
+
+<p>
+This converts <code>x</code> to a string, unless <code>x</code> is a <code>Name</code> object, in which case <code>x</code> is produced.  Changing the text of ECMA 262 will require more editing, since the spec relies on the string nature of property names implicitly in a number of places.
+</p>
+
+<p>
+<strong> GC Semantics </strong>
+</p>
+
+<p>
+Since names are not enumerable and unforgeable and are always leaves in the object graph, if a name <code>N</code> cannot be reached, the property <code>N</code> of any object may be safely deleted by the garbage collector.  This is not required, and is not observable by the program (except by measuring memory consumption externally).  If <a href="doku.php%3Fid=strawman:gc_semantics.html" class="wikilink1" title="strawman:gc_semantics" onclick="return svchk()" onkeypress="return svchk()">gc semantics</a> is adopted, the spec could state that a value is only reachable through a property whose name is a <code>Name</code> if the name is independently reachable.
+</p>
+
+</div>
+<!-- SECTION [4278-6558] -->
+<a name="potential_extensions"></a><h1>Potential Extensions</h1>
+<div class="level1">
+
+<p>
+ Currently, <code>private x</code> always brings a fresh <code>Name</code> into scope.  It might be valuable to support 
+</p>
+<pre class="code javascript"><span class="kw2">private</span> x = E;</pre>
+<p>
+where <code>E</code> is any expression producing a <code>Name</code> object.  If the value is not a <code>Name</code> object, a <code>TypeError</code> is raised.  This allows both renaming via lexical scope as well as converting <code>Name</code> values provided as function arguments, for example, to the <code>f.x</code> syntax.
+</p>
+
+<p>
+Also, for debugging purposes, it might be useful to give the <code>Name</code> constructor an optional string argument to be used in printing.  This would mean that <code>Name</code>s were no longer leaves in the object graph, however.
+</p>
+
+</div>
+<!-- SECTION [6559-7236] -->
+<a name="references"></a><h1>References</h1>
+<div class="level1">
+
+<p>
+ The <code>Name</code> object is akin to <code>gensym</code> of Lisp and Scheme, and analogous to a capability in object-capability languages.
+</p>
+
+<p>
+The inspiration for <code>private</code> is Racket&rsquo;s <a href="http://docs.racket-lang.org/reference/createclass.html?q=define-local-member-name#%28form._%28%28lib._racket/private/class-internal..rkt%29._define-local-member-name%29%29" class="urlextern" target="_blank" title="http://docs.racket-lang.org/reference/createclass.html?q=define-local-member-name#%28form._%28%28lib._racket/private/class-internal..rkt%29._define-local-member-name%29%29" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">define-local-member-name</a>.
+</p>
+
+<p>
+Similar ideas have been proposed for <a href="http://www.smalltalksystems.com/publications/subsys.pdf" class="urlextern" target="_blank" title="http://www.smalltalksystems.com/publications/subsys.pdf" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Smalltalk</a> and <a href="http://www.sapphire-lang.org/wiki/1/Selector_namespaces" class="urlextern" target="_blank" title="http://www.sapphire-lang.org/wiki/1/Selector_namespaces" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Ruby</a> under the name &ldquo;selector namespaces&rdquo;. 
+</p>
+
+</div>
+<!-- SECTION [7237-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/2/21a68c2e1cedf8a70625ccdc9e471e94.xhtml used -->
+</body>
+</html>

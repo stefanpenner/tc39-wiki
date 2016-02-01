@@ -1,0 +1,148 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:vector&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:vector&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:vector&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="vectors"></a><h1>Vectors</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [1-25] -->
+<a name="motivation"></a><h2>Motivation</h2>
+<div class="level2">
+
+<p>
+ Code that cares about performance will wish to have access to a reliable array type with different bells and whistles than <code>Array</code>.  The <code>Vector</code> class is a dense typed 0-based one-dimensional array type with bounds checking and optional fixed length; implementations are expected to support it natively.
+</p>
+
+</div>
+<!-- SECTION [26-360] -->
+<a name="proposal"></a><h2>Proposal</h2>
+<div class="level2">
+
+<p>
+ The <code>Vector</code> class is parameterized over an element type <code>T</code>:
+</p>
+<pre class="code">
+    final class Vector.&lt;T&gt; {
+        ....
+    }
+</pre>
+
+<p>
+There is a constructor and a converter from <code>Array</code>.  For the constructor, an initial length can be given, along with a flag for whether the array is fixed-length or variable-length:
+</p>
+<pre class="code">
+    function Vector(length:uint=0, fixed:boolean=false);
+
+    meta static function convert(a:Array!);
+</pre>
+
+<p>
+There are getters and setters for the length:
+</p>
+<pre class="code">
+    function get length(): uint;
+    function set length(v:uint);
+</pre>
+
+<p>
+Setting <code>length</code> can extend or shrink the array if the array is not fixed.
+</p>
+
+<p>
+The <code>fixed</code> flag is read/write:
+</p>
+<pre class="code">
+    var fixed:boolean;
+</pre>
+
+<p>
+There are catchall getters and setters for <code>uint</code> type property names:
+</p>
+<pre class="code">
+    meta function get(idx: uint): T;
+    meta function set(idx: uint, v:T);
+</pre>
+
+<p>
+Attempts to read beyond <code>length-1</code> or write beyond <code>length</code> results in an exception being thrown.  If one writes to element <code>length</code> then the array is extended by that element, if it is not marked as fixed length.
+</p>
+
+<p>
+The class has a suite of useful methods which mirrors the method suite of <code>Array</code>, but none of which are generic or defined on the prototype object.  For many applications, current uses of <code>Array</code> can probably be replaced by similar uses of <code>Vector</code>.
+</p>
+<pre class="code">
+    function concat(...items);
+    function join(separator: string): string;
+    function pop() : T;
+    function push(x: T);
+    function reverse();
+    function shift();
+    function slice(start: int, end: int) : Vector.&lt;T&gt;;
+    function sort(compare: function(T,T): int);
+    function splice(start, deleteCount, ...items)
+    function unshift(...items);
+</pre>
+
+<p>
+All behave as for <code>Array</code>, except that (a) they are not generic and (b) <code>sort()</code> requires the comparator function.  (It would be possible to provide a sensible default here for built-in primitive types, though.)  The <code>concat</code>, <code>unshift</code>, and <code>splice</code> methods are defined on arbitrary item types, which must be convertible to the base type <code>T</code>.
+</p>
+
+<p>
+Iteration and enumeration on <code>Vector</code> are across the index range, from low to high indices.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2007/07/24 09:27</em>
+</p>
+
+<p>
+Any reason to leave out the <a href="doku.php%3Fid=proposals:static_generics.html" class="wikilink1" title="proposals:static_generics" onclick="return svchk()" onkeypress="return svchk()">Array extras</a>?
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2007/07/31 18:21</em>
+</p>
+
+<p>
+Presumably you mean the methods, not the static generic versions.  I just forgot them.  Consider them added.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x61%3B%26%23x63%3B%26%23x6d%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x61;&#x63;&#x6d;&#x2e;&#x6f;&#x72;&#x67;">Lars T Hansen</a> 2007/08/01 03:21</em>
+</p>
+
+<p>
+Yes, the methods &ndash; thanks.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2007/08/01 13:27</em> 
+</p>
+
+</div>
+<!-- SECTION [361-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/b/b5ca5fe0961989bd46d1259e9d3d39c8.xhtml used -->
+</body>
+</html>

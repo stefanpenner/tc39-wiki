@@ -1,0 +1,109 @@
+====== Time offsets for user specified timezone ======
+
+NOT PART OF v2.0 PROPOSAL (but we should talk about it)
+
+===== Background =====
+
+We need to support conversion between:
+{Y, M, D, H, M, S, AnyTimeZone*} <=> {UTC Epoch millis}
+
+*AnyTimeZone - doesn't have to be system one, supports IANA tz format.
+
+We currently implement that by using the Javascript Date object's UTC
+representation and TimeZone knowledge which can provide the offset from UTC
+at a point in time.
+
+Problem: timezone data needs to be synced, requires network roundtrip + js
+evaluation + object creation in the critical path of the initial load. JSON
+payload: ~300k uncompressed, ~30k compressed. 300k data set represents only
+span of couple of years.
+
+Since we (i18n) already have timezone data for date formatting, we could do
+what we did for Date.prototype.toLocaleDateString and extend say
+Date.prototype.getTimezoneOffset method to support timezone parameter.
+
+Internet has lots of
+[[http://stackoverflow.com/questions/2897478/get-client-timezone-not-gmt-offset-amount-in-js?rq=1|questions]] related
+to this topic, and answers are not 100% satisfactory.
+
+===== Proposal 1 =====
+Introduce new factory method to Date object, withTimeZone:
+<code javascript>
+var date = Date.withTimeZone("America/Los_Angeles", 2013, 3, 9, 15, 11, 0);
+var date = Date.withTimeZone("America/Los_Angeles", 1365545496000);
+date.getHours(); // 15
+date.getUTCHours(); // 22
+</code>
+
+In this approach none of the Date get/set method declarations would change.
+
+===== Proposal 2 =====
+We could update some of the Date object methods to accept timezone information as an optional parameter. This may obsolete UTC variants of these methods.
+
+==== Get method changes ====
+Some of the methods don't need to change, since they operate on units smaller than possible TZ difference, like seconds or milliseconds.
+
+<code javascript>
+// Returns the day of the month (1-31) for the specified date according to specified timezone.
+getDate([timezone])
+
+// Returns the day of the week (0-6) for the specified date according to specified timezone.
+getDay([timezone])
+
+// Returns the year (4 digits for 4-digit years) of the specified date according to specified timezone.
+getFullYear([timezone])
+
+// Returns the hour (0-23) in the specified date according to specified timezone.
+getHours([timezone])
+
+// Returns the milliseconds (0-999) in the specified date.
+getMilliseconds()
+
+// Returns the minutes (0-59) in the specified date according to specified timezone.
+getMinutes([timezone])
+
+// Returns the month (0-11) in the specified date according to specified timezone.
+getMonth([timezone])
+
+// Returns the seconds (0-59) in the specified date.
+getSeconds()
+
+// Returns the numeric value of the specified date as the number of milliseconds since January 1, 1970, 00:00:00 UTC (negative for prior times).
+getTime()
+
+// Returns the time-zone offset in minutes for the specified timezone vs. UTC.
+getTimezoneOffset([timezone])
+</code>
+
+==== UTC methods ====
+UTC class of methods can stay as shortcuts or become obsolete. This applies to methods of form getUTCDate, setUTCDate...
+
+==== Set methods ====
+For completeness purpose, set methods should start accepting optional timezone parameter.
+
+<code javascript>
+// Sets the day of the month (1-31) for a specified date according to local time.
+setDate(dayValue [, timezone])
+
+// Sets the full year (4 digits for 4-digit years) for a specified date according to specified timezone.
+setFullYear(yearValue [, timezone])
+
+// Sets the hours (0-23) for a specified date according to specified timezone.
+setHours(hourValue [, timezone])
+
+// Sets the milliseconds (0-999) for a specified date.
+setMilliseconds(millisValue)
+
+// Sets the minutes (0-59) for a specified date according to local time.
+setMinutes(minuteValue [, timezone])
+
+// Sets the month (0-11) for a specified date according to specified timezone.
+// In case dayValue is not important, but timezone is, one should pass undefined for dayValue and it will be replaced by getDate(timezone).
+setMonth(monthValue[, dayValue, timezone])
+
+// Sets the seconds (0-59) for a specified date.
+setSeconds(secValue)
+
+// Sets the Date object to the time represented by a number of milliseconds since January 1, 1970, 00:00:00 UTC, allowing for negative numbers for times prior.
+setTime(timeValue)
+</code>

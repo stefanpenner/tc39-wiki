@@ -1,0 +1,69 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=conventions:avoid_strictness_contagion&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=conventions" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=conventions:avoid_strictness_contagion&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=conventions:avoid_strictness_contagion&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="avoid_strictness_contagion"></a><h1>Avoid Strictness Contagion</h1>
+<div class="level1">
+
+<p>
+ In ES5, one can either opt-in to strict mode 
+</p>
+<ul>
+<li class="level1"><div class="li"> on a per-program basis, by putting the <code>&ldquo;use strict&rdquo;</code> directive at the top of a Program production, </div>
+</li>
+<li class="level1"><div class="li"> or a per-function basis, by putting the <code>&ldquo;use strict&rdquo;</code> directive at the top of a function body. </div>
+</li>
+</ul>
+
+<p>
+Web testing of the Firefox 4 beta reveals an unexpected hazard of the first choice: Some build systems apparently concatenate separate files (written to be separate Programs) together into the text of a single Program script. Say the first of these files was written to be compatible with ES5/strict, but the rest are not. If that first file opts in by placing a <code>&ldquo;use strict&rdquo;</code> directive at the top of the file&rsquo;s text, on ES5 conformant browsers, this concatenation strategy causes all the remaining files to be interpreted as strict, potentially breaking them. Alternatively, if the strict file opts is using the per function strategy as follows:
+</p>
+<pre class="code javascript">  <span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span>
+    <span class="st0">"use strict"</span>;
+    <span class="co1">//... file's original contents ...</span>
+  <span class="br0">&#125;</span><span class="br0">&#41;</span>.<span class="me1">call</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>;</pre>
+<p>
+then the strictness does not bleed past its intended scope. Of course, this refactoring isn&rsquo;t quite as straightforward as a simple lexical nesting. If there were top level variable declarations in the original, these variables could be declared first outside the function and then assigned rather than declared within the function.
+</p>
+<pre class="code javascript">  <span class="kw2">var</span> someGlobal;
+  <span class="br0">&#40;</span><span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span>
+    <span class="st0">"use strict"</span>;
+    <span class="co1">//...</span>
+    someGlobal = ...; <span class="co1">// used to be &quot;var someGlobal = ...;</span>
+    <span class="co1">//...</span>
+  <span class="br0">&#125;</span><span class="br0">&#41;</span>.<span class="me1">call</span><span class="br0">&#40;</span><span class="kw1">this</span><span class="br0">&#41;</span>;</pre>
+</div>
+<!-- SECTION [1-1573] -->
+<a name="see"></a><h1>See</h1>
+<div class="level1">
+
+<p>
+ <a href="https://mail.mozilla.org/pipermail/es-discuss/2010-September/011769.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2010-September/011769.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">&quot;use strict&quot;; prepended blindly to scripts in the wild</a> &ndash; where this anti-pattern was first reported on es-discuss.
+</p>
+
+</div>
+<!-- SECTION [1574-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/a/a7cd08c1244c3f6d63b21128d7bd3956.xhtml used -->
+</body>
+</html>

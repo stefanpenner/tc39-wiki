@@ -1,0 +1,282 @@
+====== Class Initialisers: Using super for delegation to the superclass ======
+
+
+//This is one of several related [[strawman:object_initialiser_extensions|Object Initialiser Extensions]].// \\
+//This extension builds upon concepts introduced in [[strawman:Obj_initialiser_meta|Object Initialiser Meta Properties]], [[strawman:Obj_initialiser_methods|Method Properties]], and [[strawman:Obj_initialiser_const|Other Object Initialiser Property Modifiers]]// \\
+//This is an extension to the [[strawman:obj_initialiser_class_abstraction|Class Initialisers]] feature.//
+
+In class-based object-oriented languages, class-based inheritance is used to perform behavioral composition. A "subclass" combines together the methods of its superclass(es) with new  and replacement methods define by the subclass. Occasionally in creating such compositions it necessary for the subclass to explicitly reference superclass behavior that is over-ridden by the subclass.
+
+With the addition of Class Initialisers to ECMAScript situations will arise where this sort of explicit superclass reference will be needed. This proposal describes extensions that enable such references.
+
+
+
+
+===== Superclass Instance Initialization =====
+A class initialiser, in addition to defining methods that are shared by all class instances, typically define instance specific state that is used by the shared methods.  For example:
+
+<code javascript>
+class Supr {
+   var get a() {return this.__a},
+   new (initA) {
+       __a : initA
+   }
+}
+
+let s = new Supr("a value");
+</code>
+//Note that this code is intentional simplified to illustrate the essential points of this feature.//
+
+When an instance of the above class is created, by using the **''new''** operator with the class constructor as shown above, the instance is initialized with an own property named ''"%%__%%a"'' that is set to the argument passed to the constructor.   This instance property is access when the prototype's ''a'' accessor property is referenced. Now consider what happens when the above class is used as a superclass:
+
+<code javascript>
+class Sub {
+   <superclass: Supr>,
+   var get b() {return this.__b},
+   new (initB) {
+       __b : initB;
+   }
+}
+
+let sc = new Sub("b value");
+</code>
+This would appear to define a subclass that adds an accessor property and an instance specific state property ''%%__%%b'' in a manner analogous to what was done for ''Supr''.  However, ''sc'' also inherits the access property ''a'' in addition to the accessor property 'b'.  Because ''a'' depends upon a per instance property ''%%__%%a'' that property also needs to be initialized by the constructor. It is easy enough to added another  formal parameters to the constructor but what should be initialization code look like? should it be:
+
+<code javascript>
+class Sub {
+   <superclass: Supr>,
+   var get b() {return this.__b},
+   new (initA, initB) {
+       __a : initA;
+       __b : initB;
+   }
+}
+
+let sc = new Sub("a value","b value");
+</code>
+This solves the initialization problem but in a way that has a number of undesirable characteristics:
+  * the programmer of the subclass must know the details of how the superclass initializes its instances
+  * per instance property creation and initialization code must be manually copied into the subclass constructor
+  * if [[Private Names in Object Initialisers|private names]] are used in the superclass for the per instance state, those names may not be available for use in the subclass constructor
+
+Rather than copying instance initialization code from the superclass' constructor what we would really like to do is to directly invoke that code without having to copy it.  This is the capability provided by a ''**super**'' constructor call.  Using this capability the definition of the above subclass would be coded as follows:
+
+<code javascript>
+class Sub {
+   <superclass: Supr>,
+   var get b() {return this.__b},
+   new (initA, initB) {
+       super new(initA),
+       __b : initB;
+   }
+}
+
+let sc = new Sub("a value","b value");
+</code>
+
+A ''**super new**'' call invokes the superclass constructor function but passes the current subclass instance as the **''this''** value rather than creating a new instance of the superclass as the **''this''** value. It essentially runs the superclass' constructor code on the subclass instance. The value returned is the object that is being initialized, however in most situations a  ''**super new**'' call TAlso there is no requirement that the arguments pattern of the subclass constructor extends the arguments pattern of the superclass constructor.  Nor is there any requirement that any of the subclass constructor arguments are passed to the **''super new''** call.  For example, the following subclass constructor is perfectly valid:
+
+<code javascript>
+class Sub {
+   <superclass: Supr>,
+   var get b() {return this.__b},
+   new (initB) {
+       super new("some constant a value"),
+       __b : initB,
+   }
+}
+
+let sc = new Sub("b value");
+</code> 
+
+A **''super new''** call may only appear in the //ConstructorBody// of a //ClassDeclaration// or //ClassExpression// that has a **''superclass:''** meta property.  It is a early SyntaxError if one appears in any other context. 
+
+If the superclass whose constructor is called by a **''super new''** has meta properties that specifies that superclass instances are sealed or frozen then the individual own properties defined in the superclass' constructor are sealed or frozen by the  **''super new''** call but the the object extensible internal property of the new instance is not set to false.  Only the meta properties of the subclass affect the subclass instance's extensible internal property setting.
+
+
+===== super Method Calls =====
+<sup>::!::</sup> This needs to be combined with "super getter/setter calls" which was independently added.
+
+Sometimes a method on a subclass that over-rides a superclass method needs to invoke the over-ridden method. Consider for example:
+<code javascript>
+class Supr {
+   method validate() { /* validate internal invariants */}
+}
+
+class Sub {
+   <superclass: Supr>,
+   method validate() {
+       /* validate invariants imposed by superclass */
+       /* validate subclass invariants */
+   }
+}
+</code>
+
+How should the subclass actually code the call to the superclass's validate method?  The idiom that would most likely be used today in an ad hoc implementation of such class would be an expression of the form:
+<code javascript>
+      Supr.prototype.validate.call(this);
+      /* validate subclass invariants */
+</code>
+This formulation does the job, but is wordy and its intent may not be obvious to readers.  Also, explicitly referencing  the superclass by name in multiple places is error prone, especially when a class hierarchy is being refactored.  These issues are addressed by adding a super call expression as an additional form of CallExpression:
+
+//CallExpression// : **''super . ''** //IdentifierName// //Arguments//
+
+The above example could then be code like:
+
+<code javascript>
+class Sub {
+   <superclass: Supr>,
+   method validate() {
+        super.validate( );
+       /* validate subclass invariants */
+   }
+}
+ </code>
+A super class may only occurs within a function body that is contained within a class initializer.  It is an early SyntaxError error for open to occur in any other context. The semantics is that the //IdentifierName// is used to access a property starting with the object that is the %%[[%%Prototype%%]]%% of the prototype defined by the initialiser.  If the property is found and its value is callable then the value is called passing the current **this** value as the **this** value of the call.
+
+==== Desugaring ====
+In 
+<code javascript>
+class Sub {
+   <superclass: Supr>,
+   method validate() {
+        super.validate( );
+   }
+}
+</code>
+the super call desugars to:
+<code javascript>
+   Supr.prototype.validate.call(this) /* note that Supr.prototype is frozen */
+ </code> 
+
+In 
+<code javascript>
+class Sub {
+   <prototype: p>,
+   method validate() {
+        super.validate( );
+   }
+}
+</code>
+the super call desugars to:
+<code javascript>
+   p.validate.call(this) /* p captured when literal is evaluated */
+ </code> 
+
+In 
+<code javascript>
+class Sub {
+   method validate() {
+        super.validate( );
+   }
+}
+</code>
+the super call desugars to:
+<code javascript>
+   Object.prototype.validate.call(this) 
+</code> 
+
+
+
+===== super Getters and Setters =====
+
+Sometimes a getter or setter on a subclass over-rides a superclass getter or setter but still needs to invoke the over-ridden getter or setter. Consider for example:
+
+<code javascript>
+class Supr {
+   ...
+   set disabled(b) {
+     this.__element.onclick = b ? null : this.click.bind(this);
+   }
+}
+
+class Sub {
+   <superclass: Supr>,
+   ...
+   set disabled(b) {
+       // disable click handler as imposed by superclass
+       // style the element somehow
+   }
+}
+</code>
+
+Just like with super methods the super class needs to ensure that the code for the setter of the super class is handled. Today, this is very verbose and it involves either using the proprietary ''%%__lookupSetter__%%'' extension or walking the prototype chain to get the property descriptor to find the relevant getter or setter:
+
+<code javascript>
+   // __lookupSetter__ is left as an exercise ;)
+   Supr.prototype.__lookupSetter__('disabled').call(this, b);
+   // style the element somehow
+</code>
+
+Just like with the super method call this does the right thing but it is even more cryptic than the super method call. These issues are addressed by adding a super setter and getter expression as an additional form of MemberExpression:
+
+//MemberExpression// : **''super . ''** //IdentifierName//
+
+The above example could then be code like:
+
+<code javascript>
+class Sub {
+   <superclass: Supr>,
+   ...
+   set disabled(b) {
+      super.disabled = b;
+      // style the element somehow
+   }
+}
+ </code>
+
+A super class may only occurs within a function body that is contained within a class initializer.  It is an early SyntaxError error for super to occur in any other context. The semantics is that the //IdentifierName// is used to access a property starting with the object that is the %%[[%%Prototype%%]]%% of the prototype defined by the initialiser.  If the property is found then and it is a setter (or getter) then it is invoked with the current **this** value as the **this** value of the call.
+----
+I think including super getters/setters is a good idea.  But, since you can't synthetically distinguish a getter/setter access from a data property access, I think we need to accomplish it by combining super sends and super getter/setter access into super property access. I didn't originally propose those because I thought accessing shadow prototype data properties seems a little squirrely.  But it is probably ok if we are doing this because of this unification.
+
+ --- //[[Allen@Wirfs-Brock.com|Allen Wirfs-Brock]] 2011/03/16 23:45// 
+
+==== Desugaring ====
+
+In 
+
+<code javascript>
+class Sub {
+   <superclass: Supr>,
+   set disabled(b) {
+      super.disabled = b;
+   }
+}
+</code>
+
+the super setter desugars to:
+
+<code javascript>
+   Supr.prototype.__lookupGetter__('disabled').call(this, b) /* note that Supr.prototype is frozen */
+</code> 
+
+Analogous for getter and <proto>. ''%%__lookupGetter__%%'' and ''%%__lookupGetter__%%'' can be implemented as:
+
+<code javascript>
+Object.defineProperty(Object.prototype, '__lookupGetter__', {
+  value: function(name) {
+    var descr = Object.getOwnPropertyDescriptor(this, name);
+    if (descr)
+      return descr.get;
+    var proto = Object.getPrototypeOf(this);
+    if (proto)
+      return proto.__lookupGetter__(name);
+    return undefined;
+  },
+  enumerable: false,
+  writable: true,
+  configurable: true,
+});
+
+// __lookupSetter__ is analogous
+</code>
+
+
+
+==== Rationale ====
+
+Using **''super''** to invoke over-ridden methods is a common and useful feature of class-based object oriented languages. In such languages the binding of **''super''** to a specific superclass is typically something that can be statically determined from a class declaration. 
+
+Traditionally, JavaScript's loose association of functions used as methods with objects have preclude inclusion of **''super''** in the language.  The most likely semantics for **''super''** in legacy JavaScript would be dynamic, based upon the object in which the the original property was found.  That object (which is not necessary the this object) could be remembered during the original property lookup and associated someway with the the result of the lookup.  If the retrieved function contained super calls it would use %%[[%%Prototype%%]]%% of the associated lookup resolution object as starting point for any **''super''** property accessed. This is a potentially expensive process that burdens every property lookup and call even though most won't actually use  **''super''** property access.
+
+The addition of declarative Class Initialiser provides an opportunity to use the common oo language techniques and semantics to support **''super''**.  Class Initialisers are declarations that bind an associate a method with a "class" and "superclass" which means that the starting point for **''super''** lookups can be determined a single time when the initialiser is evaluated. Even if a reference to such a method is insert into a different kind of object, it is reasonable for it to continue to use the "superclass" association from its declarative definition.

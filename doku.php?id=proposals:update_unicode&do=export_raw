@@ -1,0 +1,110 @@
+====== Updated Unicode Functionality ======
+
+(Also see the [[discussion:update unicode|discussion page]].)
+
+[[http://bugs.ecmascript.org/ticket/213|Ticket #213]] discusses the difference between external Unicode formats produced by certain data encoders (URI encoders; JSON) and consumed by ditto decoders, on the one hand; and ECMAScript string data, consumed by the ECMAScript parser, on the other hand.
+
+===== Background & rationale =====
+
+There are several problems with Unicode in ECMAScript:
+
+  * ECMAScript 3 implementations are locked into a 16-bit Unicode representation by the spec.  Implementations that provide 21-bit character representations are nonconforming.
+  * There is no way to write down with a single lexeme Unicode characters outside the 16-bit range, you have to use two \u literals.  Doing so is senseless unless the character is represented internally as a surrogate pair, so it would break if the language did support wider characters.
+  * In some cases the surrounding host system uses full Unicode, but host characters must be represented using surrogate pairs in ECMAScript strings.  This is error prone for some applications, but not for all.
+
+All of these problems are worth solving.
+
+Today the major application of ECMAScript is in browsers, and at least MSIE, Firefox, and Opera all use UTF16 internally.  MS Windows has native 16-bit APIs (and other operating systems probably do as well).  Demanding that these implementations move to wider representations now will be met with resistance.  They will in any case not all do so at the same time.
+
+However, operating systems and browsers will move to wider strings eventually, and we should at the very least future-proof the language.
+
+===== Proposal =====
+
+
+
+==== Optional support for full unicode ====
+
+ECMAScript implementations are allowed to, but not required to, support full Unicode (21-bit) characters.  
+
+An ECMAScript implementation that uses full Unicode but interacting with a host system that uses UTF16 shall never reveal surrogate pairs in ECMAScript strings; all characters shall be resolved as full Unicode characters.
+
+A proposed new syntax for Unicode characters (see below) is added to the language and shall be used to write down all character values outside the 16-bit range.  In systems with 16-bit strings such a character value shall turn into a surrogate pair of two indexable characters in the resulting string, with the high part of the pair at the lower index.
+
+Two code points written down as \unnnn\unnnn shall be represented as individually indexable characters in all implementations, even if they form a valid UTF16 surrogate pair and the implementation supports full Unicode.
+
+----
+
+This breaks JSON. Quoting from http://www.ietf.org/rfc/rfc4627.txt?number=4627
+
+      To escape an extended character that is not in the Basic Multilingual
+      Plane, the character is represented as a twelve-character sequence,
+      encoding the UTF-16 surrogate pair.  So, for example, a string
+      containing only the G clef character (U+1D11E) may be represented as
+      "\uD834\uDD1E".
+
+An alternative is to have the parseJSON method interpret string literals differently than this new language.
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2007/08/17 18:16//
+
+There is another incompatibility, which is in URIEncode/URIDecode; I believe information can be lost in the encode/decode process, just as for JSON (a single character is broken into two, which is then later read as two because of the above rule).
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/08/21 15:19//
+
+
+
+==== Extended escape syntax in strings and regexes ====
+
+The hex values for String and RegExp literal escape sequences can be placed in braces.  The braces allow for a variable-length hex numeral, in particular it allows for values longer than four digits.
+
+<code>
+\u{1AFFE}
+\x{1AFFE}
+</code>
+
+Note that using the braces, \u and \x mean the same thing.
+
+---
+
+I don't see any value in allowing the <code>\x{1AFFE}</code> form. I think it would be better to reserve it for some unexpected future contingency.
+
+ --- //[[crock@yahoo-inc.com|Douglas Crockford]] 2007/09/19 20:44//
+
+I'm inclined to agree, I'll open a ticket on this by and by.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/09/24 18:54//
+
+==== Stripping of format control characters ====
+
+Unicode format control characters appearing in String or RegExp literals shall be treated as regular characters.  Unicode format control characters appearing elsewhere in the program shall also be treated as regular characters.  Both are an incompatible change from 3rd Edition, which requires them to be removed.
+
+Note, however, that format control characters are not allowed in identifiers. This was resolved at the January 2007 face-to-face meeting, and is consistent with the recommendation from [[http://www.unicode.org/reports/tr31/tr31-7.html#Layout_and_Format_Control_Characters|section 2.2 of Unicode Standard Annex #31]].
+
+----
+
+[[https://bugzilla.mozilla.org/show_bug.cgi?id=368516|Mozilla bug 368516]] is collecting dups at a healthy clip. Postel's Law applies here, and its application to ES1-3 summoned into existence many misplaced UTF-8 BOMs and such. Sound the retreat or hold fast, take a stand? Perhaps the *only* problem is stray BOMs from copy/paste of UTF-8, in which case we could specify that misplaced BOMs must be stripped.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/08/22 01:09//
+
+===== Discussion =====
+
+==== Undesirability of two representations ====
+
+On the one hand, this proposal looks like a return to the bad old days of unknown representations (eg, C, C++).  
+
+On the other hand, it does allow implementations to move to full Unicode at their leisure (including immediately), it allows implementers and programmers to understand the meaning of programs in both kinds of implementations, and it allows programmers to future-proof their programs by pretending to use full Unicode in strings and only worrying about surrogate pairs in some circumstances.
+
+A future update to the language may then require full Unicode characters everywhere; this will not change the meaning of any portable program written for ECMAScript 4.  (Non-portable programs written for 16-bit implementations may have slight behavioral changes, though.)
+
+==== Meaning of surrogate pairs ====
+
+Since the two parts of a surrogate pair are always independently indexable in 16-bit implementations, the implementation must treat them both as character values.  This will occasionally have surprising results, but the alternative -- required support for full Unicode -- is probably less palatable in practice.
+
+==== Stripping of format characters ====
+
+There seems to be a consensus (see [[discussion:update unicode|the discussion page]]) that it is bad to strip format control control characters in strings; notably IE does not do it, Opera does not do it, and Mozilla have bugs logged against it for doing so.  It is in any case possible to put format control characters into strings using unicode escapes.  Thus we should change this behavior in 4th Edition.
+
+There is less of a consensus on stripping format control characters from RegExp literals.  However, users who expect them to be stripped added them for the sake of readability, and the new /x modifier on regular expressions could allow format control characters to be stripped just like spaces are.  Thus we should change this behavior also in 4th Edition.
+
+(We verified through experiments on 2006-09-21 that MSIE 6 and MSIE 7 do not strip format control characters from string literals, regular expression literals, or program text.)
+
+ --- //[[mdaeumli@adobe.com|Michael Daumling]] 2006/04/21 16:04// / //[[lth@opera.com|Lars T Hansen]] 2006/04/22 07:23//

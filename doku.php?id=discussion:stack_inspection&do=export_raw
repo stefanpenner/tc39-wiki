@@ -1,0 +1,219 @@
+This is the discussion page for [[proposals:stack_inspection]].
+
+====== Old Proposal ======
+
+====== Examples ======
+
+The following demonstrates stack marks that build up during a computation:
+
+<code javascript>var key = 'length computation';
+
+function length(array, index) {
+    if (index >= array.length) return 0;
+    mark (key : array[index]) {
+        print((marks key) + '\n');
+        return 1 + length(array, index + 1);
+    }
+}
+
+length([3,8,6,2], 0);
+
+// prints:
+// [3]
+// [3,8]
+// [3,8,6]
+// [3,8,6,2]</code>
+
+The following example demonstrates stack marks that do not build up because they are in tail position:
+
+<code javascript>var key = 'lastval computation';
+
+function lastval(array, index) {
+    if (index == array.length - 1) return array[index];
+    print((marks key) + '\n');
+    return mark(key : array[index]) {
+        lastval(array, index + 1)
+    }
+}
+
+lastval([3, 8, 6, 2], 0)
+
+// prints:
+// []
+// [3]
+// [8]
+// [6]
+</code>
+
+====== Proposal ======
+
+===== Installing marks =====
+
+There needs to be a mechanism for installing new context marks. This mechanism should obey the marking rules detailed below. Informally, installing a stack mark should usually push the mark onto a stack of marks for its key, but in tail position it should overwrite the top mark on the stack (if there is one).
+
+==== Alternatives ====
+
+=== Mark objects ===
+
+The mark form evaluates a single expression to an object, and uses all its enumerable property names as keys, adding the properties' values to the current stack frame's mark set for their respective keys, according to the marking rules detailed below.
+
+<code>WithMark ::= "mark" "(" Expression ")" Block</code>
+
+<code javascript>mark (e) {
+    ...
+}</code>
+
+**Pros:**
+
+  * simple, concise syntax
+  * makes use of objects as lightweight collections of key-value pairs
+
+**Cons:**
+
+  * because keys of objects must be strings, keys of stack marks must be strings
+  * no way to guarantee separate modules won't have name clashes for these strings
+  * I haven't followed the hashcode discussion closely -- could that help?
+
+=== Key/value pairs ===
+
+A mark expression evaluates a list of pairs of expressions, where each pair evaluates to a key and a mark value, and adds the values to the current stack frame's mark set for their respective keys, according to the marking rules detailed below.
+
+<code>WithMark ::= "mark" "(" MarkPair* ")" Block</code>
+
+<code javascript>mark (e : e, ...) {
+    ...
+}</code>
+
+**Pros:**
+
+  * makes it possible to create unique keys, because arbitrary values can be used as keys
+
+**Cons:**
+
+  * slightly less simple syntax
+
+===== Viewing marks =====
+
+The mechanism for accessing marks should return an ordered collection of all the marks for a particular key. Libraries that use context marks can give others access to their marks by providing access to their key. The mark access form should return either a read-only array of the current marks, or a writeable array that is a copy of the underlying collection.
+
+==== Alternatives ====
+
+=== Special object ===
+
+Access a list of marks for a particular key by dereferencing a read-only field of a special ''marks'' object.
+
+<code>CurrentMarks ::= "marks"</code>
+
+**Pros:**
+
+  * simple syntax
+  * no function call involved
+
+**Cons:**
+
+  * keys have to be strings
+
+=== Primitive function ===
+
+Access a list of marks for a particular key by calling a primitive ''marks'' function.
+
+<code javascript>global.marks = /* native function */</code>
+
+**Pros:**
+
+  * keys can be arbitrary values
+
+**Cons:**
+
+  * it's a little confusing that there's extra context pushed on when you call the primitive function, but that should be fine as long as that function doesn't actually install any extra marks
+
+=== Special form ===
+
+Unary operator that doesn't overload the object property access syntax, but that avoids involving a function call:
+
+<code>CurrentMarks ::= "marks" Expression</code>
+
+This allows the use of arbitrary values for keys.
+
+===== Marking rules =====
+
+The basic idea is that a mark added in tail position overwrites the last mark for that key, if there is one; otherwise, the mark is simply added to the collection of marks for that key. Marks are returned in last-in-first-out fashion, i.e., in a stack.
+
+//need to describe this more//
+
+====== Applicability ======
+
+Stack inspection is extremely useful for implementing all sorts of language features:
+
+  * **exceptions**: exception handlers can be implemented as marks, with exceptions jumping upwards until they find the exception handlers
+  * **stack traces**: the compiler can mark frames with their source locations, to be retrieved by the stack trace
+  * **AOP**: features like AspectJ's ''cflow'' can be implemented by marking relevant stack frames
+  * **security mechanisms**: it's possible to implement security mechanisms like that of the JVM using stack inspection without losing the desired efficiency of [[proper tail calls]] -- see [[http://www.csc.calpoly.edu/~clements/papers/cf-toplas04.pdf|A Tail-Recursive Machine with Stack Inspection]] for more information
+  * etc: dynamic binding, debuggers, steppers
+
+====== Implementation ======
+
+forthcoming...
+
+
+
+====== Issues ======
+
+  * implementation strategies (need to get input from John Clements and Matthew Flatt)
+  * more explanation of semantics
+  * syntax
+    * ''mark'' should really be an expression form, needs to mix with ''return'' and tail position nicer
+    * if we make its body a block like the ''let'' proposal, tail positions inside the block are fragile (e.g., what about extra semicolons at end?)
+
+----
+
+One reaction, not knee-jerk I hope!  Is new syntax called for, or would functions, objects, methods, and other properties do the trick?  That was the idea for [[proposals:meta objects]], although ''null.%%__type__%%'' and ''undefined.%%__type__%%'' don't work in general (global ''%%__type__%%'' function, or a wholesale revision to ''typeof'', does).  I don't fully understand the Issues above, but some suggest that using functional forms would help.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/02/28 22:32//
+
+I've thought about that, too, and I think it might be possible. One danger of functions, though, is that functions affect the call stack, so that's a little confusing when you're implementing something that's inspecting the call stack. But this whole proposal is a brand new idea so I need to work more on fleshing it out.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2006/03/01 18:12//
+
+I dislike the concept of having to install marks on frames. I think this mostly defeats the purposes I had in mind, which involve capturing or inspecting frames you don't know you want to capture when you're writing the code: debuggers, exceptions, continuation capture, etc. 
+
+If this set of purposes is uninteresting, or insuffiently compelling to make it into this round of language work, I do not think we need to bring in an explicit-marker-based system. That can mostly be done (or simulated nearly enough) in a library, by the community, if it's important.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/05/25 13:20//
+
+I want to understand this some more before accepting this.
+
+The CLR does not does not grant programs full access to their stacks. Programs can work around this by managing their own stack on the heap (i.e. manage a stack-away-from-the-VM stack). However, the JIT is less efficient on code that manage their own stack. Furthermore, allocating the stack on the heap effectively disguises the stack, hiding it from programming tools such as debuggers and profilers, as well as security managers, which expect to find run-time information on the stack.
+
+I want to ascertain if this is indeed implementable on the CLR.
+
+ --- //[[pratapl@microsoft.com|Pratap Lakshman]] 2007/01/13 11:20//
+
+The stack inspection library is optional (see the bottom of the proposal page).  The thought was that lightweight implementations -- such as Opera's -- would not provide it, but there's no requirement that your implementation //has// to be lightweight in order not to provide it :-)  So I think you're on safe ground here, whether it's implementable on the CLR or not.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/01/16 08:02//
+
+Ah, but it is implementable on the CLR! :-) You can use the CLR's native stack and your debuggers will work just fine. The trick is to keep the annotations in a separate, heap-allocated stack. Each frame on this stack represents the annotation //above// the current stack frame.
+
+Here's the rough approach:
+
+  * ES stack frames are just CLR stack frames.
+  * Annotations are stored in a separate, heap-allocated stack.
+  * Every stack frame has an internal local variable that points to its annotation-stack frame.
+  * The procedure calling convention includes a protocol involving a single global cell used to communicate between caller and callee without having to pass an extra parameter (actually, it's a thread-local cell; one per thread).
+  * To perform a non-tail call:
+    * the caller allocates and pushes a new frame on the annotation stack
+    * the caller then sets the global cell with the pointer to the new frame
+    * the caller calls the callee
+    * the callee reads the cell and sets its internal local pointer to the pointer stored in the cell
+  * To perform a tail call:
+    * the caller does //not// push a new frame on the annotation stack
+    * the caller sets the global cell with the value of its internal local pointer
+    * the caller tail-calls the callee
+    * the callee reads the cell and sets its internal local pointer to the pointer stored in the cell
+
+This gives you equivalent behavior to the proposal. Specifically, by not pushing a frame on the annotation stack when performing a tail call, you're doing the same thing as keeping the current annotation above the stack frame but replacing the stack frame.
+
+There's also a simple optimization you can do: if you know statically that no non-tail call is made from a procedure before making a tail call, then you don't have to set the global cell before performing the tail call, because it will already have the right pointer in it (i.e., it won't have been trashed).
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2007/01/19 13:25//

@@ -1,0 +1,78 @@
+====== Regularize Function Name Binding ======
+ --- //[[Allen@Wirfs-Brock.com|Allen Wirfs-Brock]] 2011/01/19 15:48//
+===== Problem =====
+Currently in ECMAScript, function objects created via a //FunctionDeclaration// can not reliably reference themselves by name.  Function objects created via a //FunctionExpression// do not have this problem.
+
+Consider:
+<code javascript>
+function foo(n) {
+   print("foo");
+   if (n>0) return foo(--n);
+}
+var x=foo;
+foo=function() {print("~foo")};
+x(1);
+</code>
+when executed it will print: "foo ~foo".
+
+Contrast this to 
+<code javascript>
+var x = function foo(n) {
+   print("foo");
+   if (n>0) return foo(--n);
+}
+foo=function() {print("~foo")};
+x(1);
+</code>
+
+This second form will print: "foo foo".
+
+
+
+===== Cause =====
+The <nowiki>[[Scope]]</nowiki> of function objects created using a //FunctionExpression// is set to a new environment containing a immutable binding of the name from the //FunctionExpression// to the actual function object.  This means that all free references to the function name within the body of the //FunctionExpression// evaluate to the actual function object.
+
+A function object created via a //FunctionDeclaration// does not have such an environment.  Its <nowiki>[[Scope]]</nowiki> is directly set to the lexical environment directly containing the //FunctionDeclaration//. This means that free references to the function name within the body of the //FunctionExpression// evaluate to the current value of the binding for the function name in the surrounding environment. This may not be the function object.
+
+===== Solution =====
+Handle the creation of function objects identically for both //FunctionExpressions// and //FunctionDeclarations//.  In both cases create a new environment that binds the function name to the function object.
+
+
+===== ES5 Strict Mode Best Practice =====
+This issue has apparently existed in all editions of ECMAScript.  This problem wasn't considered or corrected for ES5 strict mode.  However, we should consider recommending that ES5 implementations bind function names for //FunctionDeclaration// in strict code in the same manner as //FunctionExpressions//.
+
+
+===== Feedback =====
+I'm pretty sure I've seen function-customizing/memoizing and function-wrapping patterns on the web that this would break. I'll try to find them.
+
+Ok, this example from [[http://peter.michaux.ca/articles/lazy-function-definition-pattern]] is not a problem:
+
+<code javascript>
+var foo = function() {
+    var t = new Date();
+    foo = function() {
+        return t;
+    };
+    return foo();
+};
+</code>
+
+but this would be:
+
+<code javascript>
+function foo() {
+    var t = new Date();
+    foo = function() {
+        return t;
+    };
+    return foo();
+};
+</code>
+
+I'll instrument and log any occurrences, but covering only my usual sites and apps.
+
+In one sense this is a problem in theory, but even there, we have two ways to create functions and you can always use a named //FunctionExpression// if you want the name within the body to denote the expressed function. In another sense, in practice, this is not a big problem.
+
+The strict mode extension goes agains the "rally 'round the spec" approach implementors are taking. Random strict mode restrictions or semantic shifts beyond what ES5.1 specifies smells like trouble to me, both in getting implementors to agree and not "defect" back to the ES5.1 spec; and in being sure we are future-proofing and not speculating too boldly on what will "stick" in Harmony.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/01/19 21:04//

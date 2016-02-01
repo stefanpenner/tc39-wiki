@@ -1,0 +1,62 @@
+====== Date literal syntax ======
+
+Spec retracted 2006-08-28 following meeting on 2006-08-23; proposals for supporting a sensible date syntax have been folded into [[proposals:date_and_time|proposals:date_and_time]].
+
+**Spec location:** [[spec:chapter_19_native_objects#date_objects|Chapter 19 Native Objects: Date objects]]
+
+(Also see the [[discussion:date_literal_syntax|discussion page]] for this proposal)
+
+Rok raised the issue of having a date (really timestamp) literal syntax.  Here is a modest proposal that fits into the current ''Date'' framework.
+
+===== Motivation =====
+
+ECMAScript 3 has literals (or at least initializers) for every type but timestamps.  Having timestamp literals would probably help dissuade developers from the current practice of passing some (often) random string to ''Date.parse'' and ask it to figure out what it means.  Since the input syntax to that function is not defined in the spec, this practice is is evil.
+
+===== Proposal =====
+
+==== Syntax ====
+
+Timestamp literals are represented using a subset of ISO time syntax and semantics.  A full timestamp literal has the following grammar (spaces are not allowed anywhere) with the exception that if the string looks like an identifier (eg "T12") then it is an identifier:
+
+    timestamp ::= date? "T" time? tz?
+    date     ::= dig{4} ( "-" dig{2} ( "-" dig{2} )? )?
+    time     ::= dig{2} ( ":" dig{2} ( ":" dig{2} ( "." dig+ )? )? )?
+    tz       ::= ("+" | "-") dig{2} ( ":" dig{2} )?
+               | "Z"
+    dig      ::= "0" ... "9"
+
+For example
+
+    2006-04-17T
+    2006-04-17T12:37:00.005+03:30
+    T12:37+03
+
+If a timestamp represents an invalid time then a syntax error is thrown.
+
+The value for an omitted field is taken from the current UTC time.  If a timezone field is present, the current time converted to that timezone is used, otherwise UTC is used directly.  (This may need tighter wording, and it may be the wrong thing.  It's possible that known default values should be used instead.)
+
+The meaning of an integer f represented by a string of n digits after the period in the ''time'' part is the fractional second value ''f/10^n''.
+
+The method ''Date.parse'' shall be able to parse strings on this format, and it shall even be able to parse strings that look like identifiers (eg, ''T12'').
+
+A new method ''Date.prototype.toISOString'' shall generate strings on this format with all fields present and the shortest possible nonempty string of digits following the period in the ''time'' part.
+
+==== Semantics ====
+
+The evaluation of a date literal creates a new ''Date'' object with an internal time value corresponding to the time denoted by the date literal.
+
+===== Prior art =====
+
+A quick Google turns up date literals only in VBScript, which apparently allows #whatever# as a date literal, where "whatever" appears to be interpreted pretty liberally, ie, it doesn't solve our problem
+
+===== References =====
+
+  * W3C dates: http://www.w3.org/TR/NOTE-datetime
+  * ISO dates: http://www.cl.cam.ac.uk/~mgk25/iso-time.html 
+  * http://www.imc.org/atom-syntax/mail-archive/msg13103.html
+
+===== To do / Issues =====
+
+  * There's no way to specify dates before year 1.  [[http://books.xmlschemata.org/relaxng/ch19-77049.html|xsd:dateTime]] allows a leading ''-'' to specify this.  Need to check what ISO8601/RFC3339 say.
+  * There are open issues on default values for missing fields, as outlined above
+  * A few currently valid expressions are going to be mistaken for date literals, for example, ''T12-10'' is one such expression.

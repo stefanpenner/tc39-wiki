@@ -1,0 +1,140 @@
+DO NOT EXPORT
+
+====== Multiple compilation units ======
+
+NEEDS:
+
+  * refactoring as a GlobalFrame with external "class" loaders
+
+
+(Also see the [[discussion:multiple compilation units|discussion page]] for this proposal)
+
+===== Abstract =====
+
+The semantics of interoperation between programs evaluated in different 3rd edition **Execution Contexts** is defined. In order to allow for multiple separately compiled programs to share their fixed bindings in a type safe way, we extend the Execution Context by adding to the scope chain an **external frame** that includes zero or more bindings to external definitions. This extension is compatible with 3rd edition semantics for multiple compilation units that share a single execution environment. 
+
+===== Proposal =====
+
+  * Add to the scope chain, ahead of the root global object, an //External Frame// object whose properties are proxies for external bindings
+
+<code>
+         ... -> Global Block -> External Frame -> Global Object (root)
+</code>
+
+  * For each accessible external and every local global definition, add a proxy binding to the External Frame. The proxy must forward an invocation (e.g. get, set, call) to the corresponding owning global object
+  * Built-ins must be internal properties of the current global object. That is,
+
+<code>
+         this.parseInt === parseInt
+</code>
+
+  * Implementations that do not support separate compilation in distinct execution contexts can do so without the use of an External Frame. Lexical references to global definitions will be compatibly resolved through the global object at the root of the scope chain (as defined by the 3rd edition)
+
+===== Discussion =====
+
+  * Except for the part about built-ins appearing to be internal properties, what is proposed in compatible with AS3
+  * It might seem weird that external bindings shadow internal dynamic bindings, but this is consistent with the behavior, for example, of block scoped lets shadowing dynamic globals
+  * The external frame and the top level block frame are different so that top-level let bindings shadow external bindings
+  * Global definitions collide with incompatible external definitions of the same name
+
+
+  * Describe classloader like "prefer the parent" rule in AS3
+
+====== Previous Discussion ======
+
+We define two standard models, one for whole-program compilation and one for incremental compilation.  These are consistent in the sense that if a multi-fragment program compiles and runs with no unhandled exceptions under both models then both executions yield the same result except as described below. The incremental model is compatible with the 3rd Edition semantics for web browsers.
+
+Suppose in the following that the program consists of a totally ordered set of fragments F1 through Fn. This set might include strings passed to ''eval'' and which are evaluated in the same global environent as F1..Fn. This set does not include strings passed to ''eval'' which are evluated in a differnt environment, or the ''Function'' constructor. Note: entities named by ''include'' are included by being textually in-lined in the referencing fragments.
+
+In an incremental setting the set of fragments can be unbounded, and it includes fragments loaded through the use of host mechanisms (writing a ''SCRIPT'' tag into the document in a browser environment, for example).  
+
+In the whole-program setting we assume that no such mechanisms for incremental script creation exists.
+
+Each fragment Fi defines:
+
+  * zero or more fragments of the unnamed package
+  * zero or more fragments of sundry named packages
+  * perhaps some global code.
+
+Each package fragment consists of statements and definitions of constants, variables, functions, classes, interfaces.
+
+==== Whole-program compilation ====
+
+For whole-program compilation, F1..Fn are all available at compile time. We concatenate these fragments in order into a single source fragment and then compile that fragment as a single compliation unit. Consequences include:
+
+   * All top-level definitions in F1..Fn are visible to all fragments, possibly in an uninitialised state
+   * F1..Fn necessarily operate on the same global environment
+
+==== Incremental compilation ====
+
+Consider two fragments Fi and Fj, considered in that order.  (For "variable" read "var or const".)
+
+  * If Fi defines a top-level package, class, interface, namespace, or variable then that item is visible statically in Fj just as it is in Fi
+  * Fj may add definitions to a package P defined in Fi by also defining P.  All classes, interfaces, namespaces, and variables defined in P in Fi are visible when P is compiled in Fj, and conflicts are resolved as if all the definitions came from the same fragment.
+  * Fj may not redefine (at top level) any classes, interfaces, or namespaces defined in Fi
+  * Fj may redefine (at top level) a variable defined in Fi provided it is type-compatible, and if it is a ''const'' only if it does not have an initializer in Fj
+  * If Fi defines a ''const'' then it must contain code that definitely leaves that constant initialized when Fi's evaluatation terminates (though see Open Issues below)
+  * Fi may not contain compile-time constant references to packages, classes, namespaces or interfaces defined in Fj (and in the strict language it may also not reference variables defined in Fj)
+  * A namespace or package opened in Fi will not be automatically opened in Fj. That is Fi and Fj introduce separate block scopes
+  * It is implementation defined whether separately compiled fragments are interpreted in a common or unique global environments
+
+
+Open issues:
+
+  * It's unclear whether "default xml namespace" is scoped inside a fragment or in the program as a whole since that's really some sort of assignment statement [ //[[jodyer@adobe.com|Jeff Dyer]] 2006/09/22 08:38// --- default xml namespace is an implicit variable that gets set on the global object, so to the extent that a global object is shared, the state of the dxns will be shared.]
+  * The rules about ''const'' break down if the implementation allows one fragment to be terminated by an error and the next program to be evaluated anyway. //[Anyhow ''const'' already has some initialization issues with regard to non-nullable types.]// [ //[[jodyer@adobe.com|Jeff Dyer]] 2006/09/22 08:38// --- what are the rules for handling exceptions? Is the state of its environment at the point of the exception passed to the next fragement?]
+
+==== Propositions ====
+
+The following remain to be proved:
+
+  * The whole-program and incremental models are consistent in the sense that they yield the same values in programs that do not throw unhandled exceptions
+  * The incremental compilation mechanism is compatible with 3rd Edition semantics
+
+===== Connections =====
+
+The [[proposals:local packages]] proposal provides a complementary mechanism that allows names to be hidden from the global view.
+
+===== Background & rationale =====
+
+Both the 3rd Edition and the 4th Edition Draft define only the meaning of a single program fragment executing in a single global environment (where "program fragment" is the "Program" that is the initial nonterminal in the language grammar).
+
+However, all major implementations of the language will likely need to consider interpretation of complete programs consisting of multiple, separately compiled such fragments, sometimes interacting in multiple global environments.
+
+  * We need to define what it means to load and execute a program consisting of multiple fragments in a single global environment.
+  * We should also address any complexities that arise with multiple global environments.
+  * We should do this both for 3rd Edition code and for 4th Edition code.
+
+If the spec does not address these complexities then it is left up to each implementation to define the meaning of such programs.  Multiple implementations in the same domain (notably web browsers) will tend to develop incompatibilities.
+
+==== Case: Web browsers ====
+
+Web browsers always perform compilation and evaluation on-line, one program at a time.  The meaning of a web page can depend on the output of scripts; there is therefore a dependency between scripts.  Scripts can also be loaded and executed by extra-lingual mechanisms.  Scripts come from multiple sources, notably from the page itself and from inserted ad content.  Even discounting ''eval'' there is no way that a complete set of program fragments can be presented to the browser for compilation all together.
+
+The fact that 3rd Edition does not define the meaning of loading multiple scripts in multiple global environments is mitigated by several factors:
+
+  * most global variables are updateable, so redefining something in a later fragment is rarely a problem
+  * most standard entities are treated as constant //in practice//, so picking up the wrong global environment in a function is rarely a problem
+  * the language is sufficiently simple that browsers have generally managed to agree on the semantics of 3rd Edition programs (see the following section)
+
+The situation for 4th Edition is more difficult:
+
+  * many names are constant (classes, types, constants) and will therefore not be updateable.  Redefinition will not work.
+  * the language is richer and getting the correct global environment will be of greater importance
+  * there are greater interdependencies among program phrases.
+
+=== 3rd Edition semantics for web browsers ====
+
+A program consists of a potentially unbounded totally ordered set of program fragments F1 ..., each of which is a ''Program'' as per Section 14 of the 3rd Edition.  This set is evaluated in an on-line fashion in the context of a global environment that is freshly created before the evaluation of the first fragment.  
+
+Functions in the fragment are assigned and hitherto unknown variables are created before evaluation begins.
+
+If the evaluation of a fragment throws an exception that is not caught by the fragment or by any other mechanism, then the fragment's evaluation is aborted.  If one fragment's evaluation is aborted, the implementation goes on to evaluate the following fragments as it would have if no abort had taken place.
+
+Functions are statically scoped with respect to their global environment.  This is true for built-in functions as well as user-defined functions.
+
+The initial values of standard types in two global environments are separate types wrt ''instanceof''; eg, ''String'' in two separate environment has entirely separate prototype chains.
+
+Two programs can interact by manipulating data and functions in each others' global environments, each of which can be considered simply an Object.  Apart from constraints in the implementation, there are no restrictions on accesses from one global environment to another.
+
+Observe that the evaluation of any fragment requires no knowledge of any previous fragment apart from observing which names have been defined so far.

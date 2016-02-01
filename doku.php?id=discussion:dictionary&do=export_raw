@@ -1,0 +1,125 @@
+====== Dictionary ======
+
+This is the discussion page for [[proposals:dictionary|the dictionary proposal]] and for [[proposals:oopKoolAid|the oopKoolAid proposal]].
+
+
+
+
+
+
+
+
+
+===== Discussion =====
+
+Looks good, but rather than a structure for constructor parameters, why not optional parameters?
+
+<code javascript>
+    public function Dict(equals = intrinsic::===, hashcode = intrinsic::hashcode) {
+        . . .
+    }
+</code>
+
+Either the user calls ''new Dict'' or ''new Dict(myEquals, myHashcode)'' (or possibly ''new Dict(myEquals)'' in case the ''equals'' method can be varied usefully while defaulting ''hashcode'' to ''intrinsic::hashcode'' -- which is why ''equals'' is the first optional parameter). With the current proposal, the user must call ''new Dict()'' for the first case and pay a hidden default object initialiser construction, and something longer than the counter-proposal for the second.
+
+In short, the proposal requires an extra argument for the parameters, always (this could be re-used, but typically will be a new ''Object'' for each construction), when I suspect the most common case will be ''{useProtocol: true}''. And while there may be no best order of optional arguments, ''equals'' is more constrained (it must be an equivalence relation) while ''hashcode'' need not be perfect. So I think my order is better than no order ;-). The counter-proposal is both more efficient and as short or shorter.
+
+One other comment: ''iterator::EnumerableId'' (see [[proposals:iterators and generators]]) could be used instead of ''(string,uint)'' in ''Dict.<(string,uint),*>'', the result of ''convert''. I don't see a good reason to exclude namespace-qualified "own" property names. We support writing them in object initialisers and structural types. They're "own". Why filter them out?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/07/18 15:40//
+
+It's not true that there's a hidden cost for "new Dict()", the code can check arguments.length (which need not incur an allocation, as we've previously discussed) and avoid consing.  If you like, the current code is ineptly written in this regard :-)
+
+Clearly the user can't avoid consing an object when passing parameters, though.  I don't think this is a big deal in the big scheme of things.
+
+I don't understand your counterproposal, however, as it does not let the user choose whether the protocol should be used or the defaults, except by supplying both equals and hashcode when wishing to use the protocol.  That does not seem reasonable (even though I suspect calling ''new Dict()'' will be most common).  What's your intent here?
+
+On the other point, I had missed ''EnumerableId'', I will fix this.  There really is no good reason for excluding namespaced identifiers, and I did not care for that restriction.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/07/18 16:52//
+
+Lars pointed out that I wrote the counter-proposal without saying that it rejects the "method-based protocol". Unless we add ''Object.prototype.equals'' and (shudder) ''Object.prototype.hashCode'', and risk breaking web content because the global object delegates to ''Object.prototype'', I think supporting methods as well as helper functions (''equals(a, b)'' or its default, ''intrinsic::===(a, b)'', rather than ''a.equals(b)'') will leave people frustrated for want of universal method protocols. I'm just not convinced we need more than helper functions.
+
+If we do, the ''useProtocol'' name seems less clear and concrete than something with the word ''Method'' in it. But I can't think of a good name right now, other than ''useMethods''. Bleah.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/07/18 23:07//
+
+I suppose we could put the equals and hashCode methods in a namespace, like ''oopKoolAid''.
+
+IMO protocols like these are useful to the ecosystem, people who want to do a standard collections framework based on our generics would likely use them.  However, stuffing the object prototype with protocols is not a pleasant way to go, it's better when they can be introduced "further down" in the hierarchy, either through the ''useProtocol'' hack or through some MOPpish feature, like generic functions (which are better than instance methods anyway, for ''equals'').
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/07/19 09:51//
+
+Brendan, how do you feel about factoring this class so that ''Map'' takes equality and hashcode functions, and there is some class that derives from it that requires the keys to implement hashcode / equality; we'd specify these as a nominal interface:
+
+<code>
+    class Map.<K,V> {
+        function Map(eq=intrinsic::===, hash=intrinsic::hashcode) { ... }
+        ... 
+    }
+
+    interface Hashcode {
+        function hashcode() : uint;
+        function equal(that: Hashcode): boolean;
+    }
+
+    class ObjectMap.<K /* implements Hashcode */,V> {
+        function ObjectMap() 
+            : super(function (a:Hashcode,b:Hashcode) { return a.equals(b) },
+                    function (a:Hashcode) { return a.hashcode() })
+        { }
+    }
+</code>
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/07/30 03:36//
+
+I'm ok with this (you want ''extends Map.<K,V>'' in the ''class ObjectMap'' head), but for the minor nit of an appropriate name (''ObjectMap'' is not bad, but neither is ''OopKoolAidMap'' :-P), and the plurality of types here. I didn't mean to derail your original proposal, the dual-mode ''Map'' with a ''useMethods'' optional (defaulting to ''false'') flag parameter. Between that and a pair of classes ''Map'' and ''ObjectMap'', I'm leaning toward the dual-mode ''Map''. How about you?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/07/31 18:15//
+
+Yeah, I did slightly better work in the mtn, check out the code there for the canonical version.
+
+I'm leaning toward separate classes, actually.  Three parameters with default values is one too many until we have named parameters (...), and separating concerns is the right thing IMO.
+
+The name bugs me.  Since the interface is called ''Hashcode'' we could call the class ''HashcodeMap'' but the interface name is really not good.  Maybe the interface should be ''Equality'' and the class should be ''EqualityMap''?  (''Eq'' and ''EqMap''?)
+
+I agree about the plurality of types, but I don't see us avoiding it if we support the protocol.  We could scale back and drop the idea of supporting the protocol at all, after all we're now suddenly into defining protocols and naming them.  Something for the ecosystem?
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/08/01 03:24//
+
+Nits aside (C instead of C++ one or sub-line comments; expression closures could be used for the funarg actuals in ''ObjectMap'''s ''super'' call; ''EnumerableId'' is in namespace ''iterator'' -- perhaps it should be ''intrinsic''?), it seems good. Some name suggestions: ''interface Identity'' (not equality, a looser notion in general and in other languages, arguably in ES1-3 due to ''=='' vs. ''===''); ''ObjectMap'' is growing on me. You could make the interface name ''ObjectIdentity''. If ''Identity'' is too strong, is there something stronger than "equality"? "Equivalence"?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/08/01 13:27//
+
+Let's go with ''Identity'' and ''ObjectIdentity'' and see if it sticks.  I like them.
+
+''EnumerableId'' is too important to be stuck in the ''iterator'' namespace; it wants to be used by methods on ''Object'' (like PrototypeIsEnumerable, hasOwnProperty).  I think ''intrinsic'' or (newly proposed) ''__ES4__'' is better.  I'll assume ''intrinsic'' for the time being.
+
+--lars
+
+===== Older discussion =====
+
+  * signature of hash function (* instead of K)
+  * signature of ''convert'' (no reason why we couldn't accept null, say)
+  * is ''convert'' what we want?  Awfully big hammer.
+  * is ''Dict'' a reasonable name?
+  * how should key equality be affected by operator overloading (see Ticket #54)
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/05/27 01:54//
+
+  * ''=='' is not an equivalence relation (it's intransitive); we want ''==='' here (ignore ''NaN'' irreflexivity in either case; see [[proposals:hashcodes]] update).
+  * ''Dict'' seems better for the reason given in es4-discuss (conciseness when writing ''let d:Dict = {...}''). Also, ''Dict'' matches ''RegExp'' better, whereas ''Dictionary'' seems overlong. Let the name be a bit hacker-friendly, and leave the highfalutin' appellation to the "framework"-heavy side of the ecosystem. ;-)
+  * ''convert'' of ''null'' seems useless, and potentially confusing given that this class is a nullable type.
+  * ''convert'' taking any object and mapping its direct properties to key/value pairs is the right thing. But we need to define the conversion from property name to ''K'' so as to allow ''int'', ''uint'', ''string'', and ''intrinsic::Name'' to be distinguished. See ''iterator::EnumerableId'' in [[iterators and generators]].
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/05/28 22:54//
+
+  * Re ''=='' vs ''==='': ''==='' isn't transitive either in the presence of operator overloading so I don't know if that's a strong argument, but the choice of ''=='' was arbitrary and I'm happy to change it.
+  * Re ''Dict'' vs ''Dictionary'', I don't care much and I'll change it (though I suspect you're wrong)
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/05/29 08:21//
+
+  * Sorry, I meant ''intrinsic::==='' -- given a ''hashfn'' parameter, I don't see the need for ''intrinsic::hashcode'' to track a particular class's overridden ''===''.
+  * Re: ''Dict'' vs. ''Dictionary'', I could be wrong for sure. It's hard to define "right". But did you mean wrong about conciseness winning, or wrong about matching ''RegExp'' (which is a different argument, more like "stand on naming style precedent")?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2007/05/29 10:04//

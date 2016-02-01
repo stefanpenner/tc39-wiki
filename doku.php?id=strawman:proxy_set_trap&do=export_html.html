@@ -1,0 +1,137 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:proxy_set_trap&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:proxy_set_trap&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:proxy_set_trap&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="proxy_set_trap"></a><h1>Proxy set trap</h1>
+<div class="level1">
+
+<p>
+ The default implementation of the derived <code>set</code> trap of Proxies was written to be consistent with the ES5 [[Put]] algorithm (ES5 section 8.12.5). As noted by David Bruant, the accessor case for own properties should only be considered after the call to <code>this.getPropertyDescriptor(name);</code>, but not before, so as to exhibit the same side-effects as the original algorithm.
+</p>
+
+<p>
+We have two ways of fixing this discrepancy:
+</p>
+<ol>
+<li class="level1"><div class="li"> Update the <code>set</code> implementation at <a href="doku.php%3Fid=harmony:proxies.html#trap_defaults" class="wikilink1" title="harmony:proxies" onclick="return svchk()" onkeypress="return svchk()">trap_defaults</a> to be consistent with ES5.</div>
+</li>
+<li class="level1"><div class="li"> Changing ES-harmony&rsquo;s [[Put]] to match the current default proxy <code>set</code> behavior.</div>
+</li>
+</ol>
+
+<p>
+ Below is one way to fix the current default behavior of <code>set</code>:
+</p>
+<pre class="code javascript"> set: <span class="kw2">function</span><span class="br0">&#40;</span>receiver, <span class="kw3">name</span>, val<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">var</span> desc = <span class="kw1">this</span>.<span class="me1">getOwnPropertyDescriptor</span><span class="br0">&#40;</span><span class="kw3">name</span><span class="br0">&#41;</span>;
+    <span class="kw1">if</span> <span class="br0">&#40;</span>desc<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">if</span> <span class="br0">&#40;</span><span class="st0">'writable'</span> <span class="kw1">in</span> desc<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">if</span> <span class="br0">&#40;</span>desc.<span class="me1">writable</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+          desc.<span class="me1">value</span> = val;
+          <span class="kw1">this</span>.<span class="me1">defineProperty</span><span class="br0">&#40;</span><span class="kw3">name</span>, desc<span class="br0">&#41;</span>;
+          <span class="kw1">return</span> <span class="kw2">true</span>;
+        <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="br0">&#123;</span>
+          <span class="kw1">return</span> <span class="kw2">false</span>;
+        <span class="br0">&#125;</span>
+      <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="br0">&#123;</span> <span class="co1">// accessor</span>
+        <span class="kw1">this</span>.<span class="me1">getPropertyDescriptor</span><span class="br0">&#40;</span><span class="kw3">name</span><span class="br0">&#41;</span>; <span class="co1">// !! line added just for side-effect of triggering the trap, to be consistent with ES5 [[Put]]</span>
+        <span class="kw1">if</span> <span class="br0">&#40;</span>desc.<span class="me1">set</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+          desc.<span class="me1">set</span>.<span class="me1">call</span><span class="br0">&#40;</span>receiver, val<span class="br0">&#41;</span>;
+          <span class="kw1">return</span> <span class="kw2">true</span>;
+        <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="br0">&#123;</span>
+          <span class="kw1">return</span> <span class="kw2">false</span>;
+        <span class="br0">&#125;</span>
+      <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span>
+    desc = <span class="kw1">this</span>.<span class="me1">getPropertyDescriptor</span><span class="br0">&#40;</span><span class="kw3">name</span><span class="br0">&#41;</span>;
+    <span class="kw1">if</span> <span class="br0">&#40;</span>desc<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+      <span class="kw1">if</span> <span class="br0">&#40;</span><span class="st0">'writable'</span> <span class="kw1">in</span> desc<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw1">if</span> <span class="br0">&#40;</span>desc.<span class="me1">writable</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+          <span class="co1">// fall through</span>
+        <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="br0">&#123;</span>
+          <span class="kw1">return</span> <span class="kw2">false</span>;
+        <span class="br0">&#125;</span>
+      <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="br0">&#123;</span> <span class="co1">// accessor</span>
+        <span class="kw1">if</span> <span class="br0">&#40;</span>desc.<span class="me1">set</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+          desc.<span class="me1">set</span>.<span class="me1">call</span><span class="br0">&#40;</span>receiver, val<span class="br0">&#41;</span>;
+          <span class="kw1">return</span> <span class="kw2">true</span>;
+        <span class="br0">&#125;</span> <span class="kw1">else</span> <span class="br0">&#123;</span>
+          <span class="kw1">return</span> <span class="kw2">false</span>;
+        <span class="br0">&#125;</span>
+      <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span>
+    <span class="kw1">this</span>.<span class="me1">defineProperty</span><span class="br0">&#40;</span><span class="kw3">name</span>, <span class="br0">&#123;</span>
+      value: val, 
+      writable: <span class="kw2">true</span>, 
+      enumerable: <span class="kw2">true</span>, 
+      configurable: <span class="kw2">true</span><span class="br0">&#125;</span><span class="br0">&#41;</span>;
+    <span class="kw1">return</span> <span class="kw2">true</span>;
+  <span class="br0">&#125;</span></pre>
+<p>
+Without proxies, the difference between both algorithms would have been unobservable. With proxies, it becomes observable, since using the ES5 algorithm, a default <code>set</code> on an own accessor property would trigger <em>both</em> the <code>getOwnPropertyDescriptor</code> and the <code>getPropertyDescriptor</code> traps. With the current default implementation, the <code>getOwnPropertyDescriptor</code> trap only gets called once, which seems to be more desirable. The current default <code>set</code> trap avoids this artifact at the expense of code duplication.
+</p>
+
+<p>
+Allen is taking action to reconcile the ES5 internal &ldquo;MOP&rdquo; with the proxy &ldquo;MOP&rdquo;, which will clarify issues like this.
+</p>
+
+<p>
+&mdash; <em><a href="mailto:%26%23x74%3B%26%23x6f%3B%26%23x6d%3B%26%23x76%3B%26%23x63%3B%26%23x2e%3B%26%23x62%3B%26%23x65%3B%26%23x40%3B%26%23x67%3B%26%23x6d%3B%26%23x61%3B%26%23x69%3B%26%23x6c%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x74;&#x6f;&#x6d;&#x76;&#x63;&#x2e;&#x62;&#x65;&#x40;&#x67;&#x6d;&#x61;&#x69;&#x6c;&#x2e;&#x63;&#x6f;&#x6d;">Tom Van Cutsem</a> 2011/02/28 07:37</em>
+</p>
+
+</div>
+<!-- SECTION [1-2605] -->
+<a name="references"></a><h1>References</h1>
+<div class="level1">
+<ul>
+<li class="level1"><div class="li"> <a href="https://mail.mozilla.org/pipermail/es-discuss/2011-January/012622.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2011-January/012622.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Discussion thread</a> on es-discuss.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [2606-2743] -->
+<a name="feedback"></a><h1>Feedback</h1>
+<div class="level1">
+
+<p>
+ Discussed at the March 2011 TC39 meeting. ES-next spec should avoid the redundant trap invocation.
+</p>
+
+<p>
+&mdash; <em><a href="mailto:%26%23x74%3B%26%23x6f%3B%26%23x6d%3B%26%23x76%3B%26%23x63%3B%26%23x2e%3B%26%23x62%3B%26%23x65%3B%26%23x40%3B%26%23x67%3B%26%23x6d%3B%26%23x61%3B%26%23x69%3B%26%23x6c%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x74;&#x6f;&#x6d;&#x76;&#x63;&#x2e;&#x62;&#x65;&#x40;&#x67;&#x6d;&#x61;&#x69;&#x6c;&#x2e;&#x63;&#x6f;&#x6d;">Tom Van Cutsem</a> 2011/03/30 13:05</em>
+</p>
+
+<p>
+MarkM would like to bundle the changes proposed by this strawman with the discussion on providing a new [[Set]] built-in method, cf. the open issues in <a href="doku.php%3Fid=harmony:proxy_defaulthandler.html#open_issues" class="wikilink1" title="harmony:proxy_defaulthandler" onclick="return svchk()" onkeypress="return svchk()">the default forwarding handler</a> proposal.
+</p>
+
+<p>
+&mdash; <em><a href="mailto:%26%23x74%3B%26%23x6f%3B%26%23x6d%3B%26%23x76%3B%26%23x63%3B%26%23x2e%3B%26%23x62%3B%26%23x65%3B%26%23x40%3B%26%23x67%3B%26%23x6d%3B%26%23x61%3B%26%23x69%3B%26%23x6c%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x74;&#x6f;&#x6d;&#x76;&#x63;&#x2e;&#x62;&#x65;&#x40;&#x67;&#x6d;&#x61;&#x69;&#x6c;&#x2e;&#x63;&#x6f;&#x6d;">Tom Van Cutsem</a> 2011/05/04 12:30</em>
+</p>
+
+</div>
+<!-- SECTION [2744-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/e/e6dd82fc0b6ff19c8dece3dddf8fca52.xhtml used -->
+</body>
+</html>

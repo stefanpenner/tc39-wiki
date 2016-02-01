@@ -1,0 +1,256 @@
+====== Numbers ======
+
+(Also see the [[discussion:numbers|discussion page]] for this proposal)
+
+===== Motivation =====
+
+ECMAScript 3rd Edition had only numeric type, called ''Number'', with a concrete representation as IEEE double precision binary floating point.  The 4th Edition draft adds types ''int'', ''uint''.  The [[proposals:decimal]] proposal has added a type ''decimal''; the [[proposals:type parameters]] proposal makes it possible for user programs to provide their own numeric types.
+
+The present proposal attempts to pull all these strands together and define the relationships of the various representations, mixed-representation arithmetic, and so on.  It also tries to do something interesting with the ''Number'' type, which does not have to be seen as a primitive type in its own right but instead as an alias that maps to more primitive types depending on context.
+
+===== Representations =====
+
+There shall be four built-in representations for numbers: ''double'', ''decimal'', ''int'', and ''uint''.  There is a built-in type corresponding to each of these representations.
+
+The representations hold the following values:
+
+  * ''double'' values are 64-bit IEEE binary floating point values
+  * ''decimal'' values are 128-bit IEEE decimal floating point values
+  * ''int'' values are integers in the range -(2^31) .. (2^31)-1
+  * ''uint'' values are integers in the range 0 .. (2^32)-1
+
+All representation types are ''final'' classes that are direct subtypes of ''Object''.  (See the [[discussion:numbers|discussion page]] for a discussion of why there is not a subtype relationship between the numeric types.)
+
+There shall also be a non-nullable non-final dynamic class ''Number'' that holds a double value and which is generally compatible with the ''Number'' type in Edition 3.  ''Number'' is a direct subtype of ''Object''.
+
+===== Syntax =====
+
+In general, number literals can map to multiple representation (eg, ''1'' can be represented without loss of precision in any of the four representations).  
+
+==== Standard interpretation ====
+
+In the absence of a representation-selection suffix or a ''use <numbertype>'' pragma, the representation is selected as follows, selecting the first rule that matches:
+
+  * Any integer value prefixed by ''0x'' in the range of a ''uint'' is represented as a ''uint''
+  * Any integer value in the range of an ''int'' is represented as an ''int''
+  * Any integer value in the range of a ''uint'' but outside the range of an ''int'' is represented as a ''uint''
+  * Everything else is represented as a ''double''.
+
+
+==== Representation-selection suffix ====
+
+The program can force the representation of a number literal by suffixing the literal with a character denoting the type, one of ''m'', ''d'', ''i'', and ''u'' (case-insensitively):
+
+  * ''10.5m'' is a decimal literal
+  * ''10.5d'' is a double literal
+  * ''37i'' is an int literal
+  * ''42u'' is a uint literal
+
+(The suffix ''m'' was taken from C# and is the initial letter of the word "money".  Monetary computations tend to benefit the most from decimal floating point.)
+
+These suffixes are handy in situations where a ''use <numbertype>'' pragma is in effect but where we still want to control the numeric types and not have to worry about run-time conversions, for example.
+
+The suffixes are part of the syntax for the various number literals.  Thus 0x10i is an int literal.  The rules are roughly:
+
+  * [0-9]+[iumd]?
+  * 0x[0-9a-fA-F]+[iu]?
+  * [0-9]+.[0-9]+[Ee][+-]?[0-9]+[md]?
+
+
+==== Effect of the "use <numbertype>" pragma on syntactic interpretation ====
+
+The program can also force the representation of an un-suffixed number literal by placing the literal in the scope of a ''use <numbertype>'' pragma.  
+
+When the pragma selects a floating-point type -- ''use decimal'' and ''use double'' -- then every literal is interpreted as being of that type.
+
+When the pragma selects an integer type -- ''use int'' and ''use uint'' -- then every integer literal is interpreted as being of that type.  Integer values that do not fit the target type are read as ''double'' and then converted to ''int'' or ''uint'' using the standard conversion.
+
+A special meaning is given to the phrase ''use Number''.  The phrase means that the implementation should revert to the standard (initial) behavior.
+
+
+===== Conversions =====
+
+All built-in numeric types are interconvertible in the sense that 
+
+  * mixed-representation arithmetic converts operands to a common representation (normally without loss of precision) 
+  * assignment silently converts a numeric type to the target type (even if that entails loss of precision)
+
+In effect it is as if each type defines a ''to'' operator that can handle any of the built-in numeric types, and there is no strict-mode restriction on that ''to'' operator.
+
+For mixed-representation arithmetic operators like ''+'' and ''-'', ''int'' is converted to ''uint'' if possible, otherwise to ''double'' or ''decimal'' depending on the other operand.  ''uint'' is converted to ''double'' or ''decimal'' depending on the other operand.  ''double'' is converted to ''decimal''.  A ''Number'' value is converted to ''double'' before it participates in any arithmetic.  The next section contains more details.
+
+===== Operations =====
+
+Observe that when no pragma is in effect, the most that can be said about the type of the result of an arithmetic operation is that it is ''Numeric'' (see section "Classification" below).  When a pragma is in effect, the type of the result is known precisely.
+
+==== Binary aritmetic operators ====
+
+The binary aritmetic operators ''+'', ''-'', ''*'', ''/'', and ''%'' operate on numeric arguments in one of two ways, depending on whether a ''use <numbertype>'' pragma is in effect.  
+
+=== The selected type is "Number" ===
+
+If no pragma is in effect then the operands are converted to a common representation if necessary before the operation is performed.  No argument conversion takes place if the operands are of the same representation.
+
+Operands are converted to a common representation by the following algorithm:
+  * if one operand is decimal, the other is converted to decimal
+  * else if one operand is double, the other is converted to double
+  * else (one operand is uint and the other is int) 
+    * if the int is nonnegative then it is converted to uint  
+    * else both operands are converted to double.
+
+The type of the result of the operation is selected by the following algorithm:
+  * if the operands are double, the result is double
+  * if the operands are decimal, the result is decimal
+  * if the operands are int and the result is representable as an int without loss of precision, the result is an int.
+  * if the operands are uint and the result is representable as an uint without loss of precision, the result is an uint.
+  * else the result is a double
+
+=== The selected type is not "Number" ===
+
+If a pragma is in effect then the operands are converted independently to the representation selected by the pragma before the operation is performed.  The result of the operation is always in the selected representation, even if that entails loss of precision.  (For example, if ''use uint'' is in effect then ''/'' is unsigned integer division.)
+
+==== Relational operators ====
+
+The relational operators ''<'', ''%%<=%%'', ''>'',''>='', ''=='', ''==='', ''!='', and ''!=='' convert their operands in the same ways as the binary arithmetic operators, and always produce a boolean result.
+
+==== Bitwise and shift operators ====
+
+The bitwise and shift operators %%<<%%, %%>>%%, %%>>>%%, %%&%%, %%|%%, and %%^%% work as in Edition 3: arguments are converted to ''int'' or ''uint'' as required by the operator, and the result is ''int'' or ''uint'' as per the Edition 3 spec.  The ''use <numbertype>'' pragmas have no effect. 
+
+==== Unary operators ====
+
+The unary arithmetic operators ''+'' and ''-'' operate on their single numeric operand in one of two ways, depending on whether a ''use <numbertype>'' pragma is in effect.
+
+If no pragma is in effect, then the result of the operation is in the representation of the operand if (a) that representation is ''decimal'' or ''double'' or (b) the result can be represented without loss of precision.  Otherwise, the result is represented as ''double''.
+
+If a pragma is in effect then the operand is converted to the representation selected by the pragma before the operation is performed.  The result of the operation is always in the selected representation, even if that entails loss of precision.  For example, if ''use uint'' is in effect then -0xFFFFFFFF = ~0xFFFFFFFF + 1 = 1, not the ''double'' value -4294967296.
+
+The operation of the unary arithmetic operators ''++'' and ''--'' depends on whether a ''use <numbertype>'' pragma is in effect.
+
+If a pragma is not in effect, then the value is extracted from the location, converted to a number, incremented or decremented, and stored back into the location (with possible truncation).  (This behavior is entirely compatible with Edition 3 except in that it takes type annotations into account.)
+
+If a pragma is in effect, then the value is extracted and converted to a number of the selected representation, incremented or decremented, then converted to the selected representation again, and finally stored back into the location (with possible conversion yet again to match the annotation on the location). 
+
+
+===== ''use <numbertype>'' =====
+
+As outlined in the preceding sections, the pragma ''use <numbertype>'' has several effects in its scope (which is lexical block scope like for other pragmas):
+  * it affects the behavior of arithmetic and relational operators; and
+  * it affects the interpretation of numeric literals.
+
+The effect of this pragma can also be explained in large part in terms of namespaces.  See the [[discussion:numbers|the discussion page]] for more.
+
+The phrase ''use Number'' means "revert to standard behavior", ie, in its scope the implementation behaves as if no number-type pragma is in effect.
+
+
+===== Classification =====
+
+User programs will wish to test if a value has a numeric type.  Since there is no common base type for numbers, one can't use eg ''x is Number'' (or even ''x instanceof Number'').  
+
+There shall be a predefined union type ''Numeric'':
+
+    type Numeric = (int, uint, double, decimal, Number)
+
+User code would now use ''x is Numeric'' to test for a number.  User code that defines new number types could extend the union,
+
+    type CNumeric = (Numeric, Complex)
+
+which does the right thing.
+
+===== String-to-number conversion =====
+
+3rd Edition has the following facilities:
+
+  * ''Number'' converts its argument to a double through the ''ToNumber'' mechanism
+  * ''parseInt'' parses an integer-syntaxed prefix of a string as a double
+  * ''parseFloat'' parses a prefix of a string as a double
+
+In 4th Edition, we should make the following changes:
+
+  * ''Number'' should convert its argument to the currently selected floating-point representation
+  * ''parseInt'' should return an int
+  * ''parseUint'' should return a uint
+  * ''parseDecimal'' should return a decimal
+  * ''parseDouble'' should be introduced as an alias for ''parseFloat''
+
+
+===== Number-to-string conversion =====
+
+At a minimum, ''toFixed'', ''toPrecision'', and ''toExponential'' must have their domains extended to ''Numeric'' (rather than ''double'' as in 3rd Edition) and have proper behavior defined on ''decimal'' (the behavior for ''int'' and ''uint'' being defined by conversion to ''double'').
+
+''ToString'' must also be defined on ''decimal''.
+
+[I would suggest the details (though not necessarily the words) to be found at http://www2.hursley.ibm.com/decimal/daconvs.html -- this has now been in use for 25+ years, and has been adopted by Java, C#, etc.  --- //[[MFC@uk.ibm.com|Mike Cowlishaw]] 2006/11/27 23:39//]
+
+
+
+
+
+===== Open issues =====
+
+  * It is possible that ''use <numbertype>'' is overdesigned in various ways
+  * The syntax ''use Number'' is in any case pretty obscure, to say the least
+  * The name ''Numeric'' is not very pretty
+  * It is possible there should be other predefined unions, like ''RealNumber'', ''AnyNumber'', ''FloatNumber'' that can be used for forward-compatible signatures (I know this smells of the Scheme numeric tower, but I do believe they have utility -- some are used in the Math object in the reference implementation but are private to that object).  Most would leave out ''Number'' because it's mostly obsolete.  Fx:
+<code>
+    AnyNumber = (int,uint,double,decimal,Number)  // might have complex, float, bignum in the future
+    RealNumber = (int,uint,double,decimal)        // might have bignum, float in the future
+    FloatNumber = (double,decimal)                // might have float in the future
+    IntegralNumber = (int,uint)                   // might have bignum in the future
+</code>
+
+
+===== An opposing view =====
+
+Another trial balloon.
+
+I've been pondering numbers today.  One issue is the "use <numbertype>" pragma.  I fear it does not pull its weight in the form we have it now.
+
+Recall:
+
+We started out with "use precision ..." and "use rounding ..." for decimal.
+
+Then we figured that "use decimal" was a neat way of letting people have the semantics they presumably wanted.  The main use case for "use decimal" is that you slap it on at the top of your program and then forget about it, it just works.  In its current form it affects the interpretation of literals and the conversion behavior of many operators, but not assignment.  There are some problems, eg parseFloat() still returns a double, but mostly this works OK.
+
+Then we figured that "use uint" is maybe good for bit crunchers: mod32 arithmetic, no overflow checks, basically fast machine arithmetic, and if your variables are typed right and your literals are suffixed right you can get the performance you need.  But it's hard to control, and not what you normally want, so it had to be block-scoped.
+
+At that point it seemed silly not to generalize it to "use int" and "use double", and to allow all these pragmas to be in effect lexically.
+
+Then we (or I) added various escape hatches, like "use uint" would not affect the meaning of literals that looked like floating point (because in reality you might want programs that use uint here and double there, and sometimes those regions overlap).
+
+Since the syntax of the pragma is still clumsy -- block scoped only -- there's another proposal from me in the Trac to allow pragmas to be scoped in expressions using "let" syntax; we all but agreed about this at the last f2f.
+
+In retrospect this strikes me as nuttily complicated in order to satisfy two simple and very distinct actual use cases:
+
+  - convenient decimal arithmetic for the masses
+  - wrapping uint aritmetic for the crypto heads
+
+In particular, the wrapping uint arithmetic effectively only affects the operators +, -, *, /, and % (and unary +, -, ++, and --)  because the shift / bitwise ops are already behaving the way we want them to; it's true the relational operators are affected too but that strikes me as a bug (if you happen to compare a double and a uint, do you really want the double to be converted to uint for the comparison?).
+
+Here's another approach (strawman proposal).
+
+(1) "use decimal" is allowed at the top level only and only affects the interpretation of literals.  All literals are interpreted as decimals.  After that, normal operator behavior takes over and in practice almost all computations will be performed as decimal.  Explicit casts can be used to convert numbers extracted from DOM, parseInt, etc.
+
+(1a) If the above is too bare-bones, let it also affect arithmetic so that it always converts the operands to decimal, like the current numbers proposal.
+
+(2) New "wrapping" operators are introduced for the list of operators outlined above.  These convert their operands to uint and perform uint arithmetic, returning uint results.  As such they are like the bitwise operators we already have.  These operators are spelled like the ones we have, prefixed by a backtick:
+
+  x `+ y
+  `++x
+  x`--
+
+(The O'Caml way +. (IIRC) is alas(?) syntactically ambiguous.  It's possible ".+" would work.  Suggest away.)
+
+A side benefit of this is that wrapping behavior, which is new to the language and has some dangers as Mike C has pointed out (though not all he has pointed out), becomes explicitly visible.
+
+ --- //[[lth@acm.org|Lars T Hansen]] 2007/09/26 22:47//
+
+===== The Overview seems to have something different, again? =====
+
+As far as I can see, the decimal support proposed in the Overview is even less functional than the various discussions above.  If one were to write:
+
+  use decimal default
+  total = 0.70 * 1.05 
+
+then total will not have the value 0.735 but something a little less (it, and the calculation will be binary floating-point); when rounded to cents the wrong result would be returned.  This would seem to have a high 'astonishment factor'.  (The 'default' above is just for illustration, but something seems to be required.)
+ --- //[[MFC@uk.ibm.com|Mike Cowlishaw]] 2007/10/31 09:29//

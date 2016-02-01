@@ -1,0 +1,123 @@
+===== Goals =====
+
+  * Provide a shorthand for object initialisers whose property keys are initialized by variables of the same name.
+    * Example longhand: ''function f(x, y) { return {x: x, y: y}; }''
+    * Example shorthand: ''function f(x, y) { return {x, y}; }''
+  * Reversibility or symmetry with the [[harmony:destructuring]] shorthand object patterns.
+
+===== Requirement =====
+
+Without switching to a different and more powerful specification parser, e.g. GLR, the [[harmony:destructuring]] shorthand already accepted requires that "right-hand side expressions" contexts support this //structuring// shorthand. The same //PrimaryExpression// : //ArrayLiteral// or //ObjectLiteral// production is used on both left and right of assignment.
+
+===== Precedent =====
+
+  * JS1.8.1+ (SpiderMonkey and Rhino) support ''{x, y}'' in an expression context as shorthand for ''{x: x, y: y}''.
+
+===== Proposal =====
+
+  * Extend the //PropertyAssignment// production in ES5 as follows (the first right-hand side is new):
+
+<code ebnf>
+PropertyAssignment:
+    Identifier
+    PropertyName : AssignmentExpression
+    get PropertyName ( ) { FunctionBody }
+    set PropertyName ( PropertySetParameterList ) { FunctionBody }
+</code>
+
+The production //PropertyAssignment : Identifier// is evaluated as follows:
+
+  - Let //propName// be the String value containing the same sequence of characters as the //Identifier//.
+  - Let //exprValue// be the result of evaluating //Identifier// as a //PrimaryExpression// (per 10.3.1, Identifier Resolution).
+  - Let //propValue// be GetValue(//exprValue//).
+  - Let //desc// be the Property Descriptor {%%[[Value%%]]: //propValue//, %%[[Writable%%]]: **true**, %%[[Enumerable%%]]: **true**, %%[[Configurable%%]]: **true**}.
+  - Return Property Identifier (//propName//, //desc//).
+
+
+===== Relation to other extensions =====
+
+The //Identifier// form of //PropertyAssignment// could be integrated with other object literal extensions including **var**, **const**, **method** and **private**. However, it isn't obvious that the use cases for this form significantly overlap with the use cases for the other extensions.  It may be better to simply keep the form specified here as is without the complexity of integrating it with the other extensions.
+ --- //[[Allen.Wirfs-Brock@microsoft.com|Allen Wirfs-Brock]] 2010/09/08 05:26// 
+
+
+
+
+
+===== Discussion =====
+
+How about allowing //IdentifierName// ("." //IdentifierName//)* as a shorthand just like C# allows:
+
+<code javascript>
+var object = {b.c.d};
+</code>
+
+as a shorthand for:
+
+<code javascript>
+var object = {d: b.c.d};
+</code>
+
+ --- //[[arv@google.com|Erik Arvidsson]] 2011/04/28 17:42//
+
+First I've heard of this RFE. It's unambiguous but I wonder how much it is worth its (small but non-trivial) weight. If you are creating a near-clone of another object (''b.c'' in the example), then some kind of functional record update might pay off better. A way of saying ''b.c with {e: 42}'' and possibly ''without {a}''.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/05/01 21:25//
+
+I think we need to change from //IdentifierName// to //Identifier// since even though we could allow keywords here it makes little sense. What would the following do?
+
+<code javascript>
+var object = {var}
+</code>
+
+Also, would it be worth allowing strings and numbers?
+
+<code javascript>
+var x = 42
+var object = {0, 'a', x}
+</code>
+
+as shorthand for
+
+<code javascript>
+var x = 42
+var object = {0: 0, 'a': 'a', x: x}
+</code>
+
+I can see strings being useful in code that uses objects as enums but it is mostly for symmetry.
+
+ --- //[[arv@google.com|Erik Arvidsson]] 2011/05/06 02:53//
+
+Good point about //IdentifierName// -- I changed to //Identifier//. SpiderMonkey (and probably Rhino, I haven't tested) will need fixing.
+
+I do not understand how string and number property names would work. Even in global code, ''var'' does not bind properties in Harmony (no global object as scope). I say: YAGNI and too complicated, when in doubt leave it out.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2011/05/11 21:22//
+
+Here's an alternate RHS expansion which is equally consistent with the LHS expansion, but potentially more useful:
+
+<code javscript>
+  { x, y }
+</code>
+
+as shorthand for
+
+<code javascript>
+  {
+    get x()  { return x; },
+    set x(n) { x = n; },
+    get y()  { return y; },
+    set y(n) { y = n; }
+  }
+</code>
+
+As a related alternate, keep the current expansion of ''{ x, y }'' but have this alternate expansion instead be the expansion of
+
+<code javascript>
+  { &x, &y }
+</code>
+
+For old C programmers, this may suggest that the resulting object provides both the ability to read and to set x's and y's **current** value, whereas without the "''&''" we're just snapshotting its value as of the time the object literal is evaluated.
+
+My preference is the first of these possibilities: To give the simple ''{ x, y }'' this alternate, more useful expansion.
+
+ --- //[[erights@google.com|Mark S. Miller]] 2011/10/10//

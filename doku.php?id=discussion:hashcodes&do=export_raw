@@ -1,0 +1,60 @@
+This is the discussion page for [[proposals:hashcodes]].
+
+
+
+
+====== Older discussion ======
+
+This proposal is to standardize a technique of acquiring a small scalar (a string or an integer) representing the identity of an object. This is very helpful in creating efficient (hash-based) data structures. There are only a few points to discuss:
+
+  * Whether to produce a string or an integer.
+  * Whether the identifiers are unique or only approximately unique.
+  * Whether the identifiers have any underlying structure or longevity guarantees wrt. the memory model.
+
+Other issues?
+----
+Some kind of object hashcode would suffice for associating data with arbitrary objects, but we could go further.  An alternative that I have sketched at past TG1 meetings would expose ''hashes'' or Python dicts in the language, and not raise the above issues.  We might do this for all objects, rather than add a new subtype whose property identifiers work differently:
+
+  var o = {}, p = {}
+  
+  o{undefined} = 0
+  o{null} = 1
+  o{true} = 2
+  o{3.14} = 3
+  o{'p'} = 4
+  o{p} = 5
+  
+  assert(o.p === o{'p'})
+  assert(o{p} === 5)
+  
+  o{-0} = 'zero'
+  assert(o{0} == o{-0})
+  
+  o[0] = 'string-identified zero'
+  assert(o[0] != o{0})
+
+This may be too big a change to all objects.  Substituting
+
+  var o = new Hash, p = {}
+
+would limit the change, but would also cry out for concise initialiser syntax.
+
+Either way, users would expect a simple and direct way to discover number of items (length), and arrays of keys, values, and items.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/02/02 19:58//
+
+I find myself wishing there were more parenthesization characters in ASCII! Alas. I think the braces would pay off much better as [[type_parameters|type parameter]] indicators, as braces are one of the few remaining characters we can juxtapose with identifiers without ambiguity. I also think that with type parameters and a single global ''hashcode(x:Value)'' function (and perhaps ''compare(x:Value, y:Value)'' for ordered containers), you can code up this solution in standard library code, as ''class Hashtable{k,v} { ... }'' without stealing the brace characters.
+
+Type parameters are, after all, most strongly motivated by typed containers.
+
+ --- //[[graydon@mozilla.com|graydon]] 2006/02/09 15:06//
+
+Maybe we can have our cake and eat it too!
+
+What is a parameterized type but an invocation of a type constructor. So why not use the call syntax to get a parameterized type? Example, write ''Array(int)'' to construct the type for an Array of ints. This will break compatibility with some builtin classes (but we already have that problem) and might conflict with our current idea of using the same syntax to mean cast (and sometimes convert). More on this in [[proposals:type_parameters]]
+
+Regardless, it is still worth asking "do we need syntactic sugar for ''o[hashcode(x)]''?". I don't know. What would the uninitiated user think if they saw ''o{p} = 10''? The syntax gives it equal status with ''o[p]'', so when do I use one rather than the other? Maybe the more explicit ''o[hashcode(p)]=10'' is better. 
+
+I like the idea of ''o{p}'' meaning ''o[hashcode(p)]'', but these are questions I need answered before I can be sure.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/02/27 14:19//

@@ -1,0 +1,88 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:function_proxy_prototype&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:function_proxy_prototype&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:function_proxy_prototype&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="custom_prototypes_for_function_proxies"></a><h2>Custom prototypes for function proxies</h2>
+<div class="level2">
+
+<p>
+ Programmers want to be able to create subtypes of the core built-in types like <code><a href="http://perfectionkills.com/how-ecmascript-5-still-does-not-allow-to-subclass-an-array/" class="urlextern" target="_blank" title="http://perfectionkills.com/how-ecmascript-5-still-does-not-allow-to-subclass-an-array/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Array</a></code> and <code>Function</code>. The <a href="doku.php%3Fid=strawman:binary_data.html" class="wikilink1" title="strawman:binary_data" onclick="return svchk()" onkeypress="return svchk()">binary data</a> spec in particular wants callable <code>Function</code> subtypes.
+</p>
+
+<p>
+This strawman proposes adding an optional fourth argument to <code>Proxy.createFunction</code> specifying a custom prototype object for the function proxy. If the argument is unspecified or given the undefined value, the prototype defaults to <code>Function.prototype</code>:
+</p>
+<pre class="code javascript">Proxy.<span class="me1">createFunction</span><span class="br0">&#40;</span>handler, call, construct, proto<span class="br0">&#41;</span></pre>
+<p>
+In order to preserve the spec invariant that callable objects are subtypes of <code>Function</code> (and testing <code>instanceof Function</code> is sufficient to determine whether an object is callable), <code>Proxy.createFunction</code> would test that the given prototype is an <code>instanceof Function</code>, and throw an exception if the test returns <code>false</code>. 
+</p>
+<hr noshade="noshade" size="1" />
+
+<p>
+Same comment as for <a href="doku.php%3Fid=strawman:name_property_of_functions.html" class="wikilink1" title="strawman:name_property_of_functions" onclick="return svchk()" onkeypress="return svchk()">name_property_of_functions</a> &ndash; passing <code>otherWindow.Function.prototype</code> would be disallowed by this proposal since <code>instanceof</code> starts one hop up the prototype chain before testing.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2011/02/28 21:56</em>
+</p>
+
+<p>
+<code>Proxy.createFunction</code> should test that <code>(proto instanceof Function) || (proto === Function.prototype)</code>.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x74%3B%26%23x6f%3B%26%23x6d%3B%26%23x76%3B%26%23x63%3B%26%23x2e%3B%26%23x62%3B%26%23x65%3B%26%23x40%3B%26%23x67%3B%26%23x6d%3B%26%23x61%3B%26%23x69%3B%26%23x6c%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x74;&#x6f;&#x6d;&#x76;&#x63;&#x2e;&#x62;&#x65;&#x40;&#x67;&#x6d;&#x61;&#x69;&#x6c;&#x2e;&#x63;&#x6f;&#x6d;">Tom Van Cutsem</a> 2011/03/30 12:36</em>
+</p>
+
+</div>
+<!-- SECTION [1-1475] -->
+<a name="references"></a><h2>References</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="http://perfectionkills.com/how-ecmascript-5-still-does-not-allow-to-subclass-an-array/" class="urlextern" target="_blank" title="http://perfectionkills.com/how-ecmascript-5-still-does-not-allow-to-subclass-an-array/" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Kangax on extending core pseudo-classes</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="doku.php%3Fid=strawman:binary_data.html" class="wikilink1" title="strawman:binary_data" onclick="return svchk()" onkeypress="return svchk()">binary data</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://mail.mozilla.org/pipermail/es-discuss/2011-February/012874.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2011-February/012874.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">discussion on es-discuss</a></div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [1476-1769] -->
+<a name="feedback"></a><h2>Feedback</h2>
+<div class="level2">
+
+<p>
+ Discussed at the March 2011 TC39 meeting. No objections raised.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x74%3B%26%23x6f%3B%26%23x6d%3B%26%23x76%3B%26%23x63%3B%26%23x2e%3B%26%23x62%3B%26%23x65%3B%26%23x40%3B%26%23x67%3B%26%23x6d%3B%26%23x61%3B%26%23x69%3B%26%23x6c%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x74;&#x6f;&#x6d;&#x76;&#x63;&#x2e;&#x62;&#x65;&#x40;&#x67;&#x6d;&#x61;&#x69;&#x6c;&#x2e;&#x63;&#x6f;&#x6d;">Tom Van Cutsem</a> 2011/03/30 12:36</em>
+</p>
+
+</div>
+<!-- SECTION [1770-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/9/9e5dc544df2b2ce4a3e60e533523bd0d.xhtml used -->
+</body>
+</html>

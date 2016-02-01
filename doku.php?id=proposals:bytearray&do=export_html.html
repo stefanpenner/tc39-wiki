@@ -1,0 +1,240 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=proposals:bytearray&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=proposals" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=proposals:bytearray&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=proposals:bytearray&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=proposals:bytearray&amp;do=export_html.html#bytearray" class="toc">ByteArray</a></span><ul class="toc">
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:bytearray&amp;do=export_html.html#overview" class="toc">Overview</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:bytearray&amp;do=export_html.html#creating_a_bytearray" class="toc">Creating a ByteArray</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:bytearray&amp;do=export_html.html#populating_a_bytearray" class="toc">Populating a ByteArray</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:bytearray&amp;do=export_html.html#referring_to_bytearray_elements" class="toc">Referring to ByteArray Elements</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:bytearray&amp;do=export_html.html#bytearray_methods" class="toc">ByteArray Methods</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:bytearray&amp;do=export_html.html#bytearray_properties" class="toc">ByteArray Properties</a></span></li>
+<li class="level2"><span class="li"><a href="doku.php%3Fid=proposals:bytearray&amp;do=export_html.html#prior_art" class="toc">Prior Art</a></span></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="bytearray"></a><h1>ByteArray</h1>
+<div class="level1">
+
+<p>
+ (Also see the <a href="doku.php%3Fid=discussion:bytearray.html" class="wikilink1" title="discussion:bytearray" onclick="return svchk()" onkeypress="return svchk()">discussion page</a> for this proposal)
+</p>
+
+</div>
+<!-- SECTION [1-100] -->
+<a name="overview"></a><h2>Overview</h2>
+<div class="level2">
+
+<p>
+In previous versions of ECMAScript, there wasn&rsquo;t a good way to efficiently represent a packed array of arbitrary bytes. The predefined core object Array is inefficient for this purpose; some developers have (mis)used character strings for this purpose, which may be slightly more efficient for some implementations, but still a misuse of the string type and either a less efficient use of memory (if one byte per character was stored) or cycles (if two bytes per char).
+</p>
+
+<p>
+Edition 4 will add a new predefined core object, ByteArray. A ByteArray can be thought of as similar to an Array of uint ([uint]) with each element truncated to the integer range of 0..255.
+</p>
+
+</div>
+<!-- SECTION [101-785] -->
+<a name="creating_a_bytearray"></a><h2>Creating a ByteArray</h2>
+<div class="level2">
+
+<p>
+ To create a ByteArray object:
+</p>
+<pre class="code">
+byteArrayObject = new ByteArray(byteArrayLength:uint)
+</pre>
+
+<p>
+ byteArrayLength is the initial length of the ByteArray, in bytes. If omitted, the initial length is zero. 
+</p>
+
+<p>
+All elements in a ByteArray are initialized to the value of zero.
+</p>
+
+<p>
+Unlike Array, there is no special form that allows you to list the initial values for the ByteArray&rsquo;s elements. However, the ByteArray class has an <code>intrinsic::to</code> static method that can convert an Array to a ByteArray, and implementations are free to optimize away the Array instance if it is used exclusively to initialize a ByteArray:
+</p>
+<pre class="code">
+var values:ByteArray = [1, 2, 3, 4];	// legal by virtue of ByteArray.intrinsic::to
+</pre>
+
+</div>
+<!-- SECTION [786-1537] -->
+<a name="populating_a_bytearray"></a><h2>Populating a ByteArray</h2>
+<div class="level2">
+
+<p>
+ You can populate a ByteArray by assigning values to its elements. Each element can hold only an unsigned integer in the range 0..255 (inclusive). Values will be converted to unsigned integer (if necessary), then truncated to the least-significant 8 bits. 
+</p>
+
+<p>
+For example,
+</p>
+<pre class="code">
+var e = new ByteArray(3);
+
+e[0] = 0x12;		// stores 18
+e[1] = Math.PI;		// stores 3
+e[2] = &quot;foo&quot;;		// stores 0 (generates compile error in strict mode)
+e[2] = &quot;42&quot;;		// stores 42 (generates compile error in strict mode) 
+e[2] = null;		// stores 0
+e[2] = undefined;	// stores 0
+</pre>
+
+</div>
+<!-- SECTION [1538-2137] -->
+<a name="referring_to_bytearray_elements"></a><h2>Referring to ByteArray Elements</h2>
+<div class="level2">
+
+<p>
+ You refer to a ByteArray&rsquo;s elements by using the element&rsquo;s ordinal number; you refer to the first element of the array as myArray[0] and the second element of the array as myArray[1], etc. The index of the elements begins with zero (0), but the length of array (for example, myArray.length) reflects the number of elements in the array. 
+</p>
+
+</div>
+<!-- SECTION [2138-2525] -->
+<a name="bytearray_methods"></a><h2>ByteArray Methods</h2>
+<div class="level2">
+
+<p>
+The ByteArray object has the follow methods:
+</p>
+
+<p>
+1. static function fromString(s:String):ByteArray
+</p>
+
+<p>
+Convert a String into newly constructed ByteArray; this creates a new ByteArray of the same length as the String, then assigns each ByteArray entry the corresponding charCodeAt() value of the String. As with other ByteArray assignments, only the lower 8 bits of the charCode value will be retained.
+</p>
+<pre class="code">
+class ByteArray {
+  ...
+  static function fromString(s:String):ByteArray
+  {
+    var a:ByteArray = new Bytearray(s.length);
+    for (var i:int = 0; i &lt; s.length; ++i)
+      a[i] = s.charCodeAt(i);
+    return a;
+  }
+  ...
+}
+</pre>
+
+<p>
+2. static function fromArray(s:Array):ByteArray
+</p>
+
+<p>
+Converts an Array into a newly constructed ByteArray; this creates a new ByteArray of the same length as the input Array, then assigns each ByteArray entry the corresponding entry value of the Array. As with other ByteArray assignments, only the lower 8 bits of the charCode value will be retained.
+</p>
+<pre class="code">
+class ByteArray {
+  ...
+  static function fromArray(s:Array):ByteArray
+  {
+    var a:ByteArray = new Bytearray(s.length);
+    for (var i:int = 0; i &lt; s.length; ++i)
+      a[i] = s[i];
+    return a;
+  ...
+}
+</pre>
+
+<p>
+3. function toString():String 
+</p>
+
+<p>
+Converts the ByteArray into a literal string, with each character entry set to the value of the corresponding ByteArray entry. 
+</p>
+
+<p>
+The resulting string is guaranteed to round-trip back into an identical ByteArray by passing the result to ByteArray.fromString(), i.e., b === ByteArray.fromString(b.toString()). (Note that the reverse is not guaranteed to be true: ByteArray.fromString(s).toString != s unless all character codes in s are &lArr; 255)
+</p>
+<pre class="code">
+class ByteArray {
+  ...
+  function toString():String
+  {
+    // XXX return String.fromCharCode.apply(String, this);
+    var s:String = &quot;&quot;;
+    for (var i:int = 0; i &lt; this.length; ++i)
+      s += String.fromCharCode(this[i]);
+    return s;
+  }
+  ...
+}
+</pre>
+
+</div>
+<!-- SECTION [2526-4508] -->
+<a name="bytearray_properties"></a><h2>ByteArray Properties</h2>
+<div class="level2">
+
+<p>
+ The ByteArray object has the following properties:
+</p>
+
+<p>
+1.  length:uint
+</p>
+
+<p>
+This property contains the number of bytes in the ByteArray. Setting the length property to a smaller value decreases the size of the ByteArray, discarding the unused bytes. Setting the length property to a larger value increases the size of the ByteArray, initializing all newly-allocated elements to zero.
+</p>
+
+<p>
+2. prototype:Object
+</p>
+
+<p>
+This property contains the methods of ByteArray.
+</p>
+
+</div>
+<!-- SECTION [4509-4993] -->
+<a name="prior_art"></a><h2>Prior Art</h2>
+<div class="level2">
+
+<p>
+ Adobe&rsquo;s ActionScript 3.0 provides <a href="http://livedocs.macromedia.com/flex/2/langref/flash/utils/ByteArray.html" class="urlextern" target="_blank" title="http://livedocs.macromedia.com/flex/2/langref/flash/utils/ByteArray.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">flash.utils.ByteArray</a>, which was the primary inspiration for this proposal. Note that the ActionScript version of ByteArray includes additional functionality which has been omitted here for the sake of allowing small implementations; it is anticipated that the extra functionality can be written in ES4 itself and provided as a standard library.
+</p>
+
+<p>
+[Synopsis of ActionScript&rsquo;s implementation too detailed and moved to <a href="doku.php%3Fid=discussion:bytearray.html" class="wikilink1" title="discussion:bytearray" onclick="return svchk()" onkeypress="return svchk()">discussion</a> page]
+</p>
+
+</div>
+<!-- SECTION [4994-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/8/86adaf87ab63f3de4212c6e31052a2d2.xhtml used -->
+</body>
+</html>

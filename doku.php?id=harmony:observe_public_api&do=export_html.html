@@ -1,0 +1,226 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=harmony:observe_public_api&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="http://wiki.ecmascript.org/feed.php?mode=list&amp;ns=harmony" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=harmony:observe_public_api&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=harmony:observe_public_api&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=harmony:observe_public_api&amp;do=export_html.html#this_page_is_no_longer_current" class="toc">THIS PAGE IS NO LONGER CURRENT</a></span><ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=harmony:observe_public_api&amp;do=export_html.html#object.observepublic_api_specification" class="toc">Object.observe: Public API Specification</a></span><ul class="toc">
+<li class="level4"><span class="li"><a href="doku.php%3Fid=harmony:observe_public_api&amp;do=export_html.html#object.observe" class="toc">Object.observe</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=harmony:observe_public_api&amp;do=export_html.html#object.unobserve" class="toc">Object.unobserve</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=harmony:observe_public_api&amp;do=export_html.html#array.observe" class="toc">Array.observe</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=harmony:observe_public_api&amp;do=export_html.html#array.unobserve" class="toc">Array.unobserve</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=harmony:observe_public_api&amp;do=export_html.html#object.deliverchangerecords" class="toc">Object.deliverChangeRecords</a></span></li>
+<li class="level4"><span class="li"><a href="doku.php%3Fid=harmony:observe_public_api&amp;do=export_html.html#object.getnotifier" class="toc">Object.getNotifier</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="this_page_is_no_longer_current"></a><h1>THIS PAGE IS NO LONGER CURRENT</h1>
+<div class="level1">
+
+<p>
+ <a href="lib/exe/detail.php%3Fid=harmony%253Aobserve_public_api&amp;cache=cache&amp;media=harmony:warning.png.html" class="media" title="harmony:warning.png" onclick="return svchk()" onkeypress="return svchk()"><img src="lib/exe/fetch.php%3Fw=100&amp;h=&amp;cache=cache&amp;media=harmony:warning.png" class="media" alt="" width="100" /></a> <strong>WARNING:</strong> This page is <strong>out of date</strong>. Please see the <a href="https://github.com/arv/ecmascript-object-observe" class="urlextern" target="_blank" title="https://github.com/arv/ecmascript-object-observe" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">latest draft on GitHub</a> for up-to-date information. This page is here only as an archive.
+</p>
+
+</div>
+<!-- SECTION [1-275] -->
+<a name="object.observepublic_api_specification"></a><h3>Object.observe: Public API Specification</h3>
+<div class="level3">
+
+</div>
+<!-- SECTION [276-327] -->
+<a name="object.observe"></a><h4>Object.observe</h4>
+<div class="level4">
+
+<p>
+ A new function Object.observe(O, callback, accept) is added, which behaves as follows:
+</p>
+<ol>
+<li class="level1"><div class="li"> If Type(<em>O</em>) is not Object, throw a TypeError exception.</div>
+</li>
+<li class="level1"><div class="li"> If IsCallable(<em>callback</em>) is <strong>false</strong>, throw a TypeError exception.</div>
+</li>
+<li class="level1"><div class="li"> If IsFrozen(<em>callback</em>) is <strong>true</strong>, throw a TypeError exception.</div>
+</li>
+<li class="level1"><div class="li"> If <em>accept</em> is <strong>undefined</strong></div>
+<ol>
+<li class="level2"><div class="li"> Let <em>acceptList</em> be a new List containing [&rdquo;add&rdquo;, &ldquo;update&rdquo;, &ldquo;delete&rdquo;, &ldquo;reconfigure&rdquo;, &ldquo;setPrototype&rdquo;, &ldquo;preventExtensions&rdquo;]</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Else:</div>
+<ol>
+<li class="level2"><div class="li"> Let <em>acceptList</em> be a new List.</div>
+</li>
+<li class="level2"><div class="li"> If Type(<em>accept</em>) is not Object, throw a TypeError exception.</div>
+</li>
+<li class="level2"><div class="li"> Let <em>lenValue</em> be the result of Get(<em>accept</em>, &ldquo;length&rdquo;)</div>
+</li>
+<li class="level2"><div class="li"> Let <em>len</em> be ToLength(<em>lenValue</em>).</div>
+</li>
+<li class="level2"><div class="li"> ReturnIfAbrupt(<em>len</em>).</div>
+</li>
+<li class="level2"><div class="li"> Let <em>nextIndex</em> be 0.</div>
+</li>
+<li class="level2"><div class="li"> Repeat while <em>nextIndex</em> &lt; <em>len</em></div>
+<ol>
+<li class="level3"><div class="li"> Let <em>next</em> be the result of Get(<em>accept</em>, ToString(<em>nextIndex</em>)).</div>
+</li>
+<li class="level3"><div class="li"> Let <em>nextString</em> be ToString(<em>next</em>).</div>
+</li>
+<li class="level3"><div class="li"> ReturnIfAbrupt(<em>nextString</em>).</div>
+</li>
+<li class="level3"><div class="li"> Append <em>nextString</em> to <em>acceptList</em>.</div>
+</li>
+<li class="level3"><div class="li"> Let <em>nextIndex</em> be <em>nextIndex</em> + 1.</div>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Let <em>notifier</em> be the result of calling [[GetNotifier]], passing <em>O</em>.</div>
+</li>
+<li class="level1"><div class="li"> Let <em>changeObservers</em> be [[ChangeObservers]] of <em>notifier</em>.</div>
+</li>
+<li class="level1"><div class="li"> If <em>changeObservers</em> already contains a <em>record</em> whose <em>callback</em> property is the same as <em>callback</em>, then</div>
+<ol>
+<li class="level2"><div class="li"> Perform CreateOwnDataProperty(<em>record</em>, &ldquo;accept&rdquo;, <em>acceptList</em>) and</div>
+</li>
+<li class="level2"><div class="li"> Return <em>O</em>.</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Let <em>observerRecord</em> be the result of performing ObjectCreate().</div>
+</li>
+<li class="level1"><div class="li"> Perform CreateOwnDataProperty(<em>observerRecord</em>, &ldquo;callback&rdquo;, <em>callback</em>).</div>
+</li>
+<li class="level1"><div class="li"> Perform CreateOwnDataProperty(<em>observerRecord</em>, &ldquo;accept&rdquo;, <em>acceptList</em>).</div>
+</li>
+<li class="level1"><div class="li"> Append <em>observerRecord</em> to the end of the <em>changeObservers</em> list.</div>
+</li>
+<li class="level1"><div class="li"> Let <em>observerCallbacks</em> be [[ObserverCallbacks]].</div>
+</li>
+<li class="level1"><div class="li"> If <em>observerCallbacks</em> already contains <em>callback</em>, return <em>O</em>.</div>
+</li>
+<li class="level1"><div class="li"> Append <em>callback</em> to the end of the <em>observerCallbacks</em> list.</div>
+</li>
+<li class="level1"><div class="li"> Return <em>O</em>.</div>
+</li>
+</ol>
+
+</div>
+<!-- SECTION [328-2318] -->
+<a name="object.unobserve"></a><h4>Object.unobserve</h4>
+<div class="level4">
+
+<p>
+ A new function Object.unobserve(O, callback) is added, which behaves as follows:
+</p>
+<ol>
+<li class="level1"><div class="li"> If Type(<em>O</em>) is not Object, throw a TypeError exception.</div>
+</li>
+<li class="level1"><div class="li"> If IsCallable(<em>callback</em>) is not <strong>true</strong>, throw a TypeError exception.</div>
+</li>
+<li class="level1"><div class="li"> Let <em>notifier</em> be the result of calling [[GetNotifier]], passing <em>O</em>.</div>
+</li>
+<li class="level1"><div class="li"> Let <em>changeObservers</em> be [[ChangeObservers]] of <em>notifier</em>.</div>
+</li>
+<li class="level1"><div class="li"> If <em>changeObservers</em> does not contain a record whose <em>callback</em> property is the same as <em>callback</em>, return <em>O</em>.</div>
+</li>
+<li class="level1"><div class="li"> Remove the record whose <em>callback</em> property is the same as <em>callback</em> from the <em>changeObservers</em> list.</div>
+</li>
+<li class="level1"><div class="li"> Return <em>O</em>.</div>
+</li>
+</ol>
+
+</div>
+<!-- SECTION [2319-2982] -->
+<a name="array.observe"></a><h4>Array.observe</h4>
+<div class="level4">
+
+<p>
+ A new function Array.observe(o, callback) is added, which is equivalent to
+</p>
+<pre class="code javascript"><span class="kw2">function</span><span class="br0">&#40;</span>O, callback<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw1">return</span> Object.<span class="me1">observe</span><span class="br0">&#40;</span>O, callback, <span class="br0">&#91;</span><span class="st0">"add"</span>, <span class="st0">"update"</span>, <span class="st0">"delete"</span>, <span class="st0">"splice"</span><span class="br0">&#93;</span><span class="br0">&#41;</span>;
+<span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [2983-3213] -->
+<a name="array.unobserve"></a><h4>Array.unobserve</h4>
+<div class="level4">
+
+<p>
+ A new function Array.unobserve(o, callback) is added, which is equivalent to
+</p>
+<pre class="code javascript"><span class="kw2">function</span><span class="br0">&#40;</span>O, callback<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw1">return</span> Object.<span class="me1">unobserve</span><span class="br0">&#40;</span>O, callback<span class="br0">&#41;</span>;
+<span class="br0">&#125;</span></pre>
+</div>
+<!-- SECTION [3214-3410] -->
+<a name="object.deliverchangerecords"></a><h4>Object.deliverChangeRecords</h4>
+<div class="level4">
+
+<p>
+ A new function Object.deliverChangeRecords(callback) is added, which behaves as follows:
+</p>
+<ol>
+<li class="level1"><div class="li"> If IsCallable(<em>callback</em>) is not <strong>true</strong>, throw a TypeError exception.</div>
+</li>
+<li class="level1"><div class="li"> Call [[DeliverChangeRecords]] with arguments: <em>callback</em> repeatedly until it returns false (no records were pending for delivery and callback no invoked).</div>
+</li>
+<li class="level1"><div class="li"> Return.</div>
+</li>
+</ol>
+
+</div>
+<!-- SECTION [3411-3793] -->
+<a name="object.getnotifier"></a><h4>Object.getNotifier</h4>
+<div class="level4">
+
+<p>
+ A new function Object.getNotifier(O) is added, which behaves as follows: 
+</p>
+<ol>
+<li class="level1"><div class="li"> If Type(<em>O</em>) is not Object, throw a TypeError exception.</div>
+</li>
+<li class="level1"><div class="li"> If <em>O</em> is frozen, return <strong><code>null</code></strong>.</div>
+</li>
+<li class="level1"><div class="li"> Return the result of calling [[GetNotifier]], passing <em>O</em>.</div>
+</li>
+</ol>
+
+</div>
+<!-- SECTION [3794-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/8/8038cd22a7d7f8a1746beeb3a7c3f839.xhtml used -->
+</body>
+</html>

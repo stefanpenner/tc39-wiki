@@ -1,0 +1,262 @@
+===== Location =====
+
+Mozilla Foundation
+1981 Landings Drive
+Building K
+Mountain View, CA 94043-0801
+USA
+
+See [[http://maps.google.com/maps?q=1981+Landings+Drive,+Mountain+View,+CA+(Mozilla)|a street map]] of our location for driving directions. Once there, see [[http://maps.google.com/maps?q=37.41857N+122.08769W+(Mozilla+Office,+Building+K)&t=h&ie=UTF8&ll=37.420489,-122.089659&spn=0.005777,0.00869|this satellite image]] to locate Building K within the complex.
+
+===== Times =====
+
+Sept. 21: 12pm-5pm PDT (we will dine out around 7pm).
+Sept. 22: 10am-5pm PDT
+
+===== Attendees =====
+
+  * Jeff Dyer, Adobe
+  * Steven Johnson, Adobe
+  * Dan Smith, Adobe
+  * Ed Smith, Adobe
+  * Michael O'Brien, Mbedthis
+  * Brendan Eich, Mozilla
+  * Graydon Hoare, Mozilla
+  * Dave Herman, Northeastern
+  * Lars Hansen, Opera
+  * Iain Lamb, Yahoo!
+  * Julien Lecomte, Yahoo!
+
+===== Agenda =====
+
+  * ''eval''
+  * ''yield''
+  * [[proposals:proposals]] review
+
+===== Notes =====
+
+  * eval
+    * [[proposals:resurrected_eval]]
+    * method on global object
+    * do we need eval(s, [oN, ..., o1])
+      * where o1 is the head of the replacement scope chain
+
+  * global self-name
+    * [[proposals:globals]]
+    * just a property name, can be bound by sandboxing code as it wishes
+
+  * yield
+    * should make yield e and let (h) e use the same nonterminal for e
+    * either: over-parenthesize
+    * or: non-terminal for e is AssignmentExpression
+    * resolved: use AssignmentExpression
+
+  * documentation comments
+    * lars: why not use a comment?
+    * doug's proposal does not reflect as __doc__
+    * how does this relate to decorators?
+      * need a unified proposal
+      * want real-world use-cases so we don't miss anything that should be ES4
+
+  * dave/brendan shorter/more-compositional function expression forms
+    * let function f(args) { body } => let f(args) { body } OR let f(args) expr
+
+  * [[proposals:normative grammar]] issues
+    * we have resolved to eliminate reference types in the spec
+    * should we restrict optional reference types in the grammar?  no
+    * should we make the spec's normative grammar be LL(1) or LR(1)? yes
+    * jeff to take on formalizing the grammar, mob will help
+
+====== proposals review ======
+
+  * [[proposals:type parameters]]
+    * class A.<T> extends T { ... } should not be allowed
+    * similar such questions may arise
+    * dave: C# type non-erasure vs. Java erasure
+
+  * [[proposals:builtin classes]]
+    * lacks intrinsic, jeff to update
+
+  * [[proposals:structural types and typing of initializers]]
+    * do we allow any TypeExpression after : in initialiser annotation? yes
+    * do we allow any Exprsssion after : in initialiser annotation?  uhhh...
+      * dave:
+        * we want static type checker recognizing static constraint
+        * casts for dynamic constraints (less common)
+        * more common static constraint case should have lightweight syntax
+      * agreement on these two points:
+        * want {p: 42} : {p: int} where the annotated type is a TypeExpression
+        * want ''cast T (E)''
+      * what about ''to''?
+        * want ''x to T'' where grammatically T is TypeExpression
+        * confusion about ''foo().to(x)'' being backwards - should be ''from''?
+        * entertain proposals in the wiki for nice dynamic-to/is API syntax
+      * resolved: want infix operator syntax for static case: TyExpr on right
+      * what about ''is''?
+        * alternative is to match ''to'' and require static TyExpr on right
+        * allowing any Expr means structural types must be named to be used
+        * if we require TyExpr on right of ''is'', we may break AS3 users
+
+  * [[proposals:is as to]]
+    * in good shape apart from wiki page title
+    * dave to update based on recent type system work and previous item
+
+  * [[proposals:nullability]]
+    * agreement on nullability by default
+    * discussion brought up need to:
+      * update the spec before re-exporting
+      * respond to es4-discuss list with pointers to new export
+
+  * [[proposals:numbers]]
+    * in good shape now (see recent [[discussion:numbers]])
+    * mob is doing ''int64'' as extension; seems to fit
+
+  * [[proposals:strict and standard modes]]
+    * raised issues of spec language and completeness
+    * build on E3 or try to improve it w/ a significantly different metalang?
+    * take E3 metalang and clean it up a bit (a la ECMA-357)
+    * dave to try writing a few more accessible spec styles for some productions
+
+  * [[proposals:normative grammar]]
+    * see above
+
+  * [[proposals:intrinsic namespace]]
+    * in good shape, foundational
+
+  * [[proposals:type refinements]]
+    * move to deferred
+
+====== proposals, continued ======
+
+  * enumerability
+  * switch type
+  * block expression
+  * proper tail calls
+  * type definitions
+  * syntax for type expressions -- fix ''?'' to be postfix
+  * [[proposals:namespace shadowing]]
+    * all good
+
+  * [[proposals:iterators and generators]]
+    * ''StopIteration'' is of type ''StopIterationClass''
+    * ''intrinsic::iterator'' must become ''iterator::get'' or some such
+
+  * resurrected eval
+
+  * expression closures, still reviewing
+  * multiple compilation units - need to prove the two propositions
+  * security wrappers - does it do enough to be worth its cost?
+    * meaning: does enough? costs a lot?
+
+  * issue with instrinsic::global
+    * is it bound to the caller's global in the "sandbox" (sic) object passed to the resurrected eval?  lars said yes earlier, brendan said no; revised answer is no.
+
+  * catchalls, hashcodes, operators, destructuring
+    * All good
+    * Note to self:
+
+<code javascript>
+    for ([k] in o) => SyntaxError
+    for ([k,v,u] in o) => SyntaxError
+    for ([k,,,] in o) => ok
+    for ([k,,] in o) => ok
+    for ([k,v] in o) => ok
+</code>
+
+  * bug fixes
+    * brendan: remove ''eval'' bug fixes, it has its own page
+    * brendan: generic statics for Array and String should be split out
+    * jeff: escaped newlines in string literals ok
+
+  * [[proposals:decimal]]
+    * graydon: pragma syntax update
+    * otherwise looks good
+
+  * [[proposals:typeof]]
+    * update to leave ''typeof null === "object"''
+    * update to change ''typeof class === "object"''
+    * BUT: ''typeof String === "function"'' for backward compat
+    * informative words expressing regret
+
+
+====== day two ======
+
+  * [[proposals:syntax for pragmas]]
+    * ok
+
+  * [[proposals:reserved words]]
+    * should we do as js1.7 and allow function delete? no
+    * should we allow reserved identifiers after ::? yes
+
+  * [[proposals:update unicode]]
+    * ok (discussion around clarity of implementation choice, how choice is one way or the other for all inputs, depending on input).
+    * resolved: format conrol chars are not stripped from source input, therefore are preserved in string and regexp literals
+
+  * [[proposals:extend_regexps]]
+    * Updated to note per yesterday's discussion that typeof /re/ === "object".
+    * Also adopting the IE quirk that Opera and Mozilla do: /[/]/ matches "/".
+    * This means that #... line comments in /very-long/x regexps must balance [].
+
+  * [[proposals:slice_syntax]]
+    * Brendan to clean up, move most to discussion, present minimal proposal
+    * Iain: why not define a range generator function?
+    * Discussion about +, <, == etc. for Array -- put them in a new namespace that
+    * new code can use: use namespace operators.
+
+  * [[proposals:triple quotes]]
+    * still good
+
+  * [[proposals:documentation]]
+    * move to reflection library
+    * use javadoc style comments (precedent: asdoc tool from adobe)
+
+  * [[proposals:globals]]
+    * singularize intrinsic::globals
+
+  * [[proposals:date and time]]
+    * all good but nanotime:
+      * discussion about accuracy needs -- want delta-t for benchmarking, really
+      * so don't need nanoseconds, or want to impose them on all impls
+      * ptw's tick/tickScale proposal from es4-discuss considered too hardware-ish
+        * not good if tickScale isn't constant; if constant, it may have to be too large a number of nanoseconds in order for tick to be cheaply computed
+    * dave: social psych reaction time research
+    * lars/graydon: use nanoseconds since creation of Date object: ''d.nanoAge()''
+    * ''nanoAge'' to be drafted
+
+  * [[proposals:json encoding and decoding]]
+    * Array.prototype.toJSONString
+    * Object.prototype.toJSONString
+    * String.prototype.parseJSON
+    * String.prototype.trim (free-riding on JSON here)
+
+  * the module perplex -- packages don't solve naming and loading issues
+
+  * [[proposals:stack inspection]]
+    * good
+
+  * [[proposals:meta objects]]
+    * lars/dave: namespace() and name() should be in ClassType not Type
+      * ditto for supertypes() and subtypes() (rename to super/subClasses())
+    * dave: use iterators instead of arrays
+    * dave: note to use [T] instead of no-longer-proposed Array.<T>
+    * dave: should reflect public methods and fields, structural fields, etc.
+    * InterfaceType?  sure; InterfaceType.implementedBy()
+
+  * [[proposals:expression closures]]
+    * good, clean up discussion
+
+  * [[clarification:multiple compilation units]]
+    * needs exact and complete list of differences between models
+
+  * [[proposals:security wrappers]]
+    * graydon and brendan: come up with use cases
+
+  * iain: version reflection? object detection and try-eval rule
+  * brendan: dict syntax for null-proto object initialisers
+
+  * TODO:
+    * brendan: slice
+    * iain: json encoding and decoding, trim
+    * lars: documentation
+    * graydon: date and time
+    * graydon and brendan: security wrappers

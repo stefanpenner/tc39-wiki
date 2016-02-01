@@ -1,0 +1,688 @@
+====== Jeff's initial draft ======
+
+Identifier
+     Identifier                                                                  ( identifier IdentifierName )
+     get                                                                         ( identifier get )
+     set                                                                         ( identifier set )
+
+PropertyIdentifier
+     Identifier
+     *                                                                           ( identifier * )
+
+Qualifier
+     PropertyIdentifier
+     ReservedNamespace
+
+SimpleQualifiedIdentifier
+     PropertyIdentifier
+     Qualifier :: PropertyIdentifier                                             ( qualifiedidentifier ( member null ( get lexical Qualifier ) ) Identifier )
+     Qualifier :: Brackets                                                       ( qualifiedexpression ( member null ( get lexical Qualifier ) ) Brackets )
+
+ExpressionQualifiedIdentifier
+     ParenExpression :: PropertyIdentifier                                       ( qualifiedidentifier ParenExpression Identifier )
+     ParenExpression :: Brackets                                                 ( qualifiedexpression ParenExpression Brackets )
+
+NonAttributeQualifiedIdentifier
+     SimpleQualifiedIdentifier
+     ExpressionQualifiedIdentifier
+
+QualifiedIdentifier
+     @ Brackets                                                                  ( attributeidentifier Brackets )
+     @ NonAttributeQualifiedIdentifier                                           ( attributeidentifier QualifiedIdentifier )
+     NonAttributeQualifiedIdentifier
+
+PrimaryExpression
+     null                                                                        ( literalnull )
+     true                                                                        ( literalboolean 1 )
+     false                                                                       ( literalboolean 0 )
+     Number                                                                      ( literalnumber Number )
+     String                                                                      ( literalstring String )
+     this                                                                        ( thisexpression )
+     RegularExpression                                                           ( literalregexp RegularExpression )
+     QualifiedIdentifier
+     XMLInitializer                                                              ( literalxml XMLLiteral )
+     ReservedNamespace
+     ParenListExpression
+     ArrayLiteral
+     ObjectLiteral
+     FunctionExpression
+
+ReservedNamespace
+     public                                                                      ( identifier public )
+     private                                                                     ( identifier private )
+     protected                                                                   ( identifier protected )
+     internal                                                                    ( identifier internal )
+
+ParenExpression
+     ( AssignmentExpressionallowIn )                                             ( paren AssignmentExpression )
+
+ParenListExpression
+     ParenExpression
+     ( ListExpressionallowIn , AssignmentExpressionallowIn )                     ( parenlist ListExpression )
+
+FunctionExpression
+     function FunctionCommon                                                     FunctionCommon
+     function Identifier FunctionCommon                                          FunctionCommon.id = Identifier ; FunctionCommon
+
+ObjectLiteral
+     { FieldList }                                                               ( literalobject FieldList )
+
+FieldList
+     «empty»
+     NonemptyFieldList
+
+NonemptyFieldList
+     LiteralField
+     LiteralField , NonemptyFieldList                                            ( argumentlist LiteralField NonemptyFieldList )
+
+LiteralField
+     FieldName : AssignmentExpressionallowIn                                     ( literalfield FieldName AssignmentExpression )
+
+FieldName
+     NonAttributeQualifiedIdentifier
+     String
+     Number
+     ParenExpression
+
+ArrayLiteral
+     [ ElementList ]                                                             ( literalarray ElementList )
+
+ElementList
+     «empty»                                                                     $1
+     LiteralElement                                                              ( argumentlist $1 LiteralElement )
+     , ElementList                                                               ( ElementList ( argumentlist $1 ( emptyelement ) ) )
+     LiteralElement , ElementList                                                ( ElementList ( argumentlist $1 ElementList ) )
+
+LiteralElement
+     AssignmentExpressionallowIn
+
+XMLInitialiser
+     XMLMarkup
+     XMLElement
+     <  >  XMLElementContent  </  >
+
+XMLElementContent
+     XMLMarkup  XMLElementContentopt
+     XMLText  XMLElementContentopt
+     XMLElement  XMLElementContentopt
+     {  Expression  }  XMLElementContentopt
+
+XMLElement
+     < XMLTagContent XMLWhitespaceopt/>                                          ( xmliteral XMLLiteral )
+     < XMLTagContent XMLWhitespaceopt> XMLElementContent                         ( xmlliteral ( XMLiteralPart ( list null XMLLiteralStart ) ) )
+                   </ XMLTagName XMLWhitespaceopt>
+
+XMLTagContent
+     XMLTagName XMLAttributes
+
+XMLTagName
+     { Expression }
+     XMLName
+
+XMLAttributes
+     XMLWhitespace { Expression }
+     XMLAttribute XMLAttributes
+     empty
+
+XMLAttribute
+     XMLWhitespace XMLName XMLWhitespaceopt = XMLWhitespaceopt { Expression }
+     XMLWhitespace XMLName XMLWhitespaceopt = XMLWhitespaceopt XMLAttributeValue
+
+XMLElementContent
+     { Expression } XMLElementContent
+     XMLMarkup XMLElementContent
+     XMLText XMLElementContent
+     XMLElement XMLElementContent
+     empty
+
+SuperExpression
+     super                                                                       ( super null )
+     super Arguments                                                             ( super Arguments )
+
+PostfixExpression
+     FullPostfixExpression
+     ShortNewExpression
+
+FullPostfixExpression
+     PrimaryExpression
+     FullNewExpression
+     SuperExpression PropertyOperator
+     FullPostfixExpression PropertyOperator
+     FullPostfixExpression Arguments
+     PostfixExpression [no line break] ++                                        ( postfix op PostfixExpression )
+     PostfixExpression [no line break] --                                        ( member PostfixExpression.base ( postfix op PostfixExpression.kind
+                                                                                                              PostfixExpression.selector ) )
+FullNewExpression
+     new FullNewSubexpression Arguments                                          ( member FullNewSubexpression.base
+                                                                                            ( construct FullNewSubexpression.kind
+FullNewSubexpression                                                                                 FullNewSubexpression.selector null ) )
+     PrimaryExpression
+     FullNewExpression
+     FullNewSubexpression PropertyOperator
+     SuperExpression PropertyOperator
+
+ShortNewExpression
+     new ShortNewSubexpression                                                   ( member ShortNewSubexpression.base
+                                                                                            ( construct ShortNewSubexpression.kind
+                                                                                                     ShortNewSubexpression.selector null ) )
+ShortNewSubexpression
+     FullNewSubexpression
+     ShortNewExpression
+
+PropertyOperator
+     .  QualifiedIdentifier                                                      ( member $1 ( get dot QualifiedIdentifier ) )
+     ..  QualifiedIdentifier                                                     ( member $1 ( get descend QualifiedIdentifier ) )
+     . ( ListExpressionallowIn )                                                 ( member $1 ( get filter ListExpression ) )
+     Brackets                                                                    ( member $1 ( get bracket Brackets ) )
+
+Brackets
+     [  ]
+     [  ListExpressionallowIn  ]                                                 o[x]
+
+Arguments                                                                        ( call expr $1 args )   -- if $1 is not a member expression
+     ( )                                                                         ( member $1.base ( call $1.kind $1.selector.expr null ) )
+     ( ListExpressionallowIn  )                                                  ( member $1.base ( call $1.kind $1.selector.expr ListExpression ) )
+
+UnaryExpression
+     PostfixExpression
+     delete  PostfixExpression                                                   ( unary delete PostfixExpression )
+     void  UnaryExpression                                                       ( unary void PostfixExpression )
+     typeof  UnaryExpression                                                     ( unary typeof PostfixExpression )
+     ++   PostfixExpression                                                      ( unary plusplus PostfixExpression )
+     --  PostfixExpression                                                       ( unary minusminus PostfixExpression )
+     +  UnaryExpression                                                          ( unary plus PostfixExpression )
+     -  UnaryExpression                                                          ( unary minus PostfixExpression )
+     -  NegatedMinLong                                                           ( unary minus NegatedMinLong )
+     ~  UnaryExpression                                                          ( unary bitwisenot PostfixExpression )
+     !  UnaryExpression                                                          ( unary logicalnot PostfixExpression )
+
+MultiplicativeExpression
+     UnaryExpression
+     MultiplicativeExpression  *  UnaryExpression                                ( binary mult MultiplicativeExpression UnaryExpression )
+     MultiplicativeExpression  /  UnaryExpression                                ( binary div MultiplicativeExpression UnaryExpression )
+     MultiplicativeExpression  %  UnaryExpression                                ( binary mod MultiplicativeExpression UnaryExpression )
+
+AdditiveExpression
+     MultiplicativeExpression
+     AdditiveExpression + MultiplicativeExpression                               ( binary plus AdditiveExpression MultiplicativeExpression )
+     AdditiveExpression - MultiplicativeExpression                               ( binary minus AdditiveExpression MultiplicativeExpression )
+
+ShiftExpression
+     AdditiveExpression
+     ShiftExpression << AdditiveExpression                                       ( binary leftshift ShiftExpression AdditiveExpression )
+     ShiftExpression >> AdditiveExpression                                       ( binary rightshift ShiftExpression AdditiveExpression )
+     ShiftExpression >>> AdditiveExpression                                      ( binary unsignedrightshift ShiftExpression AdditiveExpression )
+
+RelationalExpressionallowIn
+     ShiftExpression
+     RelationalExpressionallowIn < ShiftExpression                               ( binary lessthan RelationalExpression ShiftExpression )
+     RelationalExpressionallowIn > ShiftExpression                               ( binary greaterthan RelationalExpression ShiftExpression )
+     RelationalExpressionallowIn <= ShiftExpression                              ( binary lessthanorequals RelationalExpression ShiftExpression )
+     RelationalExpressionallowIn >= ShiftExpression                              ( binary greaterthanorequals RelationalExpression ShiftExpression )
+     RelationalExpressionallowIn is ShiftExpression                              ( binary is RelationalExpression ShiftExpression )
+     RelationalExpressionallowIn as ShiftExpression                              ( binary as RelationalExpression ShiftExpression )
+     RelationalExpressionallowIn in ShiftExpression                              ( binary in RelationalExpression ShiftExpression )
+     RelationalExpressionallowIn instanceof ShiftExpression                      ( binary instanceof RelationalExpression ShiftExpression )
+
+RelationalExpressionnoIn
+     ShiftExpression
+     RelationalExpressionnoIn < ShiftExpression                                  ( binary lessthan RelationalExpression ShiftExpression )
+     RelationalExpressionnoIn > ShiftExpression                                  ( binary greaterthan RelationalExpression ShiftExpression )
+     RelationalExpressionnoIn <= ShiftExpression                                 ( binary lessthanorequals RelationalExpression ShiftExpression )
+     RelationalExpressionnoIn >= ShiftExpression                                 ( binary greaterthanorequals RelationalExpression ShiftExpression )
+     RelationalExpressionnoIn is ShiftExpression                                 ( binary is RelationalExpression ShiftExpression )
+     RelationalExpressionnoIn as ShiftExpression                                 ( binary as RelationalExpression ShiftExpression )
+     RelationalExpressionnoIn instanceof ShiftExpression                         ( binary instanceof RelationalExpression ShiftExpression )
+
+EqualityExpressionb
+     RelationalExpressionb
+     EqualityExpressionb == RelationalExpressionb                                ( binary equals EqualityExpression RelationalExpression )
+     EqualityExpressionb != RelationalExpressionb                                ( binary notequals EqualityExpression RelationalExpression )
+     EqualityExpressionb === RelationalExpressionb                               ( binary strictequals EqualityExpression RelationalExpression )
+     EqualityExpressionb !== RelationalExpressionb                               ( binary strictnotequals EqualityExpression RelationalExpression )
+
+BitwiseAndExpressionb
+     EqualityExpressionb
+     BitwiseAndExpressionrb & EqualityExpressionb                                ( binary bitwiseand BitwiseAndExpression EqualityExpression )
+
+BitwiseXorExpressionb
+     BitwiseAndExpressionb
+     BitwiseXorExpressionb ^ BitwiseAndExpressionb                               ( binary bitwisexor BitwiseXorExpression BitwiseAndExpression )
+
+BitwiseOrExpressionb
+     BitwiseXorExpressionb
+     BitwiseOrExpressionb | BitwiseXorExpressionb                                ( binary bitwiseor BitwiseOrExpression BitwiseXorExpression )
+
+LogicalAndExpressionb
+     BitwiseOrExpressionb
+     LogicalAndExpressionb && BitwiseOrExpressionb                               ( binary logicaland LogicalAndExpression BitwiseOrExpression )
+
+LogicalXorExpressionb
+     LogicalAndExpressionb
+     LogicalXorExpressionb ^^ LogicalAndExpressionb                              ( binary logicalxor LogicalXorExpression LogicalAndExpression )
+
+LogicalOrExpressionb
+     LogicalXorExpressionb
+     LogicalOrExpressionb || LogicalXorExpressionb                               ( binary logicalor LogicalOrExpression LogicalXorExpression )
+
+ConditionalExpressionb
+     LogicalOrExpressionb
+     LogicalOrExpressionb ? AssignmentExpressionb : AssignmentExpressionb        ( conditional LogicalOrExpression AssignmentExpression
+                                                                                                AssignmentExpression )
+NonAssignmentExpressionb
+     LogicalOrExpressionb
+     LogicalOrExpressionb ? NonAssignmentExpressionb : NonAssignmentExpressionb  ( conditional LogicalOrExpression NonAssignmentExpression
+                                                                                                NonAssignmentExpression )
+AssignmentExpressionb
+     ConditionalExpressionb
+     PostfixExpression = AssignmentExpressionb                                   ( member PostfixExpression.base
+     PostfixExpression CompoundAssignment AssignmentExpressionb                                 ( set PostfixExpression.kind PostfixExpression.selector.expr
+     PostfixExpression LogicalAssignment AssignmentExpressionb                                            ( argumentlist null AssignmentExpression ) ) )
+                                                                                 ( member PostfixExpression.base
+CompoundAssignment                                                                              ( set PostfixExpression.kind PostfixExpression.selector.expr
+     *=                                                                                                   ( argumentlist null [op PostfixExpression
+     /=                                                                                                             AssignmentExpression] ) ) )
+     %=
+     +=
+     -=
+     <<=
+     >>=
+     >>>=
+     &=
+     ^=
+     |=
+
+LogicalAssignment
+     &&=
+     ^^=
+     ||=
+
+ListExpressionb
+     AssignmentExpressionb
+     ListExpressionb , AssignmentExpressionb                                     ( list ListExpression AssignmentExpression )
+
+TypeExpressionb
+     NonAssignmentExpressionb
+
+STATEMENTS
+w =  {abbrev, noShortIf, full}
+
+Statementw
+     SuperStatement Semicolonw
+     Block
+     IfStatementw
+     SwitchStatement
+     DoStatement Semicolonw
+     WhileStatementw
+     ForStatementw
+     WithStatementw
+     ContinueStatement Semicolonw
+     BreakStatement Semicolonw
+     ReturnStatement Semicolonw
+     ThrowStatement Semicolonw
+     TryStatement
+     ExpressionStatement Semicolonw
+     LabeledStatementw
+
+Substatementw
+     EmptyStatement
+     Statementw
+     SimpleVariableDefinition Semicolonw
+     Attributes [no line break] { Substatements }
+
+Substatements
+     «empty»
+     SubstatementsPrefix Substatementabbrev
+
+SubstatementsPrefix
+     «empty»
+     SubstatementsPrefix Substatementfull
+
+Semicolonabbrev
+     ;
+     VirtualSemicolon
+     «empty»
+
+SemicolonnoShortIf
+     ;
+     VirtualSemicolon
+     «empty»
+
+Semicolonfull
+     ;
+     VirtualSemicolon
+
+EmptyStatement
+     ;                                                                           ( emptystatement )
+
+ExpressionStatement
+     [lookahead !{ function, { }] ListExpressionallowIn                          ( expressionstatement ListExpression )
+
+SuperStatement
+     super Arguments                                                             ( superstatement Arguments )
+
+Block
+     { Directives }                                                              ( block $1 Directives )
+
+LabeledStatementw
+     Identifier : Substatementw                                                  ( labeledstatement Identifier Substatement )
+
+IfStatementabbrev
+     if ParenListExpression Substatementabbrev                                   ( ifstatement ParenListExpression Substatement )
+     if ParenListExpression SubstatementnoShortIf else Substatementabbrev        ( ifstatement ParenListExpression Substatement Substatement )
+
+IfStatementfull
+     if ParenListExpression Substatementfull                                     ( ifstatement ParenListExpression Substatement )
+     if ParenListExpression SubstatementnoShortIf else Substatementfull          ( ifstatement ParenListExpression Substatement Substatement )
+
+IfStatementnoShortIf
+     if ParenListExpression SubstatementnoShortIf else SubstatementnoShortIf     ( ifstatement ParenListExpression Substatement Substatement )
+
+SwitchStatement
+     switch ParenListExpression { CaseElements }                                 ( switchstatement ParenListExpression CaseElements )
+
+CaseElements
+     «empty»
+     CaseLabel
+     CaseLabel CaseElementsPrefix CaseElementabbrev                              ( statementlist CaseElementsPrefix(CaseLabel) CaseElement )
+
+CaseElementsPrefix
+     «empty»
+     CaseElementsPrefix CaseElementfull                                          ( statementlist CaseElementsPrefix CaseElement )
+
+CaseElementw
+     Directivew
+     CaseLabel
+
+CaseLabel
+     case ListExpressionallowIn :                                                ( caselabel ListExpression )
+     default :                                                                   ( caselabel null )
+
+DoStatement
+     do Substatementabbrev while ParenListExpression                             ( dostatement Substatement ParenListExpression )
+
+WhileStatementw
+     while ParenListExpression Substatementw                                     ( whilestatement ParenListExpression Substatement )
+
+ForStatementw
+     for ( ForInitializer ; OptionalExpression ; OptionalExpression ) Substatemen( forstatement ForInitializer OptExpression OptExpression Substatement )
+     for ( ForInBinding in ListExpressionallowIn ) Substatementw                 ( forinstatement ForInBinding ListExpression Substatement )
+     for [no line break] each ( ForInBinding in ListExpressionallowIn ) Substatem( forinstatement ForInBinding ListExpression Substatement )
+
+ForInitializer
+     «empty»
+     ListExpressionnoIn
+     VariableDefinitionnoIn
+
+ForInBinding
+     PostfixExpression
+     VariableDefinitionKind VariableBindingnoIn                                  ( variabledef kind VariableBinding null )
+
+OptionalExpression
+     ListExpressionallowIn
+     «empty»
+
+WithStatementw
+     with ParenListExpression Substatementw                                      ( withstatement ParenListExpression Substatement )
+
+ContinueStatement
+     continue                                                                    ( continue null )
+     continue [no line break] Identifier                                         ( continue Identifier )
+
+BreakStatement
+     break                                                                       ( break null )
+     break [no line break] Identifier                                            ( break Identifier )
+
+ReturnStatement
+     return                                                                      ( return null )
+     return [no line break] ListExpressionallowIn                                ( return ListExpression )
+
+ThrowStatement
+     throw [no line break] ListExpressionallowIn                                 ( throw ListExpression )
+
+TryStatement
+     try Block CatchClauses                                                      ( try Block CatchClauses )
+     try Block CatchClausesOpt finally Block                                     ( try Block CatchClauses ( finally Block ) )
+
+CatchClausesOpt
+     «empty»
+     CatchClauses
+
+CatchClauses
+     CatchClause
+     CatchClauses CatchClause                                                    ( statementlist CatchClauses CatchClause )
+
+CatchClause
+     catch ( Parameter ) Block                                                   ( catch Parameter Block )
+
+DIRECTIVES
+
+Directivew
+     EmptyStatement
+     Statementw
+     AnnotatableDirectivew
+     Attributes [no line break] AnnotatableDirectivew                            (AnnotatableDirective Attributes)
+     Attributes [no line break] { Directives }                                   (Directives Attributes)
+     Pragma Semicolonw
+     IncludeDirective Semicolonw
+     DefaultXMLNamespaceDirective
+
+AnnotatableDirectivew
+     VariableDefinitionallowIn Semicolonw
+     FunctionDefinition
+     ClassDefinition
+     InterfaceDefinition
+     NamespaceDefinition Semicolonw
+     ImportDirective Semicolonw
+     UseDirective Semicolonw
+
+Directives
+     «empty»
+     DirectivesPrefix Directiveabbrev
+
+DirectivesPrefix
+     «empty»
+     DirectivesPrefix Directivefull
+
+Attributes
+     Attribute
+     AttributeCombination
+
+AttributeCombination
+     Attribute [no line break] Attributes                                        ( attributelist Attribute Attributes )
+
+Attribute
+     SimpleQualifiedIdentifier
+     true
+     false
+     ReservedNamespace
+     [ AssignmentExpressionallowIn ]
+
+ImportDirective
+     import PackageName                                                          ( importdirective $1 null PackageName )
+     import Identifier = PackageName                                             ( importdirective $1 Identifier PackageName )
+
+UseDirective
+     use namespace ParenListExpression                                           ( usedirective $1 ParenListExpression )
+
+Pragma
+     use PragmaItems                                                             ( pragma PragmaItems )
+
+PragmaItems
+     PragmaItem
+     PragmaItems , PragmaItem                                                    ( list PragmaItems PragmaItem )
+
+PragmaItem
+     PragmaExpr
+
+PragmaExpr
+     Identifier                                                                  ( pragmaexpression Identifier )
+     Identifier ( PragmaArgument )                                               ( pragmaexpression Identifier PragmaArgument )
+
+PragmaArgument
+     true
+     false
+     Number
+     - Number
+     - NegatedMinLong
+     String
+
+IncludeDirective
+     include [no line break] String                                              ( include String )
+
+DefaultXMLNamespaceDirective
+     default [no line break] xml [no line break] namespace = NonAssignmentExpress( dxns NonAssigmentExpression )
+
+DEFINITIONS
+
+VariableDefinitionb
+     VariableDefinitionKind VariableBindingListb                                 ( variabledef $1 VariableDefinitionKind VariableBindingList )
+
+VariableDefinitionKind
+     var
+     const
+
+VariableBindingListb
+     VariableBindingb
+     VariableBindingListb , VariableBindingb                                     ( list VariableBindingList VariableBinding )
+
+VariableBindingb
+     TypedIdentifierb VariableInitialisationb                                    ( variablebinding TypedIdentifier VariableInitialization )
+
+VariableInitialisationb
+     «empty»
+     = VariableInitialiserb
+
+VariableInitialiserb
+     AssignmentExpressionb
+     AttributeCombination
+
+TypedIdentifierb
+     Identifier
+     Identifier : TypeExpressionb                                                ( typedidentifier Identifier TypeExpression )
+
+SimpleVariableDefinition
+     var UntypedVariableBindingList                                              ( variabledef UntypedVariableBindingList )
+
+UntypedVariableBindingList
+     UntypedVariableBinding
+     UntypedVariableBindingList , UntypedVariableBinding                         ( list UntypedVariableBindingList UntypedVariableBinding )
+
+UntypedVariableBinding
+     Identifier VariableInitialisationallowIn                                    ( untypedvariablebinding Identifier VariableInitialization )
+
+FunctionDefinition
+     function FunctionName FunctionCommon                                        ( functiondef $1 FunctionName FunctionCommon )
+
+FunctionName
+     Identifier                                                                  ( functionname null Identifier )
+     get [no line break] Identifier                                              ( functionname get Identifier )
+     set [no line break] Identifier                                              ( functionname set Identifier )
+
+FunctionCommon
+     FunctionSignature                                                           ( functioncommon FunctionSignature null )
+     FunctionSignature Block                                                     ( functioncommon FunctionSignature Block )
+
+FunctionSignature
+     ( Parameters ) Result                                                       ( functionsignature Parameters Result )
+
+Parameters
+     «empty»
+     NonemptyParameters
+
+NonemptyParameters
+     ParameterInit
+     ParameterInit , NonemptyParameters                                          ( list ParameterInit NonemptyParameters ) Block
+     RestParameters
+
+Parameter
+     ParameterAttributes TypedIdentifierallowIn                                  ( parameter ParameterAttributes TypedIdentifier )
+
+ParameterAttributes
+     «empty»
+     const
+
+ParameterInit
+     Parameter
+     Parameter = AssignmentExpressionallowIn                                     ( parameter ParameterAttributes TypedIdentifier AssignmentExpression )
+
+RestParameter
+     ...
+     ... ParameterAttributes Identifier                                          ( restparameter ParameterAttributes Identifier )
+
+Result
+     «empty»
+     : TypeExpressionallowIn
+
+ClassDefinition
+     class ClassName Inheritance Block                                           ( classdef $1 Idenfier Inheritance Block )
+
+Inheritance
+     «empty»
+     extends TypeExpressionallowIn                                               ( inheritance TypeExpression null )
+     implements TypeExpressionList                                               ( inheritance null TypeExpressionList )
+     extends TypeExpressionallowIn implements TypeExpressionList                 ( inheritance TypeExpression TypeExpressionList )
+
+TypeExpressionList
+     TypeExpressionallowIn
+     TypeExpressionList , TypeExpressionallowIn
+
+InterfaceDefinition
+     interface Identifier ExtendsList Block                                      ( interfacedef $1 Idenfier Inheritance Block )
+
+ExtendsList
+     «empty»
+     extends TypeExpressionList
+
+NamespaceDefinition
+     namespace NamespaceBinding                                                  ( namespacedef $1 NamespaceBinding )
+
+NamespaceBinding
+     Identifier NamespaceInitialisation                                          ( namespacebinding Identifier NamespaceInitialisation )
+
+NamespaceInitialisation
+     «empty»
+     = AssignmentExpressionallowIn
+
+Program
+     Directives
+     PackageDefinition Program                                                   ( program PackageDefinition Program )
+
+PackageDefinition
+     package PackageNameOpt Block                                                ( packagedef PackageName Block )
+
+PackageNameOpt
+     «empty»
+     PackageName
+
+PackageName
+     String                                                                      ( packagename String )
+     PackageIdentifiers                                                          ( packagename PackageIdentifiers )
+
+PackageIdentifiers
+     Identifier                                                                  ( packageidentfiers null Identifier )
+     PackageIdentifiers . PropertyIdentifier                                     ( packageidentifiers PackageIdentifiers PropertyIdentifier )
+
+
+ClassName
+     ClassIdentifiers                                                            ( ClassIdentifiers null )
+
+ClassIdentifiers
+     Identifier                                                                  ( classname $1 Identifier )
+     ClassIdentifiers . Identifier                                               ( ClassIdentifiers ( list $1 Identifier ) )
+
+====== Comments ======
+
+For my test implementation I have factored out the AST types as a set of Java interfaces (which are virtually indistinguishable from Edition 4 interfaces!).  This appears so far to be relatively robust and clear, and is not a terribly verbose notation either.  We could do worse than adopting that syntax for the AST.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/07 05:58//
+
+These AST types are now available here: http://people.opera.com/lth/tc39-tg1/index.html
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/10 07:38//
+
+I noticed today that Java 6 (Mustang) will be standardizing ([[http://forums.java.net/jive/thread.jspa?threadID=61&start=0&tstart=0|1]], [[http://forums.java.net/jive/thread.jspa?threadID=61&messageID=5272|2]]) the [[http://jackpot.netbeans.org/docs/org-netbeans-libs-javacapi/com/sun/|AST API]]. Not that we have any particular intentions to follow Java's lead on anything, but I thought it would be interesting for comparison.
+
+I see that they are going the route of making the abstract syntax follow the structure of the input source very tightly -- for example, even parentheses are preserved, and I //think// (not sure) that they don't resolve dot-expressions to determine whether they are package qualifiers or object references. I think that's the direction we've been heading and it's probably wise, since the less we commit to any particular interpretation, the more applicable the API will be to a wide variety of uses.
+
+ --- //[[dherman@ccs.neu.edu|Dave Herman]] 2006/07/31 15:18//

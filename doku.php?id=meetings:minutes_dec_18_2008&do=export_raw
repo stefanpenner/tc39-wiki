@@ -1,0 +1,71 @@
+====== ES3.1-WG Phone Conference, 18 Dec 2008 ======
+===== Dial-in =====
+Time: 8:00 - 9:00 (PST):
+
+Tel: 866 500 6738 (US); 203 480 8000 (int’l)
+
+Passcode: 885535
+
+===== Attendees =====
+  * Mark Miller (Google)
+  * Allen Wirfs-Brock (Microsoft)
+  * Pratap Lakshman (Microsoft)
+
+===== Agenda =====
+  * Not circulated ahead of time.
+
+
+===== Minutes =====
+**Sharing semantics of "arguments"**
+
+Sharing semantics of arguments - if the semantics were to be different in strict mode and non-strict mode, then each set of semantics needs to be described - the implementation support is not common across all browsers - consider the example of two closures; one referencing "arguments" and the other referencing a named parameter … what should happen after the function returns? - the linkage is broken in the case of IE and FF; but is retained in the case of Safari, Opera and Chrome - interesting … IE and FF cover a majority of the browser share … should we enshrine their implementation as the de-facto standard? - but it appears that their interpretation of the specification in incorrect.
+
+(BTW, Richard Cornford brought this up on es*-discuss@mozilla.org last year, see [[https://mail.mozilla.org/pipermail/es-discuss/2008-July/006618.html|this post]] and followups. He and I at that time favored the IE and Firefox behavior becoming normative, to avoid extending reliance on aliasing effects!
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2009/01/09 05:43//)
+
+Why does strict mode not want to have sharing semantics? - this is so that the language is more sane - but then Brendan and Maciej have objections (refer ticket 428) - not clear why they are objecting - there are clear implementation costs to the change we are proposing - ok, so there are 4 options for this particular scenario:
+
+(I thought I was clear enough at Kona, and Maciej was perfectly clear in the ticket:
+  * Mandating two arguments implementations is onerous.
+  * In no case must eager construction of an Array instance be required, but web compatibility plus strict mode would seem to require it for ''foo.arguments''.
+  * The migration tax for strict mode should not be hiked to include "find all the hidden aliasing dependencies in the legacy codebase you inherited".
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2009/01/09 05:14//)
+
+(a) do nothing.
+
+(b) call out the behaviour as explicitly unspecified.
+
+(c) standardize the IE/FF behaviour.
+
+(d) standardize the Safari/Opera/Chrome behaviour.
+
+Mark and Allen prefer options (d) and (b) in that order, pratapL prefers (b) for ES3.1 and fix it for Harmony - but the expectation is that Harmony will build upon ES3.1 strict - this section still needs some work.
+
+We need to more clearly separate the discussion of strict arguments and non-strict arguments - the above four choices are re non-strict arguments - for strict arguments, there is no sharing (as stated in the Kona draft and agreed at Kona); however, there still remains an important choice:
+
+(x) Have strict arguments be a frozen genuine array, as stated in the Kona draft
+
+(y) Have strict arguments be a frozen, non-joined array-like object, as agreed at the Kona meeting.
+
+If we're reconsidering arguments, as we seem to be, we favour (x).
+
+(This is not what was agreed to at Kona. We need to talk about this at the next face to face.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2009/01/09 05:19//)
+
+How are you adding properties to the "arguments" object ? - using %%[[DefineOwnProperty%%]] - good, don't use %%[[Put%%]] for that purpose - agreed; need to fix it in Array initialiser, though.
+
+**Scan time reporting of strict mode violations**
+
+We have made an addition to section 16 that implementations "must" report, at scan time, violation of strict mode restrictions whose detection does not require program execution - could this be subject to interpretation? - should we change the "must" to a "may"? - Mark strongly favours mandatory early reporting of strict mode violations when possible - ok, we will leave it as-is for now and revisit only if there is objection.
+
+(This too should go on the agenda for the face to face. Small implementations do little analysis at compile time, historically ES1-3 allow runtime reporting of misplaced ''return'', e.g., errors.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2009/01/09 05:25//)
+
+**Array.prototype.sort**
+
+What does it mean to sort an array with accessor properties - is the comparison function meant to be a consistent comparison function? - what should happen if we sort an array having NaN's - there are requirements of reflexivity, symmetry and transitivity on the function - the algorithm performs an implementation-dependent sequence of calls to the %%[[Get%%]], %%[[Put%%]] and %%[[Delete%%]] methods on the object - but why %%[[Delete%%]], that should be removed - by removing %%[[Delete%%]] are we precluding the use of certain implementation optimizations - can imagine an implementation that gets all the values from the array, deletes them from the array, sorts them offline, and then puts them back in sorted order - lets ask on the discuss list if anyone actually uses this facility - if no one is using it, we must remove the use of %%[[Delete%%]] - ok, and make it an error to sort an array with accessor properties; step 5 in the algorithm needs to become step 4c.
+
+Meeting adjourned.

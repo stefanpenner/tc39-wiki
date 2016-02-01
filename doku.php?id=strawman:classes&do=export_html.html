@@ -1,0 +1,292 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:classes&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:classes&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:classes&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+<div class="toc">
+<div class="tocheader"> <script type="text/javascript">showTocToggle("+","-")</script>Table of Contents</div>
+<div id="tocinside">
+<ul class="toc">
+<li class="level1"><span class="li"><a href="doku.php%3Fid=strawman:classes&amp;do=export_html.html#es-harmony_class_system_proposal" class="toc">ES-Harmony Class System Proposal</a></span><ul class="toc">
+<li class="clear"><ul class="toc">
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:classes&amp;do=export_html.html#rationale" class="toc">Rationale</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:classes&amp;do=export_html.html#open_design_choices" class="toc">Open Design Choices</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:classes&amp;do=export_html.html#resolved_design_choices" class="toc">Resolved Design Choices</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:classes&amp;do=export_html.html#syntax" class="toc">Syntax:</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:classes&amp;do=export_html.html#semantics" class="toc">Semantics:</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:classes&amp;do=export_html.html#class_membership_predicates" class="toc">Class Membership Predicates</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:classes&amp;do=export_html.html#migrating_standard_libraries_to_classes" class="toc">Migrating standard libraries to classes</a></span></li>
+<li class="level3"><span class="li"><a href="doku.php%3Fid=strawman:classes&amp;do=export_html.html#comments_from_the_kona_meeting" class="toc">Comments from the Kona Meeting</a></span></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<a name="es-harmony_class_system_proposal"></a><h1>ES-Harmony Class System Proposal</h1>
+<div class="level1">
+
+</div>
+<!-- SECTION [1-49] -->
+<a name="rationale"></a><h3>Rationale</h3>
+<div class="level3">
+
+<p>
+ EcmaScript needs better support for providing high-integrity objects with data abstraction and hiding, and for private fields and methods. Several frameworks provide patterns for building class-like systems, but there are several advantages to providing such support directly in ES-Harmony, including performance, better syntax, security, and standardization.
+</p>
+
+<p>
+The design space for class systems is rather large. Here, we initially focus on a simple, minimalist design, with no support for inheritance or for type annotations, and with instance-private data. There is no separate namespace for class names, and class objects are a new kind of (first-class) values.
+</p>
+
+<p>
+This design is just one of many possible choices, but may help structure the discussion about what we want in ES-Harmony.
+</p>
+
+</div>
+<!-- SECTION [50-870] -->
+<a name="open_design_choices"></a><h3>Open Design Choices</h3>
+<div class="level3">
+
+<p>
+ Here are some semi-independent choices in the design space:
+</p>
+<ul>
+<li class="level1"><div class="li"> Do we want both static and instance members?</div>
+<ul>
+<li class="level2"><div class="li"> Yes</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Do we want both private and public members? </div>
+<ul>
+<li class="level2"><div class="li"> Yes</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Should private members be instance-private or class-private?</div>
+<ul>
+<li class="level2"><div class="li"> Confused deputy issue, Mark says instance-private, Waldemar says class-private with special syntax</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Classes are first-class values, no separate namespace.</div>
+<ul>
+<li class="level2"><div class="li"> Yes</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Should classes be generative?</div>
+<ul>
+<li class="level2"><div class="li"> Yes</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Should we have &ldquo;bound-this&rdquo; for instance methods?</div>
+<ul>
+<li class="level2"><div class="li"> Yes (conceptual reference to current object) &ndash; some disagreement on &ldquo;this&rdquo; vs &ldquo;self&rdquo;, where &ldquo;self&rdquo; would be a regular variable with an explicit binding occurrence, and the programmer could use a different variable name.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> What is the default value of an uninitialized field, or for a not-yet-initialized field? Applies to both static and instance fields.</div>
+<ul>
+<li class="level2"><div class="li"> Undefined (or exception if it is a const)</div>
+</li>
+</ul>
+</li>
+</ul>
+<hr noshade="noshade" size="1" />
+
+<p>
+An alternative design appears at <a href="https://mail.mozilla.org/pipermail/es-discuss/2009-March/009115.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2009-March/009115.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">https://mail.mozilla.org/pipermail/es-discuss/2009-March/009115.html</a> It needs to be uploaded (and revised a bit) as an alternate strawman.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x65%3B%26%23x72%3B%26%23x69%3B%26%23x67%3B%26%23x68%3B%26%23x74%3B%26%23x73%3B%26%23x40%3B%26%23x67%3B%26%23x6f%3B%26%23x6f%3B%26%23x67%3B%26%23x6c%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x65;&#x72;&#x69;&#x67;&#x68;&#x74;&#x73;&#x40;&#x67;&#x6f;&#x6f;&#x67;&#x6c;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Mark S. Miller</a> 2010/01/06 18:36</em>
+</p>
+
+</div>
+<!-- SECTION [871-2074] -->
+<a name="resolved_design_choices"></a><h3>Resolved Design Choices</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> Do we want private or public by default? </div>
+<ul>
+<li class="level2"><div class="li"> Kona -  decided on private.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> What is &ldquo;this&rdquo; binding inside static members?</div>
+<ul>
+<li class="level2"><div class="li"> Kona - decided it should not be in scope.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Are class objects extensible by assigning to additional fields?</div>
+<ul>
+<li class="level2"><div class="li"> Kona - decided not extensible</div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [2075-2391] -->
+<a name="syntax"></a><h3>Syntax:</h3>
+<div class="level3">
+
+<p>
+ A class contains a list of field and method definitions, each of which may be static or not.  Field and method definitions can be arbitrarily interleaved.  
+</p>
+
+<p>
+The proposed concrete syntax is:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> &lt;classname&gt;<span class="br0">&#40;</span>&lt;arg-list&gt;<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+&nbsp;
+      <span class="br0">&#91;</span>&lt;modifier&gt;<span class="br0">&#93;</span> <span class="br0">&#91;</span>static<span class="br0">&#93;</span> &lt;fieldname&gt; <span class="br0">&#91;</span> = &lt;exp&gt; <span class="br0">&#93;</span>; 
+      ...
+&nbsp;
+      <span class="br0">&#91;</span>&lt;modifier&gt;<span class="br0">&#93;</span> <span class="br0">&#91;</span>static<span class="br0">&#93;</span> &lt;methodname&gt; <span class="br0">&#40;</span>&lt;arg-list&gt;<span class="br0">&#41;</span> <span class="br0">&#123;</span> &lt;body&gt; <span class="br0">&#125;</span>;
+      ...
+<span class="br0">&#125;</span>
+&nbsp;
+&lt;modifier&gt; ::= <span class="kw2">public</span> | <span class="kw2">private</span>  	
+&nbsp;
+&lt;exp&gt;  ::= any expression
+&nbsp;
+&lt;body&gt; ::= any <span class="kw2">function</span> body</pre>
+<p>
+A missing modifier is implicitly &ldquo;public&rdquo;, both for methods and fields. 
+</p>
+
+<p>
+(Rationale: this default behavior is analogous to existing ES3 language semantics, and &ldquo;private&rdquo; is opt-in.)
+</p>
+
+<p>
+A class member is either a method or a field. If a member is not static, it is called an instance member.
+</p>
+
+</div>
+<!-- SECTION [2392-3189] -->
+<a name="semantics"></a><h3>Semantics:</h3>
+<div class="level3">
+
+<p>
+ The above syntax desugars into the following variable binding, which uses an &ldquo;anonymous class definition&rdquo; as the initializer expression for a variable.
+</p>
+<pre class="code javascript">let &lt;classname&gt; = <span class="kw2">class</span> <span class="br0">&#40;</span>&lt;arg-list&gt;<span class="br0">&#41;</span> <span class="br0">&#123;</span> ... <span class="me1">same</span> <span class="kw2">class</span> body <span class="kw1">as</span> above ... <span class="br0">&#125;</span></pre>
+<p>
+Thus, &lt;classname&gt; is just a regular variable binding; there is no separate namespace for class bindings.
+</p>
+
+<p>
+Each time this anonymous class definition is evaluated, it allocates a new class object that stores the static fields of the class, and evaluates the corresponding initializer expressions in order to initialize these static fields.  The new class object is then returned as the result of the anonymous class definition expression.  Hence, class definitions need to be positioned appropriately, perhaps at the top-level, to yield the intended semantics.
+</p>
+
+<p>
+The class object also contains the static methods of the class definition.  Inside the bodies of these methods, the variable &ldquo;this&rdquo; is bound to the special uninitialized value. (Rationale: this helps catch bugs caused by inappropriate references to &ldquo;this&rdquo; inside static code.)
+</p>
+
+<p>
+Question: what should be the binding of this when evaluating static initializer expressions.
+</p>
+
+<p>
+This new class object works as a constructor function. That is, the expression
+</p>
+<pre class="code javascript">     <span class="kw2">new</span> C<span class="br0">&#40;</span>&lt;expression-list&gt;<span class="br0">&#41;</span></pre>
+<p>
+binds the variables in &lt;arg-list&gt; to the results of evaluating the expressions in &lt;expression-list&gt; (in the usual fashion for constructor invocations, analogous to in ES3.1).  A new object O of type C is allocated and bound to the variable &ldquo;this&rdquo;.  In the scope of these bindings, the initializer expression for each instance field is evaluated and use as the initial value of that field.
+</p>
+
+<p>
+ The object O contains the instance fields and instance methods of the class.  Inside each instance method, the  variable &ldquo;this&rdquo; is bound to the corresponding class instance (ie, the object O). 
+</p>
+
+<p>
+Note that, even if a method is extracted from O and stored in another object P, and then invoked via &ldquo;P.m()&rdquo;, inside the method &ldquo;m&rdquo; the variable &ldquo;this&rdquo; still refers to the original object &ldquo;O&rdquo;.
+</p>
+
+<p>
+Question: if there are forward references within a class from one instance initializer to a later instance field, what should the behavior be?
+</p>
+
+<p>
+Question: do we agree on having class-private variables, not instance-private (which might be easier to implement but perhaps less general)?
+</p>
+
+</div>
+<!-- SECTION [3190-5602] -->
+<a name="class_membership_predicates"></a><h3>Class Membership Predicates</h3>
+<div class="level3">
+
+<p>
+ For any values v and C, the expression
+</p>
+<pre class="code javascript">    <span class="br0">&#40;</span>v <span class="kw1">is</span> C<span class="br0">&#41;</span></pre>
+<p>
+evaluates to true if and only if the value v was produced from a new expression for the value C like the one above. This should work both for class values and ordinary functions used as constructors.
+</p>
+
+<p>
+Note that this relies on objects having an internal, immutable property indicating their allocated type. (This is different from the mutable <code>constructor</code> property of ES3.)
+</p>
+
+</div>
+<!-- SECTION [5603-6098] -->
+<a name="migrating_standard_libraries_to_classes"></a><h3>Migrating standard libraries to classes</h3>
+<div class="level3">
+
+<p>
+ We would probably like to be able to reimplement at least some of the standard libraries using classes, but this means we need to consider whether there are observable differences between classes and function constructors. With that in mind:
+</p>
+
+<p>
+Question: should the internal <code>[</code><code>[Class]</code><code>]</code> property of a class be <code>&ldquo;Function&rdquo;</code> or <code>&ldquo;Class&rdquo;</code>? Would this change be likely to break existing programs?
+</p>
+
+<p>
+Question: should the <code>typeof</code> operator of a class return <code>&ldquo;function&rdquo;</code> or <code>&ldquo;class&rdquo;</code>? Changing this would probably be likely to cause breakage. Since <code>typeof</code> is generally considered a pit of backwards compatibility, this should probably just stay at <code>&ldquo;function&rdquo;</code>.
+</p>
+
+</div>
+<!-- SECTION [6099-6830] -->
+<a name="comments_from_the_kona_meeting"></a><h3>Comments from the Kona Meeting</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> want &ldquo;private&rdquo; by default</div>
+</li>
+<li class="level1"><div class="li"> static should not have &ldquo;this&rdquo; in scope</div>
+</li>
+<li class="level1"><div class="li"> class objects should be non-extensible</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [6831-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/f/f4e90aeeef761a589b6d8c1dac589d78.xhtml used -->
+</body>
+</html>

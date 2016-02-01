@@ -1,0 +1,212 @@
+====== Overview ======
+
+This provides a modularized version of the standard library.
+
+====== Contents ======
+
+===== standard prelude =====
+
+<code javascript>
+module "@std"
+
+// standard constants and functions
+NaN
+Infinity
+undefined
+eval
+parseInt
+parseFloat
+isNaN
+isFinite
+decodeURI
+encodeURI
+decodeURIComponent
+encodeURIComponent
+
+// standard constructors
+Object
+Function
+Array
+String
+Boolean
+Number
+Date
+RegExp
+Error
+EvalError
+RangeError
+ReferenceError
+SyntaxError
+TypeError
+URIError
+Proxy
+
+// standard pseudo-modules
+Math
+JSON
+
+Symbol   // === (module "@symbol").Symbol
+Iterator // === (module "@iter").Iterator
+</code>
+
+===== math =====
+
+<code javascript>
+module "@math"
+
+E       === (module "@std").Math.E
+LN10    === (module "@std").Math.LN10
+LN2     === (module "@std").Math.LN2
+LOG2E   === (module "@std").Math.LOG2E
+LOG10E  === (module "@std").Math.LOG10E
+PI      === (module "@std").Math.PI
+SQRT1_2 === (module "@std").Math.SQRT1_2
+SQRT2   === (module "@std").Math.SQRT2
+abs     === (module "@std").Math.abs
+acos    === (module "@std").Math.acos
+asin    === (module "@std").Math.asin
+atan    === (module "@std").Math.atan
+atan2   === (module "@std").Math.atan2
+ceil    === (module "@std").Math.ceil
+cos     === (module "@std").Math.cos
+exp     === (module "@std").Math.exp
+floor   === (module "@std").Math.floor
+log     === (module "@std").Math.log
+max     === (module "@std").Math.max
+min     === (module "@std").Math.min
+pow     === (module "@std").Math.pow
+random  === (module "@std").Math.random
+round   === (module "@std").Math.round
+sin     === (module "@std").Math.sin
+sqrt    === (module "@std").Math.sqrt
+tan     === (module "@std").Math.tan
+</code>
+
+===== Date =====
+
+<code javascript>
+module "@date"
+
+parse === (module "@std").Date.parse
+UTC   === (module "@std").Date.UTC
+now   === (module "@std").Date.now
+</code>
+
+===== Number =====
+
+<code javascript>
+module "@number"
+
+MAX_VALUE         === (module "@std").Number.MAX_VALUE
+MIN_VALUE         === (module "@std").Number.MIN_VALUE
+NEGATIVE_INFINITY === (module "@std").Number.NEGATIVE_INFINITY
+POSITIVE_INFINITY === (module "@std").Number.POSITIVE_INFINITY
+</code>
+
+===== Array =====
+
+<code javascript>
+module "@array"
+
+isArray === (module "@std").Array.isArray
+</code>
+
+===== Object =====
+
+<code javascript>
+module "@object"
+
+getPrototypeOf           === (module "@std").Object.getPrototypeOf
+getOwnPropertyDescriptor === (module "@std").Object.getOwnPropertyDescriptor
+getOwnPropertyNames      === (module "@std").Object.getOwnPropertyNames
+create                   === (module "@std").Object.create
+defineProperty           === (module "@std").Object.defineProperty
+defineProperties         === (module "@std").Object.defineProperties
+seal                     === (module "@std").Object.seal
+freeze                   === (module "@std").Object.freeze
+preventExtensions        === (module "@std").Object.preventExtensions
+isSealed                 === (module "@std").Object.isSealed
+isFrozen                 === (module "@std").Object.isFrozen
+isExtensible             === (module "@std").Object.isExtensible
+keys                     === (module "@std").Object.keys
+
+hasOwnProperty           // non-method version of Object.prototype.hasOwnProperty
+isPrototypeOf            // non-method version of Object.prototype.isPrototypeOf
+propertyIsEnumerable     // non-method version of Object.prototype.propertyIsEnumerable
+</code>
+
+===== Function =====
+
+<code javascript>
+module "@function"
+
+call  // non-method version of Function.prototype.call
+apply // non-method version of Function.prototype.apply
+bind  // non-method version of Function.prototype.bind
+</code>
+
+===== JSON =====
+
+<code javascript>
+module "@json"
+
+parse     === (module "@std").JSON.parse
+stringify === (module "@std").JSON.stringify
+</code>
+
+===== Symbols =====
+
+<code javascript>
+module "@symbol"
+
+Symbol
+isSymbol
+</code>
+
+===== Iteration =====
+
+<code javascript>
+module "@iter"
+
+zip
+unzip
+Iterator
+</code>
+
+===== Dictionaries =====
+
+<code javascript>
+module "@dict"
+
+// standard iterators
+keys
+values
+entries
+dict
+</code>
+
+The ''dict()'' function creates a new dictionary object, which is a prototype-less object with no properties. If the optional single argument is provided, its own enumerable properties are copied into the result.
+
+<code javascript>
+function dict(init) {
+    var d = Object.create(null);
+    if (init) {
+        for (var key in init) {
+            if ({}.hasOwnProperty.call(init, key)) {
+                d[key] = init[key];
+            }
+        }
+    }
+    return d;
+}
+</code>
+
+====== Open issues ======
+
+  * I preserved names mechanically, but do we want shorter names for the meta-operations now that they can be separated into an optionally-imported library? should we separate the meta-operations into a ''"@meta"'' library instead of ''"@object"''?
+  * more iteration stuff by default? do we want a "get me this object's iterator function" accessor?
+  * make iterator stuff in the prelude and in ''"@iter"''? don't both with ''"@iter"'' module? (make sure to allow multiply-importing same binding if we duplicate the bindings)
+  * ''Proxy'' by default? or a separate ''"@proxy"'' module?
+  * modules available in scope? ''Name'' or ''name''?
+  * more aggressive alternative: have standard prelude ''Math'' be the ''"@math"'' module instance object (and hence immutable) -- better perf, possible migration hazard ([[http://codesearch.google.com/#search/&q=Math%5C.(%5Cw%2B)%5Cs*=%20case:yes&type=cs|There are a lots of mutations to Math out there.]])
+  * less aggressive, more consistent alternative: have ''Name'' be a mutable object akin to ''Math'' and ''JSON''

@@ -1,0 +1,991 @@
+====== The content on this page is OBSOLETE ======
+
+===== Catch-all Proxies =====
+
+
+
+
+| **This API is superseded by the newer [[harmony:direct proxies]] API.** |
+
+
+
+
+See also: the [[https://mail.mozilla.org/pipermail/es-discuss/2009-December/010250.html|discussion thread]] on the ''es-discuss'' mailing list.
+
+A tech talk on harmony proxies is available [[http://code.google.com/p/es-lab/wiki/Talks#Changes_to_ECMAScript,_Part_2:_Harmony_Highlights_-_proxies_and|here]].
+
+===== Goals =====
+
+To enable ES programmers to represent virtualized objects (proxies). In particular, to enable writing generic abstractions that can intercept property access on ES objects.
+
+Driving forces:
+  * simplicity: straightforward API
+  * consistency: following ES5 conventions, avoiding caveats and exceptions
+  * efficiency: objects whose properties are not intercepted should not be affected by the interception mechanism
+  * security: avoid enabling arbitrary ES objects to be able to intercept the properties of another object
+  * stratification: separate 'meta-level behavior' from regular, 'base-level' objects
+
+Stratification avoids confusion between base and meta-level methods.
+Consider Spidermonkey's "%%__noSuchMethod__%%" trap, or Smalltalk's "doesNotUnderstand:" trap: what if an application (accidentally) redefines this method for application-specific purposes and application code performs explicit "object.doesNotUnderstand(...)" requests?
+This issue is aggravated when additional traps are introduced to not only trap missing methods, but essentially all "meta-level" operations ('get', 'set', 'has', etc.). It becomes unrealistic to have all these names be 'reserved' names with 'special' meaning to the interpreter.
+
+The proxy design makes it impossible to intercept the methods of regular, existing objects.
+Instead, only the methods of special 'proxy' objects can be trapped. This avoids questions like:
+  - can property trapping be dynamically enabled/disabled for an object?
+  - can it be enabled/disabled by external objects or only by the trapped object itself?
+  - should the trap only trigger on access of missing properties or on existing properties as well?
+  - should the trap trigger on access of own or inherited properties?
+  - can property trapping be defined on host objects? (Mike Samuel)
+
+===== Use cases =====
+
+  * generic interposing abstractions to enforce access control
+  * creating virtualized objects: persistent objects, remote objects, lazy creation of objects
+  * transparent logging, tracing, profiling
+  * embedded domain-specific languages
+  * dynamic interception of missing methods calls / generation of missing methods (aka. ''doesNotUnderstand:'')
+  * a possible basis for custom [[strawman:iterators|iterators]].
+
+===== Terminology =====
+
+  * The language feature: **catch-all mechanism** (name used for this feature by the ES4 community)
+  * Alternatively (the preferred term when discussing this mechanism within the broader programming language community): **intercession API**
+  * The object that intercepts properties: **handler**
+  * The object whose properties are being intercepted: **proxy**
+  * The object/method that creates intercessive proxies: **proxy factory** (Mirror terminology)
+  * The methods that reify property access: **traps** (analogy with operating systems)
+  * A proxy can either be **trapping** or be **fixed** (see later)
+
+===== API =====
+
+Catch-alls can be defined //only// on //distinct// proxy objects, controlled by a handler object.
+In keeping with the current distinction in the spec between objects and functions, we found that the cleanest approach to catch-alls was to introduce two kinds of proxies: object proxies and function proxies.
+
+Constructing an object proxy:
+<code javascript>
+var proxy = Proxy.create(handler, proto);
+</code>
+
+Constructing a function proxy:
+<code javascript>
+var proxy = Proxy.createFunction(handler, callTrap, constructTrap);
+</code>
+
+where:
+  * ''proto'' is an optional object representing the proxy's prototype.
+  * ''callTrap'' is a ''function(...args) { return any; }'' that reifies "proxy(...args)". Note: The ''this''-binding of the ''callTrap'' function is the ''this''-binding of the call-site.
+  * ''constructTrap'' is an optional ''function(...args) { return any-object; }'' that reifies "new proxy(...args)". The ''this''-binding of the ''constructTrap'' is ''undefined''. If no ''constructTrap'' is provided, ''new proxy(...args)'' is reified as calling the proxy's ''callTrap'' with ''this'' bound to a new object delegating to ''proxy.prototype'' (as per the %%[[Construct]]%% algorithm of ES5 Section 13.2.2).
+  * ''handler'' is an object that at minimum implements the following API (name denotes a property name, -> is followed by return type, [t] means array-of-t, etc.):
+
+<code javascript>
+{
+  getOwnPropertyDescriptor: function(name) -> PropertyDescriptor | undefined // Object.getOwnPropertyDescriptor(proxy, name)
+  getPropertyDescriptor:    function(name) -> PropertyDescriptor | undefined // Object.getPropertyDescriptor(proxy, name)   (not in ES5)
+  getOwnPropertyNames:      function() -> [ string ]                         // Object.getOwnPropertyNames(proxy) 
+  getPropertyNames:         function() -> [ string ]                         // Object.getPropertyNames(proxy)              (not in ES5)
+  defineProperty:           function(name, propertyDescriptor) -> any        // Object.defineProperty(proxy,name,pd)
+  delete:                   function(name) -> boolean                        // delete proxy.name
+  fix:                      function() -> { string: PropertyDescriptor }     // Object.{freeze|seal|preventExtensions}(proxy)
+                                          | undefined
+}
+</code>
+
+The above methods are the handler's **fundamental** traps.
+Additionally, the API defines a set of optional, **derived** traps:
+
+<code javascript>
+{
+  has:       function(name) -> boolean                  // name in proxy
+  hasOwn:    function(name) -> boolean                  // ({}).hasOwnProperty.call(proxy, name)
+  get:       function(receiver, name) -> any            // receiver.name
+  set:       function(receiver, name, val) -> boolean   // receiver.name = val
+  enumerate: function() -> [string]                     // for (name in proxy) (return array of enumerable own and inherited properties)
+  keys:      function() -> [string]                     // Object.keys(proxy)  (return array of enumerable own properties only)
+}
+</code>
+
+These traps are named "derived" because they are defined in terms of the fundamental traps. For example, the ''has'' trap can be defined by invoking the ''getPropertyDescriptor'' trap and testing whether or not it returns ''undefined''. The fundamental traps are required, the derived traps are optional. If a derived trap is missing, the proxy performs its [[#trap_defaults|default behavior]]. The rationale for providing optional derived traps for particular operations is that the derived trap may be able to emulate the operation with less allocations. See the "no-op" handler in the following section for a concrete example.
+
+The ''fix'' trap is introduced to enable a proxy to interact with ''Object.preventExtensions'', ''Object.seal'' and ''Object.freeze''.
+A non-extensible, sealed or frozen object should somehow restrict the handler's freedom in terms of what it can return from subsequent calls to 'set', 'get' etc. For example, if previous invocations of handler.get(p, "foo") returned a non-undefined value (for some 'handler' of a proxy p), then future invocations of handler.get(p, "foo") should return the same value when p is frozen.
+
+This proposal enforces these restrictions as follows: every time an external object tries to freeze, seal or make a proxy non-extensible, the "fix" trap is invoked on the proxy's handler. At that point, the handler has two options:
+  - either to refuse the request (by making its 'fix' trap return "undefined"). The corresponding call to Object.{freeze|seal|preventExtensions} will throw a TypeError.
+  - or to honor the request, and committing to it by **generating a description** of an object. The catch-all implementation then generates a fresh object based on this description, and from that point on the proxy effectively becomes that object and the handler is bypassed entirely. Any reference to the handler by the implementation is at that point released, making it available for GC. The proxy is now said to be 'fixed'.
+
+
+==== Example: a no-op forwarding proxy ====
+
+This example shows how to implement a proxy that forwards all operations applied to it to an existing object. Many use cases for proxies will probably start from this general pattern, which is why the functionality provided in the below example code is also proposed for standardization as a [[harmony:proxy_defaulthandler|default forwarding handler]].
+
+<code javascript>
+function handlerMaker(obj) {
+  return {
+   getOwnPropertyDescriptor: function(name) {
+     var desc = Object.getOwnPropertyDescriptor(obj, name);
+     // a trapping proxy's properties must always be configurable
+     if (desc !== undefined) { desc.configurable = true; }
+     return desc;
+   },
+   getPropertyDescriptor:  function(name) {
+     var desc = Object.getPropertyDescriptor(obj, name); // not in ES5
+     // a trapping proxy's properties must always be configurable
+     if (desc !== undefined) { desc.configurable = true; }
+     return desc;
+   },
+   getOwnPropertyNames: function() {
+     return Object.getOwnPropertyNames(obj);
+   },
+   getPropertyNames: function() {
+     return Object.getPropertyNames(obj);                // not in ES5
+   },
+   defineProperty: function(name, desc) {
+     Object.defineProperty(obj, name, desc);
+   },
+   delete:       function(name) { return delete obj[name]; },   
+   fix:          function() {
+     if (Object.isFrozen(obj)) {
+       var result = {};
+       Object.getOwnPropertyNames(obj).forEach(function(name) {
+         result[name] = Object.getOwnPropertyDescriptor(obj, name);
+       });
+       return result;
+     }
+     // As long as obj is not frozen, the proxy won't allow itself to be fixed
+     return undefined; // will cause a TypeError to be thrown
+   },
+
+   has:          function(name) { return name in obj; },
+   hasOwn:       function(name) { return ({}).hasOwnProperty.call(obj, name); },
+   get:          function(receiver, name) { return obj[name]; },
+   set:          function(receiver, name, val) { obj[name] = val; return true; }, // bad behavior when set fails in non-strict mode
+   enumerate:    function() {
+     var result = [];
+     for (var name in obj) { result.push(name); };
+     return result;
+   },
+   keys: function() { return Object.keys(obj); }
+
+  };
+}
+var proxy = Proxy.create(handlerMaker(obj));
+</code>
+
+Notes:
+It's OK to call handlerMaker on a proxy itself:
+<code javascript>
+Proxy.create(handlerMaker(aProxy));
+</code>
+
+The ''get'' access is forwarded (not delegated), but if ''obj[p]'' is a method, its this-binding will be set to the current receiver (= delegation!)
+Alternatively, both property access and method invocation can be forwarded (instead of delegated) by defining ''get'' as follows:
+<code javascript>
+get: function(receiver, name) {
+  var prop = obj[name];
+  return (typeof prop) === "function" ? prop.bind(obj) : prop;
+}
+</code>
+
+* independent from catch-alls, there is no reliable way in JS to determine whether a 'set' of the form 'obj[name] = val' succeeded. If an exception is thrown, that exception could either have been thrown because of a failed set, or it could have been thrown by the set accessor of p. If the caller is non-strict, in order to emulate a failed 'set', the 'set' trap should return false rather than throw an exception. So 'set' cannot reliably be emulated for non-strict callers. Regarding the transparent emulation of strict-only code, this is not an issue because all callers will be strict and will expect failed 'set's to always throw an exception.
+
+The proxy handler explicitly sets the ''configurable'' attribute of any property descriptor it returns from ''get{Own}Property'' to ''true''. If a proxy handler would return a property descriptor whose ''configurable'' attribute is ''false'', the proxy implementation throws an exception. The rationale is that the implementation cannot verify that the property is indeed non-configurable: a proxy could deceive a program by returning a non-configurable property descriptor but nothing would constrain it to still configure the property afterward. Hence, proxies must always reveal their properties as being configurable. Instead of having the proxy implementation throw an exception when it sees a non-configurable property descriptor, it could also silently modify the descriptor to be configurable before returning it, but that would be likely to mask errors.
+
+==== The type of a Proxy ====
+
+For spec purposes:
+  * Type(anObjectProxy) === Object
+  * Type(aFunctionproxy) === Object
+
+  * anObjectProxy.%%[[Class]]%% === "Object"
+  * aFunctionProxy.%%[[Class]]%% === "Function"
+
+For ES code:
+  * ''typeof anObjectProxy === "object"''
+  * ''typeof aFunctionProxy === "function"''
+
+  * ''anObjectProxy instanceof C'' iff ''anObjectProxy.''%%[[Prototype]]%% equals or inherits from ''C.prototype''
+  * ''aFunctionProxy instanceof Function''
+
+
+===== Proposal Details / Rationale =====
+
+==== Equality ====
+
+The ''==='' operator is not trapped (for security reasons: ''a === b'' should not trigger arbitrary code)
+Instead: proxies have object identity, so ''p1 === p2'' iff ''p1'' and ''p2'' refer to the same proxy. Fixing a proxy does not alter its object identity (the object "generated" by the handler during fixing does not have its own object identity, it retains the object identity of the proxy, upholding the illusion that the proxy "becomes" the object).
+
+
+==== Fixing ====
+
+Upon fixing an object proxy, the prototype of the generated object is the ''proto'' object passed during proxy construction or ''null'' if none was provided. The prototype of a function proxy is always Function.prototype, and this remains the case when fixing the function proxy.
+
+Rationale for making ''fix'' return an object description, rather than a live object: if the proxy can "become" an existing object, it is not clear whether the proxy should delegate to the existing object or become a "snapshot" of the object. Also, the live object already has a prototype, creating confusion as to which object should become the prototype of the proxy (its ''proto'' or the live object's prototype). If the proxy's prototype changes, it could confuse programs by respond differently to "typeof" and "instanceof" tests. Having the proxy become a fresh object generated from an object description avoids these issues.
+
+''Object.isExtensible(proxy)'' : if proxy is trapping, return true, otherwise (if fixed) return false
+
+When ''handler.fix()'' returns ''undefined'', the corresponding call to ''Object.freeze'', ''Object.seal'', or ''Object.preventExtensions'' will throw a ''TypeError'' (Based on the following recommendation from the sepc, section 8.6.2: "When an algorithm uses an internal property of an object and the object does not implement the indicated internal property, a ''TypeError'' exception is thrown.")
+
+==== Detecting proxy objects ====
+
+In an earlier version of the proposal, a method was defined on ''Proxy'' to distinguish trapping proxies from regular objects or fixed proxies:
+
+''Proxy.isTrapping(anObject)'' -> returns true if and only if ''anObject'' is a proxy and is in trapping mode.
+
+A proxy cannot influence the outcome of this method. Once a proxy is fixed, it is in all ways simply a normal object, with no built-in way to detect that it had ever been a trapping proxy.
+
+The current consensus is not to provide this method as it directly breaks "transparent" virtualization of objects (i.e. it makes it easy to write brittle code that might break when substituting some objects with proxies or vice versa). Note that, with the help of the implementor of a certain type of proxies, one could easily build ''Proxy.isTrapping'' on top of [[harmony:weak_maps|Weak Maps]]: ''Proxy.create'' could insert new trapping proxies in a weak map. If these proxies remove themselves on ''fix()'', then ''Proxy.isTrapping'' is equivalent to testing whether the proxy is present in the weak map.
+
+Note: a better name for ''Proxy.isTrapping'' would be ''Proxy.isProxy''. Once a proxy is no longer trapping, it's no longer a proxy altogether. Also, ''Proxy.isTrapping(obj)'' returning ''false'' could signify either that ''obj'' never was a proxy, or that it's now a fixed proxy. Since the difference no longer matters, ''Proxy.isProxy'' more accurately reflects the outcome of the operation.
+
+==== Interaction with Object.* introspective API ====
+
+The Proxy functions ''create'' and ''createFunction'' act as the equivalent of a "mirror factory" in a Mirror API. By replacing Proxy with another object that conforms to its API (by implementing ''create'', ''createFunction'' and ''isTrapping'' methods), one could create different kinds of proxies using the same API.
+
+This proposal assumes ES-harmony's default "introspection" API (i.e. the ''Object.*'' methods) does not reveal proxies. That is: even methods such as ''Object.defineProperty'' and ''Object.getPropertyDescriptor'' are trapped by the proxy's handler (see [[harmony:proxies#interaction_of_external_methods_and_proxies|below]] for a complete list).
+
+The ''Proxy.isTrapping'' method allows programmers to implement their own introspection APIs that potentially reveal proxies. For example, one could define an object that is substitutable for the primordial ''Object'', redefining all introspective methods such as ''Object.getOwnPropertyDescriptor'', ''Object.getPrototypeOf'', etc. For example, proxies could be revealed at the "meta-level" as empty objects rather than invoking their traps:
+
+<code javascript>
+var MyObject = {
+  getOwnPropertyDescriptor: function(obj, name) {
+    return Object.getOwnPropertyDescriptor(
+      Proxy.isTrapping(obj) ? {} : obj, name);
+  }
+  ...
+}
+</code>
+
+
+
+
+
+==== Accessing handler from proxy ====
+
+By default, this proposal provides no means for code with a reference to a proxy to get a reference to that proxy's handler. This safeguards the integrity of the proxy and its handler, and enforces stratification. For certain types of proxies, it may occur that certain meta-level programs sometimes do require access to a proxy's handler (e.g. because the handler contains meta-data about the proxy that should remain invisible to base-level code). In such cases, the meta-level program can use [[harmony:weak maps]] in the following pattern:
+
+<code javascript>
+function makeCustomProxyFactory() {
+  var customProxies = WeakMap();
+  return {
+    create: function(handler, proto) {
+      var proxy = Proxy.create(handler, proto);
+      customProxies.put(proxy, handler);
+      return proxy;
+    },
+    handlerOf: function(proxy) {
+      return customProxies.get(proxy);
+    }
+  };
+}
+</code>
+
+For a custom proxy ''p'', it now becomes possible to reference its handler by invoking ''factory.handlerOf(p)'', given that one has a reference to the custom proxy factory ''factory''. Note that even using this pattern, stratification is upheld: the handler of ''p'' is retrieved without having to "ask" ''p'' itself.
+
+
+
+==== Simulating __noSuchMethod__ / doesNotUnderstand: ====
+
+- The ''get'' trap takes as an argument the receiver of the property access. When the access was performed directly on the proxy, the receiver refers to the proxy and is generally not very interesting (a proxy in this context is useful only as an identity). However, the access may have happened through delegation via the prototype chain, in which case it may be useful for the handler to be able to refer to the original receiver of the property access. Note that the proxy mechanism makes it easy to emulate delegation rather than forwarding of messages, by passing this original receiver argument as the first (//thisArg//) argument to subsequent ''apply'' invocations.
+
+- The ''get'' trap differs from the more traditional ''%%__noSuchMethod__%%''/''doesNotUnderstand:'' traps in that it traps all property accesses, not just missing property accesses, since proxies are always empty. The ''doesNotUnderstand:'' behavior can, however, be emulated by means of a simple pattern: introduce a child object that delegates to a proxy. Client objects may then find existing properties in the child object, all non-existent properties in the child will be trapped by the proxy parent.
+
+- Dynamic generation of methods (as used in various ORM tools like Ruby's ActiveRecord and Groovy's GORM) can be emulated using a similar pattern: introduce a child object that delegates to a proxy, and make sure the proxy's handler can reference this child object. Now, property accesses trapped by the handler indicate methods not understood by the child object. The handler can simply decide to add a new property to the child, such that subsequent invocations will find the generated child property, rather than triggering the handler again.
+
+
+A simple noSuchMethod-like API
+can be built on top of this proposal, in a library, without losing the
+benefits of stratification. One possibility is to define a method named
+"Object.createHandled", similar to ES5's "Object.create" method, but which
+allows an additional noSuchMethod trap to be specified:
+
+<code javascript>
+Object.createHandled = function(proto, objDesc, noSuchMethod) {
+  var handler = {
+    get: function(rcvr, p) {
+      return function() {
+        var args = [].slice.call(arguments, 0);
+        return noSuchMethod.call(this, p, args);
+      };
+    }
+  };
+  var p = Proxy.create(handler, proto);
+  return Object.create(p, objDesc);
+};
+</code>
+
+Given a convenience function ''Object.getOwnProperties(obj)'', one could write:
+
+<code javascript>
+Object.createHandled(Parent,
+  Object.getOwnProperties({ ... }),
+  function (id, args) { ... });
+</code>
+
+This comes close to the ''__noSuchMethod__''-style of trapping missing methods,
+without giving up on stratification (the ''noSuchMethod'' trap itself is still
+clearly separated from the object itself). The fact that an object literal
+is passed as an argument to ''Object.getOwnProperties'' is part of the idiom.
+It ensures that the rest of the application only refers to the 'trapped'
+object, and there is no need for the programmer to explicitly distinguish
+the 'trapped' object from the 'non-trapped' object.
+
+The differences between ''__noSuchMethod__''-style trapping of missing methods and using the ''get'' trap of proxies are discussed at length in this [[https://mail.mozilla.org/pipermail/es-discuss/2010-October/011912.html|e-mail thread]].
+
+==== Function Proxies ====
+
+- the value of ''this'' in the body of the ''callTrap'' is significant when a function proxy is being used to emulate a method of another object. For instance:
+<code javascript>
+var fp = Proxy.createFunction({}, callTrap);
+var o = { name: fp };
+o.name(x); // reified as callTrap.apply(o,[x])
+</code>
+
+==== Stratification ====
+
+- The handler is a regular object. It may delegate to other objects and its delegation chain is completely independent from that of the proxy it handles. A single handler may handle multiple proxies. The handler can be a proxy itself.
+
+- Calling ''aProxy.get(...)'' , ''aProxy.fix(...)'' explicitly on a proxy will not trigger the proxy's corresponding traps. Instead, the call will be reified like any other, e.g. ''aProxy.fix()'' invokes the handler's ''get(aProxy,'fix')()'' trap. Traps can only be invoked explicitly on a proxy's handler, not on the proxy itself. This enforces stratification (the meta-level traps should not interfere with base-level method names). Thus, proxies continue to work correctly if an application (by accident or by design) uses the names ''get'', ''set'', ''has'', etc.
+
+
+
+==== Interaction with ''instanceof'' ====
+
+Interaction between proxies and the ''instanceof'' operator.
+In ES, the prototype chain is used for both inheritance and "typing". Two cases to consider:
+  * case 1: ''obj instanceof aFunctionProxy''
+aFunctionProxy can influence the result of this operator if its handler's ''get'' trap returns a meaningful value for the ''prototype'' property.
+Internally, the ''instanceof'' operator invokes the built-in method %%[[HasInstance]]%% on the function, which queries the function's ''prototype'' property.
+
+Note: a function proxy may break the invariant that regular JS objects cannot change their type (the call to ''get'' may return different values for 'prototype' over time), but this is already the case for regular functions anyway.
+
+  * case 2: ''anObjectProxy instanceof aConstructorFunction''
+The ''proto'' object passed to the ''Proxy.create'' method is used to determine the ''prototype'' of the proxy. Hence:
+<code javascript>
+var proxy = Proxy.create(handler, String.prototype);
+proxy instanceof String // true
+</code>
+This is similar to how ''java.lang.reflect.Proxy'' interacts with Java's ''instanceof'' operator: upon proxy construction, a list of interface types is given such that the proxy will be an ''instanceof'' those interface types.
+
+Rationale for not trapping access to a proxy's prototype:
+
+We could have also reified the %%[[Prototype]]%% property on objects as a 'prototype' trap. The downside is that ''aProxy instanceof ConstructorFunction'' can then potentially execute arbitrary code, and that reifying the prototype property for the purposes of ''instanceof'', but not for the purposes of inheritance could be very confusing for the implementor of the handler.
+
+Rationale for not trapping ''instanceof'' test as an explicit ''isInstanceOf(function)'' trap on the proxy handler:
+
+Security issue: the handler is given a reference to the ''function'' object (the right-hand side of the ''instanceof'' operator). This gives the handler the ability to generate new instances of that function.
+
+Note: allowing proxies to "impersonate" members of existing "types" should not introduce any additional security issues, as the classification mechanism for ES is already unsafe (existing objects can already "impersonate" membership of a "type" (constructor function) by virtue of simply delegating to the function's prototype object).
+
+
+
+
+
+
+==== Trap Defaults ====
+
+When a proxy implementation queries a handler for the name of a trap, and the result of the lookup is ''undefined'':
+  * If the trap is a fundamental trap, throw a ''TypeError''
+  * If the trap is a derived trap, the proxy implementation falls back on the "default implementation" of the derived trap in terms of the mandatory, fundamental traps.
+
+The default implementation of the derived traps can be implemented in Javascript itself. This is shown below for expository purposes, but is not a normative part of the Proxy specification (in the following code, ''this'' refers to the handler object, and any references to methods defined on ''Object'', ''Function.prototype'' or ''Array.prototype'' are assumed to refer to the built-in implementations). The function ''normalizeAndCompletePropertyDescriptor'' is defined [[harmony:proxies_semantics#utilities|here]].
+
+<code javascript>
+  has: function(name) { return !!this.getPropertyDescriptor(name); },
+  hasOwn: function(name) { return !!this.getOwnPropertyDescriptor(name); },
+  get: function(receiver, name) {
+    var desc = this.getPropertyDescriptor(name);
+    desc = normalizeAndCompletePropertyDescriptor(desc);
+    if (desc === undefined) { return undefined; }
+    if ('value' in desc) {
+      return desc.value;
+    } else { // accessor
+      var getter = desc.get;
+      if (getter === undefined) { return undefined; }
+      return getter.call(receiver); // assumes Function.prototype.call
+    }
+  },
+  set: function(receiver, name, val) {
+    var desc = this.getOwnPropertyDescriptor(name);
+    desc = normalizeAndCompletePropertyDescriptor(desc);
+    var setter;
+    if (desc) {
+      if ('writable' in desc) {
+        if (desc.writable) {
+          this.defineProperty(name, {value: val});
+          return true;
+        } else {
+          return false;
+        }
+      } else { // accessor
+        setter = desc.set;
+        if (setter) {
+          setter.call(receiver, val); // assumes Function.prototype.call
+          return true;
+        } else {
+          return false;
+        }
+      }
+    }
+    desc = this.getPropertyDescriptor(name);
+    desc = normalizeAndCompletePropertyDescriptor(desc);
+    if (desc) {
+      if ('writable' in desc) {
+        if (desc.writable) {
+          // fall through
+        } else {
+          return false;
+        }
+      } else { // accessor
+        var setter = desc.set;
+        if (setter) {
+          setter.call(receiver, val); // assumes Function.prototype.call
+          return true;
+        } else {
+          return false;
+        }
+      }
+    }
+    if (!Object.isExtensible(receiver)) return false;
+    this.defineProperty(name, {
+      value: val, 
+      writable: true, 
+      enumerable: true, 
+      configurable: true});
+    return true;
+  },
+  enumerate: function() {
+    var trapResult = this.getPropertyNames();
+    var l = +trapResult.length;
+    var result = [];
+    for (var i = 0; i < l; i++) {
+      var name = String(trapResult[i]);
+      var desc = this.getPropertyDescriptor(name);
+      desc = normalizeAndCompletePropertyDescriptor(desc);
+      if (desc !== undefined && desc.enumerable) {
+        result.push(name);
+      }
+    }
+    return result;
+  },
+  keys: function() {
+    var trapResult = this.getOwnPropertyNames();
+    var l = +trapResult.length;
+    var result = [];
+    for (var i = 0; i < l; i++) {
+      var name = String(trapResult[i]);
+      var desc = this.getOwnPropertyDescriptor(name);
+      desc = normalizeAndCompletePropertyDescriptor(desc);
+      if (desc !== undefined && desc.enumerable) {
+        result.push(name);
+      }
+    }
+    return result;
+  }
+</code>
+
+Note how in all cases, the derived traps cause allocations that can be avoided by having the handler directly implement these traps, rather than to inherit these default implementations.
+
+The advantages of having the proxy implementation provide these defaults is that:
+  * it reduces the burden on proxy implementors, who have to implement less traps.
+  * a built-in implementation of the above defaults is likely to be faster than using the above actual Javascript code.
+  * it allows us to easily add new derived traps in later versions. Proxy handlers for earlier versions will most likely not define the new trap, and will fall back on the default behavior rather than crash.
+
+If [[strawman:handler_access_to_proxy]] is accepted, the above code should be adjusted to trigger the fundamental traps via the proxy, rather than by performing a direct self-send on the handler (e.g. call ''Object.getPropertyDescriptor(proxy, name)'' rather than ''this.getPropertyDescriptor(name)''). Triggering the fundamental traps through the proxy more accurately reflects the specification.
+
+===== Semantics =====
+
+See the [[harmony:proxies_semantics|semantics page]]
+
+==== Interaction of external methods and proxies ====
+
+In the methods below, we assume ''aProxy'' to be a trapping function or object proxy.
+
+For each of the following methods, proxies can appear to be regular objects.
+
+  * ''Object.getOwnPropertyDescriptor(aProxy, name)'' -> trap on aProxy's handler
+  * ''Object.getOwnPropertyNames(aProxy)'' -> trap on aProxy's handler
+  * ''Object.defineProperty(aProxy, name, attrs)'' -> trap on aProxy's handler
+  * ''Object.defineProperties(aProxy, properties)'' -> trap on aProxy's handler
+  * ''Object.prototype.toString.call(aProxy)'' -> returns "Object" or "Function"
+    * Note that ''aProxy.toString()'' is base-level and will be trapped by the ''get'' trap
+  * ''Object.getPrototypeOf(aProxy)'' -> returns ''proto'', ''null'' or ''Function.prototype''
+  * ''Object.create(aProxy, properties)'' -> makes a new object that inherits from aProxy
+  * ''Object.seal(aProxy)'' -> calls ''fix'' on aProxy's handler
+  * ''Object.freeze(aProxy)'' -> calls ''fix'' on aProxy's handler
+  * ''Object.preventExtensions(aProxy)'' -> invokes ''fix'' trap on aProxy's handler
+  * ''Object.isSealed(aProxy)'' -> returns false
+  * ''Object.isFrozen(aProxy)'' -> returns false
+  * ''Object.isExtensible(aProxy)'' -> returns true
+  * ''Object.keys(aProxy)'' -> invokes ''keys'' trap on aProxy's handler
+  * ''Object.prototype.toLocaleString.call(aProxy)'' -> invokes ''aProxy.toString()'' which traps
+  * ''Object.prototype.valueOf.call(aProxy)'' -> returns ''aProxy''
+  * ''Object.prototype.isPrototypeOf.call(aProxy, aChild)'' -> returns whether ''aChild'' inherits from ''aProxy''
+  * ''Object.prototype.isPrototypeOf.call(aParent, aProxy)'' -> returns whether ''aProxy'' inherits from ''aParent''
+  * ''Object.prototype.hasOwnProperty.call(aProxy, name)'' -> invokes ''hasOwn'' trap on aProxy's handler
+  * ''Function.prototype.apply.call(aFunctionProxy, thisValue, args)'' -> calls ''aFunctionProxy'''s apply trap with arguments ''thisValue'' and ''args''
+  * ''Function.prototype.call.call(aFunctionProxy, thisValue, ...args)'' -> calls ''aFunctionProxy'''s apply trap with arguments ''thisValue'' and ''args''
+  * ''Function.prototype.bind.call(aFunctionProxy, thisValue, ...args)'' -> returns a currying of ''aFunctionProxy''
+  * ''Function.prototype.toString.call(aFunctionProxy)'' -> returns the result of ''Function.prototype.toString.call(callTrap)'' where ''callTrap'' is the function proxy's callTrap.
+
+===== More Examples =====
+
+==== Transparent chains of no-op proxies ====
+
+It is safe to create proxies whose handlers are themselves proxies. The following example illustrates that no-op proxies, created using the ''handlerMaker'' function defined above, compose cleanly.
+
+<code javascript>
+var p2 = Proxy.create(Proxy.create(handlerMaker(handlerMaker(obj))));
+// Or, giving each subexpression a name:
+var h1 = handlerMaker(obj);
+var h2 = handlerMaker(h1);
+var p1 = Proxy.create(h2);
+var p2 = Proxy.create(p1);
+</code>
+
+Here is how ''p2.name'' is translated into ''obj.name'':
+  * p2.name ->
+  * p1.get(p2, 'name') ->
+  * h2.get(p1, 'get')(p2, 'name') ->
+  * h1['get'](p2, 'name') ->
+  * obj['name']
+
+We use such double-proxying to simplify our membrane implementations below.
+
+
+==== A Simple Membrane ====
+
+As with the simple membrane of figure 9.3, p 71 of [[http://erights.org/talks/thesis/markm-thesis.pdf|Robust Composition]], the following is the simplest expository membrane that satisfies the formal property of unavoidable transitive interposition, but is not yet practical. The next example below repairs its flaws.
+
+<code javascript>
+const makeSimpleMembrane(target) {
+  let enabled = true;
+  
+  const wrap(wrapped) {
+    if (Object.isPrimitive(wrapped)) { // assumed built-in
+      // primitives provide only irrevocable knowledge, so don't
+      // bother wrapping it.
+      return wrapped;
+    }
+
+    const wrapCall(fun, that, args) {
+      if (!enabled) { throw new Error("disabled"); }
+      try {
+        return wrap(fun.apply(that, args.map(wrap)));
+      } catch (e) {
+        throw wrap(e);
+      }
+    }
+
+    const baseHandler = handlerMaker(wrapped);
+    const revokeHandler = Proxy.create(Object.freeze({
+      get: const(rcvr, name) {
+        return function(...args) {
+          return wrapCall(baseHandler[name], baseHandler, args);
+        }
+      }
+    }));
+          
+    if (typeof wrapped === "function") {
+      const callTrap(...args) {
+        return wrapCall(wrapped, wrap(this), args);
+      }
+      const cTrap(...args) {
+        if (!enabled) { throw new Error("disabled"); }
+        try {
+          return wrap(new wrapped(...args.map(wrap)));
+        } catch (e) {
+          throw wrap(e);
+        }
+      }
+      return Proxy.createFunction(revokeHandler, callTrap, cTrap);
+    } else {
+      return Proxy.create(revokeHandler, 
+                          wrap(Object.getPrototypeOf(wrapped)));
+    }
+  }
+  
+  const gate = Object.freeze({
+    enable:  const() { enabled = true; },
+    disable: const() { enabled = false; }
+  });
+  
+  return Object.freeze({ wrapper: wrap(target), gate: gate });
+}
+</code>
+
+The ''...'' depends on the proposal for [[harmony:spread|spread arguments]].
+
+The ''handlerMaker'' function is defined above and defines the handler for a no-op forwarding proxy.
+
+For now, the assumed built-in ''Object.isPrimitive'' could be implemented as:
+<code javascript>Object.isPrimitive = function (obj) { return obj !== Object(obj) }</code>
+
+==== An identity-preserving membrane ====
+
+The following elaboration of the above example preserves the boundary between two sides we name "wet" and "dry". When a wet object travels towards the dry side, the membrane stretches to wrap it, keeping it wet (exposing it only to other wet objects), while exposing a mostly transpa
+
+rent but dry wrapper around it to the dry side. When the same wet object is moves towards the dry side again, the same dry wrapper is produced, preserving corresponding object identity on each side of the membrane. 
+
+When this dry wrapper travels back towards the wet side, the original wrapped wet object appears rather than a double wrapping, so calling a dry wrapping of a wet function with a dry wrapping of a wet argument will cause the wet unwrapped function to be called with the wet unwrapped argument. Neither side sees its own objects unnecessarily wrapped.
+
+And vice versa of course. This is much like the covariance/contravariance logic of [[http://www.cs.brown.edu/~arjun/public/poly-contracts.pdf|higher order contracts]] and the left/right relationships in [[http://scg.unibe.ch/archive/papers/Gybe06aSymbioticReflectionESUGJournal.pdf|linguistic symbiosis / inter-language reflection]]. Although the logic of asDry and asWet below are exact mirror images, we duplicate the code rather than making it yet more abstract and hard to follow.
+
+
+<code javascript>
+const makeMembrane(wetTarget) {
+  let wet2dry = WeakMap();
+  let dry2wet = WeakMap();
+  
+  const asDry(wet) {
+    if (Object.isPrimitive(wet)) {
+      // primitives provide only irrevocable knowledge, so don't
+      // bother wrapping it.
+      return wet;
+    }
+    const dryResult = wet2dry.get(wet);
+    if (dryResult) { return dryResult; }
+    
+    const wetHandler = handlerMaker(wet);
+    const dryRevokeHandler = Proxy.create(Object.freeze({
+      get: const(rcvr, name) {
+        return function(...dryArgs) {
+          const optWetHandler = dry2wet.get(dryRevokeHandler);
+          try {
+            return asDry(optWetHandler[name](...dryArgs.map(asWet)));
+          } catch (eWet) {
+            throw asDry(eWet);
+          }
+        };
+      }
+    }));
+    dry2wet.set(dryRevokeHandler, wetHandler);
+          
+    if (typeof wet === "function") {
+      const callTrap(...dryArgs) {
+        return asDry(wet.apply(asWet(this), dryArgs.map(asWet)));
+      }
+      const cTrap(...dryArgs) {
+        return asDry(new wet(...dryArgs.map(asWet)));
+      }
+      dryResult = Proxy.createFunction(dryRevokeHandler, callTrap, cTrap);
+    } else {
+      dryResult = Proxy.create(dryRevokeHandler, 
+                               asDry(Object.getPrototypeOf(wet)));
+    }
+    wet2dry.set(wet, dryResult);
+    dry2wet.set(dryResult, wet);
+    return dryResult;
+  }
+  
+  const asWet(dry) {
+    if (Object.isPrimitive(dry)) {
+      // primitives provide only irrevocable knowledge, so don't
+      // bother wrapping it.
+      return dry;
+    }
+    const wetResult = dry2wet.get(dry);
+    if (wetResult) { return wetResult; }
+    
+    const dryHandler = handlerMaker(dry);
+    const wetRevokeHandler = Proxy.create(Object.freeze({
+      get: const(rcvr, name) {
+        return function(...wetArgs) {
+          const optDryHandler = wet2dry.get(wetRevokeHandler);
+          try {
+            return asWet(optDryHandler[name](...wetArgs.map(asDry)));
+          } catch(eDry) {
+            throw asWet(eDry);
+          }
+        };
+      }
+    }));
+    wet2dry.set(wetRevokeHandler, dryHandler);
+          
+    if (typeof dry === "function") {
+      const callTrap(wetArgs) {
+        return asWet(dry.apply(asDry(this), wetArgs.map(asDry)));
+      }
+      const cTrap(...wetArgs) {
+        return asWet(new dry(...wetArgs.map(asDry)));
+      }
+      wetResult = Proxy.createFunction(wetRevokeHandler, callTrap, cTrap);
+    } else {
+      wetResult = Proxy.create(wetRevokeHandler, 
+                               asWet(Object.getPrototypeOf(dry)));
+    }
+    dry2wet.set(dry, wetResult);
+    wet2dry.set(wetResult, dry);
+    return wetResult;
+  }
+  
+  const gate = Object.freeze({
+    revoke: const() {
+      dry2wet = wet2dry = Object.freeze({
+        get: const(key) { throw new Error("revoked"); },
+        set: const(key, val) {}
+      };
+    }
+  });
+  
+  return Object.freeze({ wrapper: asDry(wetTarget), gate: gate });
+}
+</code>
+
+
+=== Garbage Collection Behavior ===
+
+The ''WeakMap'' refers to the [[harmony:weak maps]] proposal. By using weak maps, graph structures that cross the membrane remain as collectable as they would be if the membrane were not there. An unreferenced cycle of wet and dry object and their wrappers is still not strongly referenced, even if the membrane is strongly referenced, and so may be collected.
+
+To illustrate another point, an additional change is that, rather than enabling and disabling with the gate, this gate does a single one-way revoke, permanently disabling the membrane. A revoked membrane drops its weak maps, so that the non-collectability of an object on one side of the membrane no longer prevents collection of its twin on the other side. If a subgraph is fully surrounded by a membrane, then once that membrane is revoked, that subgraph is necessarily collectible. Not only is all its connectivity revoked, its ability to continue to occupy memory is revoked as well.
+
+==== An eventual reference proxy ====
+
+This example shows how to implement a proxy that represents an eventual reference, enforcing asynchronous property access on an object.
+
+<code javascript>
+function localFarReferenceMaker(obj) {
+  var pds = Object.getPropertyDescriptors(obj);
+  var nonConfigurableProperties = 
+      Object.freeze(         Object.keys(pds).filter(function(name) { return !pds[name].configurable; });
+  var frozenProperties = 
+      Object.freeze(nonConfigurableProperties.filter(function(name) { return !pds[name].writable; });
+  var nonSettableProperties = 
+      Object.freeze(         frozenProperties.filter(function(name) { return !pds[name].set; });
+  var nonConfigurableOwnProperties = 
+      Object.freeze(nonConfigurableProperties.filter(function(name) { return ({}).hasOwnProperty.call(obj, name); });
+
+  var handler = {
+   defineProperty: function(name, desc) {
+     setTimeout(function(){ Object.defineProperty(obj, name, desc); }, 0);
+   },
+   getOwnPropertyDescriptor: function() {
+     if (nonConfigurableOwnProperties.indexOf(name) >= 0) {
+       return pds[name];
+     } else {
+       return undefined;
+     }
+   },
+   getOwnPropertyNames: function() { return nonConfigurableOwnProperties; },
+   has:          function(name) { return nonConfigurableProperties.indexOf(name) >= 0; },
+   hasOwn:       function(name) { return nonConfigurableOwnProperties.indexOf(name) >= 0; },
+   get: function(receiver, name) {
+     return promiseFor(function(){return obj[name];}); 
+   },
+   set: function(receiver, name, val) {
+     if (nonSettableProperties.indexOf(name) >= 0) { return false; };
+     setTimeout(function(){obj[name] = val;}, 0);
+     return true;
+   },
+   delete: function(name) {
+     if (nonConfigurableProperties.indexOf(name) >= 0) { return false; };
+     setTimeout(function(){delete obj[name];}, 0);
+     return true;
+   },
+   enumerate: function() {
+     return nonConfigurableProperties.filter(
+       function (name) { return pds[name].enumerable });
+   },
+   keys: function() {
+     return nonConfigurableOwnProperties.filter(
+       function (name) { return pds[name].enumerable });
+   },
+   fix: function() { return undefined; },
+  };
+  return Proxy.create(handler, Object.getPrototypeOf(obj));
+}
+</code>
+
+Note: ''localFarReferenceMaker'' should work even if ''obj'' is a host object.
+
+==== Higher-order Messages ====
+
+A higher-order message is a message that takes another message as its argument, as explained in [[http://www.metaobject.com/papers/Higher_Order_Messaging_OOPSLA_2005.pdf|this paper]].
+
+Higher-order messaging builds upon catch-alls to reify the message as an object. We reify the message as a function of its receiver, by sending the message to a special catch-all named ''_'':
+
+<code javascript>
+var msg = _.foo(1,2)
+msg.selector; // "foo"
+msg.args; // [1,2]
+msg(x); // x.foo(1,2)
+</code>
+
+The following example is based on the higher-order messaging paper, section 2.2:
+
+<code javascript>
+var salaried = employees.filter(_.hasSalary(1000));
+// equivalent to:
+var salaried = employees.filter(function(e) { return e.hasSalary(1000); });
+</code>
+
+Here is the code for the ''_'' object:
+
+<code javascript>
+// turns messages into functions
+var _ = Proxy.create({
+  get: function(_, name) {
+    return function(...args) {
+      var f = function(rcvr) {
+        return rcvr[name](...args);
+      };
+      f.selector = name;
+      f.args = args;
+      Object.freeze(f.args);
+      Object.freeze(f.prototype);
+      return Object.freeze(f);
+    }
+  }
+});
+</code>
+
+
+===== Climbing the meta ladder =====
+
+Catch-alls climb the meta ladder: a handler's traps potentially enable arbitrary code to be executed in places where the spec does not currently expect this.
+The intent of this section is to document and collect all places where arbitrary code can now be executed in the spec due to catch-alls.
+
+  * the 'get' and 'set' traps do not introduce new cases, since these traps already exist in the form of accessor properties.
+  * the expression "name in proxy" evaluates to "proxy.%%[[HasProperty]]%%(name)". Can execute arbitrary code via the proxy's "has" trap.
+  * the expression "delete proxy.name" can execute arbitrary code via the proxy's "delete" trap.
+  * the expression "for name in proxy" can execute arbitrary code via the proxy's "enumerate" trap.
+  * the method "Object.keys(proxy)" can execute arbitrary code via the proxy's "keys" trap.
+  * the expression "with (proxy) { x }" can execute arbitrary code: the proxy becomes the 'binding object' of an Object Environment Record (section 10.2.1.2), so identifier lookup and assignment are translated into invoking %%[[HasProperty]]%%, %%[[Get]]%% and %%[[Put]]%% on the binding object. In the current spec, this statement could already execute arbitrary code if ''x'' is an accessor property (in which case %%[[Get]]%% and %%[[Put]]%% could execute arbitrary code). With catch-alls, this statement could execute arbitrary code without 'x' having to be an accessor property, as simply checking the existence of ''x'' in ''proxy'' triggers the proxy's ''has'' trap.
+  * Proxies interact with many of the static methods defined on ''Object''. However, calls to these static methods could already execute arbitrary user code if these methods were previously "monkey-patched".
+
+
+===== Background / Prior Work =====
+
+  * In general: meta-objects & reflection literature (especially 'intercession')
+  * Ungar & Bracha's [[http://bracha.org/mirrors.pdf|Mirrors]] (mirrors do not enable intercession, only introspection/invocation)
+
+==== In this wiki ====
+
+  * The [[strawman:catchalls]] Harmony-era strawman, withdrawn in favor of this proposal
+  * ES4's [[proposals:catchalls]] proposal
+
+
+
+==== Systems that enable intercession of all or most meta-level operations ====
+
+  * [[http://soft.vub.ac.be/Publications/2007/vub-prog-tr-07-16.pdf|Mirages in AmbientTalk]]: adds intercession to a Mirror API
+  * CLOS's [[http://www.lisp.org/mop|metaobject protocol]] / metaclasses, in particular:
+    * the instance structure protocol (intercept slot accesses, i.e. "property access")
+    * the generic function invocation protocol (intercept generic function invocation, i.e. "method calls")
+  * [[http://docs.python.org/reference/datamodel.html#object.__getattribute__|In Python]], ''x.y'' expands to ''%%type(x).__getattribute__(x, "y")%%''. Getting the ''%%__getattribute__%%'' property of ''type(x)'' expands similarly; this eventually bottoms out in a built-in type. The same mechanism is used for operator overloading. The main difference from the present proposal is that in Python, the ''%%__getattribute__%%'' hook is on ''type(x)'' and not a separate handler object; i.e. the Python equivalents of "prototype" and "handler" are not separable.
+  * The existing ES-Harmony [[strawman:catchalls|catch-all strawman proposal]]
+
+==== Systems that enable intercession of method invocations ====
+
+  * Java's invocation handlers: can generate a [[http://java.sun.com/j2se/1.4.2/docs/api/java/lang/reflect/Proxy.html|java.lang.reflect.Proxy]] given an InvocationHandler and one or more interface types. The proxy is typed as the given interfaces. All method invocations on the proxy are 'reified' as calls on the InvocationHandler's "invoke" method. It is impossible to generate proxies for class types (only interface types), which sidesteps the issue of reifying property access (interfaces have no instance variables).
+  * Groovy's [[http://groovy.codehaus.org/Using+invokeMethod+and+getProperty|invokeMethod and getProperty]] (require a class to implement the 'GroovyInterceptable' interface)
+  * E's [[http://wiki.erights.org/wiki/Proxy|proxies for eventual references]]
+
+
+
+==== Systems that enable intercession of missing method invocations only ====
+
+  * Smalltalk's [[http://en.wikipedia.org/wiki/Smalltalk#Reflection|doesNotUnderstand:]] is probably one of the more well-known traps out there
+  * E's [[http://wiki.erights.org/wiki/Walnut/Ordinary_Programming/Objects_and_Functions#General_method_name_matching_and_E.call.28.29|match clause]]
+  * [[https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Object/noSuchMethod|__noSuchMethod__]] in SpiderMonkey
+  * Ruby's [[http://ruby-doc.org/core/classes/Kernel.html#M005925|method_missing]] (used extensively in ActiveRecord ORM for generating 'dynamic finders'). Because object attributes are always accessed via accessor methods, method_missing also traps property access
+  * Groovy's [[http://groovy.codehaus.org/Using+methodMissing+and+propertyMissing|methodMissing and propertyMissing]] (use case in GORM: methods that trigger methodMissing can be installed in a metaclass such that on subsequent invocations they will be found by regular   dispatch logic, no longer triggering methodMissing)
+
+===== Open issues =====
+
+=== Property descriptor normalization ===
+
+In ES5, ''Object.getOwnPropertyDescriptor'' and ''Object.defineProperty'' convert between objects representing property descriptors (aka "property descriptor objects") and internal property descriptors. A question that arises with the introduction of Proxies is whether the ''get{Own}PropertyDescriptor'' and ''defineProperty'' traps can return, resp. receive an arbitrary property descriptor object or whether it can only return/receive a "normalized" version.
+
+A "normalized" property descriptor object is an ECMAScript ''Object'' with the following constraints:
+  * all of its properties are data properties
+  * all of its property attributes are ''{writable:true, configurable: true, enumerable: true}'' (these are meta-attributes: attributes of properties representing attributes)
+  * Properties named ''writable'', ''enumerable'' and ''configurable'' have a boolean value
+  * Properties named ''get'' and ''set'' refer to either ''undefined'' or a callable value
+  * The properties ''value'' and ''writable'' are mutually exclusive with the properties ''get'' and ''set''.
+
+In the current [[harmony:proxies_semantics]], the return value of ''get{Own}PropertyDescriptor'' and the descriptor argument to ''defineProperty'' are replaced by a normalized property descriptor object. In the case of ''get{Own}PropertyDescriptor'', the normalized descriptor is completed, in the case of ''defineProperty'' it is not. In both cases, any enumerable own or inherited properties on the original object are copied to the normalized property descriptor, so that non-standard attributes are not lost in the conversion process. This allows the Proxy API to be used to experiment with non-standard property attributes. When a proxy is fixed, non-standard attributes are lost.
+
+Potential alternatives:
+  * Normalize property descriptor objects, but without copying non-standard attributes.
+  * Pass property descriptor objects through unmodified, but provide a built-in ''Object.toPropertyDescriptor'' that enables manual normalization. It would then be up to any client object to protect itself against inconsistent property descriptors returned by ''Object.get{Own}PropertyDescriptor(val,name)'' when ''val'' is a proxy.
+
+--- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2011/07/12 12:10//
+
+=== Non-configurable properties ===
+
+Proxies as presented here cannot emulate non-configurable properties. If the ''getOwnPropertyDescriptor'' trap returns a property descriptor whose ''configurable'' attribute is ''false'', that attribute should either be set to ''true'' or a ''TypeError'' should be raised. This is probably too restrictive: we want proxies to be able to emulate non-configurable properties, but without breaking the invariants associated with non-configurable properties (e.g. a non-writable, non-configurable property's value should be stable). According to MarkM, even host objects are not allowed to violate these invariants.
+
+See the [[strawman:fixed_properties]] strawman.
+--- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2011/07/12 12:17//
+
+=== Validation of trap results ===
+
+How to deal with inconsistent data returned by handler traps? Should a proxy implementation normalize inconsistent data, should it throw, or should it do nothing at all (allowing built-ins such as ''Object.keys'' to return data that a non-proxy implementation could never return)? This issue was discussed at the July TC39 meeting, but not resolved. Validating all trap results could be costly, and could be deferred to a Javascript wrapper around the built-ins. On the other hand, implementations might be able to perform the validation much faster than a Javascript wrapper, and in some cases may already need to perform such validation anyway to maintain internal consistency (this happens in particular when fundamental traps are invoked as part of the [[#trap_defaults|default behavior]] of a missing derived trap. In this case, the implementation may need to interact further with the return value of the trap). We probably need to look at these problems on a case-by-case basis, as it is not clear how much validation is necessary/can be afforded:
+    * In [[https://bugzilla.mozilla.org/show_bug.cgi?id=580200|this bug]] the issue came up on what to do if the return value of ''getOwnPropertyNames'' or ''keys'' contains duplicate property names: silently filter them out, leave them, or throw?
+    * Traps that return arrays of property names, such as ''getOwnPropertyNames'': should all values in the returned array be coerced to ''String'' before being returned to the user? Should the array be copied (since a handler may still hold on to it)?
+
+ --- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2010/08/04 06:24//
+
+===== Feedback =====
+
+**TC39 Meeting 1/28/10 (Mozilla)**:
+  * It was remarked that (host) objects can be callable without being functions. The committee requested that we look into an [[strawman:uniform_proxies|alternative API]] that removes the distinction between object and function proxies, instead turning the ''callTrap'' and ''constructTrap'' of function proxies into regular traps of the handler.
+  * There was some concern whether the performance of method calls on non-proxy objects could be affected by adding proxies to the language. This is best investigated by means of a concrete experiment, perhaps by extending an existing ECMAScript engine with support for proxies.
+  * The number of operators that proxies can virtualize is still open for discussion. The current proposal does not allow proxies to virtualize ''typeof'' and ''%%[[Class]]%%''. Perhaps these could be virtualized but kept constant by passing appropriate values for ''typeof'' and ''%%[[Class]]%%'' to the ''Proxy'' constructor. The [[strawman:uniform_proxies|alternative API]] does virtualize ''typeof'' in this manner.
+  * It remains an open issue how the Proxy API will be exposed. Should ES-harmony support modules, the ''Proxy'' object is likely to become available through a module.
+  * Should ES-harmony support a general [[strawman:generators|iterator or generator mechanism]], the interface of the ''enumerate'' trap should be aligned with that mechanism.
+  * The membrane code contained a bug: thrown exceptions could cross the membrane unwrapped.
+  * [[https://bugzilla.mozilla.org/show_bug.cgi?id=546590|SpiderMonkey implementation in progress]] (nearly done -- fast work by Andreas Gal!  --- //[[brendan@mozilla.org|Brendan Eich]] 2010/02/17 20:40//)
+
+**Feedback based on spidermonkey prototype**:
+  * Dave Herman pointed out that ''Proxy.isTrapping'' breaks transparent virtualization of objects. If there is no good use case for ''Proxy.isTrapping'', we should remove it, enabling completely transparent object virtualization. One potential use for ''Proxy.isTrapping'' is that it allows alternative meta-level APIs to reflect on proxies differently (c.f. the "Interaction with Object.* introspective API" section above).
+  * Because a handler should implement the full handler API, and because this API is quite large, it was suggested that Proxies come with a small set of "built-in" handlers that can be extended. One generally useful handler is the forwarding handler, wrapping a target object. Another useful handler could be a "sink" handler that implements every trap as a no-op.
+  * Proxy implementations should not leak implementation details to proxy handlers, e.g. whether the implementation represents integer property names as numbers rather than strings. For example, if ''p'' is a proxy, ''p[15]'' should call the handler's ''get'' trap with the property name bound to the string ''"15"'', not to the number ''15''.
+  * Clarify the semantics of proxies and enumeration:
+    * Proxy implementations should enumerate properties in a ''for-in'' loop in the order in which they appear in the array returned by the ''enumerate'' trap. 
+    * The array returned by ''enumerate'' is a snapshot of the proxy's properties at the start of an enumeration. If a proxy becomes fixed while enumerating its properties, the enumeration should continue based on the original snapshot. However, properties that no longer exist in the fixed object should be skipped.
+    * New properties added to a proxy during an enumeration are not themselves enumerated.
+    * Existing properties deleted during an enumeration should no longer be enumerated.
+    * What is the effect of mutating the array returned by ''enumerate()'' on ''for-in'' loops in progress?
+
+**TC39 Meeting 3/24/10 (Apple)**:
+  * Leave out the ''invoke'' trap.
+  * Leave out ''Proxy.isTrapping''. It directly breaks transparent object virtualization. It's easier to add it later if it turns out that there is a valid use case.
+  * There was consensus about standardizing a default forwarding handler (for example ''Proxy.createHandler(target)'', but the API is not yet settled). Rather than trying to come up with additional useful handlers, we should develop more experience in writing proxy handlers and see what abstractions emerge. Additional proxy handlers could be defined as a separate strawman.
+  * The API that distinguishes object proxies from function proxies turns out to be simpler than the uniform API (also at the implementation level).
+  * The experimental third ''className'' parameter to ''Proxy.create'' in spidermonkey should not be standardized. Objects should not be able to virtualize the ''%%[[Class]]%%'' built-in property. However, ''Object.prototype.toString.call(proxy)'' will reveal proxies if the object they are proxying has a non-''Object'' or non-''Function'' ''%%[[Class]]%%''.
+  * There was consensus that the ''constructTrap'' argument to ''Proxy.createFunction'' can be optional. If absent, ''new aFunctionProxy()'' calls the ''%%[[Construct]]%%'' built-in method of the ''callTrap''.
+  * Proxies and enumeration: we should postpone this discussion until there is agreement on the details of enumeration for regular objects, which should probably be discussed in a separate proposal.
+  * Waldemar raised objections against the current Proxy API to proxy objects with a large number of properties. The problematic traps are ''fix'' and ''enumerate''. W.r.t ''enumerate'', a proxy could return a proxy for an array. Additionally, ''enumerate'' should be modified as soon as there is a solid proposal for generators/iterators. Proxies for large objects could resist being fixed. This solution is satisfactory as long as no part of the spec depends on an object being non-extensible/sealed/frozen.
+
+--- //[[tomvc@google.com|Tom Van Cutsem]] 2010/03/26 15:45//
+
+**TC39 Meeting 5/24/10 (Google)**:
+  * Proposed generalization that ''proxy[obj]'' would pass ''obj'' uncoerced to the ''get'' trap: this change would be inconvenient for existing implementations, who would no longer be able to eagerly coerce property names to strings. Proposal withdrawn.
+  * Disallowing recursive fixing: what should be the semantics of calling ''fix()'' on a proxy handler while the same proxy is already being fixed (an earlier call to ''fix()'' is already on the stack)? Proposed solution is to throw a type error when calling ''fix()'' recursively. No objections were raised.
+  * Dave Herman presented an [[strawman:iterators|iterator proposal]] that replaces the ''enumerate()'' trap by an ''iterate()'' trap, allowing proxy properties to be enumerated "on demand". There was agreement about the general idea, but confusion about the details of the iterator API.
+--- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2010/05/26 01:34//
+
+**TC39 Meeting 7/29/10 (Microsoft)**:
+  * Renaming ''enumerateOwn'' trap to ''keys''. No objections were raised.
+  * Previously, if derived traps were undefined, triggering them would raise a TypeError. A more useful semantics could be to have the runtime execute the default implementation of the missing derived trap. For example, if a proxy handler does not define ''keys'', then ''Object.keys(proxy)'' will instead call the fundamental ''getOwnPropertyNames'' trap, and filter out the non-enumerable properties from the returned array. Proxy handler implementors could get the derived traps for free (and with a more efficient default implementation). Also, this semantics makes it easier for later versions of the spec. to add new derived traps: existing handlers that don't implement the new derived traps will not crash, but rather fall back on a reasonable default behavior. Note: this semantics doesn't break the "double lifting" technique. No objections against this alternative semantics were raised.
+  * Proxy.%%[[Construct]]%% reform: in [[https://bugzilla.mozilla.org/show_bug.cgi?id=571452|this bug]], the following issue came up: should the construct trap of function proxies always coerce its result to ''Object''? In other words, is ''typeof (new functionproxy())'' guaranteed to be ''"object"''? Previously, the answer was yes, but MarkM expressed some concern about primitives being implicitly wrapped, and Brendan noted it might get in the way of possibly future user-defined value types. There was consensus that Proxy.%%[[Construct]]%% should not perform a ''ToObject'' conversion. We [[harmony:proxies_semantics#detailed_semantics_of_additional_behavior_for_function_proxies|changed the semantics]] such that ''new functionproxy()'' returns whatever the ''construct'' trap returns (primitives are not wrapped).
+  * Discussion about the integrity of values returned from proxy handler traps: to what extent should an implementation normalize or screen handler return values before passing them on as the return value of the built-in ''Object.*'' methods. Disagreement about how to deal with this. One camp, voiced mostly by MarkM, advocates "as much validation as we can stand". Another camp, voiced mostly by Allen, advocates doing a minimum amount of validation, deferring more elaborate validation to a layered implementation (in Javascript itself). MarkM: not sure whether validation can be done in JS efficiently, since it involves a.o. checking duplicate property names (for the return value of ''enumerate'' and ''getOwnPropertyNames''). Allen: proxies should not be prohibitively expensive to use due to costly validation checks. MarkM notes that the "more validation" path could be an easier way forward, as it needs testing against implementation costs, which can be done. The "less validation" path needs testing against web compatibility with an ES5-based web, which doesn't exist yet.
+
+--- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2010/08/05 01:53//
+
+**TC39 Meeting 9/30/10 (Mozilla)**:
+
+  * Calling ''Object.defineProperty(proxy,name,pd)'' on a trapping proxy triggers that proxy's ''defineProperty(name,desc)'' trap. What should the ''desc'' argument be bound to? Should it be bound to ''pd'' directly, or should it be bound to ''ToPropertyDescriptor(pd)''? A problem with coercing using ''ToPropertyDescriptor(pd)'' is that this drops non-standard attributes, making these inaccessible to the proxy. Agreement to tweak the semantics of ''Object.defineProperty'' for proxies such that the ''defineProperty'' trap gets a property descriptor that was coerced using ''ToPropertyDescriptor'' but still has the non-standard attributes (they are copied from the argument object to the coerced property descriptor). See the updated [[harmony:proxies_semantics#modifications_to_other_object_built-ins|semantics of Object.defineProperty]].
+
+ --- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2010/10/01 16:04//
+
+**TC39 Meeting 1/20/11 (Yahoo)**:
+
+  * Proposed a [[harmony:proxy_defaulthandler|default forwarding handler]] API.
+
+ --- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2011/01/26 08:17//
+
+The paper [[http://www.soe.ucsc.edu/research/report?ID=1595|Virtual Values for Language Extension]] sketches an extension of these proxies to also cover primitive values, working in a simpler language than Javascript.  --- //[[cormac@soe.ucsc.edu|Cormac Flanagan]] 2010/07/29 21:50//
+
+I wrote up a small [[http://soft.vub.ac.be/~tvcutsem/proxies/|tutorial]] on proxies. Still under construction, but may be helpful. --- //[[tomvc.be@gmail.com|Tom Van Cutsem]] 2010/08/23 00:13//

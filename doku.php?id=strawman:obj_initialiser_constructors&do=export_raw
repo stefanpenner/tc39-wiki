@@ -1,0 +1,68 @@
+====== Constructor Declarations ======
+
+//This is one of several related [[strawman:object_initialiser_extensions|Object Initialiser Extensions]].// 
+
+Enhance object initialisers  provide a self contained declarative construct for defining discrete objects. Such declarations define abstractions that usually need to be named. One way to name an object literal based abstraction is to wrap it in a factory function that is used to create instances of the abstraction. However, that pattern has the disadvantage it requires two distinct constructs to represent the named abstraction and the name is most closely associated with the factory function rather than the object abstraction. This problem can be solved by creating a new declaration form that builds upon object literal syntax:
+<code javascript>
+constructor Point(x,y) { 
+	<proto: AbstractPoint>
+	private method isPoint(p) {return p instanceof Point}}
+	//public properties
+	const x:x,
+	const y:y,
+	method plus(delta) {
+		if (this.isPoint(delta))
+			return new Point(this.x+delta.x,this.y+delta.y
+		var d = Number(delta):
+		return new Point(this.x+d,this.y+d);
+		}
+	}
+</code>
+
+Usage example:
+<code javascript>
+var p1 = new Point(0,0);
+var p2 = new Point(a,b); 
+var p3 = p1.plus(p2).plus(1)
+</code>
+The “body” of a constructor declaration is an extended object literal rather than a function body. It creates a name binding in the current declaration environment whose value is an object that can be invoked as a constructor in a new expression. The object has a %%[[%%Construct]] internal property but it does not have a %%[[%%Call]] internal method so it cannot be invoked by a //CallExpression//. The formal parameters correspond to the arguments to the new expression and are in the lexical scope  of the extended object literal.
+
+When the constructor object is invoked by a //NewExpression// it returns a newly created object as specified by the extended object literal that is the constructor body. In addition to the properties defined by the object literal, the new object has an automatically generated ''constructor'' property whose value is the constructor object. (If the object literal explicitly defined a ''constructor'' property one is not automatically generated). The constructor object does not have a ''prototype'' property but instead also has a special %%[[%%HasInstance]] internal method that compares the subject object’s ''constructor'' property value to the identity of the actual constructor object. 
+===== SYNTAX =====
+//ConstructorDeclaration// :\\
+**constructor** //Identifier// **(** //FormalParameterList<sub>opt</sub>// **)** //ObjectLiteral//
+
+===== Desugaring =====
+The above syntax approximately (additional error check is probably needed) desugars into:
+<code javascript>
+var Identifier =
+  (function (){
+	var __ctor__ = function (FormalParameterListopt ) {
+		var __obj__ = ObjectLiteral;
+   		if (Object.getOwnPropertyDescriptor(__obj__,'constructor')
+  			return __obj__;
+  		Object.defineProperty(__obj__,'constructor',
+			{value: __ctor__, writable: true, 
+    			enumerable: false, configurable: true});
+  		return __obj__;
+   		};
+    	// runtime.setSpecialConstructorHasInstance(__ctor__);
+     	return __ctor__;
+   	})();
+</code>
+The %%[[%%HasInstance]] internally if implemented in ECMAScript would be:
+<code javascript>
+function [[HasInstance]] (v){
+	if (typeof v !== 'object' || v===null) return false;
+	if (v.constructor===this) return true;
+	return false;
+	}
+</code>
+
+===== Design Alternatives =====
+  * ''class'' could be used as the keyword for the declaration instead of ''constructor''.
+  * The implicitly created constructor object could be more like a function declaration based constructor with a unique prototype property, etc.
+  * Similar to the //FunctionDeclarations//%%/%%//FunctionExpressions// there could also be a //ConstructorExpression// syntactic form where the identifier was optional.
+
+A revised proposal based upon discussions at the Sept. 2010 TC39 meeting is under development [[obj_initialiser_class_abstraction]]
+ 

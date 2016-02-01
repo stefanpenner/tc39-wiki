@@ -1,0 +1,184 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:specification_language&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:specification_language&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:specification_language&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<p>
+ES1-3 used a weird Cobol-like assembly language to describe the workings of ECMAScript. It was a confusing, error-prone notation that contributed to the misunderstanding of ECMAScript. ES5 improves on that language, adding variables and some structure, but it still does not communicate well.
+</p>
+
+<p>
+ES4 experimented with an ML dialect. This would have been an improvement, but it is not fair to demand that readers of the standard must learn ML in order to read the standard.
+</p>
+
+<p>
+I think that ECMAScript is expressive enough that it can be used to describe itself. This would be a big improvement over the ES5 language. There are circularly hazards, but I think the rewards are worth the risk. There is also the possibility that the specification becomes executable and testable. That is not being proposed here. That is another strawman. What is being proposed here is that ECMAScript be used to describe ECMAScript for the benefit of communicating the important details of the standard to human readers.
+</p>
+
+<p>
+Allen Wirfs-Brock did an experimental, mostly mechanical translation of the ES5 language into ECMAScript. While an improvement over the ES5 language, it also preserved a lot of the confusing conventions of the original. So I am proposing a different approach, of rewriting for clarity.
+</p>
+
+<p>
+For example, <a href="doku.php%3Fid=strawman:get.html" class="wikilink2" title="strawman:get" onclick="return svchk()" onkeypress="return svchk()">Get</a> from 8.12.3 could be written like this: 
+</p>
+<pre class="code">  function get(object, key) {    
+  
+  // 8.12.3	[[Get]]
+  
+  // Get the property descriptor associated with the key string. Use it to
+  // determine the property's value. If the property is an accessor property
+  // with a get function, call it and return the result, but return undefined
+  // if there is no get function. If the property is a data property, return 
+  // its value.
+  
+  // If the object did not contain an own property, and if the object delegates
+  // to another object, try to get the inherited value.           
+  
+      var property_descriptor,
+          prototype = object;
+                          
+      do {
+          property_descriptor = #.Object.getOwnPropertyDescriptor(prototype, key);
+          if (property_descriptor) {
+              return property_descriptor.get ? 
+                  #.call(property_descriptor.get, object) : 
+                  property_descriptor.set ? 
+                      #.undefined : 
+                      property_descriptor.value;
+          }
+          prototype = #.Object.getPrototypeOf(prototype);
+      } while (prototype);
+      
+  // If the object did not contain an own property, and if the object does not 
+  // inherit the property, then return undefined.
+  
+      return #.undefined;
+  }</pre>
+
+<p>
+The special variable # contains all of the primordials and special tools (such as a call function). The magic bits are hidden in the #.Object functions.
+</p>
+
+<p>
+Another example, the + infix operator. 
+</p>
+<pre class="code">  function add_or_concatenate(left, right) {
+  
+  // 11.6.1	The Addition operator ( + )
+  
+      if (#.Object.isObject(left)) {
+          left = left.valueOf();
+      }
+      if (#.Object.isObject('object')) {
+          right = right.valueOf();
+      }
+      if (typeof left === 'string' || typeof right === 'string') {
+          return #.String(left).concat(#.String(right));
+      }
+      return #.Number(left) + #.Number(right);    
+  }</pre>
+
+<p>
+ Finally, methods can be described this way, for example, Math.pow: 
+</p>
+<pre class="code">  Math.pow = function (x, y) {
+  
+  // 15.8.2.13	pow (x, y)
+  
+      var abs_x, 
+          y_is_integer, 
+          y_is_odd_integer;
+          
+      x = #.Number(x);
+      y = #.Number(y);
+  
+  // y is zero...
+  
+      if (y === 0) {
+          return 1;
+      }
+  
+  // x or y are NaN...
+  
+      if (#.isNaN(x) || #.isNaN(y)) {
+          return #.NaN;
+      }
+  
+      abs_x = x &lt; 0 ? -x : x;
+      y_is_integer = #.Math.floor(y) === y;
+      y_is_odd_integer = y_is_integer &amp;&amp; #.Math.floor(y / 2) * 2 !== y;
+  
+  // y is Infinity...
+  
+      if (y === #.Infinity) {
+          return abs_x &gt; 1 ? #.Infinity : abs_x === 1 ? #.NaN : 0;
+      }
+      if (y === -#.Infinity) {
+          return abs_x &gt; 1 ? 0 : abs_x === 1 ? #.NaN : #.Infinity;
+      }
+  
+  // x is Infinity...
+  
+      if (x === #.Infinity) {
+          return y &gt; 0 ? #.Infinity : 0;
+      }
+      if (x === -#.Infinity) {
+          return y &gt; 0 ? y_is_odd_integer ? -#.Infinity : #.Infinity :
+              y_is_odd_integer ? -0 : 0;
+      }
+  
+  // x is zero...
+  
+      if (x === 0) {
+          if (1 / x &gt; 0) {
+              return y &gt; 0 ? 0 : #.Infinity;
+  
+  // x is -0...
+  
+          } else {
+              return y &gt; 0 ? y_is_odd_integer ? -0 : 0 :
+                  y_is_odd_integer ? -#.Infinity : #.Infinity;
+          }
+      }
+  
+      if (x &lt; 0 &amp;&amp; !y_is_integer) {
+          return #.NaN;
+      }
+  
+  // eventually the computation occurs.
+  
+      return #.Math.exp(#.Math.log(x) * y);
+};</pre>
+
+<p>
+ I don&rsquo;t claim to have fully dealt with all of the issues. For example, calling the .valueOf methods in add_or_concatenate might not be the correct way to obtain the values. But I do claim that having that argument in ECMAScript will lead us more quickly to the right formulation.
+</p>
+
+<p>
+  &mdash; <em><a href="mailto:%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x63%3B%26%23x6b%3B%26%23x40%3B%26%23x79%3B%26%23x61%3B%26%23x68%3B%26%23x6f%3B%26%23x6f%3B%26%23x2d%3B%26%23x69%3B%26%23x6e%3B%26%23x63%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x63;&#x72;&#x6f;&#x63;&#x6b;&#x40;&#x79;&#x61;&#x68;&#x6f;&#x6f;&#x2d;&#x69;&#x6e;&#x63;&#x2e;&#x63;&#x6f;&#x6d;">Douglas Crockford</a> 2010/05/17 21:31</em>
+</p>
+
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/6/65c8b0798705e231954de25acf4461e3.xhtml used -->
+</body>
+</html>

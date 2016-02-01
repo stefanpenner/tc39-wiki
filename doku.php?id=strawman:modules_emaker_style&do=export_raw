@@ -1,0 +1,331 @@
+====== Introduction ======
+
+This proposal describes a candidate semantics for modular code in ECMAScript. This candidate is built using lambda abstraction and lexical scoping to achieve, depending on the reader's perspective:
+
+  * The software engineering benefits of strict dependency injection; and
+  * The security benefits of strict object capability safety.
+
+This proposal is named after the [[http://wiki.erights.org/w/index.php?title=Emaker|Emaker]] modules used in [[http://erights.org/|E]], after which it is closely modeled. A very similar system is built into [[http://code.google.com/p/google-caja/|Caja]].
+
+In the subsequent sections, we describe the candidate proposal. We then describe how alternative semantics may be layered in terms of this one.
+
+====== Goals ======
+
+__Isolation.__ We need to build an isolation mechanism that prevents accidental name collisions in a large system with components created by independent developers.
+
+__Security.__ Our isolation mechanism must be strong enough to be relied upon for security, so that the effects of code created by an independent, and possibly malicious, developer can be bounded.
+
+__No global namespace.__ Our standard must not rely on a global namespace into which modular code or any objects created from it are placed.
+
+__No constraints on simultaneous "versions".__ To the extent that the idea of "versions" of a piece of modular code is well-defined, it should be possible for any number of "versions" of that code to coexist in the same system. There must not be a requirement for a global solution that selects a single "version" of each module. This is a special case of the //No global namespace// requirement.
+
+__First class objects.__ To the extent possible, module system components must be represented as first-class ECMAScript objects.
+
+__Non-blocking without boilerplate.__ ECMAScript is //de facto// event loop concurrent, and may become //de jure// so. In cases where code needs to be fetched from remote sites, and so as not to block the event loop, the correct behavior is to use asynchronous execution. This means that progress after the code is loaded needs to be made in a callback function. However, in order for use of modules to be ubiquitous, the module proposal must not require developers to perform a continuation-passing transform on all their code that uses modules.
+
+__Zero-admin provisioning.__ Since ECMAScript is primarily deployed within Web browsers, and often in consumer devices, the mechanism for locating and fetching code must be able to reproduce a predictable software environment in the absence of a local "system administrator" in charge of software installation. This property also helps with the reliability -- and, ultimately, security -- of the deployed software.
+
+__Uniform location and retrieval.__ In addition to the format of modular ECMAScript, and in order to maximize reuse and enable zero-admin provisioning, we must specify a uniform manner for the code to be located and retrieved.
+
+====== Proposal ======
+
+Modular code is written using the ''import'' operator. We will describe its use by induction, showing the viewpoint of an importing module and an imported module. We will then describe the base case.
+
+To import a module, a program specifies the identifier (loosely, a path) of the module in an ''import'' expression:
+
+<code javascript>import 'util/point'</code>
+
+The identifier ''util/point'' specifies, loosely, a file ''util/point.js'' in some location. This identifier must be a string literal.
+
+The value of the ''import'' expression is a ''Function'', which we call the //module function//, representing the code compiled from ''util/point.js''. A module function is deeply immutable, and so is safe to pass around without providing a communication channel.
+
+A module function is called with an object literal providing bindings for the free variables of the module code. As with regular ECMAScript functions, there are two calling conventions, as a function:
+
+<code javascript>(import 'util/point')({ x: 3, y: 4 })</code>
+
+and as a constructor:
+
+<code javascript>new (import 'util/point')({ x: 3, y: 4 })</code>
+
+The contents of a module satisfy a //**FunctionBody**// production. In the module's code, ''this'' is initialized to a new object that is ''instanceof'' the module function, and is the implicit return value of the module function unless the module executes an explicit ''return'' statement. The module ''util/point.js'' could therefore be written in two different ways, respectively: one as a function:
+
+<code javascript>return {
+  getX: function() { return x; },
+  getY: function() { return y; },
+  setX: function(x_) { if (x_ > 0) { x = x_; } },
+  setY: function(y_) { if (y_ > 0) { y = y_; } }
+};</code>
+
+and one as a constructor:
+
+<code javascript>this.getX = function() { return x; };
+this.getY = function() { return y; };
+this.setX = function(x_) { if (x_ > 0) { x = x_; } };
+this.setY = function(y_) { if (y_ > 0) { y = y_; } };</code>
+
+In either calling convention, observe how the free variables of the module code, ''x'' and ''y'', were supplied by the call to the module function. The act of calling a module function is called //instantiation//, and the return value of a module function is called a //module instance//.
+
+An ''import'' expression evaluates immediately to a module function despite the fact that the specified module may have been fetched by asynchronous means (//e.g.//, nonblocking network operations). This is done by taking advantage of the fact that ''import'' is a special form. Consider the following situation:
+
+{{strawman:importingmodulegraph_006.png}}
+
+**(1)** Some code invokes a platform-provided "import module" function, ''pim'', to load a module ''A''. Assuming the invoking code is part of some bootstrap process, ''A'' may not be present (//e.g.//, it may need to be fetched from the network), so ''pim'' provides its value asynchronously (in our example, via a callback function).
+
+**(2)** The ''pim'' function fetches and evaluates module ''A''. By recursively recognizing the ''import'' special form, it also retrieves the transitive static (//i.e.//, ''import''-ed) dependencies of ''A'', namely ''B'' and ''C''.
+
+**(3)** The ''pim'' function invokes the callback provided in step (1) with a reference to the module function for ''A''. The function calls it, passing a variety of free variable bindings, including a variable ''thePim'' which is bound to the platform's ''pim'' function.
+
+**(4)** Module ''A'' uses the provided reference to ''thePim'' to load a module based on a dynamically computed module, which happens to be ''D''.
+
+**(5)** The ''pim'' implementation once again loads the transitive closure of the static dependencies of ''D''. Note that module ''E'' statically refers to ''B'' and, since the same ''pim'' function was used to load the entire set of modules, it is linked back, by ''pim'', to the previously loaded module function for ''B''.
+
+**(6)** The ''pim'' implementation then invokes the callback provided in step (4) with a reference to the module function for ''D''.
+
+Note especially the decoupling between the dynamic loading functions provided by the platform (''pim'', passed down to module ''A'' as ''thePim'') and the static ''import'' expressions. By the time the code is executed, the ''import''s have all been resolved, so the running code need be given no special abilities for module loading. Any such powers, to the extent they are needed, are passed down to the code as regular objects like any other.
+
+Since module functions are first class ECMAScript objects, they can be passed down directly to any code which would, under different circumstances, receive the //identifier// of a module to operate on. The design guideline, therefore, is to load modules as early as possible and pass them down as first-class objects, so that (a) it is more likely they will be statically known and can be loaded using ''import''; or, failing that, (b) the platform dynamic module loading function does not have to be passed down as deeply into the call stack.
+
+In order to ensure easy analyzability and predictable results, modular code (//i.e.//, any code brought into the system via ''import'' as described here) is restricted to [[strawman:lexical_scope]]. This means that:
+
+  * Modular code is permitted access only to the ECMA-262 primordials and the caller-supplied bindings for its free variables; and
+  * The top-level ''this'' in a module does not shadow any lexical scope.
+
+Modular code must assume that all ECMA-262 primordials to which it has access are deeply frozen.
+
+If the caller of a module function does not supply bindings for a free variable, that variable has a value of ''undefined'' within the invocation of the module.
+
+====== Implementation by desugaring ======
+
+To implement this proposal by desugaring:
+
+  * Analyze the text of the module and identify all free variables ''v<sub>0</sub>'', ''v<sub>1</sub>'', ...;
+  * Generate and ''eval'' the following code (assuming ''mod_args'' is not used by the code). The completion value of the ''eval'' is the module function.
+
+<code javascript>function(mod_args) {
+  var v0 = mod_args.v0;
+  var v1 = mod_args.v1;
+  /* ... */
+  /* original module code */
+};</code>
+
+For example, our module ''util/point.js'' would desugar to:
+
+<code javascript>function(mod_args) {
+  var x = mod_args.x;
+  var y = mod_args.y;
+  return {
+    getX: function() { /* ... */ },
+    /* ... */
+  };
+};</code>
+
+====== Layered systems (CommonJS) ======
+
+The calling convention of a module -- the free variables it expects its caller to provide -- are part of its interface. Communities of ECMAScript users may wish to define specific calling conventions for their application, for example, plugins for specific applications or frameworks.
+
+At time of writing, the most important such community is the [[http://wiki.commonjs.org/wiki/CommonJS|CommonJS]] group. CommonJS modules have a fixed calling convention, accepting only the free variables ''require'', ''module'', and ''exports''. Modules are used via the ''require'' function:
+
+<code javascript>require('util/pointUtils')</code>
+
+CommonJS modules are instantiated within a //sandbox//. Within each sandbox, there exists at most one instance of each module, which all modules in the sandbox share. This allows modules to work in a manner more similar to Python: loading a module gives access to shared state, not just code. The sandbox is therefore the unit of strict isolation.
+
+CommonJS programmers would like ''require'' to behave similarly to the ''import'' keyword specified in this proposal -- specifically, it should synchronously return even if the underlying module retrieval mechanism is asynchronous. We present two ways in which this may be done, depending on other support in the ES-Harmony platform.
+
+===== CommonJS with standard ASTs =====
+
+If the [[strawman:ast]] proposal were accepted as part of Harmony, the CommonJS system could implement, in userland, the same transformation for ''require'' that this proposal specifies for ''import''. In fact, the most direct implementation would be to rewrite instances of ''require'' into ''import'' expressions, then pass the resulting code down the normal path.
+
+===== CommonJS without ASTs =====
+
+Without Harmony ASTs, it is possible to use a pure-ECMAScript parser to do the ''require'' transformation anyway. However, given the complexities of parsing ECMAScript (primarily due to semicolon insertion), this is such an expensive proposition, we do not consider it a practical option.
+
+Otherwise, since ''import'' simply evaluates to a first-class module function object, it is possible to wrap it in a ''require'' expression, for example:
+
+<code javascript>require(import 'util/pointUtils')</code>
+
+====== Interoperation with legacy ======
+
+===== Using modular code today =====
+
+To use modular code, written to this proposal using ''import'' expressions, in an ECMAScript 3 or 5 system, it is necessary to emulate the recognition of the special form and the static linking.
+
+To the extent that the problem is most painful for developers of ECMAScript running in Web browsers, due to the limited resources and libraries available, this proposal can be implemented using a server script, as follows:
+
+  * The client is configured with an asynchronous platform-provided module loading function (like ''pim'' in our example) that sends its arguments to a server and ''eval''s the code returned.
+  * The server parses the requested code, retrieves and bundles the static dependencies into a single unit, and returns the result to the client.
+  * To avoid duplication of module loading (similar to how module ''B'' was not loaded twice, in our example), there are two options:
+    * The client and server can maintain a persistent connection so that the server always knows what modules the client has and sends only the ones needed; or
+    * The client can send a list of all the modules it has (perhaps using short hashes assigned by the server) every time it requests modules from the server.
+
+For applications that do not require any dynamic module loading, the entire application can be statically linked prior to deployment.
+
+===== Building dual-use modules =====
+
+It is possible to modify legacy code, written assuming the existence of a shared global scope, to work both as a module in an ES-Harmony system and as a legacy script. The code must explicitly assign symbols the it wishes to share to ''this'', and ensure that ''this'' is returned as the module instance when used as a module. For example, the following legacy script:
+
+<code javascript>function foo(x) { return bar(x) + 1; }
+var baz = 3;</code>
+
+has a free variable ''bar'' and assigns symbols ''foo'' and ''baz'' to the global scope. We can rewrite it to:
+
+<code javascript>this.foo = function foo(x) { return bar(x) + 1 };
+this.baz = 3;</code>
+
+The modified code works as a legacy script because ''this'' provides dynamic access to the topmost lexical scope. It also works as a module (when called as a constructor with ''new'') because it returns ''this'', populated with the symbols it chooses to share, as the module instance.
+
+Clearly, the semantics of this code as a legacy script are different from those under our ES-Harmony proposal. This technique is not intended as a full emulation but rather a helpful bridge.
+
+====== Variants ======
+
+===== Statically computable ''import'' argument =====
+
+In our base proposal, the argument to ''import'' must be a string literal. However, all we really require is that it be statically computable. Were such a usage possible, a programmer could avoid error-prone repetition:
+
+<code javascript>const base = 'path/to/some/modules/';
+import base + 'X';
+import base + 'Y';
+import base + 'Z';</code>
+
+Given that requiring all statically computable values to be supported in full generality could impose a heavy burden on ES implementors, we leave it up to the TC39 committee to decide how much, if at all, this variant is appropriate.
+
+===== Accessible shared static module objects =====
+
+As specified, modules are strictly generative: two instances of the same module cannot share access to any common object that was not supplied by a common caller (except for values which are automatically interned, like ''String''s). Practically, this means that a module's code cannot compute nontrivial //static// information that is shared between all instances of the module.
+
+As an example, consider a module that computes the sine and cosine functions by interpolating between values in a lookup table. The table can be deeply immutable, and hence safely shared between instances, but our generative proposal permits no such thing.
+
+One way to address this is to recast our module lifecycle and, by corollary, the way modules are written. In our variant form:
+
+  * Module code may have no free variables apart from the standard primordials;
+  * The module code is executed once, when a module is loaded;
+  * The result of execution is guaranteed by construction to be deeply immutable; and
+  * Services may be invoked on the result at will.
+
+To see how this would work out in practice, consider the sine and cosine function example in our original proposal:
+
+<code javascript>var table = [ 0.0, 0.0998334166, 0.198669331, /* ... */ ];
+
+return {
+  sin: function(x) { /* use 'table' to compute sin(x) */ },
+  cos: function(x) { /* ... */ }
+};</code>
+
+As we noted before, ''table'' is (wastefully) constructed each time. In the variant form, our module woud look like:
+
+<code javascript>
+const table = [ 0.0, 0.0998334166, 0.198669331, /* ... */ ];
+
+return {
+  sin: function(x) { /* use 'table' to compute sin(x) */ },
+  cos: function(x) { /* ... */ }
+};</code>
+
+Under this variant, our earlier ''util/point.js'' example would look like:
+
+<code javascript>return function(x, y) {
+  return {
+    getX: function() { return x; },
+    getY: function() { return y; },
+    setX: function(x_) { if (x_ > 0) { x = x_; } },
+    setY: function(y_) { if (y_ > 0) { y = y_; } }
+  };
+};</code>
+
+allowing it to be called with positional parameters:
+
+<code javascript>(import 'util/point')(3, 4)</code>
+
+More typically, in this case, we expect modules would contain //multiple// entry points, in other words:
+
+<code javascript>return {
+  makeCartesianPoint: function(x, y) { /* ... */ },
+  makePolarPoint: function(r, t) { /* ... */ }
+};</code>
+
+which would be called like:
+
+<code javascript>(import 'util/point').makeCartesianPoint(3, 4)</code>
+
+===== Module annotations =====
+
+A module object, as constructed by this proposal, is not annotated with any information provided by the environment or the programmer. Both may be useful.
+
+The environment may wish to attach to the module the identifier by which it was loaded, perhaps providing some measure of convenience to higher-order code that manipulates module objects. For example, the following could be true:
+
+<code javascript>(import 'util/point').id === 'util.point'</code>
+
+The developer of a module may wish to annotate the module with information that is made accessible to clients. For example, the Java-style doc comment could be parsed and exposed. If ''util/point.js'' contained:
+
+<code javascript>/**
+ * This is a module for making points. The authors have chosen a
+ * particulary vociferous implementation.
+ *
+ * @author alyssa.p.hacker@example.com
+ */
+return {
+  getX: /* ... */
+};</code>
+
+then the following could be true:
+
+<code javascript>(import 'util/point').author === 'alyssa...';
+(import 'util/point').doc = 'This is a module...';</code>
+
+We note that this variant can be expanded to a more general strawman for annotations on ECMAScript objects.
+
+===== Module self reference =====
+
+A module may wish to refer to its own module function. For example, it could recursively instantiate itself, or check if a particular object is an instance of itself (in cases where it is called as a constructor using ''new''). We propose a variant where the module code receives, in its top-level lexical scope, a ''const'' reference called ''module'' pointing to the module function. This could be used in ''util/point.js'' as follows:
+
+<code javascript>this.getX = function() { return x; };
+/* ... */
+this.compareTo = function(aPoint) {
+  if (!(aPoint instanceof module)) { throw 'Not a point'; }
+  /* ... */
+};</code>
+
+===== Alternate module construction =====
+
+Since a module function, as a type, has important semantics (namely, according to this proposal, it is guaranteed not to capture any external sources of authority in its lexical scope), it may be desireable to construct module functions as part of an application's architecture simply for these properties, rather than for breaking up code into separate compilation units. This can be done in either of two ways:
+
+**1. Module ''eval'' function.** Some ''eval''-like function could be provided which compiles a string as a module and returns a module function:
+
+<code javascript>moduleEval("this.getX = function() { return x; };")</code>
+
+**2. Module special form in code.** A ''module'' grammar could be provided, similarly to ''function'', which can encapsulate inline code. Its semantics would be to create a cut-point in the lexical scope of some code without having to relegate the disconnected code to a separate file and inventing a file name for it. For example:
+
+<code javascript>var point = module(x, y) { this.getX = function() { return x; }; /* ... */ };
+module person(name) { this.getName = function() { return name; }; /* ... */ }
+
+/* 'point' and 'person' are now in scope, of type module function */</code>
+
+===== Primordials =====
+
+To provide an alternative set of primordials (''Object'', ''Array'', //etc.//) to a module instance, module functions could take an optional parameter of type ''Context'' as described in [[strawman:modules_primordials]]:
+
+<code javascript>(import 'util/point')({ x: 3, y: 4 }, aContext)</code>
+
+===== Comments =====
+
+Some of the variants we present here are special cases of a general idea: allowing a module to specify a subprogram that runs once, when the module is loaded, which generates another subprogram which runs every time the module (or some part of it) is instantiated. As long as we ensure that the output of the first phase is transitively immutable, we can enforce isolation between instances created during the second phase.
+
+We welcome the committee's feedback on whether such a utility would be useful in general.
+
+====== Open issues ======
+
+  * The exact grammar and candidate ECMA-262 text is not yet specified.
+
+  * Should the platform-provided, asynchronous module loading function, which we call ''pim'' in our example, be specified by ECMA-262, or should it be left completely up to the host?
+
+  * The relationship to [[strawman:modules_packages]] is undetermined and pending discussion of the latter.
+
+  * The format of module identifiers is not a strong part of this proposal. Two options are path-like using the ''/'' separator, and Python-like using the ''.'' separator. Further options include module identifiers that do not look like paths at all -- perhaps pointers to entries in a database or references to dynamically created code objects in a mobile code system.
+
+  * Is ''import'' the correct name to use here? It is certainly the most logical reserved word for this specification to camp on, but does it adequately convey the meaning of what is being done? Should we use ''load'', for example?
+
+====== References ======
+
+  * [[http://wiki.commonjs.org/wiki/Modules/1.1]] -- Modules specification of the [[http://wiki.commonjs.org/wiki/CommonJS|CommonJS]] project.
+  * [[http://docs.google.com/Doc?id=dfgxb7gk_34gpk37z9v]] -- Proposal presented to TC39 in January 2009.
+  * [[http://code.google.com/p/google-caja/source/browse/#svn/trunk/experimental/gadgy]] -- Example of using the Emaker-style module system built into Caja (keyword is ''load'' instead of ''import'').
+  * [[http://wiki.erights.org/w/index.php?title=Emaker]] -- Emaker documentation.

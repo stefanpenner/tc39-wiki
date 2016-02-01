@@ -1,0 +1,417 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=discussion:grammar&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=discussion" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=discussion:grammar&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=discussion:grammar&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="asts"></a><h2>ASTs</h2>
+<div class="level2">
+
+<p>
+ This is a quick-and-dirty translation of Lars&rsquo; Java AST interfaces.
+</p>
+<pre class="code">
+type ustring = string (* not actually unicode, maybe switch to int array to be unicode-y? *)
+
+and ident = ustring
+
+and numberType = 
+    DECIMAL | DOUBLE | INT | UINT | NUMBER
+  
+and roundingMode = 
+    CEILING | FLOOR | UP | DOWN | HALF_UP | HALF_DOWN | HALF_EVEN
+  
+and importQual = 
+    QualName of ident
+  | QualStar
+    
+and importDirective = 
+    { 
+      importPkg: ident;
+      importQual: importQual;
+      importAlias: ident option;
+    }
+      
+and directive =
+    UseNamespace of expr list
+  | UseNumber of numberType
+  | UseRounding of roundingMode
+  | Import of importDirective
+
+and callExpr = 
+    {
+     call_func: expr;
+     call_actuals: expr list;
+   }
+
+and triOp = COND
+
+and binOp = PLUS | MINUS | TIMES | DIVIDE | REMAINDER | LEFT_SHIFT |
+    RIGHT_SHIFT | RIGHT_SHIFT_UNSIGNED | BITWISE_AND | BITWISE_OR |
+    BITWISE_XOR | LOGICAL_AND | LOGICAL_OR | LOGICAL_XOR | INSTANCEOF
+    | IS | CAST | TO | IN | EQUALS | NOT_EQUALS | STRICT_EQUALS |
+    STRICT_NOT_EQUALS | LESS | LESS_OR_EQUAL | GREATER |
+    GREATER_OR_EQUAL | COMMA | ASSIGN | DEFVAR | ASSIGN_PLUS |
+    ASSIGN_MINUS | ASSIGN_TIMES | ASSIGN_DIVIDE | ASSIGN_REMAINDER |
+    ASSIGN_LEFT_SHIFT | ASSIGN_RIGHT_SHIFT |
+    ASSIGN_RIGHT_SHIFT_UNSIGNED | ASSIGN_BITWISE_AND |
+    ASSIGN_BITWISE_OR | ASSIGN_BITWISE_XOR | ASSIGN_LOGICAL_AND |
+    ASSIGN_LOGICAL_OR | ASSIGN_LOGICAL_XOR
+
+and unOp = DELETE | VOID | TYPEOF | PRE_INCREMENT | PRE_DECREMENT |
+    POST_INCREMENT | POST_DECREMENT | PLUS | MINUS | BITWISE_NOT |
+    LOGICAL_NOT | MAKE_NAMESPACE
+
+and nulOp = THIS | EMPTY
+
+and prop = 
+    {
+     prop_indirect: bool;
+     prop_obj: expr;
+     prop_field: expr;
+   }
+
+and identOrExpr =
+    Ident of ident
+  | Expr of expr
+
+and qualId =
+    {
+     qualId_lhs: identOrExpr option;
+     qualId_rhs: identOrExpr;
+     qualId_namespaces: ident list;
+   }
+
+and attrQualId =
+    {
+     attrQualId_indirect: bool;
+     attrQualId_val: identOrExpr;
+   }
+
+and literalField =
+    {
+     litField_name: expr;
+     litField_init: expr
+   }
+
+and literalRegexp = 
+    {
+     litRx_pattern: ustring;
+     litRx_global: bool;
+     litRx_multiline: bool;
+     litRx_caseInsensitive: bool;
+   }
+
+and literal = 
+  | LiteralArray of expr list
+  | LiteralBoolean of bool
+  | LiteralNamespace of builtinNamespace
+  | LiteralNull
+  | LiteralUndefined
+  | LiteralNumber of Num.num
+  | LiteralObject of literalField list
+  | LiteralRegExp of literalRegexp
+  | LiteralString of ustring
+  | LiteralXML of expr list
+      
+and newExpr = 
+    { 
+      new_obj: expr;
+      new_actuals: expr list; 
+    }
+
+and expr = 
+    CallExpr of callExpr
+  | TrinaryExpr of (triOp * expr * expr * expr)
+  | BinaryExpr of (binOp * expr * expr)
+  | UnaryExpr of (unOp * expr)
+  | NullaryExpr of nulOp
+  | YieldExpr of expr
+  | Property of prop
+  | QualIdent of qualId
+  | AttrQualIdent of attrQualId
+  | LetExpr of ((varDefn list) * expr)
+  | NewExpr of newExpr
+  | SuperExpr of expr list
+	
+and namespaceDefn = 
+    {
+     namespace_name: ident;
+     namespace_init: expr;
+   }
+      
+and classDefn = 
+    {
+     class_name: ident;
+     class_attrs: attrs;
+     class_params: ident list;
+     class_extends: tyExpr list;
+     class_implements: tyExpr list;
+     class_instance_variables: varDefn list;
+     class_variables: varDefn list;
+     class_constructor: funcDefn;
+     class_methods: funcDefn list;
+     class_initializer: stmt list;
+   }
+      
+and interfaceDefn = 
+    {
+     interface_name: ident;
+     interface_attrs: attrs;
+     interface_params: ident list;
+     interface_extends: tyExpr list;
+     interface_methods: (ident * funcTy) list;
+   }
+      
+and varDefnTag = 
+    CONST | VAR | LETVAR | LETCONST
+
+and simpleVarDefn = 
+    {
+     plainVar_tag: varDefnTag;
+     plainVar_init: expr option;
+     plainVar_attrs: attrs;
+     plainVar_name: ident;
+     plainVar_type: tyExpr option;
+   }
+
+and destrVarDefn =
+    {
+     destrVar_tag: varDefnTag;
+     destrVar_init: expr option;
+     destrVar_attrs: attrs;
+
+     destrVar_temp: ident;
+     destrVar_postInit: expr option;
+     destrVar_names: ident list;
+     destrVar_type: tyExpr option;
+   }
+   
+and varDefn = 
+    SimpleDefn of simpleVarDefn
+  | DestructuringDefn of destrVarDefn
+
+and builtinNamespace = 
+    PUBLIC | PRIVATE | PROTECTED | INTERNAL
+
+and visibility = 
+    BUILTIN_NAMESPACE of ident
+  | USER_NAMESPACE of ident
+
+and attrs = 
+    {
+     attr_vis: visibility;
+     (* Improve this? Probably more mutual exclusion possible. *)
+     attr_override: bool;
+     attr_static: bool;
+     attr_final: bool;
+     attr_dynamic: bool;
+     attr_prototype: bool;
+     attr_nonnullable: bool;
+   }
+
+and funcTy = 
+    {
+     funcTy_paramTypes: tyExpr list;
+     funcTy_returnType: tyExpr;
+     funcTy_boundThisType: tyExpr option;
+     funcTy_hasRest: bool;
+   }
+
+and primAnnotation = 
+    NAMED | NULLABLE | NONNULLABLE
+
+and primTy = 
+    { 
+      primTy_name: ident;
+      primTy_annotation: primAnnotation 
+    }
+
+and arrayTy = tyExpr list
+
+and recordFieldTy = 
+    { 
+      field_name: expr;
+      field_type: tyExpr;
+    }
+
+and recordTy = recordFieldTy list
+
+and specialTy =
+    ANY | NULL | UNDEFINED | NONE
+
+and unionTy = tyExpr list
+
+and instantiationTy = 
+    {
+     instantiationTy_base: primTy;
+     instantiationTy_params: tyExpr list;
+   }
+
+and tyExpr = 
+    ArrayType of arrayTy
+  | FunctionType of funcTy
+  | PrimaryType of primTy
+  | RecordType of recordTy
+  | SpecialType of specialTy
+  | InstantiationType of instantiationTy
+  | UnionType of unionTy
+
+and formal = 
+    {
+     formal_name: ident;
+     formal_type: tyExpr option;
+     formal_init: expr option;
+     formal_isRest: bool;
+   }
+
+and funcDefn = 
+    {
+     func_name: ident;
+     func_attrs: attrs;
+     func_formals: formal list;
+     func_result_type: tyExpr option;
+     func_body: block
+   }
+
+and definition = 
+    NamespaceDefn of namespaceDefn
+  | ClassDefn of classDefn
+  | InterfaceDefn of interfaceDefn
+  | VariableDefn of varDefn
+  | FunctionDefn of funcDefn
+
+and forEnumStmt = 
+    { 
+      forEnum_isVar: bool;
+      forEnum_init: expr;
+      forEnum_obj: expr;
+      forEnum_defns: varDefn list;
+      forEnum_contLabel: ident option;
+      forEnum_body: stmt 
+    }
+
+and forStmt = 
+    {
+     for_isVar: bool;
+     for_defns: varDefn list;
+     for_init: expr;
+     for_cond: expr;
+     for_update: expr;
+     for_contLabel: ident option;
+     for_body: stmt
+   }
+
+and ifStmt = 
+  {
+   if_cond: expr;
+   if_then: stmt;
+   if_else: stmt;
+ }
+
+and whileStmt = 
+    {
+     while_cond: expr;
+     while_body: stmt;
+     while_contLabel: ident option;
+   }
+
+and withStmt = 
+    {
+     with_obj: expr;
+     with_body: stmt;
+   }
+
+and catchClause =
+    {
+     catch_formal: formal;
+     catch_block: block;
+   }
+
+and tryStmt = 
+    {
+     try_body: block;
+     try_catches: catchClause list;
+     try_finally: block;
+   }
+
+and caseClause = 
+    {
+     case_cond: expr option;
+     case_stmts: stmt list;
+   }
+
+and switchStmt = 
+    {
+     switch_cond: expr;
+     switch_cases: caseClause list;
+     switch_default: caseClause option;
+   }
+      
+and block = 
+    {
+     block_directives: directive list;
+     block_defns: definition list;
+     block_stmts: stmt list;
+   }
+
+and stmt =
+    ExprStmt of expr
+  | DefineStmt of varDefn
+  | ForEachStmt of forEnumStmt
+  | ForInStmt of forEnumStmt
+  | ForStmt of forStmt
+  | IfStmt of ifStmt
+  | WhileStmt of whileStmt
+  | DoWhileStmt of whileStmt
+  | WithStmt of withStmt
+  | TryStmt of tryStmt
+  | SwitchStmt of switchStmt
+  | ThrowStmt of expr
+  | ReturnStmt of expr
+  | BreakStmt of ident option
+  | ContinueStmt of ident option
+  | BlockStmt of block
+  | LabeledStmt of (ident * stmt)
+  | LetStmt of ((varDefn list) * block)
+  | SuperStmt of expr list
+  | EmptyStmt
+
+and package = 
+    {
+     package_names: ident list;
+     package_fullname: ustring;
+     package_body: block;
+   }
+
+and program = 
+    {
+     program_packages: package list;
+     program_body: block;
+   }
+</pre>
+
+</div>
+
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/a/aa3a278bd2a2bb023871124a1ad22c58.xhtml used -->
+</body>
+</html>

@@ -1,0 +1,523 @@
+See [[proposals:iterators and generators]] for the re-drafted proposal based on this discussion.
+
+
+====== Recent comments and questions ======
+
+===== Doubts about the Enumerator example =====
+
+I think the type system says that 
+
+<code>
+   class C {
+      function f() : T {}
+   }
+</code>
+
+is not a subtype of
+
+<code>
+   type X = { f: function() : T }
+</code>
+
+because the method signatures are not compatible.  The type of the ''f'' of ''C'' is
+
+<code>
+  F1 = (function (this C) () #f T)
+</code>
+
+and the type of the ''f'' of ''X'' is 
+
+<code>
+  F2 = (function (this Object) () #f T)
+</code>
+
+The [[spec:type system]] page states that for ''F1 <: F2'', which we want here, we must have the bound ''this'' of F2 be a subtype of the ditto of F1; this is not the case.
+
+Therefore it does not seem that ''Enumerator'' implements either ''IteratorType'' or ''IterableType''.
+
+(Or maybe conversion saves you?  That seems sort of evil.)
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/10/02 07:12//
+
+===== yield syntax =====
+
+The current grammar allows:
+
+**yield yield yield 5;**
+
+Is this right?  Relevant productions:
+  YieldExpression:
+    yield
+    yield AssignmentExpression
+
+  AssignmentExpression:
+    ...
+    YieldExpression
+
+
+If yield is an expression, this is allowed, but is somewhat obscure.
+
+ --- //[[mob@mbedthis.com|Michael O'Brien]] 2006/09/05 13:58//
+
+----
+
+This is incorrect, sorry about that.  The grammar is more restrictive:
+
+  * There needs to be a ''[no //LineTerminator// here]'' between ''yield'' and //AssignmentExpression//, as in Edition 3's grammar.
+  * ''yield yield'' and the like must be an error.
+  * A //YieldExpression// must be parenthesized unless used as an expression statement or as the right-hand side of an assignment operator.
+
+There are several ways to specify these restrictions.  One way is to produce //YieldExpression// from both //Expression// and from the right-hand side of assignment.  I'm happy to help, but I have not read Jeff's grammar.  Thoughts on how to proceed?
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/09/05 21:52//
+
+Your description above seem to include compatibility restrictions imposed on Python, which do no apply to ES. Quoting PEP 342:
+
+<code>
+
+    New syntax: Yield Expressions
+
+    The yield-statement will be allowed to be used on the right-hand
+    side of an assignment; in that case it is referred to as
+    yield-expression.  The value of this yield-expression is None
+    unless send() was called with a non-None argument; see below.
+
+    A yield-expression must always be parenthesized except when it
+    occurs at the top-level expression on the right-hand side of an
+    assignment.  So
+
+        x = yield 42
+        x = yield
+        x = 12 + (yield 42)
+        x = 12 + (yield)
+        foo(yield 42)
+        foo(yield)
+
+    are all legal, but
+
+        x = 12 + yield 42
+        x = 12 + yield
+        foo(yield 42, 12)
+        foo(yield, 12)
+
+   are all illegal.  (Some of the edge cases are motivated by the
+   current legality of "yield 12, 42".)
+
+</code>
+
+So how about we treat 'yield' as a high precedence (unary-like) operator and not make the arbitrary requirement for parens. Then all of the illegal cases above would have a positive interpretation in ES4.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/09/13 17:26//
+
+To be specific, this is the change I have in mind:
+
+<code>
+YieldExpression	                [add these productions]
+	UnaryExpression
+        yield
+	yield  [no line break]  UnaryExpression
+	
+MultiplicativeExpression	[replace current productions with these]
+	YieldExpression    
+	MultiplicativeExpression  *  YieldExpression
+	MultiplicativeExpression  /  YieldExpression
+	MultiplicativeExpression  %  YieldExpression
+</code>
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/09/14 14:13//
+
+No, we don't want //UnaryExpression// as the ''yield'' optional operand non-terminal, because that means ''yield x + y'' is ''(yield x) + y''.  This isn't a Python restriction, it's a usability argument: ''yield'' is like ''return'' in that its operand can be almost any expression, and if you want to use the result of evaluating such a ''yield'' expression, you have to parenthesize the whole thing.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/09/19 23:39//
+
+Agreement was reached to break with Python and follow Brendan's original grammar, which allows 'yield yield yield ...'. One influence is 'yield's similarity with our 'let' expressions which now also takes an //AssignmentExpression//.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/09/21 15:50//
+
+This means that ''yield a, b'' is ''(yield a), b''.  Note how in the final grammar agreed upon today, ''f(yield a, b)'' calls ''f'' with two arguments, whereas in Python 2.5 and JavaScript 1.7 (in Firefox 2) it is a syntax error.  Unfortunately, in both of those programs ''f%%((yield a, b))%%'' (required to avoid the syntax error) means ''f%%((yield (a, b)))%%'', which is not compatible with the final ES4 grammar.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/09/22 21:26//
+
+Hold on! My trouble with the Python rules for ''yield'' is that they aren't consistent with ES4, but with a small tweak that might not be the case. There are other cases where a user has to introduce a syntactic context to get the meaning he wants for a construct. For example, {} means block statement at the top level and not object initialiser. Consider //LetStatement// and //YieldStatement// to be peers in the sense that they both have expression counterparts and both end with a //ListExpression//. Users may expect that the expression form would also end with a //ListExpression//, as Python and JS1.7 say they should. But then we have the ambiguity in syntactic contexts where '','' might be thought to associate with the outer context rather than the inner ''yield'' or ''let'' expression. To avoid this, how about if we make ''yield x'' and ''let(x) x'' a syntax error in those contexts only? This is less restrictive than the Pythonic rule and allows ES4 to be more internally consistent. So for example,
+
+<code>
+        x = 12 + yield 42
+        x = 12 + yield
+        foo(yield, 12)
+        foo(12, yield 42)
+</code>
+
+would all be legal, but
+
+<code>
+        foo(yield 42, 12)
+</code>
+
+would not.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/09/24 10:21//
+
+The problem with ''x = 12 + yield 42'' is that if you commute, you get a very different expression: ''x = yield 42 + 12'' which is ''x = yield 54''.
+
+Likewise, sometimes actual argument lists in existing call sites grow over time, requiring ''foo(12, yield 42)'' to become ''foo(12, (yield 42), 43)''.
+
+There is no low-precedence unary operator in the language on which users might model ''yield''.  Always parenthesizing except on the right-hand side of assignment is simpler than requiring parentheses if there are operators on the right, or extra arguments after the yield expression.  What is more, by always requiring parenthesization, users must say what they mean at the price of extra bracketing characters.
+
+I'm still of the opinion that Python made the right usability vs. safety call, because with what you propose, the first sign of trouble is likely to be a wrong value, not necessarily even a run-time error.  I agree that ''let'' asymmetry is an issue.  The "safety first" argument probably applies to both ''let'' and ''yield'' equally.
+
+But your new proposal is a superset of JS1.7 and //mutatis mutandis// Python2.5 as far as well-formed yield expression syntax goes.  JS1.7 forbids even ''foo(yield 42)'', requiring ''foo%%((yield 42))%%'', but JS2/ES4 allows the former and the latter, and does not change the meaning of ''foo%%((yield 42, 43))%%'' either -- it still means ''foo%%((yield (42, 43)))%%'' when fully parenthesized, and in your proposal could be written ''foo(yield (42, 43))'' too.
+
+Your new proposal is to use //ListExpression// as the non-terminal on the right of the ''let'' head, and as the optional operand of ''yield'', but to add an error check in larger comma-separated expression contexts, if I understand correctly.
+
+Let me know if this comment agrees with what you are proposing.  Thanks,
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/09/25 19:02//
+
+>Your new proposal is to use //ListExpression// as the non-terminal on the right of the ''let'' head, and as the optional operand of ''yield'', but to add an error check in larger comma-separated expression contexts, if I understand correctly
+
+This is correct. It doesn't solve the problem with ''x = 12 + yield 42'' vs ''x = yield 42 + 12'', but requiring parens doesn't help much there either. ''x = (12 + yield 42)'' and ''x = (yield 42 + 12)'' are still different. True, the parens indicate that the user has thought about it, but if the language forces the parens then maybe the user didn't think about it after all, and just parenthesized until it compiled!
+
+My concern is to not punish users who write unambiguous code, just to keep users who don't safe.
+
+To illustrate further, the following would be true with what I propose
+
+<code>
+foo(12, yield 42)       // no problem, unambiguous
+</code>
+<code>
+foo(12, yield 42, 43)   // **syntax error**, two arguments or three? grammar says two, user might think three
+</code>
+<code>
+foo(12, (yield 42), 43) // problem solved, clearly three arguments
+</code>
+<code>
+foo(12, (yield 42, 43)) // problem solved, clearly two arguments
+</code>
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/09/26 11:58//
+
+The problem with ''x = 12 + yield 42'' vs. ''x = yield 42 + 12'' *is* solved by requiring parens as Python2.5 and JS1.7 do, because ''x = 12 + yield 42'' is a syntax error -- it must be ''x = 12 + (yield 42)'', and then commuting with parentheses preserved *does* mean the same thing.
+
+It's true that ''x = yield 42 + 12'' is legal in Python2.5 and JS1.7, and that you can't commute without both parenthesizing and changing the meaning.  But that follows from ''yield'' being a low-precedence unary operator, which follows from its statement form: ''yield 42 + 12;'' is ''yield (42 + 12);''.
+
+Your proposal avoids punishing users who do not embed ''yield'' (or ''let'', I presume? [ //[[jodyer@adobe.com|Jeff Dyer]] 2006/09/26 12:44// --- yes, ''let'' too]) expressions inside comma expressions in an ambiguous way, but it still leaves this "commutativity hazard".  But I like it as a forward compatible superset grammar, and I agree the comma operator (broadly construed -- actual argument lists definitely included) is the likeliest source of confusion, not the commutative binary operators.
+
+Can you express this restriction by factoring the grammar, instead of adding a semantic check?  I can think of ways to do it, but I haven't reviewed the grammar yet.  It would be great to enforce this syntax error syntactically ;-).
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/09/26 12:13//
+
+> Can you express this restriction by factoring the grammar, instead of adding a semantic check?
+
+The [[proposals:normative grammar]] is updated to produce a syntax error when ''yield ListExpression'' or ''let(...) ListExpression'' is used before a comma, except in a //ListExpression//
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/09/26 19:01//
+
+I'll have a look, thanks.  Since parsing is usually greedy, the //ListExpression// non-terminal after ''yield'' or ''let(...)'' would swallow any comma after it, so there couldn't be an "except in a //ListExpression// exception -- if you see what I mean.  But I may just be quibbling with your description here!
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/09/30 15:15//
+
+====== Other recent comments and questions ======
+
+IteratorType appears to be a recursive structural type, something we do not support.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/08/23 09:08//
+
+Right, fixed.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/09/19 23:44//
+
+Nice to see this coming along.  IMO it needs some work before it can go into the "ready for public review" section.  Here are just some brief comments, though:
+
+Iterators: The bit about the use of the ''intrinsic'' namespace worries me, because nowhere else in the language is there a need for more than one namespace on any property (but here we have ''public intrinsic'') and anyway ISTR that we decided to stick with simple syntax for field names in object initializers, not full qualified identifiers.  Is this just a notational device or do you really mean it that way?
+
+Generators: The type of a generator that takes parameter types P1..Pn and returns R is ''function (P1,...,Pn) : GeneratorType.<R,?,?>''.  From where do we obtain the types for the second and third arguments here?  What is the purpose of "send" and "close"?
+
+It appears the iteration work is more fundamental than the generator work (and comprehensions).  I suspect this should perhaps be three separate proposals.
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/06/05 04:34//
+
+====== Iterators and Generators ======
+
+Given the years of development in Python and similarities to ECMAScript in application domains and programmer communities, we would rather follow than lead.  By standing on Python's shoulders we reuse developer knowledge as well as design and implementation experience.  The trick then becomes not borrowing too much from Python, just enough to gain the essential benefits: structured value-generating continuations and a general iteration protocol.  The proposal in brief follows.
+
+===== Generators =====
+
+Copy proposal [[http://www.python.org/peps/pep-0255.html|PEP 255]], which is part of standard Python now. Example that prints the first ten Fibonacci numbers:
+
+<code javascript>
+function fib() {
+  let i = 0, j = 1;
+  while (true) {
+    yield i;
+    [i, j] = [j, i + j];
+  }
+}
+
+var g = fib();
+for (var i = 0; i < 10; i++)
+  print(g.next());
+</code>
+
+function containing ''yield'' is a generator, which when called binds formal parameters to actual arguments but evaluates no part of its body.  Instead, it returns a generator-iterator.  Each call to the ''next'' method of this iterator resumes evaluation of the generator function and returns the result of the next ''yield''.
+
+==== Array comprehensions ====
+
+Copy proposal [[http://www.python.org/peps/pep-0202.html|PEP 202]] as well, for array comprehensions:
+
+  var ten_squares = [i*i for i in range(10)]
+
+Notes:
+  * The loop variable ''i'' is lexically scoped by the brackets.
+  * ''range'' is an ''Array'' constructor patterned after Python's ''range''.
+    * Is ''range'' too likely a name collision candidate?
+    * We can't use ''Range'' because of the [[http://www.w3.org/TR/2000/REC-DOM-Level-2-Traversal-Range-20001113/ranges.html|DOM Range function]].
+    * Being different from Python just makes for confusion, so ''range'' should take ''int'' arguments of the form (%%[%%//start//, %%]%%//stop//%%[%%, //step//%%]%%).
+    * Should there be a literal notation for ranges?  See the rejected [[http://www.python.org/peps/pep-0204.html|PEP 204]].
+  * No parenthesization as in a ''for-in'' loop is required.
+    * This is easy on eyes and wrists, but it doesn't reuse existing syntax, so users and implementors can't reuse knowledge and parsing code.  Would it be better to use a more concise, Math-y syntax?
+
+----
+
+Array comprehensions looks like surface syntax that should perhaps be broken out as a separate proposal.  The meaning of the above is 
+
+<code>
+    var ten_squares =
+        (function () { 
+            var a = new Array;
+            for ( i=0 ; i < 10 ; i++ )
+              a[i] = i*i;
+            return a;
+         })()
+</code>
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/04/07 06:17//
+
+Array comprehensions are definitely surface syntax, but not over a three-part ''for'' -- rather over a ''for-in'' loop.  The lexical scope for the loop variable comes for free -- no ''let'' required.  And the right operand of ''in'' is iterated using the standard iteration protocol, so it could be an array, a generator, an iterator itself, or any object.
+
+This proposal needs to be re-drafted, but I'd like to keep array comprehensions here, to line up with the other Pythonic elements.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/04/07 13:41//
+
+==== Generator expressions ====
+
+Consider copying proposal [[http://www.python.org/peps/pep-0289.html|PEP 289]] too, for generator expressions:
+
+  sum(i*i for i in range(10))
+
+See the PEP for motivation, beware grammatical and variable binding issues:
+  * A generator expression must be parenthesized unless it is the only argument to a function call.
+  * Python late-binds free variables in generator expressions, so if the generator is not iterated until after the free variable changes, the later value will be used, contrary to lexical order.
+  * This is akin to a loop capturing but not calling ECMAScript closures that use the loop variable, then calling after the loop -- the final value of the loop variable will be used for all calls.
+
+===== Iterators =====
+
+Pythonic generators build on Python's iteration protocol, [[http://www.python.org/peps/pep-0234.html|PEP 234]]. A minimum working subset translated to ECMAScript might include:
+
+  * A new ''Iterator'' constructor callable with or without operator ''new''.
+    * ''Iterator(obj)'' calls ''obj.%%__iterator__%%()'' to create an iterator for ''obj''.
+    * ''Object.prototype.%%__iterator__%%'' returns an iterator over enumerable property identifiers in its ''this'' parameter.
+    * Again, why be different from Python at all?  Why not ''iter'' for the constructor-function and ''%%__iter__%%'' for the object hook?
+      * Counter-arguments:
+        * We don't support the ''iter(callable, sentinel)'' in this proposal.
+        * The slippery slope to Python emulation turns into a cliff very soon.  JS has ''String'' not ''str'', ''null'' not ''None'', etc.
+      * Arguments in favor:
+        * ''%%__iter__%%'' is not a constructor, it returns the object on which it is called if that object is an iterator.  See [[http://www.python.org/peps/pep-0234.html|PEP 234]] (note that we are not proposing the older ''%%__getitem__%%'' protocol).
+        * To be consistently Pythonic, we **should** support ''iter(callable, sentinel)'' and ''range'', without name changes.
+        * The ''iter'' name-form is a bit terse for JS/ES, but not fatally so given ''RegExp'', ''exec'', etc.
+      * Resolution: we have to draw a line between JS/ES and Python somewhere not too far down the slippery slope, and just stylistically speaking, the constructor/converter function and its ''%%__%%''-bracketed internal method look like the best place.
+        * ''Iterator'' not ''iter'', but see below for elaboration on the protocol to handle prototypes and value iteration.
+        * ''obj.%%__iterator__%%()'' is the internal method delegated to by ''Iterator(obj)''.
+  * A single iteration protocol to iterate over an object ''obj'' in response to a ''for-in'' loop, array comprehension, or generator expression:
+    * Let ''iter = Iterator(obj)''.
+    * Call ''iter.next()'' for each iteration
+      * If ''iter.next()'' returns normally, its result is the next value in the iteration.
+      * If ''iter.next()'' throws an exception:
+        * If ''StopIteration'' or an object derived from it is thrown, stop iterating with normal completion.
+        * Else propagate all other exceptions, aborting the iteration.
+
+==== Value Iteration and Shadowing ====
+
+How to specify ''for-each-in'' loops in terms of the protocol?
+
+ --- //[[edwsmith@adobe.com|Edwin Smith]] 2006/02/16 12:05//
+Maybe take a page from the other newly exposed function hooks:
+
+<code>
+    class C {
+       function for in C() { ... yield name ... }
+       function for each in C() { ... yield value ... }
+    }
+</code>
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/02/23 22:05//
+While this works, we should avoid specifying primitive iteration in terms of generators, since generators implement the iteration protocol.  Rather, we merely need ''Object.prototype.%%__iterator__%%()'', when called via ''obj.%%__iterator__%%()'' from ''Iterator(obj)'' from ''for (name in obj)'', to return an object whose ''next'' method iterates over enumerable properties of ''obj'' (and only ''obj'', not its prototypes).
+
+The problem with ''for-each-in'' as sketched above using extended class constructor function syntax is that each iteration must return the property name as well as the value, so that prototype properties can be shadowed correctly by the common ''for-each-in'' loop logic.  Otherwise, we would have to delegate prototype iteration and shadowing to each iterator implementation, which is redundant and hazardous (some may fail to follow the Edition 3 shadowing rule), and which also requires an extra argument (the original or "starting" object along whose prototype chain another object may contain a property that "shadows" the currently visited prototype property).
+
+The same consideration applies to ''for-in'' loops: the logic to handle shadowing (ECMA-262 Edition 3 section 12.6, last paragraph) should be common among all iterator implementations.  An iterator enumerates only its directly referenced target object.  An iterator does not enumerate the unshadowed properties of the target's prototype, or of other objects (grand-prototypes, great-grand-protos, etc., or entirely unrelated objects).
+
+==== Value Iteration Proposal ====
+
+Suppose we define ''Iterator(obj, true)'' to mean create an iterator over property values, not property names, in obj.  This forwards to ''obj.%%__iterator__%%(true)'' as expected.  Then the returned iterator's ''next'' method should return successive values, not names, of enumerable properties in ''obj''.
+
+But lacking a cheap (defined as not requiring an object allocation per iteration step) way to return a ''(name, value)'' pair from such an iterator, how will the common ''for-each-in'' loop logic check for shadowing, and skip shadowed properties as it iterates over prototypes of the original or "starting" object named as the right operand of ''in'' in the loop head?
+
+One way would be to set ''iter.lastPropertyName'' from ''iter.next()'' to tell the name of the property whose value was last returned by ''iter.next''.  This requires another property than ''next'' to be implemented by all would-be iterator objects.  It also programs by side-effects on ''iter'', which precludes what [[http://www.lua.org/|Lua]] calls [[http://www.lua.org/pil/7.3.html|stateless iterators]].  Mutating ''iter'' seems very wrong here.  Functional purity demands that value-iterators return a pair ''(name, value)''.
+
+So let's allow ''(name, value)'' [[proposals:group assignment|group return]].  Then we could simplify ''Iterator(obj)'' and the underlying ''obj.%%__iterator__%%()'' protocol to require ''(name, value)'' pair return from the iterator's ''next'' method.  Or if performance of ''for-in'' would be degraded too much by this simplification, we can stick with the ''Iterator(obj, true)'' definition.
+
+===== Type Safety =====
+
+The Pythonic protocol sketched here does not allow us to use [[proposals:type parameters]] to good effect.  We might rather use ''Iterator<T>'' for iterable type ''T'', in order to find or create an iterator whose ''next'' method had the signature
+
+  function next() : T
+
+More thought required here.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/02/23 19:40//
+
+===== Clarifications =====
+
+Let's forget Python for now and figure out what the various concepts of interator and generator mean in ecmascript.
+
+Here is my understanding:
+
+   * generator - a function that generates values or throws an exception if none are available
+   * iterator - a function that generates values or throws an exception if none are avaiable
+   * generator definition - a function definition containing at least one yield statement, which results in a generator factory
+   * generator factory - a function that returns a generator
+
+<code>
+  function fib() {  // define generator factory
+    var i = 0, j = 1
+    while (true) {
+      yield i
+      var t = i
+      i = j
+      j += t
+    }
+  }
+  
+  var gen = fib()  // make a generator
+  for (var i = 0; i < 10; i++)
+    print(gen())  // call a generator, notice I erased .next()
+</code>
+
+
+
+   * iterators are generators; it is only useful to talk about generators when we talk about how iterators are defined via yield functions
+   * for-in and for-each-in call the iterator factories KeyIterator(o) and ValueIterator(o) respectively, where o is the expression on the rhs of ''in''
+   * iterators are any callable objects (no next method) that throws an exception when it has no more values to return
+
+<meeting time, I'll resume editing later>
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/03/03 11:24//
+
+----
+
+First, I think it's a mistake to ignore Python.  I know you wrote "for now", but redefining terms from PEP-255 doesn't help clarify why not to follow much of PEP-255.
+
+In general, there's no point forgetting Python if it has covered the same thought-space and recorded the arguments, which the PEP process has done in a pretty thorough way.
+
+In particular, although the trade-off between ''.next()'' and ''()'' is a close call, the design whereby ''yield'' making a generator function that returns a generator-iterator looks like the right one to us, and I've heard no counter-proposals.  It also seems we agree on the economic wins and the low-level mechanics of throwing the ''StopIteration'' singleton from an iterator once it is exhausted.
+
+From this completely Pythonic design, we have some freedom to develop an iteration protocol.  The iteration protocol should hide the ''StopIteration'' exception and the ''.next()'' vs. ''()'' issue behind ''for-in'' loop syntax.  We're still tracing Python's steps, and there's no point in ignoring its evolutionary history when we agree with this much of it, and we may want to jump to an end-point.  I argue that given this much similarity, there is no point in preferring ''()'' over ''.next()''.
+
+Second, iterators are not generators.  Generators are a factory for a kind of iterator, but iteration is lower-level as I argued in the conference call.  We acknowledged that iteration is more primitive:
+
+  * Iteration does not require a generator or any kind of coroutine.
+  * Iteration pre-exists in Edition 3 without generators, but combined with prototype shadowing.
+  * Iteration consists of ''for-in'' syntax and common prototype shadowing logic layered on top of a meta-object protocol, of which generators are but one implementation.
+  * An ''iter'' (Python) or ''Iterator'' (ES4 proposed) function is a converter, not a factory -- it delegates to a MOP method on the passed-in object, in order to let iterators return themselves.
+  * The MOP method, ''%%__iter__%%'' (Python) or ''%%__iterator__%%'' (ES4 proposed, tentatively!) is primitive too in that it does not handle prototype shadowing, or necessarily iterate over the enumerable properties of any object other than its ''this'' parameter.
+
+It's worth reiterating (heh) that I am proposing a standard ES4 MOP on which ''for-in'' loops and array comprehensions depend.  This is not reflection, which we are trying to make optional.  It's a //bona-fide// meta-object protocol.
+
+Third, as pointed out in this proposal, and in the meeting, ''ValueIterator'' or anything like it needs to return each enumerable property's key as well as value, so that common ''for-in'' loop runtime code can handle prototype shadowing.  But this does not mean that the iteration protocol should delegate shadowing to each iterator implementation.  Doing so is redundant, hazardous and anti-modular.  Each iterator should worry about one object only.
+
+Where we have trouble following Python is not in ''.next()'' vs. ''()''.  Rather, we would like to address the following gaps:
+
+  * Type-safety: Python doesn't have type annotations (or didn't at the time of PEP-202).
+  * Backward-compatibility: we can't iterate keys of an ''Array'' as Python does for its similar lists.
+  * Backward-compatibility: we need to return key and value from any value iterator, so ''for-each-in'' can do its prototype shadowing thing.
+
+Given these issues, ES4 must differ from Python at some point, or dividing line rather, in the design space.  But not in all ways.
+
+More in a bit with some proposed solutions to bridge these gaps.  Comments welcome on anything and everything.
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/03/03 20:19//
+
+
+====== Comments on reference code ======
+
+<code javascript>
+// DAH: should this be (string|Name) or (double|string|Name)
+type EnumerableId      = (string, Name);
+// DAH: now spelled  [...EnumerableId]
+type EnumerableIdArray = [EnumerableId];
+
+class Enumerator.<T> {
+  type ResultFun = function(EnumerableId, Object!) : T;
+
+  // DAH: both ResultFun and e are non-nullable, so must be set in settings
+  function Enumerator(v, f : ResultFun, e : boolean = false) {
+    initial_obj = (v is Object) ? v : null;
+    current_obj = initial_obj;
+    current_ids = magic::getEnumerableIds(initial_obj);
+    result_fun = f;
+    enumerate = e;
+  }
+
+  // DAH: shouldn't this also take a ResultFun and boolean to pass to the constructor?
+  meta static function invoke(v) : Iterator.<T>
+    new Enumerator(v);
+
+  iterator function get(e : boolean = false) : Iterator.<T>
+    (e == enumerate) ? this : new Enumerator.<T>(inital_obj, result_fun, e);
+
+  public function next() : T {
+    if (current_obj === null)
+      throw StopIteration;
+
+  loop:
+    while (true) {
+      // DAH: this needs to be *while* (current_index === current_ids.length) to skip *all* empty enumerable arrays in chain
+      if (current_index === current_ids.length) {
+        if (!enumerate)
+          throw StopIteration;
+
+        current_obj = magic::getPrototype(current_obj);
+        if (current_obj === null)
+          throw StopIteration;
+ 
+        current_ids = magic::getEnumerableIds(current_obj);
+        current_index = 0;
+      }
+
+      let id : EnumerableId = current_ids[current_index++];
+
+      for (let obj : Object = initial_obj; obj !== current_obj; obj = magic::getPrototype(obj)) {
+        if (magic::hasOwnProperty(obj, id))
+          continue loop;
+      }
+ 
+      if (magic::hasOwnProperty(current_obj, id))
+        return result_fun(id, initial_obj);
+  }
+
+  private var initial_obj   : Object,
+              current_obj   : Object,
+              current_ids   : EnumerableIdArray,
+              // DAH: uint no longer exists. double?
+              current_index : uint,
+              result_fun    : ResultFun,
+              enumerate     : boolean;
+}
+
+const function DEFAULT_GET(start: Object!, deep: boolean = false): Iterator.<string>
+  new Enumerator.<string>(start,
+                          // DAH: should be function (id: EnumerableId, obj: Object!): string
+                          function (id: string, obj: Object!): string
+                            (id is Name) ? id.identifier : string(id),
+                          deep);
+</code>

@@ -1,0 +1,119 @@
+====== Pattern matching ======
+
+JS 1.7 destructuring is almost pattern matching, but it lacks the refutable semantics needed to support a conditional pattern matching form. This strawman adds a notion of //refutable matching// and adds certain contexts to the language where matching is interpreted refutably. Other contexts perform a looser, irrefutable matching.
+
+====== Patterns ======
+
+===== Syntax =====
+
+This is written in parameterized BNF for conciseness. (Think of it as a grammar macro which could be pre-expanded to produce the full grammar.)
+
+The grammar is factored into //PrimaryPattern// and //Pattern//. The former does not admit outermost parentheses; this disambiguates between e.g. ''let'' expressions and ''let'' declarations.
+
+<code>
+PrimaryPattern(refutable) ::= "*"
+                           |  [if refutable] Literal
+                           |  Identifier(refutable)
+                           |  ArrayPattern(refutable)
+                           |  TuplePattern(refutable)
+                           |  ObjectPattern(refutable)
+                           |  RecordPattern(refutable)
+                           |  [if refutable] PrimaryPattern(refutable) "if" AssignmentExpression
+
+Pattern(refutable) ::= PrimaryPattern(refutable)
+                    |  "(" Pattern(refutable) ")"
+                    |  [if refutable] "(" Pattern(refutable) ")" "if" AssignmentExpression
+
+ArrayPattern(refutable) ::= "[" (EllipsisPattern(refutable) ",")? (ElementPattern(refutable) ("," ElementPattern(refutable))*)? "]"
+                         |  "[" ElementPattern(refutable) ("," ElementPattern(refutable))* ("," EllipsisPattern(refutable)) "]"
+
+EllipsisPattern(refutable) ::= "..." Pattern(refutable)
+
+TuplePattern(refutable) ::= "#" "[" EllipsisPattern(refutable) "]"
+                         |  "#" "[" (EllipsisPattern(refutable) ",")? (ElementPattern(refutable) ("," ElementPattern(refutable))*)? "]"
+                         |  "#" "[" ElementPattern(refutable) ("," ElementPattern(refutable))* ("," EllipsisPattern(refutable))? "]"
+
+ElementPattern(refutable) ::= Pattern(refutable)?
+
+ObjectPattern(refutable) ::= "{" (PropertyPattern(refutable) ("," PropertyPattern(refutable))*)? "}"
+
+RecordPattern(refutable) ::= "#" "{" EllipsisPattern(refutable) "}"
+                          |  "#" "{" PropertyPattern(refutable) ("," PropertyPattern(refutable))* ("," EllipsisPattern(refutable))? "}"
+                          |  "#" "{" (PropertyPattern(refutable) ("," PropertyPattern(refutable))*)? "}"
+
+PropertyPattern(refutable) ::= PropertyName ":" Pattern(refutable)
+
+GuardedPattern(refutable) ::= Pattern(refutable) "if" AssignmentExpression
+</code>
+
+===== Static validation =====
+
+If a pattern binds the same variable name in multiple positions, a compile-time error must be raised.
+
+===== Refutable semantics =====
+
+Roughly:
+
+  * "*": match anything, bind nothing
+  * Literal: match if the value is equal to the value of the literal (using ''===''), bind nothing
+  * Identifier: match anything, bind the value to the identifier
+  * ArrayPattern:
+    * if ''typeof'' the value is not "object", fail
+    * if value has no ''length'' property, fail
+    * let len = ToUint32(''length'')
+    * if pattern starts with ellipsis:
+      * let n be the number of elements (empty or non-empty) in the pattern after the ellipsis
+      * for each i'th non-empty element in the pattern, match pattern[i] against value[length - n + i]
+    * else if pattern ends with ellipsis:
+      * let n be the index of the last (empty or non-empty) element in the pattern
+      * if length <= n, fail
+      * for each i'th non-empty element in the pattern, match pattern[i] against value[i]
+      * let a = slice.call(value, n + 1) where slice is the original value of Array.prototype.slice
+      * match a against the sub-pattern of the ellipsis
+    * otherwise:
+      * let n be the index of the last non-empty element in the pattern
+      * if length <= n, fail
+      * for each i'th non-empty element in the pattern, match pattern[i] against value[i]
+    * match if all the sub-patterns matched, and bind all their collected bindings
+  * TuplePattern: similar to array pattern but require it to be a tuple
+  * ObjectPattern:
+    * if ''typeof'' the value is not "object", fail
+    * test that each property pattern is in the object and match its %%[[%%Get%%]]%% result agains its sub-pattern
+  * RecordPattern: similar to object pattern, but require it to be a record, and also match a new record of remaining elements against ellipsis sub-pattern
+  * GuardedPattern: match subpattern and create bindings, then run the guard expression with just those bindings (not any from surrounding pattern) in local scope, and fail if the result is falsey
+
+Note that any time any of these operations triggers code that raises an exception, the exception is //not// converted to a failure; the exception propagates as the result of the pattern match.
+
+===== Irrefutable semantics =====
+
+Roughly: do the same as the refutable semantics, but if failure occurs at any point, bind all variables to the undefined value and succeed.
+
+====== Pattern matching switch ======
+
+This section adds a switch expression form for pattern matching that is grammatically unambiguous from switch statements, even in the context of a statement expression.
+
+===== Syntax =====
+
+<code>
+SwitchExpression ::= "switch" "(" Expression ")" "{" MatchClause+ DefaultBlockClause? "}"
+
+MatchClause ::= "match" Pattern(true) Block
+
+DefaultBlockClause ::= "default" Block
+</code>
+
+===== Semantics =====
+
+Perform each match refutably in sequence until one of them succeeds, then evaluate the RHS expression with the environment extended with the bindings of the match. If at any point a pattern match raises an exception, that exception propagates as the result of the switch expression. The RHS expressions are block statements but are evaluated for their completion value.
+
+====== Destructuring assignment ======
+
+Destructuring assignment is parsed as an ''LHSExpression'' but then post-processed as a ''Pattern(**false**)''. Note that this non-terminal represents a subset of ''LHSExpression''.
+
+====== Irrefutable matching contexts ======
+
+Binding contexts which are not conditional use the irrefutable pattern syntax and matching semantics. These include:
+
+  * formal parameters (''Pattern(**false**)'')
+  * ''let''/''var''/''const'' bindings (''PrimaryPattern(**false**)'')
+  * assignment (''LHSExpression'', reinterpreted as ''Pattern(**false**)'')

@@ -1,0 +1,84 @@
+====== 07-Apr-2006 ======
+
+Meeting time: 10:00 Pacific
+
+===== Attendees =====
+
+  * Jeff Dyer (Adobe)
+  * Brendan Eich (Mozilla)
+  * Lars Hansen (Opera)
+  * Dave Herman (Northeastern)
+  * Cormac Flanagan (UC Santa Cruz)
+  * Graydon Hoare (Mozilla)
+
+===== Agenda =====
+
+  * Semantic model progress
+  * Recent change discussion
+  * Schedule and process stuff
+
+===== Dial-in =====
+
+Tel: 866 705 2554 (us), 913 227 1201 (int’l)
+
+Participant Passcode: 548041
+
+Breeze standing meeting room: [[http://adobe.breezecentral.com/ecmatg1]]
+
+===== Notes =====
+
+=== Maude vs. Stratego ===
+
+  * Dave found Maude harder to extend syntactically
+  * Graydon: Maude uses operator precedence for parsing the model
+  * Dave heard Maude's type system is hard to work with
+  * Might be able to port models
+
+
+=== Recent changes ===
+
+  * Lars: destructuring assignment and block expression cleanups
+  * Lars: function type syntax proposal
+    * Dave: don't forget optional ''this'' type annotation (''this:T'')
+  * Graydon: drop traits commentary
+    * Brendan: let's not abuse "traits"
+  * Lars: type system notes, including nullability via sum
+    * Dave: not quite sum if syntax not restricted
+    * Do we allow ''?T!'', or only ''?T'' and ''T!'' where ''T'' may be ''U!'' or ''?U''
+    * Need to flatten given lack of distributivity in the proposal
+  * Lars: type parameterization like C++ templates
+    * Graydon: but without code bloat, generally speaking
+    * Lars: except for int vs. uint
+    * Brendan: int/uint <: Number?  No, <: Object in current spec -- seems like a bug
+  * Graydon: re: int/uint <: Number,
+    * decimal128 does not have enough digits to represent every IEEE double
+    * decimal128 is 34 decimal digits + scaling digits
+    * We could use decimal256 or similar
+    * Graydon: mode flags not being standardized one way, so users must choose
+      * does mode have static (source) or dynamic (caller) "scope"?
+      * rounding for different locales and tax vs. non-tax finance contentions
+    * Brendan/Jeff: supporting decimal only via m suffix is controversial as mfc said
+    * We still believe we need a pragma to allow implicit use of decimals, not doubles
+      * This leads to questions about pragmas...
+  * Lars: ''use namespace N'' and other pragmas come first, but that means ''namespace N'' comes after at top-level
+    * Brendan: forward reference should work, if '''namespace N'' hoists a la ''function F''
+    * resolved: open a block if you want to use after defining
+  * Lars has AST interfaces, see http://people.opera.com/lth/tc39-tg1/index.html
+  * Pragma proposal should be usable (no pun): ''use strict, decimal'' or shorter, or people will hate us
+  * Jeff: working on namespaces, note that packages map to namespaces pretty directly, will write up
+
+
+=== Schedule ===
+
+  * June publication
+  * How to expose?  Readonly access to wiki
+    * Jeff: talk pages?  Graydon: do-able
+  * Update spec as we go?
+    * Need notation
+    * Need to target final format
+      * Can we translate from wiki to PDF?  Lars: go via XML and format to PDF with PrinceXML, it gives us both PDF and something web-readable.  Notes about early experiments with this route may be found under [[spec:extraction and formatting]]
+
+=== Type parameters ===
+
+  * Brendan: favor ''<>'' over ''()'' because ''<>'' implies '': const type'' on each type param
+  * Lars: stronger argument, ''Array(V)'' means what?  want backward compat, so need ''<>'' for type param

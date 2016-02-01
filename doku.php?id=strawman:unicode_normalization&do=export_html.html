@@ -1,0 +1,131 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:unicode_normalization&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:unicode_normalization&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:unicode_normalization&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="unicode_normalization"></a><h1>Unicode Normalization</h1>
+<div class="level1">
+
+<p>
+ This proposal removes assumptions about Unicode normalization that aren&rsquo;t valid for current implementations from the ECMAScript Language Specification, and adds a simple normalization method.
+</p>
+
+</div>
+<!-- SECTION [1-230] -->
+<a name="remove_invalid_assumptions"></a><h2>Remove Invalid Assumptions</h2>
+<div class="level2">
+
+<p>
+ The ECMAScript Language Specification 5.1 contains assumptions about the normalization of source text in several sections: 
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="http://ecma-international.org/ecma-262/5.1/#sec-6" class="urlextern" target="_blank" title="http://ecma-international.org/ecma-262/5.1/#sec-6" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Section 6</a>, states: &ldquo;ECMAScript source text … is expected to have been normalised to Unicode Normalization Form C (canonical composition), as described in Unicode Technical Report #15. Conforming ECMAScript implementations are not required to perform any normalisation of text, or behave as though they were performing normalisation of text, themselves.&rdquo;</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> <a href="http://ecma-international.org/ecma-262/5.1/#sec-7.6" class="urlextern" target="_blank" title="http://ecma-international.org/ecma-262/5.1/#sec-7.6" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Section 7.6</a> states in a normative paragraph describing identifier equality: &ldquo;The intent is that the incoming source text has been converted to normalised form C before it reaches the compiler.&rdquo;</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> <a href="http://ecma-international.org/ecma-262/5.1/#sec-8.4" class="urlextern" target="_blank" title="http://ecma-international.org/ecma-262/5.1/#sec-8.4" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Section 8.4</a> states: &ldquo;All operations on Strings … do not ensure the resulting String is in normalised form&rdquo;. The section also contains a non-normative note providing rationale that assumes that text is normalized on the way into the execution environment.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> <a href="http://ecma-international.org/ecma-262/5.1/#sec-11.8.5" class="urlextern" target="_blank" title="http://ecma-international.org/ecma-262/5.1/#sec-11.8.5" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Section 11.8.5</a> and <a href="http://ecma-international.org/ecma-262/5.1/#sec-11.9.3" class="urlextern" target="_blank" title="http://ecma-international.org/ecma-262/5.1/#sec-11.9.3" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">section 11.9.3</a> state in non-normative notes about string comparison: &ldquo;In effect this algorithm assumes that both Strings are already in normalised form.&rdquo;</div>
+</li>
+</ul>
+
+<p>
+ As <a href="http://icu-project.org/docs/papers/internationalization_support_for_javascript.html#h8" class="urlextern" target="_blank" title="http://icu-project.org/docs/papers/internationalization_support_for_javascript.html#h8" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Rich Gillam</a> reports from the TC 39 discussions: &ldquo;The expectation is that there&rsquo;s a separate layer of some kind around the environment of a running ECMAScript program that ensures text coming in from outside is normalized.&rdquo; and &ldquo;Applications that get text from the Internet can depend on the source to follow the <acronym title="World Wide Web Consortium">W3C</acronym> rules.&rdquo; The <acronym title="World Wide Web Consortium">W3C</acronym> rules referred to here are presumably the ones about early normalization in the Character Model for the World Wide Web (<a href="http://www.w3.org/TR/1999/WD-charmod-19990225#Normalization" class="urlextern" target="_blank" title="http://www.w3.org/TR/1999/WD-charmod-19990225#Normalization" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">1999 draft</a>, <a href="http://www.w3.org/TR/2012/WD-charmod-norm-20120501" class="urlextern" target="_blank" title="http://www.w3.org/TR/2012/WD-charmod-norm-20120501" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">2012 draft</a>).
+</p>
+
+<p>
+In reality, unnormalized source text is not normalized anywhere on the way into the ECMAScript runtimes of any of the top 5 browsers or in Node.js. It is also not normalized when a string is passed to eval(). (<a href="http://norbertlindenberg.com/ecmascript/ESTest.html" class="urlextern" target="_blank" title="http://norbertlindenberg.com/ecmascript/ESTest.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">Tested</a> with: Safari 5.1.7 Mac, iOS 5.1.1; Firefox 12.0 Mac, Win; Chrome 19.0.1084.52 Mac, 19.0.1084.46 Win; Opera 11.64 Mac, Win; <acronym title="Internet Explorer">IE</acronym> 9.0.8112.16421 Win; Node.js 0.6.18 Mac). On the web, early normalization hasn&rsquo;t become the norm either; the latest draft of the Character Model indicates &ldquo;the Internationalization Core Working Group&rsquo;s intention to substantially alter or replace the recommendations found here with very different recommendations in the near future.&rdquo;
+</p>
+
+<p>
+Implementing normalization of source text in ECMAScript implementations now would create the risk of breaking existing code that relies on identifiers or strings being different that would be equal after normalization.
+</p>
+
+<p>
+I propose that instead the invalid assumptions are removed from the specification: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Remove the sentence &ldquo;The text is expected to have been normalised to Unicode Normalization Form C (canonical composition), as described in Unicode Technical Report #15.&rdquo; from <a href="http://ecma-international.org/ecma-262/5.1/#sec-6" class="urlextern" target="_blank" title="http://ecma-international.org/ecma-262/5.1/#sec-6" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">section 6</a>. Change the following sentence to: &ldquo;Conforming ECMAScript implementations must not perform any normalisation of source text, or behave as though they were performing normalisation of source text.&rdquo;</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Remove the sentence &ldquo;&ldquo;The intent is that the incoming source text has been converted to normalised form C before it reaches the compiler.&rdquo; from <a href="http://ecma-international.org/ecma-262/5.1/#sec-7.6" class="urlextern" target="_blank" title="http://ecma-international.org/ecma-262/5.1/#sec-7.6" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">section 7.6</a>.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Remove the note from <a href="http://ecma-international.org/ecma-262/5.1/#sec-8.4" class="urlextern" target="_blank" title="http://ecma-international.org/ecma-262/5.1/#sec-8.4" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">section 8.4</a>.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Remove the notes &ldquo;In effect this algorithm assumes that both Strings are already in normalised form.&rdquo; from <a href="http://ecma-international.org/ecma-262/5.1/#sec-11.8.5" class="urlextern" target="_blank" title="http://ecma-international.org/ecma-262/5.1/#sec-11.8.5" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">section 11.8.5</a> and <a href="http://ecma-international.org/ecma-262/5.1/#sec-11.9.3" class="urlextern" target="_blank" title="http://ecma-international.org/ecma-262/5.1/#sec-11.9.3" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">section 11.9.3</a>.</div>
+</li>
+</ul>
+
+</div>
+<!-- SECTION [231-4425] -->
+<a name="add_normalize_method"></a><h2>Add normalize Method</h2>
+<div class="level2">
+
+<p>
+ Text comparison operations generally are easier to implement and produce better results if they can operate on normalized text. Implementations of the Intl.Collator object in the ECMAScript Internationalization <acronym title="Application Programming Interface">API</acronym> will typically apply normalization where needed, e.g., for Arabic and Vietnamese, where unnormalized text is common. For other operations, such as the simple string comparison used by the operators &lt;, ==, etc. as well as regular expressions, applications should be able to normalize strings beforehand.
+</p>
+
+<p>
+I propose adding the following function:
+</p>
+
+<p>
+<strong>String.prototype.normalize(form)</strong> 
+</p>
+<ol>
+<li class="level1"><div class="li"> Call CheckObjectCoercible passing the this value as its argument.</div>
+</li>
+<li class="level1"><div class="li"> Let S be the result of calling ToString, giving it the this value as its argument.</div>
+</li>
+<li class="level1"><div class="li"> If form is undefined or not provided, let form be &ldquo;NFC&rdquo;.</div>
+</li>
+<li class="level1"><div class="li"> Let f be ToString(form).</div>
+</li>
+<li class="level1"><div class="li"> If f is not one of &ldquo;NFC&rdquo;, &ldquo;NFD&rdquo;, &ldquo;NFKC&rdquo;, or &ldquo;NFKD&rdquo;, throw a RangeError exception.</div>
+</li>
+<li class="level1"><div class="li"> Let n be the string that is the result of normalizing S into the normalization form named by f as specified in <a href="http://www.unicode.org/reports/tr15/tr15-29.html" class="urlextern" target="_blank" title="http://www.unicode.org/reports/tr15/tr15-29.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">UTR 15, Unicode Normalization Forms</a>.</div>
+</li>
+<li class="level1"><div class="li"> Return n.</div>
+</li>
+</ol>
+
+<p>
+ NOTE	The normalize function is intentionally generic; it does not require that its this value be a String object. Therefore, it can be transferred to other kinds of objects for use as a method. 
+</p>
+
+</div>
+<!-- SECTION [4426-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/5/5f6bc30d4e6f502df3b1f5abae59866f.xhtml used -->
+</body>
+</html>

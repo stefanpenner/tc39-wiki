@@ -1,0 +1,197 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=strawman:lambdas&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=strawman" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=strawman:lambdas&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=strawman:lambdas&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<p>
+<strong>Why:</strong> 
+</p>
+<ul>
+<li class="level1"><div class="li"> A simpler primitive underlying the language&rsquo;s first-class functions.</div>
+</li>
+<li class="level1"><div class="li"> Supports defining other features via desugaring without breaking equivalence with implicit features (<code>arguments</code>, <code>this</code>, <code>return</code>) &mdash; this is sometimes described as Tennent&rsquo;s Correspondence Principle [ <a href="http://gafter.blogspot.com/2006/08/tennents-correspondence-principle-and.html" class="urlextern" target="_blank" title="http://gafter.blogspot.com/2006/08/tennents-correspondence-principle-and.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">1</a>, <a href="http://books.google.com/books?id=TewmAAAAMAAJ&amp;dq=tennent+principles+of+programming+languages&amp;q=principle+of+correspondence&amp;pgis=1" class="urlextern" target="_blank" title="http://books.google.com/books?id=TewmAAAAMAAJ&amp;dq=tennent+principles+of+programming+languages&amp;q=principle+of+correspondence&amp;pgis=1" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">2</a> ].</div>
+</li>
+<li class="level1"><div class="li"> A well-tested feature of programming languages since time immemorial.</div>
+</li>
+<li class="level1"><div class="li"> Supports tail calls more naturally than <code>function</code>.</div>
+</li>
+<li class="level1"><div class="li"> Simple, composable features like <code>lambda</code> are useful for:</div>
+<ul>
+<li class="level2"><div class="li"> other language features defined via desugaring</div>
+</li>
+<li class="level2"><div class="li"> compiling other languages to ES</div>
+</li>
+<li class="level2"><div class="li"> macros</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+ <strong>How:</strong>
+</p>
+
+<p>
+Add four productions to the grammar: 
+</p>
+<pre class="code ebnf">Expression  ::= ... | lambda Formals Block
+                    | lambda Formals Expression
+Declaration ::= ... | lambda Identifier Formals Block
+                    | lambda Identifier Formals Expression
+</pre>
+<p>
+Or possibly just one single production:
+</p>
+<pre class="code ebnf">Expression ::= ... | lambda Formals Statement
+</pre>
+<p>
+This would allow for an expression body since <code>ExpressionStatement</code> is a production of <code>Statement</code>. Unsure whether this causes any insurmountable ambiguities.
+</p>
+
+<p>
+<strong>What:</strong> 
+</p>
+<ul>
+<li class="level1"><div class="li"> The block form of a <code>lambda</code> is the primitive form. The expression form desugars to a block-<code>lambda</code> with just the expression in its body.</div>
+</li>
+<li class="level1"><div class="li"> A <code>lambda</code> may take rest-args only with an explicit rest-parameter (e.g., <code>...rest</code>). Otherwise it is a dynamic error to call the function with too few arguments.</div>
+</li>
+<li class="level1"><div class="li"> A <code>lambda</code> may take optional arguments and may have destructured parameters.</div>
+</li>
+<li class="level1"><div class="li"> The result of evaluating the body of a block-<code>lambda</code> is the completion value of its body.</div>
+</li>
+<li class="level1"><div class="li"> A <code>lambda</code> must be properly tail calling: a procedure call in tail position must consume no more space than it would consume to return from the caller and call the callee.</div>
+</li>
+<li class="level1"><div class="li"> Tail position includes the last statement of a block, the consequent and alternate of an <code>if</code>, the second subexpression of an <code>||</code> expression, etc.</div>
+</li>
+<li class="level1"><div class="li"> Tail position does not include loop bodies, <code>switch</code> bodies, <code>try</code> bodies, the test expression of an <code>if</code>, etc.</div>
+</li>
+<li class="level1"><div class="li"> There is no implicit <code>return</code>, <code>arguments</code>, or <code>this</code> for a <code>lambda</code> body. These all keep the same meaning that they had in the immediate context of the <code>lambda</code>.</div>
+</li>
+<li class="level1"><div class="li"> There is no new <code>var</code> scope for a <code>lambda</code> body. Any <code>var</code> declarations still hoist to the nearest enclosing <code>function</code>.</div>
+</li>
+<li class="level1"><div class="li"> Unlike <code>function</code>s, labeled <code>break</code> and <code>continue</code> statements may cross over <code>lambda</code>s. Like with <a href="doku.php%3Fid=strawman:return_to_label.html" class="wikilink1" title="strawman:return_to_label" onclick="return svchk()" onkeypress="return svchk()">return to label</a>, if a <code>break</code> or <code>continue</code> dynamically attempts to jump to a dead label, an exception is raised.</div>
+</li>
+</ul>
+
+<p>
+ <strong>Examples:</strong>
+</p>
+
+<p>
+Several functional styles using <code>lambda</code>:
+</p>
+<pre class="code javascript">lambda fact<span class="br0">&#40;</span>n<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">if</span> <span class="br0">&#40;</span>n === <span class="nu0">0</span> || n === <span class="nu0">1</span><span class="br0">&#41;</span>
+        <span class="nu0">1</span>
+    <span class="kw1">else</span>
+        n * <span class="br0">&#40;</span>fact<span class="br0">&#40;</span>n-<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+lambda factIter<span class="br0">&#40;</span>n, acc<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">if</span> <span class="br0">&#40;</span>n === <span class="nu0">0</span> || n === <span class="nu0">1</span><span class="br0">&#41;</span>
+        acc
+    <span class="kw1">else</span>
+        factIter<span class="br0">&#40;</span>n - <span class="nu0">1</span>, n * acc<span class="br0">&#41;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+lambda factCPS<span class="br0">&#40;</span>n, k<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw1">if</span> <span class="br0">&#40;</span>n === <span class="nu0">0</span> || n === <span class="nu0">1</span><span class="br0">&#41;</span>
+        k<span class="br0">&#40;</span><span class="nu0">1</span><span class="br0">&#41;</span>
+    <span class="kw1">else</span>
+        factCPS<span class="br0">&#40;</span>n - <span class="nu0">1</span>, lambda<span class="br0">&#40;</span>result<span class="br0">&#41;</span> k<span class="br0">&#40;</span>n * result<span class="br0">&#41;</span><span class="br0">&#41;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+Desugaring the function expression <code>function(x1,...,xn) Body</code> requires simulating the behavior of <code>this</code>, <code>arguments</code>, and <code>return</code>. The latter takes advantage of <a href="doku.php%3Fid=strawman:return_to_label.html" class="wikilink1" title="strawman:return_to_label" onclick="return svchk()" onkeypress="return svchk()">return to label</a>, but could also be implemented with exceptions. Since <code>lambda</code>s and <code>function</code>s are called with the same calling mechanism, we can&rsquo;t just pass the value for <code>this</code> as a parameter. So the function call protocol saves the <code>this</code> value in a variable <code>thisRegister</code>. The implementation of <code>arguments</code> is described below.
+</p>
+<pre class="code javascript">lambda<span class="br0">&#40;</span>x0,...,xn,...$rest<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    let $THIS = thisRegister;
+    let arguments = makeAlias<span class="br0">&#40;</span><span class="br0">&#91;</span><span class="br0">&#91;</span>lambda<span class="br0">&#40;</span><span class="br0">&#41;</span> x1, lambda<span class="br0">&#40;</span>$x1<span class="br0">&#41;</span> x1 = $x1<span class="br0">&#93;</span>,
+                               ...,
+                               <span class="br0">&#91;</span>lambda<span class="br0">&#40;</span><span class="br0">&#41;</span> xn, lambda<span class="br0">&#40;</span>$xn<span class="br0">&#41;</span> xn = $xn<span class="br0">&#93;</span><span class="br0">&#93;</span>,
+                              $rest<span class="br0">&#41;</span>;
+    $RETURN: <span class="br0">&#123;</span> Body; <span class="kw1">void</span> <span class="nu0">0</span> <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+Then <code>return e</code> desugars to <code>return : $RETURN e</code> and <code>this</code> desugars to <code>$THIS</code>. Note that both <code>$RETURN</code> and <code>$THIS</code> should be gensymed once for the whole program, i.e., they should not be capturable by user code but should be the same in every instance of the desugaring.
+</p>
+
+<p>
+The <code>thisRegister</code> variable is set by the function-call protocol. A function call <code>e.m(e1,...,en)</code> desugars to
+</p>
+<pre class="code javascript">let <span class="br0">&#40;</span>$obj = e, $t1 = e1, ..., $tn = en, $method = $obj.<span class="me1">m</span><span class="br0">&#41;</span>
+  <span class="br0">&#40;</span>thisRegister = $obj, $method<span class="br0">&#40;</span>$t1, ..., tn<span class="br0">&#41;</span><span class="br0">&#41;</span></pre>
+<p>
+Notice that <code>thisRegister</code> is trashed as the very last action &mdash; even after the method dereference, in case the dereference invokes setter code &mdash; before calling the method.
+</p>
+
+<p>
+The <code>makeAlias</code> helper produces an array-like object whose indexed properties behave like aliases for the function parameters. Its implementation looks more or less like so:
+</p>
+<pre class="code javascript">lambda makeAlias<span class="br0">&#40;</span>params, rest<span class="br0">&#41;</span>
+  <span class="br0">&#40;</span><span class="br0">&#123;</span> get *: lambda<span class="br0">&#40;</span>i<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+                <span class="kw1">if</span> <span class="br0">&#40;</span>!isNumeric<span class="br0">&#40;</span>i<span class="br0">&#41;</span><span class="br0">&#41;</span>
+                    <span class="co1">// etc.</span>
+                <span class="kw1">else</span> <span class="kw1">if</span> <span class="br0">&#40;</span>i &lt; <span class="nu0">0</span><span class="br0">&#41;</span>
+                    <span class="co1">// etc.</span>
+                <span class="kw1">else</span> <span class="kw1">if</span> <span class="br0">&#40;</span>i &lt; params.<span class="me1">length</span><span class="br0">&#41;</span>
+                    params<span class="br0">&#91;</span>i<span class="br0">&#93;</span><span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span><span class="br0">&#40;</span><span class="br0">&#41;</span>
+                <span class="kw1">else</span> <span class="br0">&#123;</span>
+                    i -= params.<span class="me1">length</span>;
+                    <span class="kw1">if</span> <span class="br0">&#40;</span>i &lt; rest.<span class="me1">length</span><span class="br0">&#41;</span>
+                        rest<span class="br0">&#91;</span>i<span class="br0">&#93;</span>
+                    <span class="kw1">else</span>
+                        <span class="co1">// etc.</span>
+                <span class="br0">&#125;</span>
+            <span class="br0">&#125;</span>,
+     set *: lambda<span class="br0">&#40;</span>i, x<span class="br0">&#41;</span> <span class="br0">&#123;</span>
+                <span class="kw1">if</span> <span class="br0">&#40;</span>!isNumeric<span class="br0">&#40;</span>i<span class="br0">&#41;</span><span class="br0">&#41;</span>
+                    <span class="co1">// etc.</span>
+                <span class="kw1">else</span> <span class="kw1">if</span> <span class="br0">&#40;</span>i &lt; <span class="nu0">0</span><span class="br0">&#41;</span>
+                    <span class="co1">// etc.</span>
+                <span class="kw1">else</span> <span class="kw1">if</span> <span class="br0">&#40;</span>i &lt; params.<span class="me1">length</span><span class="br0">&#41;</span>
+                    params<span class="br0">&#91;</span>i<span class="br0">&#93;</span><span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span><span class="br0">&#40;</span>x<span class="br0">&#41;</span>
+                <span class="kw1">else</span> <span class="br0">&#123;</span>
+                    i -= params.<span class="me1">length</span>;
+                    <span class="kw1">if</span> <span class="br0">&#40;</span>i &lt; rest.<span class="me1">length</span><span class="br0">&#41;</span>
+                        rest<span class="br0">&#91;</span>i<span class="br0">&#93;</span> = x
+                    <span class="kw1">else</span>
+                        <span class="co1">// etc.</span>
+                <span class="br0">&#125;</span>
+            <span class="br0">&#125;</span>
+   <span class="br0">&#125;</span><span class="br0">&#41;</span></pre>
+<p>
+<strong>Issues:</strong> 
+</p>
+<ul>
+<li class="level1"><div class="li"> Let expressions introduce <a href="https://mail.mozilla.org/pipermail/es-discuss/2008-October/007890.html" class="urlextern" target="_blank" title="https://mail.mozilla.org/pipermail/es-discuss/2008-October/007890.html" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">ambiguity</a> to bottom-up grammar, especially in light of automatic semicolon insertion.</div>
+</li>
+<li class="level1"><div class="li"> If there is a distinction between a <code>let</code>-binding at function top-level and a <code>let</code>-binding in a nested scope, then the Body becomes a nested block and any <code>let</code>-declarations inside of it have the wrong meaning. One fix is to ensure that <code>let</code>-declarations are no different at function top-level than in nested blocks (i.e., they should shadow function parameters).</div>
+</li>
+<li class="level1"><div class="li"> The desugaring of <code>function</code> above doesn&rsquo;t address <code>var</code>-hoisting and the effect of <code>function</code> boundaries on <code>break</code> and <code>continue</code> labels.</div>
+</li>
+</ul>
+
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/0/0b91f21ed3821d35cd0b9ee8c61d1600.xhtml used -->
+</body>
+</html>

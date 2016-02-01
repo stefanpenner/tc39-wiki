@@ -1,0 +1,90 @@
+===== Rationale =====
+
+
+It's currently hard to create compound expressions that do anything non-trivial. And it would be useful to be able to bind local variables and execute statements in an unobtrusive way, without introducing refactoring hazards like capturing the meaning of ''return''.
+
+We had less success with [[lambdas]], but ''let'' is a less powerful and more orthogonal construct.
+
+
+===== Syntax =====
+
+
+<code>
+Expression     ::= ... | "let" LetHead "{" Statement* ("=>" Expression)? "}"
+LetHead        ::= "(" LetBindingList ")"
+LetBindingList ::= LetBinding | LetBindingList "," LetBinding
+LetBinding     ::= Pattern ("=" AssignmentExpression)?
+                |  Ident ("=" AssignmentExpression)?
+</code>
+
+See [[harmony:destructuring]] for the meaning of Pattern.
+
+===== Scope =====
+
+  * all variable bindings in LetHead are in scope in the body
+  * each variable binding in scope in subsequent head expressions? (let*) or not? (let)
+
+
+===== Evaluation =====
+
+
+  * evaluate the RHS expressions in left-to-right order
+  * extend scope chain -- as you go? (let*) or after head? (let)
+  * variables with no RHS are bound to the ''undefined'' value
+  * evaluate body
+  * result value is value of the tail expression
+  * if no tail expression, result value is the ''undefined'' value
+
+
+===== Options =====
+
+
+  * ''let'' vs ''let*''
+
+In typical programming, ''let*'' tends to be more convenient; combats rightward-drift, and it's rare that you need something //not// to be in scope in ordinary programming.
+
+But for code generation, including desugaring spec's, future-proofing for macros, and supporting JS-as-x86, it's a little harder to achieve ''let'' from ''let*'' than vice versa. Probably possible e.g. with a destructuring LHS:
+
+<code javascript>
+let ({ x, y, z } = { x: foo(), y: bar(), z: baz() }) { ... }
+</code>
+
+This won't get you any duplicate-variable checking, but it will ensure that none of the LHS's are in scope on the RHS's. Anyway it's uncommon for ES to enforce no-dups. Even function args can be dups.
+
+
+  * make ''LetHead'' optional -- probably impossible
+
+Ambiguity with destructuring ''let'' declaration:
+
+<code javascript>
+let { x }; // variable expression statement or property-destructuring?
+let { x: x }; // labelled variable expression statement or property-destructuring?
+</code>
+
+  * Explicit completions
+
+With the completion value, statements are almost expressions anyway; why not introduce a syntax for making the completion more statically predictable? Then this spec just becomes:
+
+<code>
+Block ::= "{" Statement* ("=>" Expression)? "}"
+Expression ::= ... | "let" LetHead Block
+</code>
+
+  * default to completion value
+
+The result value of a ''let'' expression with no tail expression could be the completion value instead of ''undefined''.
+
+
+===== Discussion =====
+
+
+  * Still not clear whether this feature pays for itself. It introduces a different way of doing something that could be done about as easily using existing means.
+
+  * I'm concerned typos like the following will be quite common:
+
+<code javascript>
+let (x = ...) { statement()
+                >= x }
+</code>
+
+ --- //[[waldemar@google.com|Waldemar Horwat]] 2010/05/22 00:49//

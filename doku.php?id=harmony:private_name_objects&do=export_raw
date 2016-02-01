@@ -1,0 +1,85 @@
+Similar to [[strawman:unique string values]] and [[strawman:names]]; just the runtime construct, no syntax.
+
+====== Overview ======
+
+This strawman introduces a new kind of object called a //name object//, which can be used to add private properties to any object in a strongly encapsulated way.
+
+A name object is deeply frozen.
+
+The semantics of property lookup is generalized such that wherever ''ToString'' was used for property names in ES5, this is replaced with a new ''ToPropertyName'' operation. For a ''Name'' object //x//, ''ToPropertyName'' produces //x//. For any other value //y//, it produces ''ToString''(//y//).
+
+Every name object has an internal string value that is produced by its ''toString'' method.
+
+Every name object has a ''public'' property that is a reference to a deeply frozen object that **contains no references to the name object**, and whose ''toString'' method produces the same string as the private name object. The ''public'' object is **not itself a name object**. (In reflection API's, this prevents an ambiguity between the private name and some other property name.)
+
+====== Example ======
+
+<code javascript>
+import Name from "@name";
+let key = new Name();
+function MyClass(privateData) {
+    this[key] = privateData;
+}
+MyClass.prototype = {
+    doStuff: function() {
+        ... this[key] ...
+    }
+};
+</code>
+
+====== API ======
+
+There is a standard module that provides the name API. It exports the following functions:
+
+  * ''[new ]Name(str?)''
+
+The ''str'' argument is used as the result of ''toString''.
+
+  * ''isName(x)''
+
+This determines whether a given value is a name object.
+
+====== Semantics ======
+
+Most property access works as in ES5, just generalized to recognize name objects.
+
+Unlike string property names, when defining a new property with a name object, the enumerability attribute of the new property defaults to **false**.
+
+
+
+===== Reflection =====
+
+Private names are not reflected by any of the core semantic algorithms except for proxy traps. In particular, private names are not reflected by:
+
+  * ''Object.getOwnPropertyNames''
+  * ''for''...''in''
+
+(the following is superseded by [[strawman:proxies_names]] which sketches a different method of how names should interact with proxies)
+
+When proxy traps are invoked for a private name, they receive the name's ''.public'' property instead of the name itself. This prevents unintended leakage of the private name, but still identifies the name to code that already has access to it. For example:
+
+<code javascript>
+import Name from "@name";
+var key = new Name();
+...
+Proxy.create({
+    ...
+    get: function(receiver, name) {
+        if (name === key.public)
+            ...
+        else
+            ...
+    },
+    ...
+});
+</code>
+
+===== Possible visibility flag =====
+
+We could extend this to allow the passing of an optional ''visibility'' flag (defaults to ''false'') to ''Name()''. If ''true'', this flag would cause the name to be reflectable via ''for''...''in'' (if enumerable) and ''Object.getOwnPropertyNames''. This would be a //unique name// rather than a //private name//: it is guaranteed to be distinct from all other created names, but it is reflectable. This would be useful for e.g. modular monkey-patching.
+
+====== Open issues ======
+
+  * visibility flag
+  * provide alternative reflection API's for asking specifically for private names?
+  * {{harmony:private-name-alternatives.pdf}} comparison of some possible related object literal extensions 

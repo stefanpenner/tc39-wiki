@@ -1,0 +1,167 @@
+====== Package semantics ======
+
+Packages can be understood in terms of namespaces and compile-time rewriting.  This page should detail how.
+
+
+====== Notes ======
+
+My current notes, based on some dinking around and talking to Jeff.  Not intended to be normative, just for discussion.
+
+A package "p.q" defines two namespaces: one which we can call ''p.q#internal'' and another which we can call ''p.q#public''.
+
+Names declared in the package are annotated with one of these namespaces; naturally, public names go into ''p.q#public''.  (Only "public" and "internal" names are allowed in a package.) 
+
+The elements of the package are stored in an object (the "package object"), using those namespaces.
+
+[//[[jodyer@adobe.com|Jeff Dyer]] 2006/05/03 08:40// --- In AS3, elements of the package are stored in the global object associated with the current program. The NS proposal gave each package its own object, but this leads to difficulties with early binding since the compiler/verifier doesn't know if it has seen the whole package. Packages being expressed as namespaces alone means that the visibility of elements in the same package in two different compilation units is determined by the shadowing rules of separately compiled programs. Also, the import statement has no script loading side-effect.]
+
+[//[[lth@opera.com|Lars T Hansen]] 2006/05/03 09:24// Good, that makes sense.  There is a peculiar sense in which it won't work: if you assume a (dynamic) language mode that does not catch multiply defined names, but instead says that first found definition in the scope is the one we want, then the "package object" may still be needed.  But we're not there yet.]
+
+The block that contains the package body has an implicit ''use namespace p.q#internal, p.q#public'' at its head, ie, all entities in the package see all the definitions in the package.
+
+A block that imports all the names of a package by ''import p.q.*'' is equivalent to a block that has the package object for ''p.q'' on its scope chain just outside its own binding object, with ''use namespace p.q#public'' at the head of its block.
+
+An explicit reference to a package identifier through ''p.q.x'' is translated to ''p.q#public::x'' by the parser (package names preempt lexical bindings).  The name ''p.q.x'' must have been imported into the scope explicitly.
+
+[//[[jodyer@adobe.com|Jeff Dyer]] 2006/05/03 08:56// --- it may not be obvious to the user that a package qualified name ''p.x'' inside of the package that is named by the qualfier ''package p'' does not include the package internal qualified name ''p.q#internal::x''. Only the public name ''p.q#public::x'' is used.]
+
+A block that imports a package entity by name, eg ''import p.q.x'', and then contains unqualified references to some ''x'', is handled by noting that every reference to ''x'' has a set of open namespaces which is the set for the block plus the namespace ''p.q#public''.  
+  * A compile-time interpretation is that variable references carry partial sets of namespaces with them.  
+  * A run-time interpretation is that every by-name import creates an entry in a block-local table mapping identifiers to partial sets of namespaces, and every lookup of an unqualified variable at run-time will add the set of names from this table to the open namespaces for that lookup. [//[[jodyer@adobe.com|Jeff Dyer]] 2006/05/03 08:56// --- It is not clear to me why a run time interpretation is needed. Can't every unqualified lexical reference to ''x'' be rewritten at compile-time regardless of whether it appears in an import statement?] [//[[lth@opera.com|Lars T Hansen]] 2006/05/03 09:23// It can.  But since I had managed to give it a pure run-time meaning, no matter how tortuous, I thought I would share it :-)]
+
+A block that imports an entity by name and gives it an alias must be rewritten by the parser: ''import foo = p.q.x'' requires that references to ''foo'' be rewritten as ''p.q#public::x''.
+
+--- //[[lth@opera.com|Lars T Hansen]] 2006/05/03 04:03//
+
+----
+
+Should we support unnamed packages? Or packages with a simple name (i.e. just 'p' instead of 'p.q')?
+
+--- //[[pratapl@microsoft.com|Pratap Lakshman]] 2006/05/06 14:26//
+
+----
+
+There is already support for unnamed packages in the draft spec; they are imported implicitly (as by ''*'') in some contexts (I seem to remember at the beginning of each package and at the beginning of the top-level program).
+
+Supporting only packages with simple names might allow us to get rid of the undesirable situation we're in now where a package name used in a fully qualified package reference overrides any lexical binding, ie, if package ''p.q'' has been imported then ''p.q.x'' is rewritten as a reference into that package regardless of whether there's a ''p'' in a closer scope than the package import.  If package names are simple then package ''p'' may have a run-time representation and can be in the scope chain like other objects.  (I haven't thought this through fully but it seems likely.)
+
+ --- //[[lth@opera.com|Lars T Hansen]] 2006/05/08 00:30//
+
+I think we should support simple names for the reason Lars just gave.  If there is no possibility of a ''p'' nearer to the head of the scope chain, there's no issue.  If there could be such a ''p'' due to ''with'' or kin, then no lexical-override exception is needed.  Jeff, is there a problem with this approach? [ //[[jodyer@adobe.com|Jeff Dyer]] 2006/05/15 13:55// --- see my notes below ]
+
+ --- //[[brendan@mozilla.org|Brendan Eich]] 2006/05/08 15:54//
+
+----
+Should nesting of packages be permitted?
+
+Can we have packages named p, p.q, p.q.r, p.q.r.s etc?
+
+Does importing p.q.* make all public names defined in the package p.q visible inside any scope that contains this directive, or does it make all public names defined in all packages nested within p.q visible inside any scope that contains this directive? [ //[[jodyer@adobe.com|Jeff Dyer]] 2006/05/15 13:55// --- Nominal nesting (as in Java) is allowed, but ''import p.q.*'' only makes the names defined in ''p.q'' visible. If there is a package named ''p.q.r'' availalble, then ''r'' is not a package identifier by virtue of a ''import p.q.*'' directive ]
+
+These need to be clarified in chapter 11 (Packages) of the draft spec. [bug noted]
+
+ --- //[[pratapl@microsoft.com|Pratap Lakshman]] 2006/05/15 13:11//
+
+----
+So, can packages be used to control 'access' and 'scope'?
+
+I interpret access and scope as follows: access specifies the part of the program text within which the declared entity can be referred to by a qualified name, a field access expression, or a method invocation expression in which the method is not specified by a simple name.
+Every declaration that introduces a name has a scope which is the part of the program text within which the declared entity can be referred to by a simple name.
+
+Can this too be clarified in chapter 11 (Packages) of the draft spec.
+ --- //[[pratapl@microsoft.com|Pratap Lakshman]] 2006/05/17 10:00//
+----
+
+====== Response to comments regarding package names ======
+
+Shadowing of package names by inner definitions is possible whether or not package names have embedded dots. This is what Java does by pretending that each identifier in a package name represents an object in a tree of objects. I'm not convince this is good language design. But let me first make a case for unnamed and compound named packages before arguing for the current shadowing behavior.
+
+**Unnamed packages**
+
+Unnamed packages provide the benefits of,
+
+   * convenient sharing of definitions across compilation units
+   * implicit import into all other packages and global code
+
+Unnamed packages are useful for casual programming. The relationship between the unnamed package and separate compilation (esp. in the browser) need to be explored.
+
+**Compound package names **
+
+Compound package names allow,
+
+   * mirroring tree structured storage systems
+   * organizing frameworks/apis into nested categories
+   * java programmers to be happy
+
+The idea of //package// popularized by Java includes an implementation dependent mapping onto a class path. ES4 tool chains can make similar use of compound package names. If we don't allow embedded dots, then would we want another character to indicate nesting levels? Programmers, Java programmers at least, like to organize their APIs into nested categories (e.g. mx.controls, mx.controls.menuclasses, java.lang, java.lang.reflect). Denying them the //dot// for doing so makes them unhappy.
+
+**Package names as user defined syntactic keywords**
+
+Package names are treated as reserved words in the limited syntactic context that is the left side of a dot whose right side is an Identifier. This means that is is possible that a package name could shadow a definition in an inner scope.
+
+The question is whether this is good language design or not. If more often than not the program means what the programmer thinks then it is good language design, perhaps with unresolved design issues. So to begin, how would you read the following programs?
+
+Case 1:
+
+<code>
+import mx.controls.*
+
+class ... {
+   function ... (mx,baz) {
+     ... = new mx.controls.Button(...)
+   }
+}
+</code>
+
+AS3 says ''mx.controls.Button'' refers to the public definition of ''Button'' in package ''mx.controls''.
+
+Case 2:
+
+<code>
+import mx.controls.*
+
+class ... {
+   function ... () {
+     var mx : int
+     ... = mx
+   }
+}
+</code>
+
+AS3 says ''mx'' refers to the local var named ''mx''.
+
+Case 3:
+
+<code>
+import mx.controls.*
+
+class ... {
+   function ... () {
+     var mx : *
+     ... = mx.foo
+   }
+}
+</code>
+
+AS3 says ''mx.foo'' is a property of the value of the local var ''mx''
+
+Case 4:
+
+<code>
+import mx.controls.*
+
+class Foo {
+   function Foo (mx) {
+     ... = mx.controls.length
+   }
+}
+new Foo ({controls:[o,p,q]})
+</code>
+
+AS3 says ''mx.controls.length'' refers to a public definition of ''length'' in the package ''mx.controls''. If that was not the programmers intent, and if ''mx.controls'' does in fact have a public definition named ''length'' then a silent failure may occur, otherwise you will get a compiler error in ! and a runtime error in ~.
+
+This last case is the only one for which the current proposal diverges from user expectations. (Have I missed others?) But even here we almost always get an error before the code ever executes.
+
+I argue that the proposed behavior (especially with a fix to the silent failure problem) is prefered to the Java scope shadowing behavior because more often than not it matches user expectations.
+
+ --- //[[jodyer@adobe.com|Jeff Dyer]] 2006/05/25 16:51//

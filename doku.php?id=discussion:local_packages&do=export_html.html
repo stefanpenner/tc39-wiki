@@ -1,0 +1,122 @@
+<html>
+<head>
+  <meta name="generator" content="DokuWiki Release 2005-09-22e" />
+  <link rel="start" href="index.html" />
+  <link rel="contents" href="doku.php%3Fid=discussion:local_packages&amp;do=index.html" title="" />
+  <link rel="alternate" type="application/rss+xml" title="Recent Changes" href="feed.php" />
+  <link rel="alternate" type="application/rss+xml" title="Current Namespace" href="feed.php%3Fmode=list&amp;ns=discussion" />
+  <link rel="alternate" type="text/html" title="Plain HTML" href="doku.php%3Fid=discussion:local_packages&amp;do=export_html.html" />
+  <link rel="alternate" type="text/plain" title="Wiki Markup" href="doku.php%3Fid=discussion:local_packages&amp;do=export_raw" />
+  <link rel="stylesheet" media="screen" type="text/css" href="lib/styles/style.css" />
+  <meta name="robots" content="noindex,nofollow" />
+  <script language="javascript" type="text/javascript" charset="utf-8">
+    var alertText   = 'Please enter the text you want to format.\nIt will be appended to the end of the document.'
+    var notSavedYet = 'Unsaved changes will be lost.\nReally continue?'
+    var DOKU_BASE   = '/'
+  </script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/script.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/tw-sack.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/ajax.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domLib.js"></script>
+  <script language="javascript" type="text/javascript" charset="utf-8" src="lib/scripts/domTT.js"></script>
+  <link rel="stylesheet" type="text/css" href="lib/plugins/plugin/style.css" />
+</head>
+<body>
+
+<a name="local_packages"></a><h1>Local packages</h1>
+<div class="level1">
+
+<p>
+ (Also see <a href="doku.php%3Fid=proposals:local_packages.html" class="wikilink1" title="proposals:local_packages" onclick="return svchk()" onkeypress="return svchk()">proposals:local packages</a>.)
+</p>
+
+</div>
+<!-- SECTION [1-97] -->
+<a name="alternativesyntactic_keyword_to_introduce_a_local_package"></a><h3>Alternative: Syntactic keyword to introduce a local package</h3>
+<div class="level3">
+
+<p>
+ An alternative syntax to <code>private package</code> is to use a syntactic keyword, eg <code>local</code>, as the package name or as the first token in the package name:
+</p>
+<pre class="code">
+    package local.doubleclick {
+        function doMyAd() { ... }
+        var isIE3 = ...;
+        var isIE4 = ...;
+    }
+    {   import doubleclick.doMyAd; doubleclick.doMyAd();  }
+</pre>
+
+</div>
+<!-- SECTION [98-520] -->
+<a name="alternativemore_interesting_import_semantics"></a><h3>Alternative: More interesting import semantics</h3>
+<div class="level3">
+
+<p>
+ If <code>import</code> were defined to load packages from a host on the internet then it could be relied on to load a package only once even if the package is used several times.
+</p>
+
+<p>
+For example, a page would contain scripts like this:
+</p>
+<pre class="code">
+    {   import com.doubleclick.adscript.doMyAd; doMyAd(&quot;ibm&quot;);  }
+    ....
+    {   import com.doubleclick.adscript.doMyAd; doMyAd(&quot;thinkgeek&quot;);  }
+</pre>
+
+<p>
+and the contents of the package <code>com.doubleclick.adscript</code> would be loaded from <code><a href="http://doubleclick.com/adscript.js" class="urlextern" target="_blank" title="http://doubleclick.com/adscript.js" onclick="return svchk()" onkeypress="return svchk()" rel="nofollow">http://doubleclick.com/adscript.js</a></code> once.
+</p>
+
+</div>
+<!-- SECTION [521-1094] -->
+<a name="private"></a><h3>''Private''</h3>
+<div class="level3">
+<hr noshade="noshade" size="1" />
+
+<p>
+<strong> Slight Revision </strong>
+</p>
+
+<p>
+I agree that the need for program private packages is real. I&rsquo;d like to suggest that we use the attribute <code>private</code> rather than <code>let</code> for this purpose. Since <code>private</code> is used elsewhere to modify the visibility of names and <code>let</code> is used to limit the scope of names, <code>private</code> seems like the more natural alternative here. E.g.
+</p>
+<pre class="code">
+    private package doubleclick {
+        function doMyAd() { ... }
+        var isIE3 = ...;
+        var isIE4 = ...;
+    }
+    {   import doubleclick.doMyAd; doubleclick.doMyAd();  }
+</pre>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6a%3B%26%23x6f%3B%26%23x64%3B%26%23x79%3B%26%23x65%3B%26%23x72%3B%26%23x40%3B%26%23x61%3B%26%23x64%3B%26%23x6f%3B%26%23x62%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6a;&#x6f;&#x64;&#x79;&#x65;&#x72;&#x40;&#x61;&#x64;&#x6f;&#x62;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Jeff Dyer</a> 2006/05/24 18:00</em> 
+</p>
+
+<p>
+I agree that&rsquo;s better.  I was seduced by the analogy with <code>let</code> hiding names from the outside at the top level of programs and classes (the implicit block thing) and saw this as a natural extension of that.  But the analogy is probably imperfect, and <code>private</code> states the purpose more clearly.
+</p>
+
+<p>
+(Should we have <code>final</code> packages that refuse to be extended by lexically separate definitions?  As it is now, it is possible for me to write code to get at the internals of any package by simply adding a package declaration that extends the one I want to get into with a public function that accesses private data.  Is this mostly good or mostly bad?)
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/05/25 05:50</em>
+</p>
+
+<p>
+Fixed and incorporated.
+</p>
+
+<p>
+ &mdash; <em><a href="mailto:%26%23x6c%3B%26%23x74%3B%26%23x68%3B%26%23x40%3B%26%23x6f%3B%26%23x70%3B%26%23x65%3B%26%23x72%3B%26%23x61%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6c;&#x74;&#x68;&#x40;&#x6f;&#x70;&#x65;&#x72;&#x61;&#x2e;&#x63;&#x6f;&#x6d;">Lars T Hansen</a> 2006/05/25 14:54</em> 
+</p>
+
+</div>
+<!-- SECTION [1095-] -->
+<!-- cachefile /usr/local/www/es-lang.org/wiki/data/cache/1/1a16a9b280220cf3d3a9489b73216740.xhtml used -->
+</body>
+</html>
